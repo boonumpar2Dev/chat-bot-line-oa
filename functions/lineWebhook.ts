@@ -151,14 +151,21 @@ ${imageListStr}
       const imageTitles = aiResponse.image_titles || [];
 
       // Collect relevant images (max 3)
-      const relevantImages = itemsWithImages
-        .filter(item => imageTitles.includes(item.title))
-        .flatMap(item => getItemImages(item))
-        .slice(0, 3);
+      const allRelevantImages = itemsWithImages
+        .filter(item => imageTitles.includes(item.title));
+
+      // Check which titles were already sent last time
+      const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
+      const sortedCurrent = [...imageTitles].sort().join('|');
+      const sortedLast = [...lastSent].sort().join('|');
+      const isSameTitles = sortedCurrent === sortedLast && sortedCurrent.length > 0;
+
+      // Only send images if it's a different set of titles than last time
+      const imagesToSend = isSameTitles ? [] : allRelevantImages.flatMap(item => getItemImages(item)).slice(0, 3);
 
       // Build LINE messages
       const lineMessages = [{ type: 'text', text: answerText }];
-      for (const imgUrl of relevantImages) {
+      for (const imgUrl of imagesToSend) {
         lineMessages.push({
           type: 'image',
           originalContentUrl: imgUrl,
@@ -176,9 +183,16 @@ ${imageListStr}
         body: JSON.stringify({ replyToken, messages: lineMessages }),
       });
 
+      // Update last sent image titles on customer (always update to current titles)
+      if (imageTitles.length > 0) {
+        await base44.asServiceRole.entities.Customer.update(customer.id, {
+          last_sent_image_titles: imageTitles,
+        });
+      }
+
       // Save AI reply to DB
-      const savedMsg = relevantImages.length > 0
-        ? `${answerText}\n${relevantImages.map(u => `📎 ${u}`).join('\n')}`
+      const savedMsg = imagesToSend.length > 0
+        ? `${answerText}\n${imagesToSend.map(u => `📎 ${u}`).join('\n')}`
         : answerText;
 
       await base44.asServiceRole.entities.Conversation.create({
