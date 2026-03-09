@@ -60,6 +60,25 @@ function MessageContent({ text }) {
               </a>
             );
           }
+          if (type === "video") {
+            return <video key={i} src={url} controls className="max-w-[280px] rounded-xl mt-1 shadow-sm" />;
+          }
+          if (type === "pdf") {
+            return (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-2 mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors text-xs text-red-700 w-fit">
+                📄 เปิดไฟล์ PDF
+              </a>
+            );
+          }
+          // Other files
+          const filename = url.split("/").pop().split("?")[0] || "ไฟล์แนบ";
+          return (
+            <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-2 mt-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-xs text-blue-700 w-fit">
+              📎 {filename}
+            </a>
+          );
         }
         return <span key={i}>{part}{i < parts.length - 1 ? "\n" : ""}</span>;
       })}
