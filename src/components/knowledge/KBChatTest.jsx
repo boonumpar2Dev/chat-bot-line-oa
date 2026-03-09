@@ -28,7 +28,11 @@ export default function KBChatTest() {
     setInput("");
     setLoading(true);
 
-    const kbItems = await base44.entities.KnowledgeBase.filter({ status: "active" });
+    const [kbItems, settingsList] = await Promise.all([
+      base44.entities.KnowledgeBase.filter({ status: "active" }),
+      base44.entities.AppSettings.filter({ key: "ai_config" }),
+    ]);
+    const cfg = settingsList?.[0] || {};
     const itemsWithImages = kbItems.filter(i => getItemImages(i).length > 0);
 
     const knowledgeContext = kbItems.map((item) => {
@@ -40,8 +44,16 @@ export default function KBChatTest() {
       ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(", ")}`
       : "";
 
+    const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
+      ? cfg.strict_rules.filter(r => r && r.trim()).map((r, i) => `${i + 1}. ${r}`).join("\n")
+      : "";
+    const strictRulesSection = strictRules
+      ? `\n\n⚠️ กฎเข้มงวดที่ต้องปฏิบัติตามเสมอ:\n${strictRules}`
+      : "";
+
     const response = await base44.integrations.Core.InvokeLLM({
       prompt: `คุณเป็น AI Assistant ตอบคำถามจาก Knowledge Base เท่านั้น ห้ามแต่งข้อมูลเอง
+${strictRulesSection}
 
 Knowledge Base:
 ${knowledgeContext || "ยังไม่มีข้อมูล"}
