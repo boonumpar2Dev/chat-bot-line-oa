@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
 import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
 import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
-import KBGithubImport from "@/components/knowledge/KBGithubImport.jsx";
 
 export default function Knowledge() {
   const [items, setItems] = useState([]);
@@ -50,10 +49,6 @@ export default function Knowledge() {
       <div className="mb-4 shrink-0">
         <h1 className="text-xl font-bold text-foreground">เพิ่มข้อมูล</h1>
         <p className="text-muted-foreground text-sm mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI ของคุณ</p>
-      </div>
-
-      <div className="mb-4 shrink-0">
-        <KBGithubImport onImported={fetchItems} />
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4 shrink-0">
