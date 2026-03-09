@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Plus, FileText, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
-import KBItemList from "@/components/knowledge/KBItemList";
-import KBEditForm from "@/components/knowledge/KBEditForm";
-import KBChatTest from "@/components/knowledge/KBChatTest";
+import KBItemList from "@/components/knowledge/KBItemList.jsx";
+import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
+import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
 
 export default function Knowledge() {
   const [items, setItems] = useState([]);
