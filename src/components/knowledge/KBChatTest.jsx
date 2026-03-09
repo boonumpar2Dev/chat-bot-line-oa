@@ -51,8 +51,16 @@ export default function KBChatTest() {
       ? `\n\n⚠️ กฎเข้มงวดที่ต้องปฏิบัติตามเสมอ:\n${strictRules}`
       : "";
 
+    const topicNames = kbItems.map(k => k.title).filter(Boolean);
+
     const response = await base44.integrations.Core.InvokeLLM({
-      prompt: `คุณเป็น AI Assistant ตอบคำถามจาก Knowledge Base เท่านั้น ห้ามแต่งข้อมูลเอง
+      prompt: `คุณเป็น AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง
+
+หลักการตอบ:
+- ตอบจากข้อมูลใน Knowledge Base เท่านั้น ห้ามแต่งข้อมูลตัวเลข ราคา รายละเอียดที่ไม่มีอยู่
+- ถ้าลูกค้าทักทายกว้างๆ เช่น "สอบถามค่ะ" "สวัสดีค่ะ" "สนใจค่ะ" → ให้ต้อนรับอย่างอบอุ่นและแนะนำหัวข้อบริการ/ข้อมูลที่มีอยู่ให้ลูกค้าเลือกถาม
+- หัวข้อข้อมูลที่มีอยู่: ${topicNames.length > 0 ? topicNames.join(', ') : 'ยังไม่มีข้อมูล'}
+- ถ้าลูกค้าถามเรื่องที่ไม่มีใน Knowledge Base เลย → ตอบสุภาพว่าจะให้เจ้าหน้าที่ติดต่อกลับ
 ${strictRulesSection}
 
 Knowledge Base:
@@ -62,7 +70,7 @@ ${imageListStr}
 ประวัติการสนทนา:
 ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.content}`).join("\n")}
 
-ตอบเป็นภาษาไทย กระชับ และถ้าคำถามเกี่ยวข้องกับข้อมูลที่มีรูปภาพให้ระบุชื่อข้อมูลนั้นใน image_titles ด้วย`,
+ถ้าคำตอบเกี่ยวข้องกับข้อมูลที่มีรูปภาพให้ระบุชื่อข้อมูลนั้นใน image_titles ด้วย`,
       response_json_schema: {
         type: "object",
         properties: {
