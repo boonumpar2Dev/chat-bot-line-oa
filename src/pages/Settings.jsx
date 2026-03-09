@@ -62,19 +62,19 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">ตั้งค่า</h1>
+    <div className="p-4 lg:p-8 space-y-6 max-w-4xl mx-auto w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl lg:text-2xl font-bold text-foreground">ตั้งค่า</h1>
           <p className="text-muted-foreground text-sm mt-1">ปรับแต่งการทำงานของ AI และระบบ</p>
         </div>
         <button
           onClick={saveSettings}
           disabled={saving}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 self-start sm:self-auto shrink-0"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          บันทึก
+          <span className="hidden sm:inline">บันทึก</span>
         </button>
       </div>
 
@@ -135,13 +135,13 @@ export default function Settings() {
           </button>
         </div>
         {config.schedule_enabled && (
-          <div className="flex gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
               <label className="text-xs text-muted-foreground">เริ่มเวลา</label>
               <input type="time" value={config.start_time} onChange={(e) => update("start_time", e.target.value)}
                 className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
             </div>
-            <div className="flex-1">
+            <div>
               <label className="text-xs text-muted-foreground">สิ้นสุดเวลา</label>
               <input type="time" value={config.end_time} onChange={(e) => update("end_time", e.target.value)}
                 className="w-full mt-1 px-3 py-2 rounded-lg border border-input bg-background text-sm" />
