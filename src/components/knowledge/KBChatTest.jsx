@@ -14,6 +14,7 @@ export default function KBChatTest() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastSentTitles, setLastSentTitles] = useState([]);
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -86,9 +87,18 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
       }
     });
 
-    const relevantImages = itemsWithImages
-      .filter(item => (response.image_titles || []).includes(item.title))
+    const currentTitles = response.image_titles || [];
+    const sortedCurrent = [...currentTitles].sort().join('|');
+    const sortedLast = [...lastSentTitles].sort().join('|');
+    const isSameTitles = sortedCurrent === sortedLast && sortedCurrent.length > 0;
+
+    const imagesToShow = isSameTitles ? [] : itemsWithImages
+      .filter(item => currentTitles.includes(item.title))
       .flatMap(item => getItemImages(item));
+
+    if (currentTitles.length > 0) {
+      setLastSentTitles(currentTitles);
+    }
 
     const cleanAnswer = String(response.answer || "ไม่สามารถตอบได้")
       .replace(/\\n/g, '\n')
@@ -98,7 +108,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
     setMessages((prev) => [...prev, {
       role: "assistant",
       content: cleanAnswer,
-      images: relevantImages
+      images: imagesToShow
     }]);
     setLoading(false);
   };
@@ -115,7 +125,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
             <div className="text-[10px] text-muted-foreground">ทดสอบ AI จาก Knowledge Base</div>
           </div>
         </div>
-        <button onClick={() => setMessages([])} className="p-2 rounded-lg hover:bg-muted transition-colors" title="รีเซ็ต">
+        <button onClick={() => { setMessages([]); setLastSentTitles([]); }} className="p-2 rounded-lg hover:bg-muted transition-colors" title="รีเซ็ต">
           <RefreshCw className="w-4 h-4 text-muted-foreground" />
         </button>
       </div>
