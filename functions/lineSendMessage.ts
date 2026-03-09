@@ -6,9 +6,18 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { line_user_id, message } = await req.json();
-    if (!line_user_id || !message) {
-      return Response.json({ error: 'Missing line_user_id or message' }, { status: 400 });
+    const { line_user_id, message, messages } = await req.json();
+    if (!line_user_id) {
+      return Response.json({ error: 'Missing line_user_id' }, { status: 400 });
+    }
+
+    // Support both single message and array of message objects
+    let lineMessages = messages;
+    if (!lineMessages && message) {
+      lineMessages = [{ type: 'text', text: message }];
+    }
+    if (!lineMessages) {
+      return Response.json({ error: 'Missing message or messages' }, { status: 400 });
     }
 
     const res = await fetch('https://api.line.me/v2/bot/message/push', {
@@ -19,7 +28,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         to: line_user_id,
-        messages: [{ type: 'text', text: message }],
+        messages: lineMessages,
       }),
     });
 
