@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, Loader2 } from "lucide-react";
+import { Plus, FileText, Loader2, ArrowLeft } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { toast } from "sonner";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
 import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
 import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
@@ -11,10 +10,9 @@ export default function Knowledge() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [view, setView] = useState("list"); // "list" | "edit" | "chat"
 
-  useEffect(() => {
-    fetchItems();
-  }, []);
+  useEffect(() => { fetchItems(); }, []);
 
   const fetchItems = async () => {
     const data = await base44.entities.KnowledgeBase.list("-created_date");
@@ -29,77 +27,124 @@ export default function Knowledge() {
     setItems((prev) => [created, ...prev]);
     setSelectedItem(created);
     setAdding(false);
+    setView("edit");
+  };
+
+  const handleSelect = (item) => {
+    setSelectedItem(item);
+    setView("edit");
   };
 
   const handleDelete = (id) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
-    if (selectedItem?.id === id) setSelectedItem(null);
+    if (selectedItem?.id === id) { setSelectedItem(null); setView("list"); }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
   }
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-2rem)] p-4 lg:p-6 overflow-hidden">
-      <div className="mb-4 shrink-0">
-        <h1 className="text-xl font-bold text-foreground">เพิ่มข้อมูล</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI ของคุณ</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-        <button
-          onClick={() => handleAddNew("file")}
-          disabled={adding}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          <Plus className="w-4 h-4" /> เพิ่มข้อมูล
-        </button>
-        <button
-          onClick={() => handleAddNew("price")}
-          disabled={adding}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium text-foreground hover:bg-muted transition-colors"
-        >
-          <FileText className="w-4 h-4" /> เพิ่มรายการราคา
-        </button>
-      </div>
-
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 overflow-hidden">
-        <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0 overflow-auto">
-          <div className="w-full lg:max-w-md shrink-0">
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                จัดการข้อมูล
-                <span className="text-muted-foreground font-normal text-xs cursor-help" title="AI ใช้ข้อมูลนี้ตอบกลับลูกค้า">ⓘ</span>
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                AI ของคุณใช้ข้อมูลนี้เพื่อตอบกลับลูกค้า
-              </p>
-            </div>
-            <KBItemList
-              items={items}
-              selectedId={selectedItem?.id || null}
-              onSelect={setSelectedItem}
-              onDelete={handleDelete}
+  // ── MOBILE layout (< lg) ──────────────────────────────────────────────────
+  const MobileView = () => {
+    if (view === "edit" && selectedItem) {
+      return (
+        <div className="flex flex-col h-screen overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-3 shrink-0">
+            <button onClick={() => { setView("list"); setSelectedItem(null); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <span className="font-semibold text-foreground">แก้ไขข้อมูล</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <KBEditForm
+              key={selectedItem.id}
+              item={selectedItem}
+              onSaved={() => { fetchItems(); setView("list"); setSelectedItem(null); }}
+              onDeleted={() => handleDelete(selectedItem.id)}
+              onCancel={() => { setView("list"); setSelectedItem(null); }}
             />
           </div>
+        </div>
+      );
+    }
+    if (view === "chat") {
+      return (
+        <div className="flex flex-col h-screen overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-3 shrink-0">
+            <button onClick={() => setView("list")} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <span className="font-semibold text-foreground">แชททดสอบ AI</span>
+          </div>
+          <div className="flex-1 overflow-hidden p-4">
+            <KBChatTest />
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col h-screen overflow-hidden">
+        <div className="p-4 border-b border-border bg-card shrink-0">
+          <h1 className="text-lg font-bold text-foreground">เพิ่มข้อมูล</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI</p>
+        </div>
+        <div className="flex gap-2 px-4 py-3 border-b border-border shrink-0">
+          <button onClick={() => handleAddNew("file")} disabled={adding}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
+            <Plus className="w-4 h-4" /> เพิ่มข้อมูล
+          </button>
+          <button onClick={() => handleAddNew("price")} disabled={adding}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
+            <FileText className="w-4 h-4" /> เพิ่มรายการราคา
+          </button>
+          <button onClick={() => setView("chat")}
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors">
+            ทดสอบ AI
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
+        </div>
+      </div>
+    );
+  };
 
-          {selectedItem && (
-            <>
-              <div className="fixed inset-0 z-50 bg-background p-4 overflow-auto lg:hidden">
-                <KBEditForm
-                  key={selectedItem.id}
-                  item={selectedItem}
-                  onSaved={() => { fetchItems(); setSelectedItem(null); }}
-                  onDeleted={() => handleDelete(selectedItem.id)}
-                  onCancel={() => setSelectedItem(null)}
-                />
-              </div>
-              <div className="hidden lg:block flex-1 overflow-y-auto bg-card rounded-xl border border-border p-5 min-w-0">
+  // ── DESKTOP layout (≥ lg) ─────────────────────────────────────────────────
+  return (
+    <>
+      {/* Mobile */}
+      <div className="lg:hidden h-screen overflow-hidden">
+        <MobileView />
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden lg:flex flex-col h-screen overflow-hidden p-6 gap-4">
+        <div className="shrink-0">
+          <h1 className="text-xl font-bold text-foreground">เพิ่มข้อมูล</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI ของคุณ</p>
+        </div>
+
+        <div className="flex gap-2 shrink-0">
+          <button onClick={() => handleAddNew("file")} disabled={adding}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
+            <Plus className="w-4 h-4" /> เพิ่มข้อมูล
+          </button>
+          <button onClick={() => handleAddNew("price")} disabled={adding}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
+            <FileText className="w-4 h-4" /> เพิ่มรายการราคา
+          </button>
+        </div>
+
+        <div className="flex-1 flex gap-4 min-h-0">
+          {/* List */}
+          <div className="w-80 shrink-0 flex flex-col min-h-0 overflow-y-auto">
+            <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
+          </div>
+
+          {/* Edit form */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            {selectedItem ? (
+              <div className="bg-card rounded-xl border border-border p-5 h-full overflow-y-auto">
                 <KBEditForm
                   key={selectedItem.id + "-desktop"}
                   item={selectedItem}
@@ -108,14 +153,19 @@ export default function Knowledge() {
                   onCancel={() => setSelectedItem(null)}
                 />
               </div>
-            </>
-          )}
-        </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm bg-card rounded-xl border border-border border-dashed">
+                เลือกข้อมูลเพื่อแก้ไข
+              </div>
+            )}
+          </div>
 
-        <div className="w-full lg:w-96 shrink-0 h-80 lg:h-auto">
-          <KBChatTest />
+          {/* Chat test */}
+          <div className="w-96 shrink-0 min-h-0">
+            <KBChatTest />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
