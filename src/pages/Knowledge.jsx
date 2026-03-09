@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
 import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
 import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
+import KBGithubImport from "@/components/knowledge/KBGithubImport.jsx";
 
 export default function Knowledge() {
   const [items, setItems] = useState([]);
