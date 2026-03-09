@@ -51,6 +51,7 @@ import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
 import RoleManagement from './pages/RoleManagement';
 import Knowledge from './pages/Knowledge';
+import Chats from './pages/Chats';
 import __Layout from './Layout.jsx';
 
 
@@ -59,6 +60,7 @@ export const PAGES = {
     "Settings": Settings,
     "RoleManagement": RoleManagement,
     "Knowledge": Knowledge,
+    "Chats": Chats,
 }
 
 export const pagesConfig = {

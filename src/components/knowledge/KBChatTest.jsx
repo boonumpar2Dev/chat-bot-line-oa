@@ -1,0 +1,115 @@
+import { useState, useRef, useEffect } from "react";
+import { Send, RefreshCw, Sparkles } from "lucide-react";
+import { base44 } from "@/api/base44Client";
+
+const SUGGESTIONS = ["ร้านตั้งอยู่ที่ไหน", "เวลาทำการกี่โมงคะ", "นโยบายการจัดส่งมีอะไรบ้าง"];
+
+export default function KBChatTest() {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async (text) => {
+    if (!text.trim() || loading) return;
+    const userMsg = { role: "user", content: text.trim() };
+    const updated = [...messages, userMsg];
+    setMessages(updated);
+    setInput("");
+    setLoading(true);
+
+    try {
+      // Use Base44 LLM integration to test against knowledge base
+      const kbItems = await base44.entities.KnowledgeBase.filter({ status: "active" });
+      const knowledgeContext = kbItems.map((item) => `${item.title}:\n${item.content || ""}`).join("\n\n");
+
+      const response = await base44.integrations.Core.InvokeLLM({
+        prompt: `คุณเป็น AI Assistant ที่ตอบคำถามโดยอ้างอิงจาก Knowledge Base เท่านั้น ห้ามแต่งข้อมูลเอง
+
+Knowledge Base:
+${knowledgeContext || "ยังไม่มีข้อมูลใน Knowledge Base"}
+
+ประวัติการสนทนา:
+${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.content}`).join("\n")}
+
+ตอบเป็นภาษาไทยสั้นๆ กระชับ อ้างอิงจาก Knowledge Base เท่านั้น`,
+      });
+
+      setMessages((prev) => [...prev, { role: "assistant", content: response || "ไม่สามารถตอบได้" }]);
+    } catch (e) {
+      setMessages((prev) => [...prev, { role: "assistant", content: "เกิดข้อผิดพลาดในการเชื่อมต่อ AI" }]);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <div className="text-sm font-semibold text-foreground">แชททดสอบ</div>
+            <div className="text-[10px] text-muted-foreground">ทดสอบ AI จาก Knowledge Base</div>
+          </div>
+        </div>
+        <button onClick={() => setMessages([])} className="p-2 rounded-lg hover:bg-muted transition-colors" title="รีเซ็ต">
+          <RefreshCw className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 && (
+          <div className="text-center py-8 space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-green-600" />
+            </div>
+            <div>
+              <div className="font-semibold text-foreground">แชททดสอบ</div>
+              <p className="text-xs text-muted-foreground mt-1">ลองพูดคุยกับ AI โดยสมมติว่าคุณเป็นลูกค้า</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {SUGGESTIONS.map((s) => (
+                <button key={s} onClick={() => sendMessage(s)}
+                  className="px-3 py-1.5 rounded-full border border-green-300 text-green-600 text-xs hover:bg-green-50 transition-colors flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
+              msg.role === "user" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+            }`}>
+              <span className="whitespace-pre-line">{msg.content}</span>
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-muted px-3 py-2 rounded-xl rounded-bl-sm text-sm text-muted-foreground">กำลังพิมพ์...</div>
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-3 border-t border-border">
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex items-center gap-2">
+          <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
+            placeholder="ลูกค้าของคุณน่าจะถามอะไร" disabled={loading}
+            className="flex-1 px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <button type="submit" disabled={loading || !input.trim()}
+            className="p-2.5 rounded-lg bg-green-600 text-white hover:opacity-90 disabled:opacity-50 transition-opacity">
+            <Send className="w-4 h-4" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
