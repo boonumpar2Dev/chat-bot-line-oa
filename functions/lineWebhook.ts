@@ -127,6 +127,7 @@ ${imageListStr}
 ลูกค้าส่งมาว่า: "${messageText}"
 
 ถ้าคำตอบเกี่ยวข้องกับข้อมูลที่มีรูปภาพ ให้ระบุชื่อข้อมูลนั้นใน image_titles เพื่อส่งรูปให้ลูกค้าประกอบ (ส่งได้สูงสุด 3 รูป)`,
+        model: 'gemini_3_flash',
         response_json_schema: {
           type: 'object',
           properties: {

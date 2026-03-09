@@ -71,6 +71,7 @@ ${imageListStr}
 ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.content}`).join("\n")}
 
 ถ้าคำตอบเกี่ยวข้องกับข้อมูลที่มีรูปภาพให้ระบุชื่อข้อมูลนั้นใน image_titles ด้วย`,
+      model: "gemini_3_flash",
       response_json_schema: {
         type: "object",
         properties: {
