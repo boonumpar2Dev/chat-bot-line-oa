@@ -98,9 +98,18 @@ Deno.serve(async (req) => {
         ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(', ')}`
         : '';
 
+      // Build strict rules section
+      const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
+        ? cfg.strict_rules.filter(r => r && r.trim()).map((r, i) => `${i + 1}. ${r}`).join('\n')
+        : '';
+      const strictRulesSection = strictRules
+        ? `\n\n⚠️ กฎเข้มงวดที่ต้องปฏิบัติตามเสมอ:\n${strictRules}`
+        : '';
+
       // Generate AI reply with image selection
       const aiResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt: `คุณคือ AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง ห้ามยาวเกิน 200 คำ ห้ามแต่งข้อมูลเอง
+${strictRulesSection}
 
 ข้อมูลธุรกิจ:
 ${context || '(ยังไม่มีข้อมูลธุรกิจ)'}
