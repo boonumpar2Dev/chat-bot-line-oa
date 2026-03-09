@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Bot, Send, PowerOff, Search, Loader2, MessageSquareOff,
-  Plus, X, Tag, Timer, Paperclip,
+  Plus, X, Tag, Timer, Paperclip, ChevronLeft,
 } from "lucide-react";
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
 import AutoResponseManager from "@/components/chats/AutoResponseManager.jsx";
@@ -287,10 +287,10 @@ export default function Chats() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background flex-col lg:flex-row">
 
-      {/* ── Sidebar ────────────────────────────────────────────────── */}
-      <div className="w-72 shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto">
+      {/* ── Sidebar (responsive: hidden on mobile unless selected) ────── */}
+      <div className={`${!selectedCustomer ? "flex" : "hidden"} lg:flex w-full lg:w-72 shrink-0 flex-col border-b lg:border-r border-border bg-card overflow-y-auto`}>
         <div className="p-4 border-b border-border">
           <h2 className="font-bold text-foreground mb-3 text-base">แชท</h2>
           <div className="relative">
@@ -347,19 +347,26 @@ export default function Chats() {
         </div>
       </div>
 
-      {/* ── Chat Area ─────────────────────────────────────────────── */}
+      {/* ── Chat Area (responsive: full on mobile, flex on desktop) ────── */}
       {!selectedCustomer ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="hidden lg:flex flex-1 items-center justify-center">
           <div className="text-center text-muted-foreground">
             <MessageSquareOff className="w-14 h-14 mx-auto mb-3 opacity-25" />
             <p className="font-medium">เลือกลูกค้าเพื่อดูแชท</p>
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden w-full lg:flex-1">
 
           {/* Header */}
-          <div className="px-5 py-3 border-b border-border bg-card flex items-center justify-between gap-3">
+          <div className="px-3 lg:px-5 py-3 border-b border-border bg-card flex items-center justify-between gap-3">
+            <button
+              onClick={() => setSelectedId(null)}
+              className="lg:hidden p-1.5 rounded-lg hover:bg-muted transition-colors"
+              title="กลับไป"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
             <div className="flex items-center gap-3 min-w-0">
               {selectedCustomer.picture_url
                 ? <img src={selectedCustomer.picture_url} className="w-10 h-10 rounded-full object-cover shrink-0" alt="" />
@@ -456,7 +463,7 @@ export default function Chats() {
           </div>
 
           {/* Input Bar */}
-          <form onSubmit={sendMessage} className="px-4 py-3 border-t border-border bg-card flex items-center gap-2">
+          <form onSubmit={sendMessage} className="px-3 lg:px-4 py-3 border-t border-border bg-card flex items-center gap-2">
             {/* Image upload */}
             <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleImageUpload} />
             <button
