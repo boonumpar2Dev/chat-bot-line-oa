@@ -22,33 +22,56 @@ export default function KBChatTest() {
     setInput("");
     setLoading(true);
 
-    try {
-      // Use Base44 LLM integration to test against knowledge base
-      const kbItems = await base44.entities.KnowledgeBase.filter({ status: "active" });
-      const knowledgeContext = kbItems.map((item) => `${item.title}:\n${item.content || ""}`).join("\n\n");
+    const kbItems = await base44.entities.KnowledgeBase.filter({ status: "active" });
+    const knowledgeContext = kbItems.map((item) =>
+      `[ชื่อข้อมูล: "${item.title}"]\n${item.content || ""}${item.file_url ? `\n[มีรูปภาพประกอบ]` : ""}`
+    ).join("\n\n");
 
-      const response = await base44.integrations.Core.InvokeLLM({
-        prompt: `คุณเป็น AI Assistant ที่ตอบคำถามโดยอ้างอิงจาก Knowledge Base เท่านั้น ห้ามแต่งข้อมูลเอง
+    const itemsWithImages = kbItems.filter(i => i.file_url);
+    const imageListStr = itemsWithImages.length > 0
+      ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(", ")}`
+      : "";
+
+    const response = await base44.integrations.Core.InvokeLLM({
+      prompt: `คุณเป็น AI Assistant ตอบคำถามจาก Knowledge Base เท่านั้น ห้ามแต่งข้อมูลเอง
 
 Knowledge Base:
-${knowledgeContext || "ยังไม่มีข้อมูลใน Knowledge Base"}
+${knowledgeContext || "ยังไม่มีข้อมูล"}
+${imageListStr}
 
 ประวัติการสนทนา:
 ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.content}`).join("\n")}
 
-ตอบเป็นภาษาไทยสั้นๆ กระชับ อ้างอิงจาก Knowledge Base เท่านั้น`,
-      });
+ตอบเป็นภาษาไทย กระชับ และถ้าคำถามเกี่ยวข้องกับข้อมูลที่มีรูปภาพให้ระบุชื่อข้อมูลนั้นใน image_titles ด้วย`,
+      response_json_schema: {
+        type: "object",
+        properties: {
+          answer: { type: "string", description: "คำตอบ" },
+          image_titles: {
+            type: "array",
+            items: { type: "string" },
+            description: "ชื่อข้อมูล KB ที่มีรูปภาพควรแสดงประกอบ"
+          }
+        },
+        required: ["answer"]
+      }
+    });
 
-      setMessages((prev) => [...prev, { role: "assistant", content: response || "ไม่สามารถตอบได้" }]);
-    } catch (e) {
-      setMessages((prev) => [...prev, { role: "assistant", content: "เกิดข้อผิดพลาดในการเชื่อมต่อ AI" }]);
-    }
+    const relevantImages = itemsWithImages
+      .filter(item => (response.image_titles || []).includes(item.title))
+      .map(item => item.file_url);
+
+    setMessages((prev) => [...prev, {
+      role: "assistant",
+      content: response.answer || "ไม่สามารถตอบได้",
+      images: relevantImages
+    }]);
     setLoading(false);
   };
 
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border border-border overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-green-600" />
@@ -85,10 +108,21 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
-              msg.role === "user" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
-            }`}>
-              <span className="whitespace-pre-line">{msg.content}</span>
+            <div className={`max-w-[85%] space-y-2`}>
+              <div className={`px-3 py-2 rounded-xl text-sm ${
+                msg.role === "user" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+              }`}>
+                <span className="whitespace-pre-line">{msg.content}</span>
+              </div>
+              {msg.images?.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {msg.images.map((url, idx) => (
+                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                      <img src={url} alt="ภาพประกอบ" className="max-h-48 rounded-lg border border-input cursor-pointer hover:opacity-90 transition-opacity shadow-sm" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -99,7 +133,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-border">
+      <div className="px-4 py-3 border-t border-border shrink-0">
         <form onSubmit={(e) => { e.preventDefault(); sendMessage(input); }} className="flex items-center gap-2">
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
             placeholder="ลูกค้าของคุณน่าจะถามอะไร" disabled={loading}
