@@ -90,9 +90,14 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
       .filter(item => (response.image_titles || []).includes(item.title))
       .flatMap(item => getItemImages(item));
 
+    const cleanAnswer = String(response.answer || "ไม่สามารถตอบได้")
+      .replace(/\\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
     setMessages((prev) => [...prev, {
       role: "assistant",
-      content: response.answer || "ไม่สามารถตอบได้",
+      content: cleanAnswer,
       images: relevantImages
     }]);
     setLoading(false);

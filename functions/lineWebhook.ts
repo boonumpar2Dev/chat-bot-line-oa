@@ -118,6 +118,7 @@ Deno.serve(async (req) => {
 - ถ้าลูกค้าทักทายกว้างๆ เช่น "สอบถามค่ะ" "สวัสดีค่ะ" "สนใจค่ะ" → ให้ต้อนรับอย่างอบอุ่นและแนะนำหัวข้อบริการ/ข้อมูลที่มีอยู่ให้ลูกค้าเลือกถาม
 - หัวข้อข้อมูลที่มีอยู่: ${topicNames.length > 0 ? topicNames.join(', ') : 'ยังไม่มีข้อมูล'}
 - ถ้าลูกค้าถามเรื่องที่ไม่มีใน Knowledge Base เลย → ตอบสุภาพว่าจะให้เจ้าหน้าที่ติดต่อกลับ
+- จัดรูปแบบข้อความให้อ่านง่าย เว้นบรรทัดแยกหัวข้อ/ประเด็นชัดเจน ใช้ขึ้นบรรทัดใหม่จริงๆ (ห้ามใส่ \\n เป็นตัวอักษรลงในคำตอบเด็ดขาด)
 ${strictRulesSection}
 
 ข้อมูลธุรกิจ:
@@ -142,7 +143,11 @@ ${imageListStr}
         }
       });
 
-      const answerText = String(aiResponse.answer || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้').slice(0, 5000);
+      const answerText = String(aiResponse.answer || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้')
+        .replace(/\\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+        .slice(0, 5000);
       const imageTitles = aiResponse.image_titles || [];
 
       // Collect relevant images (max 3)
