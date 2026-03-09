@@ -5,7 +5,7 @@ import { createPageUrl } from '@/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, MessageSquare, BookOpen, Settings,
-  LogOut, Bot, ChevronLeft, ChevronRight, User, Users
+  LogOut, Bot, ChevronLeft, ChevronRight, Users
 } from 'lucide-react';
 
 const allNavItems = [
@@ -24,95 +24,125 @@ export default function Layout({ children, currentPageName }) {
     queryFn: () => base44.auth.me(),
   });
 
-  const handleSignOut = () => {
-    base44.auth.logout();
-  };
-
   const navItems = user?.role === 'executive'
     ? [allNavItems[0]]
     : allNavItems;
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Sidebar */}
       <aside
-        className="h-screen flex flex-col border-r transition-all duration-300 shrink-0"
-        style={{ width: collapsed ? 72 : 250, background: 'var(--gradient-sidebar)' }}
+        className="h-screen flex flex-col shrink-0 transition-all duration-300 ease-in-out"
+        style={{
+          width: collapsed ? 68 : 240,
+          background: 'linear-gradient(180deg, hsl(222 60% 10%), hsl(222 55% 14%))',
+          borderRight: '1px solid hsl(222 40% 20%)',
+        }}
       >
         {/* Logo */}
-        <div
-          className="flex items-center gap-3 px-4 py-5 border-b"
-          style={{ borderColor: 'hsl(var(--sidebar-border))' }}
-        >
+        <div className="flex items-center gap-3 px-4 py-4 border-b" style={{ borderColor: 'hsl(222 40% 20%)' }}>
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: 'hsl(var(--sidebar-primary))' }}
+            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: 'hsl(160 84% 42%)' }}
           >
-            <Bot className="w-5 h-5" style={{ color: 'hsl(var(--sidebar-primary-foreground))' }} />
+            <Bot className="w-4 h-4 text-white" />
           </div>
           {!collapsed && (
-            <div className="overflow-hidden">
-              <h1 className="font-bold text-base leading-tight" style={{ color: 'hsl(var(--sidebar-accent-foreground))' }}>
-                LINE AI CRM
-              </h1>
-              <p className="text-[11px] opacity-60" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
+            <div className="overflow-hidden min-w-0">
+              <div className="font-bold text-sm text-white leading-tight truncate">LINE AI CRM</div>
+              <div className="text-[10px] text-white/40 truncate">
                 {user?.role === 'executive' ? 'Executive View' : 'Admin Panel'}
-              </p>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        {/* Nav Items */}
+        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = currentPageName === item.page;
             return (
               <Link
                 key={item.page}
                 to={createPageUrl(item.page)}
-                className={`sidebar-link ${isActive ? 'active' : ''}`}
                 title={collapsed ? item.label : undefined}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 no-underline group"
+                style={{
+                  background: isActive ? 'hsl(160 84% 42% / 0.18)' : 'transparent',
+                  color: isActive ? 'hsl(160 84% 55%)' : 'hsl(220 14% 70%)',
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = 'hsl(222 50% 20%)'; }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
-                <item.icon className="w-5 h-5 shrink-0" />
-                {!collapsed && <span>{item.label}</span>}
+                <item.icon
+                  className="shrink-0"
+                  style={{
+                    width: 18, height: 18,
+                    color: isActive ? 'hsl(160 84% 55%)' : 'hsl(220 14% 65%)',
+                  }}
+                />
+                {!collapsed && (
+                  <span className="text-sm font-medium truncate" style={{ color: isActive ? 'hsl(160 84% 55%)' : 'hsl(220 14% 75%)' }}>
+                    {item.label}
+                  </span>
+                )}
+                {isActive && !collapsed && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'hsl(160 84% 55%)' }} />
+                )}
               </Link>
             );
           })}
         </nav>
 
-        {/* User + Footer */}
-        <div className="px-3 pb-4 space-y-1">
+        {/* Footer */}
+        <div className="px-2 pb-3 border-t pt-3 space-y-0.5" style={{ borderColor: 'hsl(222 40% 20%)' }}>
+          {/* User Info */}
           {!collapsed && user && (
-            <div className="px-3 py-2 mb-2 rounded-lg" style={{ background: 'hsl(var(--sidebar-accent))' }}>
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4" style={{ color: 'hsl(var(--sidebar-foreground))' }} />
-                <div className="min-w-0">
-                  <div className="text-xs truncate" style={{ color: 'hsl(var(--sidebar-accent-foreground))' }}>
-                    {user.email}
-                  </div>
-                  <div className="text-[10px] opacity-60 capitalize" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
-                    {user.role || 'user'}
-                  </div>
+            <div className="px-3 py-2 mb-1 rounded-lg" style={{ background: 'hsl(222 50% 17%)' }}>
+              <div className="flex items-center gap-2 min-w-0">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold text-white"
+                  style={{ background: 'hsl(160 84% 42%)' }}
+                >
+                  {(user.full_name || user.email || '?').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-medium text-white/80 truncate">{user.email}</div>
+                  <div className="text-[10px] text-white/40 capitalize">{user.role || 'user'}</div>
                 </div>
               </div>
             </div>
           )}
-          <button onClick={() => setCollapsed(!collapsed)} className="sidebar-link w-full">
+
+          {/* Collapse Toggle */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-all duration-150 text-sm"
+            style={{ color: 'hsl(220 14% 60%)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'hsl(222 50% 20%)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
             {collapsed
-              ? <ChevronRight className="w-5 h-5 shrink-0" />
-              : <><ChevronLeft className="w-5 h-5 shrink-0" /><span>ย่อเมนู</span></>
+              ? <ChevronRight className="w-4 h-4 shrink-0" />
+              : <><ChevronLeft className="w-4 h-4 shrink-0" /><span className="text-sm">ย่อเมนู</span></>
             }
           </button>
+
+          {/* Logout */}
           <button
-            onClick={handleSignOut}
-            className="sidebar-link w-full"
-            style={{ color: 'hsl(var(--destructive))' }}
+            onClick={() => base44.auth.logout()}
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg transition-all duration-150 text-sm"
+            style={{ color: 'hsl(0 84% 65%)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'hsl(0 84% 60% / 0.1)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <LogOut className="w-5 h-5 shrink-0" />
+            <LogOut className="w-4 h-4 shrink-0" />
             {!collapsed && <span>ออกจากระบบ</span>}
           </button>
         </div>
       </aside>
 
+      {/* Main Content */}
       <main className="flex-1 overflow-auto">
         {children}
       </main>
