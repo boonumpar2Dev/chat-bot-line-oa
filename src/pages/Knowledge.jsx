@@ -135,14 +135,16 @@ export default function Knowledge() {
           </button>
         </div>
 
-        <div className="flex-1 flex gap-4 min-h-0">
+        <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
           {/* List */}
-          <div className="w-80 shrink-0 flex flex-col min-h-0 overflow-y-auto">
-            <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
+          <div className="w-72 shrink-0 flex flex-col min-h-0 border-r border-border">
+            <div className="overflow-y-auto flex-1">
+              <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
+            </div>
           </div>
 
           {/* Edit form */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="flex-1 min-h-0 flex flex-col">
             {selectedItem ? (
               <div className="bg-card rounded-xl border border-border p-5 h-full overflow-y-auto">
                 <KBEditForm
@@ -161,8 +163,10 @@ export default function Knowledge() {
           </div>
 
           {/* Chat test */}
-          <div className="w-96 shrink-0 min-h-0">
-            <KBChatTest />
+          <div className="w-80 shrink-0 min-h-0 border-l border-border flex flex-col">
+            <div className="overflow-y-auto flex-1">
+              <KBChatTest />
+            </div>
           </div>
         </div>
       </div>
