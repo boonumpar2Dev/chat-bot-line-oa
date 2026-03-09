@@ -188,6 +188,16 @@ export default function Chats() {
     if (selectedId) fetchMessages(selectedId);
   }, [selectedId]);
 
+  // Real-time subscription: show new messages instantly (e.g. from LINE webhook)
+  useEffect(() => {
+    const unsubscribe = base44.entities.Conversation.subscribe((event) => {
+      if (event.type === "create" && event.data?.customer_id === selectedId) {
+        setMessages((prev) => prev.find(m => m.id === event.data.id) ? prev : [...prev, event.data]);
+      }
+    });
+    return unsubscribe;
+  }, [selectedId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -210,13 +220,21 @@ export default function Chats() {
     e.preventDefault();
     if (!newMessage.trim() || !selectedId || sending) return;
     setSending(true);
+    const text = newMessage.trim();
     const msg = await base44.entities.Conversation.create({
       customer_id: selectedId,
-      message: newMessage.trim(),
+      message: text,
       sender: "admin",
     });
     setMessages((prev) => [...prev, msg]);
     setNewMessage("");
+    // Also push to LINE if customer has a LINE ID
+    if (selectedCustomer?.line_user_id) {
+      base44.functions.invoke("lineSendMessage", {
+        line_user_id: selectedCustomer.line_user_id,
+        message: text,
+      }).catch(() => toast.error("ส่งผ่าน LINE ไม่สำเร็จ"));
+    }
     setSending(false);
   };
 
@@ -301,7 +319,13 @@ export default function Chats() {
                 </div>
               )}
               <div>
-                <div className="font-semibold text-foreground text-sm">{selectedCustomer.display_name || "ไม่ทราบชื่อ"}</div>
+                <div className="flex items-center gap-2">
+                  <div className="font-semibold text-foreground text-sm">{selectedCustomer.display_name || "ไม่ทราบชื่อ"}</div>
+                  {selectedCustomer.line_user_id
+                    ? <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">LINE ✓</span>
+                    : <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">ไม่มี LINE</span>
+                  }
+                </div>
                 <CustomerTagManager
                   customer={selectedCustomer}
                   onUpdate={(updated) => setCustomers((prev) => prev.map((c) => c.id === updated.id ? updated : c))}
@@ -357,15 +381,16 @@ export default function Chats() {
           </div>
 
           {/* Input */}
-          <form onSubmit={sendMessage} className="px-5 py-3 border-t border-border bg-card flex items-center gap-2">
+          <form onSubmit={sendMessage} className="px-5 py-4 border-t border-border bg-card flex items-center gap-3">
             <input
               type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="พิมพ์ข้อความ..." disabled={sending}
-              className="flex-1 px-4 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder={selectedCustomer?.line_user_id ? "พิมพ์ข้อความ (จะส่งผ่าน LINE)..." : "พิมพ์ข้อความ..."}
+              disabled={sending}
+              className="flex-1 px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
             />
             <button type="submit" disabled={sending || !newMessage.trim()}
-              className="p-2.5 rounded-lg bg-green-600 text-white hover:opacity-90 disabled:opacity-50 transition-opacity">
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              className="h-10 px-5 rounded-xl font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-40 bg-green-600 text-white hover:bg-green-700">
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /><span>ส่ง</span></>}
             </button>
           </form>
         </div>

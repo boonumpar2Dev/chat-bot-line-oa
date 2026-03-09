@@ -62,10 +62,10 @@ export default function Dashboard() {
   const pending = customers.filter((c) => c.status === "pending_confirm").length;
 
   const stats = [
-    { label: "ลูกค้าทั้งหมด", value: totalCustomers.toLocaleString(), icon: Users, color: "bg-blue-100 text-blue-600" },
-    { label: "แชทวันนี้", value: todayChats.toLocaleString(), icon: MessageSquare, color: "bg-green-100 text-green-600" },
-    { label: "รอคอนเฟิร์ม", value: pending.toLocaleString(), icon: Clock, color: "bg-yellow-100 text-yellow-600" },
-    { label: "ยอดคอนเฟิร์ม", value: confirmed.toLocaleString(), icon: CheckCircle, color: "bg-emerald-100 text-emerald-600" },
+    { label: "ลูกค้าทั้งหมด", value: totalCustomers.toLocaleString(), icon: Users, color: "bg-blue-100 text-blue-600", accent: "#3b82f6" },
+    { label: "แชทวันนี้", value: todayChats.toLocaleString(), icon: MessageSquare, color: "bg-green-100 text-green-600", accent: "#10b981" },
+    { label: "รอคอนเฟิร์ม", value: pending.toLocaleString(), icon: Clock, color: "bg-yellow-100 text-yellow-600", accent: "#f59e0b" },
+    { label: "ยอดคอนเฟิร์ม", value: confirmed.toLocaleString(), icon: CheckCircle, color: "bg-emerald-100 text-emerald-600", accent: "#059669" },
   ];
 
   // --- Weekly chart: new customers per day (last 7 days) ---
@@ -109,14 +109,14 @@ export default function Dashboard() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <div key={s.label} className="stat-card">
-            <div className="flex items-center justify-between mb-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${s.color}`}>
+          <div key={s.label} className="stat-card" style={{ borderTop: `3px solid ${s.accent}` }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${s.color}`}>
                 <s.icon className="w-5 h-5" />
               </div>
+              <div className="text-2xl font-bold text-foreground">{s.value}</div>
             </div>
-            <div className="text-2xl font-bold text-foreground">{s.value}</div>
-            <div className="text-sm text-muted-foreground">{s.label}</div>
+            <div className="text-sm text-muted-foreground font-medium">{s.label}</div>
           </div>
         ))}
       </div>
