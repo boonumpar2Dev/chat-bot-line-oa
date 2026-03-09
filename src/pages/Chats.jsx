@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Bot, Send, PowerOff, Search, Loader2, MessageSquareOff,
-  Plus, X, Tag, Timer, ImageIcon, ChevronLeft,
+  Plus, X, Tag, Timer, Paperclip,
 } from "lucide-react";
+import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
