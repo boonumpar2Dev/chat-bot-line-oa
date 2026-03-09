@@ -1,4 +1,4 @@
-import { Bot, Clock, Bell, Shield, Save, Loader2 } from "lucide-react";
+import { Bot, Clock, Bell, Shield, Save, Loader2, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -10,6 +10,11 @@ const defaultConfig = {
   schedule_enabled: false,
   start_time: "18:00",
   end_time: "08:00",
+  strict_rules: [
+    "ห้ามเสนอส่วนลดหรือเงื่อนไขพิเศษนอกเหนือจาก Knowledge Base",
+    "ห้าม AI แต่งเรื่องหรือสร้างข้อมูลเอง (Zero Hallucination)",
+    "กรณีไม่มั่นใจ ต้อง Fallback ส่งต่อแอดมินทันที",
+  ],
 };
 
 export default function Settings() {
@@ -34,6 +39,9 @@ export default function Settings() {
         schedule_enabled: s.schedule_enabled ?? false,
         start_time: s.start_time ?? "18:00",
         end_time: s.end_time ?? "08:00",
+        strict_rules: Array.isArray(s.strict_rules) && s.strict_rules.length > 0
+          ? s.strict_rules
+          : defaultConfig.strict_rules,
       });
     }
     setLoading(false);
@@ -150,15 +158,44 @@ export default function Settings() {
         )}
       </div>
 
-      <div className="stat-card space-y-3">
+      <div className="stat-card space-y-4">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Shield className="w-5 h-5 text-red-500" /> กฎเข้มงวด (Strict Rules)
         </h3>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5">•</span>ห้ามเสนอส่วนลดหรือเงื่อนไขพิเศษนอกเหนือจาก Knowledge Base</li>
-          <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5">•</span>ห้าม AI แต่งเรื่องหรือสร้างข้อมูลเอง (Zero Hallucination)</li>
-          <li className="flex items-start gap-2"><span className="text-red-500 mt-0.5">•</span>กรณีไม่มั่นใจ ต้อง Fallback ส่งต่อแอดมินทันที</li>
-        </ul>
+        <p className="text-xs text-muted-foreground">กฎเหล่านี้จะถูกส่งให้ AI ปฏิบัติตามทุกครั้งที่ตอบลูกค้า</p>
+        <div className="space-y-2">
+          {(config.strict_rules || []).map((rule, idx) => (
+            <div key={idx} className="flex items-start gap-2 group">
+              <span className="text-red-500 mt-2.5 shrink-0">•</span>
+              <input
+                type="text"
+                value={rule}
+                onChange={(e) => {
+                  const updated = [...config.strict_rules];
+                  updated[idx] = e.target.value;
+                  update("strict_rules", updated);
+                }}
+                className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                onClick={() => {
+                  const updated = config.strict_rules.filter((_, i) => i !== idx);
+                  update("strict_rules", updated);
+                }}
+                className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                title="ลบกฎนี้"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => update("strict_rules", [...(config.strict_rules || []), ""])}
+          className="flex items-center gap-1.5 text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+        >
+          <Plus className="w-4 h-4" /> เพิ่มกฎใหม่
+        </button>
       </div>
     </div>
   );
