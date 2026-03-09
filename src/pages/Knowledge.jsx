@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, FileText, Loader2, ArrowLeft, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
 import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
 import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
@@ -137,38 +138,35 @@ export default function Knowledge() {
 
         <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
           {/* List */}
-          <div className="w-72 shrink-0 flex flex-col min-h-0 border-r border-border">
+          <div className="flex-1 min-h-0 flex flex-col">
             <div className="overflow-y-auto flex-1">
               <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
             </div>
           </div>
 
-          {/* Edit form */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            {selectedItem ? (
-              <div className="bg-card rounded-xl border border-border p-5 h-full overflow-y-auto">
-                <KBEditForm
-                  key={selectedItem.id + "-desktop"}
-                  item={selectedItem}
-                  onSaved={() => { fetchItems(); setSelectedItem(null); }}
-                  onDeleted={() => handleDelete(selectedItem.id)}
-                  onCancel={() => setSelectedItem(null)}
-                />
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm bg-card rounded-xl border border-border border-dashed">
-                เลือกข้อมูลเพื่อแก้ไข
-              </div>
-            )}
-          </div>
-
           {/* Chat test */}
-          <div className="w-80 shrink-0 min-h-0 border-l border-border flex flex-col">
-            <div className="overflow-y-auto flex-1">
-              <KBChatTest />
-            </div>
+          <div className="w-96 shrink-0 min-h-0 flex flex-col">
+            <KBChatTest />
           </div>
         </div>
+
+        {/* Edit form Dialog */}
+        <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>แก้ไขข้อมูล</DialogTitle>
+            </DialogHeader>
+            {selectedItem && (
+              <KBEditForm
+                key={selectedItem.id + "-dialog"}
+                item={selectedItem}
+                onSaved={() => { fetchItems(); setSelectedItem(null); }}
+                onDeleted={() => handleDelete(selectedItem.id)}
+                onCancel={() => setSelectedItem(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </>
   );
