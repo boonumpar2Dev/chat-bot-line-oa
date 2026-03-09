@@ -411,15 +411,15 @@ export default function Chats() {
           {/* Input Bar */}
           <form onSubmit={sendMessage} className="px-4 py-3 border-t border-border bg-card flex items-center gap-2">
             {/* Image upload */}
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleImageUpload} />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 disabled:opacity-40"
-              title="ส่งรูปภาพ"
+              title="แนบไฟล์ (รูปภาพ, วิดีโอ, PDF)"
             >
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4.5 h-4.5" />}
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
             </button>
 
             <input
