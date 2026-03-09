@@ -4,6 +4,7 @@ import {
   Plus, X, Tag, Timer, Paperclip,
 } from "lucide-react";
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
+import AutoResponseManager from "@/components/chats/AutoResponseManager.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -223,21 +224,29 @@ export default function Chats() {
     toast.success(next ? "เปิด AI สำหรับลูกค้านี้แล้ว" : "ปิด AI สำหรับลูกค้านี้แล้ว");
   };
 
-  const doSend = async (text, messageType = "text", imageUrl = null) => {
+  const doSend = async (text, messageType = "text", imageUrls = []) => {
     const msg = await base44.entities.Conversation.create({
       customer_id: selectedId,
-      message: imageUrl ? `📎 ${imageUrl}` : text,
+      message: imageUrls.length > 0
+        ? `${text}\n${imageUrls.map(u => `📎 ${u}`).join('\n')}`
+        : text,
       sender: "admin",
     });
     sentIds.current.add(msg.id);
     setMessages(prev => [...prev, msg]);
 
     if (selectedCustomer?.line_user_id) {
+      const lineMessages = [{ type: "text", text }];
+      for (const imgUrl of imageUrls) {
+        lineMessages.push({
+          type: "image",
+          originalContentUrl: imgUrl,
+          previewImageUrl: imgUrl,
+        });
+      }
       base44.functions.invoke("lineSendMessage", {
         line_user_id: selectedCustomer.line_user_id,
-        message: text,
-        message_type: messageType,
-        image_url: imageUrl,
+        messages: lineMessages,
       }).catch(() => toast.error("ส่งผ่าน LINE ไม่สำเร็จ"));
     }
   };
@@ -248,7 +257,14 @@ export default function Chats() {
     setSending(true);
     const text = newMessage.trim();
     setNewMessage("");
-    await doSend(text);
+    await doSend(text, "text", []);
+    setSending(false);
+  };
+
+  const handleUseResponse = async (response) => {
+    if (!selectedId || sending) return;
+    setSending(true);
+    await doSend(response.text, "text", response.image_urls || []);
     setSending(false);
   };
 
@@ -273,8 +289,8 @@ export default function Chats() {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
 
-      {/* ── Customer List ─────────────────────────────────────────── */}
-      <div className="w-72 shrink-0 flex flex-col border-r border-border bg-card">
+      {/* ── Sidebar ────────────────────────────────────────────────── */}
+      <div className="w-72 shrink-0 flex flex-col border-r border-border bg-card overflow-y-auto">
         <div className="p-4 border-b border-border">
           <h2 className="font-bold text-foreground mb-3 text-base">แชท</h2>
           <div className="relative">
@@ -286,6 +302,15 @@ export default function Chats() {
             />
           </div>
         </div>
+        {selectedCustomer && (
+          <div className="px-4 py-3 border-b border-border shrink-0">
+            <AutoResponseManager
+              selectedCustomer={selectedCustomer}
+              onUseResponse={handleUseResponse}
+            />
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {filteredCustomers.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground text-sm">ไม่มีลูกค้า</div>
