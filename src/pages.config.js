@@ -47,13 +47,22 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
+import RoleManagement from './pages/RoleManagement';
+import Knowledge from './pages/Knowledge';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "Dashboard": Dashboard,
+    "Settings": Settings,
+    "RoleManagement": RoleManagement,
+    "Knowledge": Knowledge,
 }
 
 export const pagesConfig = {
+    mainPage: "Dashboard",
     Pages: PAGES,
     Layout: __Layout,
 };
