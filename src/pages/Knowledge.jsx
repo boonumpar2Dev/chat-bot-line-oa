@@ -52,6 +52,10 @@ export default function Knowledge() {
         <p className="text-muted-foreground text-sm mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI ของคุณ</p>
       </div>
 
+      <div className="mb-4 shrink-0">
+        <KBGithubImport onImported={fetchItems} />
+      </div>
+
       <div className="flex flex-wrap gap-2 mb-4 shrink-0">
         <button
           onClick={() => handleAddNew("file")}
