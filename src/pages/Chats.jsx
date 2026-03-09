@@ -342,7 +342,10 @@ export default function Chats() {
               }
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-semibold text-foreground text-sm">{selectedCustomer.display_name || "ไม่ทราบชื่อ"}</span>
+                  <CustomerNameEditor
+                    customer={selectedCustomer}
+                    onUpdate={updated => setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))}
+                  />
                   {selectedCustomer.line_user_id
                     ? <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">LINE ✓</span>
                     : <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">ไม่มี LINE</span>
