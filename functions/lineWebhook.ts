@@ -9,6 +9,12 @@ async function verifySignature(body, signature, secret) {
   return btoa(String.fromCharCode(...new Uint8Array(sig))) === signature;
 }
 
+function getItemImages(item) {
+  const arr = Array.isArray(item.image_urls) ? [...item.image_urls] : [];
+  if (item.file_url && !arr.includes(item.file_url)) arr.unshift(item.file_url);
+  return arr;
+}
+
 Deno.serve(async (req) => {
   try {
     const body = await req.text();
@@ -81,17 +87,60 @@ Deno.serve(async (req) => {
 
       // Build context from knowledge base
       const kb = await base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' });
-      const context = kb.map(k => `## ${k.title}\n${k.content}`).join('\n\n');
+      const itemsWithImages = kb.filter(i => getItemImages(i).length > 0);
 
-      // Generate AI reply
-      const aiText = await base44.asServiceRole.integrations.Core.InvokeLLM({
-        prompt: `คุณคือ AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง ห้ามยาวเกิน 200 คำ
+      const context = kb.map(k => {
+        const imgs = getItemImages(k);
+        return `## ${k.title}\n${k.content}${imgs.length > 0 ? `\n[มีรูปภาพประกอบ ${imgs.length} รูป]` : ''}`;
+      }).join('\n\n');
+
+      const imageListStr = itemsWithImages.length > 0
+        ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(', ')}`
+        : '';
+
+      // Generate AI reply with image selection
+      const aiResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt: `คุณคือ AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง ห้ามยาวเกิน 200 คำ ห้ามแต่งข้อมูลเอง
 
 ข้อมูลธุรกิจ:
 ${context || '(ยังไม่มีข้อมูลธุรกิจ)'}
+${imageListStr}
 
-ลูกค้าส่งมาว่า: "${messageText}"`,
+ลูกค้าส่งมาว่า: "${messageText}"
+
+ถ้าคำตอบเกี่ยวข้องกับข้อมูลที่มีรูปภาพ ให้ระบุชื่อข้อมูลนั้นใน image_titles เพื่อส่งรูปให้ลูกค้าประกอบ (ส่งได้สูงสุด 3 รูป)`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            answer: { type: 'string', description: 'คำตอบสำหรับลูกค้า' },
+            image_titles: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'ชื่อข้อมูล KB ที่มีรูปภาพควรส่งให้ลูกค้าประกอบ'
+            }
+          },
+          required: ['answer']
+        }
       });
+
+      const answerText = String(aiResponse.answer || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้').slice(0, 5000);
+      const imageTitles = aiResponse.image_titles || [];
+
+      // Collect relevant images (max 3)
+      const relevantImages = itemsWithImages
+        .filter(item => imageTitles.includes(item.title))
+        .flatMap(item => getItemImages(item))
+        .slice(0, 3);
+
+      // Build LINE messages
+      const lineMessages = [{ type: 'text', text: answerText }];
+      for (const imgUrl of relevantImages) {
+        lineMessages.push({
+          type: 'image',
+          originalContentUrl: imgUrl,
+          previewImageUrl: imgUrl,
+        });
+      }
 
       // Reply via LINE
       await fetch('https://api.line.me/v2/bot/message/reply', {
@@ -100,16 +149,17 @@ ${context || '(ยังไม่มีข้อมูลธุรกิจ)'}
           'Content-Type': 'application/json',
           Authorization: `Bearer ${Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')}`,
         },
-        body: JSON.stringify({
-          replyToken,
-          messages: [{ type: 'text', text: String(aiText).slice(0, 5000) }],
-        }),
+        body: JSON.stringify({ replyToken, messages: lineMessages }),
       });
 
       // Save AI reply to DB
+      const savedMsg = relevantImages.length > 0
+        ? `${answerText}\n${relevantImages.map(u => `📎 ${u}`).join('\n')}`
+        : answerText;
+
       await base44.asServiceRole.entities.Conversation.create({
         customer_id: customer.id,
-        message: String(aiText),
+        message: savedMsg,
         sender: 'ai',
         confidence_score: 85,
       });

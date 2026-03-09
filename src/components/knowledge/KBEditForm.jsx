@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2, Loader2, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
@@ -8,26 +8,39 @@ const MAX_CONTENT = 5000;
 export default function KBEditForm({ item, onSaved, onDeleted, onCancel }) {
   const [title, setTitle] = useState(item.title);
   const [content, setContent] = useState(item.content || "");
-  const [fileUrl, setFileUrl] = useState(item.file_url || "");
+  // Merge legacy file_url + image_urls array
+  const initImages = () => {
+    const arr = Array.isArray(item.image_urls) ? [...item.image_urls] : [];
+    if (item.file_url && !arr.includes(item.file_url)) arr.unshift(item.file_url);
+    return arr;
+  };
+  const [imageUrls, setImageUrls] = useState(initImages);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setFileUrl(file_url);
-    toast.success("อัพโหลดสำเร็จ");
+    const results = await Promise.all(files.map(f => base44.integrations.Core.UploadFile({ file: f })));
+    const newUrls = results.map(r => r.file_url).filter(Boolean);
+    setImageUrls(prev => [...prev, ...newUrls]);
+    toast.success(`อัพโหลด ${newUrls.length} รูปสำเร็จ`);
     setUploading(false);
+    e.target.value = "";
   };
+
+  const removeImage = (url) => setImageUrls(prev => prev.filter(u => u !== url));
 
   const handleSave = async () => {
     if (!title.trim()) return;
     setSaving(true);
     await base44.entities.KnowledgeBase.update(item.id, {
-      title, content, file_url: fileUrl || null, status: "active"
+      title, content,
+      image_urls: imageUrls,
+      file_url: imageUrls[0] || null,
+      status: "active"
     });
     toast.success("บันทึกสำเร็จ");
     onSaved();
@@ -58,19 +71,29 @@ export default function KBEditForm({ item, onSaved, onDeleted, onCancel }) {
           rows={10} className="w-full mt-1 px-3 py-2.5 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
       </div>
 
-      {fileUrl && (
-        <div className="relative inline-block">
-          <img src={fileUrl} alt="KB attachment" className="max-h-40 rounded-lg border border-input" />
-          <button onClick={() => setFileUrl("")}
-            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs">×</button>
+      {/* Image thumbnails - compact */}
+      {imageUrls.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {imageUrls.map((url, i) => (
+            <div key={url} className="relative group w-14 h-14 shrink-0">
+              <img src={url} alt={`รูป ${i + 1}`} className="w-14 h-14 object-cover rounded-lg border border-input" />
+              <button
+                onClick={() => removeImage(url)}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* Upload button */}
       <div>
         <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-input text-sm text-muted-foreground hover:bg-muted transition-colors cursor-pointer w-fit">
           {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>🖼</span>}
-          เพิ่มรูปภาพ
-          <input type="file" accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleUpload} className="hidden" />
+          เพิ่มรูปภาพ {imageUrls.length > 0 && <span className="text-xs text-muted-foreground">({imageUrls.length} รูป)</span>}
+          <input type="file" accept="image/*" multiple onChange={handleUpload} className="hidden" />
         </label>
       </div>
 

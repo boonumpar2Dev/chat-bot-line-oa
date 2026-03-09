@@ -4,6 +4,12 @@ import { base44 } from "@/api/base44Client";
 
 const SUGGESTIONS = ["ร้านตั้งอยู่ที่ไหน", "เวลาทำการกี่โมงคะ", "นโยบายการจัดส่งมีอะไรบ้าง"];
 
+function getItemImages(item) {
+  const arr = Array.isArray(item.image_urls) ? [...item.image_urls] : [];
+  if (item.file_url && !arr.includes(item.file_url)) arr.unshift(item.file_url);
+  return arr;
+}
+
 export default function KBChatTest() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -23,11 +29,13 @@ export default function KBChatTest() {
     setLoading(true);
 
     const kbItems = await base44.entities.KnowledgeBase.filter({ status: "active" });
-    const knowledgeContext = kbItems.map((item) =>
-      `[ชื่อข้อมูล: "${item.title}"]\n${item.content || ""}${item.file_url ? `\n[มีรูปภาพประกอบ]` : ""}`
-    ).join("\n\n");
+    const itemsWithImages = kbItems.filter(i => getItemImages(i).length > 0);
 
-    const itemsWithImages = kbItems.filter(i => i.file_url);
+    const knowledgeContext = kbItems.map((item) => {
+      const imgs = getItemImages(item);
+      return `[ชื่อข้อมูล: "${item.title}"]\n${item.content || ""}${imgs.length > 0 ? `\n[มีรูปภาพประกอบ ${imgs.length} รูป]` : ""}`;
+    }).join("\n\n");
+
     const imageListStr = itemsWithImages.length > 0
       ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(", ")}`
       : "";
@@ -46,7 +54,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
       response_json_schema: {
         type: "object",
         properties: {
-          answer: { type: "string", description: "คำตอบ" },
+          answer: { type: "string" },
           image_titles: {
             type: "array",
             items: { type: "string" },
@@ -59,7 +67,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
 
     const relevantImages = itemsWithImages
       .filter(item => (response.image_titles || []).includes(item.title))
-      .map(item => item.file_url);
+      .flatMap(item => getItemImages(item));
 
     setMessages((prev) => [...prev, {
       role: "assistant",
@@ -108,7 +116,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] space-y-2`}>
+            <div className="max-w-[85%] space-y-2">
               <div className={`px-3 py-2 rounded-xl text-sm ${
                 msg.role === "user" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
               }`}>
@@ -118,7 +126,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
                 <div className="flex flex-wrap gap-2">
                   {msg.images.map((url, idx) => (
                     <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
-                      <img src={url} alt="ภาพประกอบ" className="max-h-48 rounded-lg border border-input cursor-pointer hover:opacity-90 transition-opacity shadow-sm" />
+                      <img src={url} alt="ภาพประกอบ" className="h-32 w-auto rounded-lg border border-input cursor-pointer hover:opacity-90 transition-opacity shadow-sm object-cover" />
                     </a>
                   ))}
                 </div>
