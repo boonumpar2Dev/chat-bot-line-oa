@@ -308,7 +308,7 @@ export default function Chats() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-medium text-foreground text-sm truncate">{c.display_name || "ไม่ทราบชื่อ"}</span>
+                  <span className="font-medium text-foreground text-sm truncate">{c.nickname || c.display_name || "ไม่ทราบชื่อ"}</span>
                   <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(c.updated_date)}</span>
                 </div>
                 <div className="mt-0.5">
