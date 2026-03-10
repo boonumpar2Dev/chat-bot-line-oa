@@ -156,17 +156,39 @@ Deno.serve(async (req) => {
       const lastAdmin = [...recentConvs].reverse().find(m => m.sender === 'admin');
       if (lastAdmin && Date.now() - new Date(lastAdmin.created_date).getTime() < cooldownMs) continue;
 
-      // ──── Build context from knowledge base ────
+      // ──── Build context from knowledge base + catering packages ────
       const kb = await base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' });
+      const pkgs = await base44.asServiceRole.entities.CateringPackage.filter({ is_active: true });
       const itemsWithImages = kb.filter(i => getItemImages(i).length > 0);
+
+      // Add packages as image sources too
+      const pkgsWithImages = pkgs.filter(p => Array.isArray(p.image_urls) && p.image_urls.length > 0);
 
       const context = kb.map(k => {
         const imgs = getItemImages(k);
         return `## ${k.title}\n${k.content}${imgs.length > 0 ? `\n[มีรูปภาพประกอบ ${imgs.length} รูป]` : ''}`;
       }).join('\n\n');
 
-      const imageListStr = itemsWithImages.length > 0
-        ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(', ')}`
+      // Build catering package context
+      const pkgContext = pkgs.length > 0 ? '\n\n--- แคตตาล็อกแพ็กเกจ ---\n' + pkgs.map(p => {
+        let s = `## แพ็กเกจ: ${p.name}`;
+        if (p.min_condition) s += `\nเงื่อนไขขั้นต่ำ: ${p.min_condition}`;
+        if (p.pricing_tiers?.length > 0) {
+          s += '\nราคา:';
+          p.pricing_tiers.forEach(t => { s += `\n  - ${t.guest_count}: ${t.price}`; });
+        }
+        if (p.description) s += `\nรายละเอียดอาหาร: ${p.description}`;
+        if (p.notes) s += `\nหมายเหตุ: ${p.notes}`;
+        if (p.image_urls?.length > 0) s += `\n[มีรูปภาพโบรชัวร์ ${p.image_urls.length} รูป]`;
+        return s;
+      }).join('\n\n') : '';
+
+      const allImageSources = [
+        ...itemsWithImages.map(i => `"${i.title}"`),
+        ...pkgsWithImages.map(p => `"แพ็กเกจ: ${p.name}"`),
+      ];
+      const imageListStr = allImageSources.length > 0
+        ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${allImageSources.join(', ')}`
         : '';
 
       // Build strict rules section
@@ -177,7 +199,10 @@ Deno.serve(async (req) => {
         ? `\n\n⚠️ กฎเข้มงวดที่ต้องปฏิบัติตามเสมอ:\n${strictRules}`
         : '';
 
-      const topicNames = kb.map(k => k.title).filter(Boolean);
+      const topicNames = [
+        ...kb.map(k => k.title).filter(Boolean),
+        ...pkgs.map(p => `แพ็กเกจ: ${p.name}`).filter(Boolean),
+      ];
       const confidenceThreshold = cfg.confidence_threshold || 75;
 
       // ──── Build conversation history for context ────
@@ -201,6 +226,7 @@ ${strictRulesSection}
 
 ข้อมูลธุรกิจ:
 ${context || '(ยังไม่มีข้อมูลธุรกิจ)'}
+${pkgContext}
 ${imageListStr}
 
 ประวัติการสนทนาล่าสุด:
@@ -211,7 +237,7 @@ ${recentMsgs || '(ยังไม่มี)'}
 ตอบเป็น JSON โดย:
 - answer: คำตอบ (ใช้การขึ้นบรรทัดใหม่จริงๆ เพื่อจัดรูปแบบ)
 - confidence: คะแนนความมั่นใจ 0-100 ว่าคำตอบถูกต้องตาม KB
-- image_titles: ชื่อข้อมูล KB ที่มีรูปภาพควรส่งประกอบ (สูงสุด 3)`,
+- image_titles: ชื่อข้อมูล KB หรือชื่อ "แพ็กเกจ: ..." ที่มีรูปภาพควรส่งประกอบ (สูงสุด 3)`,
         model: 'gemini_3_flash',
         response_json_schema: {
           type: 'object',
@@ -242,8 +268,14 @@ ${recentMsgs || '(ยังไม่มี)'}
       const imageTitles = aiResponse.image_titles || [];
 
       // ──── Image dedup logic ────
-      const allRelevantImages = itemsWithImages
-        .filter(item => imageTitles.includes(item.title));
+      // Collect images from KB items and packages
+      const kbRelevantImages = itemsWithImages.filter(item => imageTitles.includes(item.title));
+      const pkgRelevantImages = pkgsWithImages.filter(p => imageTitles.includes(`แพ็กเกจ: ${p.name}`));
+      const allRelevantImages = [
+        ...kbRelevantImages,
+        // Wrap packages as image sources with same interface
+        ...pkgRelevantImages.map(p => ({ title: `แพ็กเกจ: ${p.name}`, image_urls: p.image_urls })),
+      ];
 
       const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
       const sortedCurrent = [...imageTitles].sort().join('|');
