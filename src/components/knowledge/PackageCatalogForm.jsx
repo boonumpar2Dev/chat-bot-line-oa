@@ -4,23 +4,80 @@ import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
 function PricingRow({ tier, onChange, onRemove }) {
+  const handleTotalChange = (val) => {
+    const total = parseInt(val) || 0;
+    const monk = parseInt(tier.monk_pax) || 0;
+    const guest = Math.max(0, total - monk);
+    onChange({
+      ...tier,
+      total_pax: total || "",
+      guest_pax: total ? guest : "",
+      guest_count: total ? `${total} ท่าน${monk > 0 ? ` (รวมพระ ${monk} รูป + แขก ${guest} ท่าน)` : ""}` : "",
+    });
+  };
+
+  const handleMonkChange = (val) => {
+    const monk = parseInt(val) || 0;
+    const total = parseInt(tier.total_pax) || 0;
+    const guest = Math.max(0, total - monk);
+    onChange({
+      ...tier,
+      monk_pax: monk || "",
+      guest_pax: total ? guest : "",
+      guest_count: total ? `${total} ท่าน${monk > 0 ? ` (รวมพระ ${monk} รูป + แขก ${guest} ท่าน)` : ""}` : "",
+    });
+  };
+
+  const guestPax = (parseInt(tier.total_pax) || 0) - (parseInt(tier.monk_pax) || 0);
+
   return (
-    <div className="flex items-center gap-2">
-      <input
-        type="text" placeholder="จำนวนแขก เช่น 50 ท่าน"
-        value={tier.guest_count || ""}
-        onChange={e => onChange({ ...tier, guest_count: e.target.value })}
-        className="flex-1 px-3 py-2 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      <input
-        type="text" placeholder="ราคา เช่น 25,000 บาท"
-        value={tier.price || ""}
-        onChange={e => onChange({ ...tier, price: e.target.value })}
-        className="flex-1 px-3 py-2 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      <button onClick={onRemove} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0">
-        <X className="w-4 h-4" />
-      </button>
+    <div className="p-3 rounded-lg border border-input bg-card/50 space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 space-y-1">
+          <label className="text-[11px] text-muted-foreground font-medium">จำนวนรวม (Total)</label>
+          <input
+            type="number" min="0" placeholder="เช่น 40"
+            value={tier.total_pax || ""}
+            onChange={e => handleTotalChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="flex-1 space-y-1">
+          <label className="text-[11px] text-amber-600 font-medium">พระสงฆ์ (Monk)</label>
+          <input
+            type="number" min="0" placeholder="เช่น 9"
+            value={tier.monk_pax || ""}
+            onChange={e => handleMonkChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 rounded-md border border-amber-200 bg-amber-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+          />
+        </div>
+        <div className="flex-1 space-y-1">
+          <label className="text-[11px] text-blue-600 font-medium">แขก (Guest)</label>
+          <div className="px-2.5 py-1.5 rounded-md border border-blue-200 bg-blue-50/50 text-sm text-blue-700 font-medium">
+            {tier.total_pax ? (guestPax >= 0 ? guestPax : 0) : "—"}
+          </div>
+        </div>
+        <div className="flex-1 space-y-1">
+          <label className="text-[11px] text-muted-foreground font-medium">ราคา</label>
+          <input
+            type="text" placeholder="25,000 บาท"
+            value={tier.price || ""}
+            onChange={e => onChange({ ...tier, price: e.target.value })}
+            className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <button onClick={onRemove} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0 mt-4">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      {tier.total_pax > 0 && (
+        <div className="text-[11px] text-muted-foreground bg-muted/50 px-2.5 py-1 rounded">
+          สรุป: <span className="font-medium text-foreground">{tier.total_pax} ท่าน</span>
+          {(tier.monk_pax || 0) > 0 && (
+            <> = พระสงฆ์ <span className="font-medium text-amber-600">{tier.monk_pax} รูป</span> + แขก <span className="font-medium text-blue-600">{guestPax >= 0 ? guestPax : 0} ท่าน</span></>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -30,7 +87,7 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
   const [description, setDescription] = useState(item?.description || "");
   const [minCondition, setMinCondition] = useState(item?.min_condition || "");
   const [pricingTiers, setPricingTiers] = useState(
-    item?.pricing_tiers?.length ? item.pricing_tiers : [{ guest_count: "", price: "" }]
+    item?.pricing_tiers?.length ? item.pricing_tiers : [{ total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]
   );
   const [notes, setNotes] = useState(item?.notes || "");
   const [imageUrls, setImageUrls] = useState(item?.image_urls || []);
@@ -40,7 +97,7 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
 
   const updateTier = (idx, tier) => setPricingTiers(prev => prev.map((t, i) => i === idx ? tier : t));
   const removeTier = (idx) => setPricingTiers(prev => prev.filter((_, i) => i !== idx));
-  const addTier = () => setPricingTiers(prev => [...prev, { guest_count: "", price: "" }]);
+  const addTier = () => setPricingTiers(prev => [...prev, { total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]);
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -127,13 +184,10 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
       {/* Pricing Matrix */}
       <div>
         <label className="text-sm font-medium text-foreground">โครงสร้างราคา</label>
-        <p className="text-xs text-muted-foreground mt-0.5 mb-2">เพิ่มแถวราคาตามจำนวนแขก</p>
+        <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+          กรอกจำนวนรวม + พระสงฆ์ → ระบบจะคำนวณจำนวนแขกอัตโนมัติ
+        </p>
         <div className="space-y-2">
-          <div className="flex items-center gap-2 px-1">
-            <span className="flex-1 text-xs text-muted-foreground font-medium">จำนวนแขก</span>
-            <span className="flex-1 text-xs text-muted-foreground font-medium">ราคา</span>
-            <div className="w-8" />
-          </div>
           {pricingTiers.map((tier, idx) => (
             <PricingRow key={idx} tier={tier} onChange={t => updateTier(idx, t)} onRemove={() => removeTier(idx)} />
           ))}
