@@ -162,6 +162,40 @@ export default function Settings() {
         )}
       </div>
 
+      <div className="stat-card space-y-5">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-orange-500" /> SLA & Stage Control
+        </h3>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">SLA เวลาติดตามลูกค้า: {config.sla_hours} ชั่วโมง</label>
+          <input type="range" min="1" max="72" value={config.sla_hours}
+            onChange={(e) => update("sla_hours", Number(e.target.value))}
+            className="w-full accent-orange-500" />
+          <p className="text-xs text-muted-foreground">หากลูกค้าค้างสเตตัส "รอใบเสนอราคา" หรือ "รอคอนเฟิร์ม" เกิน {config.sla_hours} ชม. จะแจ้งเตือนใน Dashboard</p>
+        </div>
+        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+          <div className="text-xs font-medium text-amber-700 mb-1">📋 Stage Control (อัตโนมัติ)</div>
+          <p className="text-xs text-amber-600">เมื่อสเตตัสลูกค้าเปลี่ยนเป็น "รอใบเสนอราคา", "รอคอนเฟิร์ม", หรือ "คอนเฟิร์มแล้ว" ระบบจะปิด AI อัตโนมัติสำหรับลูกค้ารายนั้นทันที</p>
+        </div>
+      </div>
+
+      <div className="stat-card space-y-5">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
+          <MessageSquareText className="w-5 h-5 text-purple-500" /> ข้อความ Fallback
+        </h3>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">ข้อความตอบกลับอัตโนมัติ</label>
+          <textarea
+            value={config.fallback_message}
+            onChange={(e) => update("fallback_message", e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            placeholder="ข้อความที่ส่งเมื่อ AI ถูกปิดหรือ Confidence ต่ำ"
+          />
+          <p className="text-xs text-muted-foreground">ข้อความนี้จะส่งให้ลูกค้าเมื่อ: AI ถูกปิดตาม Stage Control หรืออยู่นอกเวลาทำการ</p>
+        </div>
+      </div>
+
       <div className="stat-card space-y-4">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Shield className="w-5 h-5 text-red-500" /> กฎเข้มงวด (Strict Rules)
