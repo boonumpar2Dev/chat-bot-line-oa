@@ -24,7 +24,10 @@ Deno.serve(async (req) => {
     const signature = req.headers.get('x-line-signature') || '';
     const channelSecret = Deno.env.get('LINE_CHANNEL_SECRET') || '';
 
-    if (channelSecret && !(await verifySignature(body, signature, channelSecret))) {
+    console.log('Webhook received, body length:', body.length, 'has signature:', !!signature);
+    
+    if (channelSecret && signature && !(await verifySignature(body, signature, channelSecret))) {
+      console.error('Signature verification failed');
       return Response.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
