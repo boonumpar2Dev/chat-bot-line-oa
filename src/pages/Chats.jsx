@@ -93,6 +93,14 @@ function MessageContent({ text, onImageClick }) {
   return (
     <div className="text-sm whitespace-pre-line leading-relaxed">
       {parts.map((part, i) => {
+        // Sticker display
+        const sm = part.trim().match(/^🎭\s*(https?:\/\/\S+)$/);
+        if (sm) {
+          return (
+            <img key={i} src={sm[1]} alt="สติกเกอร์"
+              className="w-24 h-24 object-contain mt-1" />
+          );
+        }
         const m = part.trim().match(/^📎\s*(https?:\/\/\S+)$/);
         if (m) {
           const url = m[1];
