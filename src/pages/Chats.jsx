@@ -224,7 +224,7 @@ export default function Chats() {
     base44.entities.AppSettings.filter({ key: "ai_config" }).then(data => {
       if (data?.[0]) setCooldownMinutes(data[0].cooldown_minutes || 1);
     });
-    base44.entities.Customer.list("-updated_date").then(data => {
+    base44.entities.Customer.list("-last_message_at", 200).then(data => {
       setCustomers(data || []);
       setLoading(false);
     });
@@ -234,10 +234,16 @@ export default function Chats() {
     if (selectedId) {
       base44.entities.Conversation.filter({ customer_id: selectedId }, "created_date")
         .then(data => setMessages(data || []));
+      // Clear unread when opening chat
+      const cust = customers.find(c => c.id === selectedId);
+      if (cust && (cust.unread_count || 0) > 0) {
+        base44.entities.Customer.update(selectedId, { unread_count: 0 });
+        setCustomers(prev => prev.map(c => c.id === selectedId ? { ...c, unread_count: 0 } : c));
+      }
     }
   }, [selectedId]);
 
-  // Real-time: only add if NOT already added by us (fix duplicate bug)
+  // Real-time messages: add new messages to current chat
   useEffect(() => {
     const unsub = base44.entities.Conversation.subscribe((event) => {
       if (event.type === "create" && event.data?.customer_id === selectedId) {
@@ -247,6 +253,27 @@ export default function Chats() {
           return;
         }
         setMessages(prev => prev.find(m => m.id === id) ? prev : [...prev, event.data]);
+      }
+    });
+    return unsub;
+  }, [selectedId]);
+
+  // Real-time customer list: re-sort & update unread/snippet when customer changes
+  useEffect(() => {
+    const unsub = base44.entities.Customer.subscribe((event) => {
+      if (event.type === "update" && event.data) {
+        setCustomers(prev => {
+          const updated = prev.map(c => c.id === event.data.id ? { ...c, ...event.data } : c);
+          // If this is the currently selected chat, auto-clear unread
+          if (event.data.id === selectedId && (event.data.unread_count || 0) > 0) {
+            base44.entities.Customer.update(selectedId, { unread_count: 0 });
+            return updated.map(c => c.id === selectedId ? { ...c, unread_count: 0 } : c)
+              .sort((a, b) => new Date(b.last_message_at || b.updated_date || 0) - new Date(a.last_message_at || a.updated_date || 0));
+          }
+          return updated.sort((a, b) => new Date(b.last_message_at || b.updated_date || 0) - new Date(a.last_message_at || a.updated_date || 0));
+        });
+      } else if (event.type === "create" && event.data) {
+        setCustomers(prev => [event.data, ...prev]);
       }
     });
     return unsub;
