@@ -79,7 +79,10 @@ Deno.serve(async (req) => {
           messageText = `[${label}]`;
         }
       } else if (msgType === 'sticker') {
-        messageText = '[สติกเกอร์]';
+        const pkgId = event.message.packageId;
+        const stkId = event.message.stickerId;
+        const stickerUrl = `https://stickershop.line-scdn.net/stickershop/v1/sticker/${stkId}/android/sticker.png`;
+        messageText = `[สติกเกอร์]\n🎭 ${stickerUrl}`;
       } else if (msgType === 'location') {
         messageText = `[ตำแหน่ง: ${event.message.title || event.message.address || 'ไม่ระบุ'}]`;
       } else {
