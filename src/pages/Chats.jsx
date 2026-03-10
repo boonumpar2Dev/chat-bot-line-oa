@@ -53,7 +53,25 @@ function getFileType(url = "") {
 // ─── Message Content ─────────────────────────────────────────────────────────
 
 function MessageContent({ text, onImageClick }) {
-  const parts = text.split("\n");
+  const lines = text.split("\n");
+  // Extract display filename from 📛 marker if present
+  const fileNameMap = {};
+  const parts = lines.filter(line => {
+    const nm = line.trim().match(/^📛\s*(.+)$/);
+    if (nm) {
+      // Map to the previous 📎 URL
+      const lastUrl = Object.keys(fileNameMap).length === 0 ? null : Object.keys(fileNameMap).pop();
+      // Find last 📎 line
+      for (let j = lines.indexOf(line) - 1; j >= 0; j--) {
+        const um = lines[j].trim().match(/^📎\s*(https?:\/\/\S+)$/);
+        if (um) { fileNameMap[um[1]] = nm[1]; break; }
+      }
+      return false; // filter out 📛 lines from display
+    }
+    return true;
+  });
+
+  const getDisplayName = (url) => fileNameMap[url] || url.split("/").pop().split("?")[0] || "ไฟล์แนบ";
 
   const downloadFile = async (url, filename) => {
     try {
@@ -88,19 +106,19 @@ function MessageContent({ text, onImageClick }) {
           if (type === "video") {
             return <video key={i} src={url} controls className="max-w-[280px] rounded-xl mt-1 shadow-sm" />;
           }
-          const filename = url.split("/").pop().split("?")[0] || "ไฟล์แนบ";
+          const filename = getDisplayName(url);
           if (type === "pdf") {
             return (
               <button key={i} onClick={() => downloadFile(url, filename)}
                 className="flex items-center gap-2 mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors text-xs text-red-700 w-fit">
-                📄 ดาวน์โหลด PDF
+                📄 {filename}
               </button>
             );
           }
           return (
             <button key={i} onClick={() => downloadFile(url, filename)}
               className="flex items-center gap-2 mt-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-xs text-blue-700 w-fit">
-              📎 ดาวน์โหลด {filename}
+              📎 {filename}
             </button>
           );
         }

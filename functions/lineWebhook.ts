@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         }
 
         if (fileUrl) {
-          messageText = `[${label}]\n📎 ${fileUrl}`;
+          messageText = `[${label}]\n📎 ${fileUrl}\n📛 ${fileName}`;
         } else {
           messageText = `[${label}]`;
         }
