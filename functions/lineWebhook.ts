@@ -66,31 +66,9 @@ Deno.serve(async (req) => {
       // Get AI settings
       const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' });
       const cfg = settingsList[0] || {};
-      const fallbackMessage = cfg.fallback_message || 'ขอบคุณที่ติดต่อมาค่ะ เจ้าหน้าที่จะรีบติดต่อกลับโดยเร็วที่สุดนะคะ 🙏';
 
-      // ──── Stage Control: Force AI off for critical statuses ────
-      if (AI_OFF_STATUSES.includes(customer.status)) {
-        // Send rule-based fallback reply
-        await fetch('https://api.line.me/v2/bot/message/reply', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')}`,
-          },
-          body: JSON.stringify({
-            replyToken,
-            messages: [{ type: 'text', text: fallbackMessage }],
-          }),
-        });
-
-        await base44.asServiceRole.entities.Conversation.create({
-          customer_id: customer.id,
-          message: fallbackMessage,
-          sender: 'ai',
-          is_fallback: true,
-        });
-        continue;
-      }
+      // ──── Stage Control: Skip AI for critical statuses ────
+      if (AI_OFF_STATUSES.includes(customer.status)) continue;
 
       // ──── Check if AI is manually disabled for this customer ────
       if (!customer.ai_active) continue;
@@ -190,31 +168,8 @@ ${recentMsgs || '(ยังไม่มี)'}
 
       const confidence = typeof aiResponse.confidence === 'number' ? aiResponse.confidence : 85;
 
-      // ──── Zero Hallucination: if confidence below threshold, fallback ────
-      if (confidence < confidenceThreshold) {
-        const lowConfMsg = 'ขอบคุณสำหรับคำถามค่ะ เจ้าหน้าที่จะติดต่อกลับเพื่อตอบข้อมูลที่ถูกต้องให้โดยเร็วนะคะ 🙏';
-
-        await fetch('https://api.line.me/v2/bot/message/reply', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')}`,
-          },
-          body: JSON.stringify({
-            replyToken,
-            messages: [{ type: 'text', text: lowConfMsg }],
-          }),
-        });
-
-        await base44.asServiceRole.entities.Conversation.create({
-          customer_id: customer.id,
-          message: `[Confidence: ${confidence}%] ${lowConfMsg}`,
-          sender: 'ai',
-          confidence_score: confidence,
-          is_fallback: true,
-        });
-        continue;
-      }
+      // ──── Zero Hallucination: if confidence below threshold, skip AI reply ────
+      if (confidence < confidenceThreshold) continue;
 
       // ──── Process answer text ────
       const answerText = String(aiResponse.answer || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้')

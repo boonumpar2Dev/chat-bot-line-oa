@@ -115,22 +115,12 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
-    // Zero Hallucination: show fallback if confidence is low
-    if (confidence < confidenceThreshold) {
-      setMessages((prev) => [...prev, {
-        role: "assistant",
-        content: `[Confidence: ${confidence}%] ขอบคุณสำหรับคำถามค่ะ เจ้าหน้าที่จะติดต่อกลับเพื่อตอบข้อมูลที่ถูกต้องให้โดยเร็วนะคะ 🙏`,
-        images: [],
-        isFallback: true,
-      }]);
-    } else {
-      setMessages((prev) => [...prev, {
-        role: "assistant",
-        content: cleanAnswer,
-        images: imagesToShow,
-        confidence,
-      }]);
-    }
+    setMessages((prev) => [...prev, {
+      role: "assistant",
+      content: cleanAnswer,
+      images: imagesToShow,
+      confidence,
+    }]);
     setLoading(false);
   };
 
