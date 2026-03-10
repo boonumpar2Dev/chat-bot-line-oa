@@ -20,6 +20,8 @@ const allNavItems = [
 export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
+  const navigate = useNavigate();
+  const totalUnread = useRef(0);
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['me'],
@@ -35,17 +37,6 @@ export default function Layout({ children, currentPageName }) {
       }
     }
   }, [user, isLoading]);
-
-  if (isLoading || !authChecked) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const navigate = useNavigate();
-  const totalUnread = useRef(0);
 
   // Global real-time notification for new customer messages
   useEffect(() => {
