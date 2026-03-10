@@ -471,6 +471,9 @@ export default function Chats() {
                     {formatTime(c.last_message_at || c.updated_date)}
                   </span>
                 </div>
+                {c.phone && (
+                  <div className="text-[10px] text-muted-foreground truncate mt-0.5">{c.phone}</div>
+                )}
                 <div className="flex items-center justify-between gap-1 mt-0.5">
                   <span className="text-xs text-muted-foreground truncate flex-1">
                     {c.last_message_snippet || STATUS_LABEL[c.status] || c.status}
