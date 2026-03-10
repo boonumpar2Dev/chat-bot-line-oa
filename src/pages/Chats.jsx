@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
-import AutoResponseManager from "@/components/chats/AutoResponseManager.jsx";
+import QuickResponsePopup from "@/components/chats/QuickResponsePopup.jsx";
 import StatusSelector from "@/components/chats/StatusSelector.jsx";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal.jsx";
 import { base44 } from "@/api/base44Client";
@@ -219,6 +219,8 @@ export default function Chats() {
   const [uploading, setUploading] = useState(false);
   const [cooldownMinutes, setCooldownMinutes] = useState(1);
   const [previewImage, setPreviewImage] = useState(null);
+  const [showQuickReply, setShowQuickReply] = useState(false);
+  const [quickFilter, setQuickFilter] = useState("");
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   // Track IDs we already added locally to prevent duplicates from subscription
@@ -393,15 +395,6 @@ export default function Chats() {
             />
           </div>
         </div>
-        {selectedCustomer && (
-          <div className="px-4 py-3 border-b border-border shrink-0">
-            <AutoResponseManager
-              selectedCustomer={selectedCustomer}
-              onUseResponse={handleUseResponse}
-            />
-          </div>
-        )}
-
         <div className="flex-1 overflow-y-auto">
           {filteredCustomers.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground text-sm">ไม่มีลูกค้า</div>
