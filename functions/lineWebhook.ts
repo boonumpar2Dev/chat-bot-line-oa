@@ -29,7 +29,13 @@ Deno.serve(async (req) => {
     }
 
     const { events = [] } = JSON.parse(body);
-    const base44 = createClient({ appId: Deno.env.get('BASE44_APP_ID') });
+    // For webhooks: create a fake request with service role header so SDK can init
+    const fakeReq = new Request(req.url, {
+      headers: {
+        'x-base44-app-id': Deno.env.get('BASE44_APP_ID'),
+      }
+    });
+    const base44 = createClientFromRequest(fakeReq);
 
     for (const event of events) {
       if (event.type !== 'message' || event.message?.type !== 'text') continue;
