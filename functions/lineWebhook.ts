@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClient } from 'npm:@base44/sdk@0.8.20';
 
 async function verifySignature(body, signature, secret) {
   const key = await crypto.subtle.importKey(
