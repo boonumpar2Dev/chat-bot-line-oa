@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Loader2, X, FileText, Paperclip, Image, Film } from "lucide-react";
+import { Plus, Trash2, Loader2, X, FileText, Paperclip, Image, Film, Pencil } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 
@@ -44,6 +44,7 @@ export default function QuickResponsePopup({ show, onSelect, onClose, filter }) 
   const [responses, setResponses] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ name: "", text: "", image_urls: [], file_urls: [] });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -109,16 +110,37 @@ export default function QuickResponsePopup({ show, onSelect, onClose, filter }) 
       return;
     }
     setSaving(true);
-    const created = await base44.entities.AutoResponse.create({
-      name: formData.name, text: formData.text,
-      image_urls: formData.image_urls, file_urls: formData.file_urls,
-      is_active: true,
-    });
-    setResponses(prev => [...prev, created]);
+    if (editingId) {
+      await base44.entities.AutoResponse.update(editingId, {
+        name: formData.name, text: formData.text,
+        image_urls: formData.image_urls, file_urls: formData.file_urls,
+      });
+      setResponses(prev => prev.map(r => r.id === editingId ? { ...r, ...formData } : r));
+      toast.success("อัปเดตคำตอบสำเร็จ");
+    } else {
+      const created = await base44.entities.AutoResponse.create({
+        name: formData.name, text: formData.text,
+        image_urls: formData.image_urls, file_urls: formData.file_urls,
+        is_active: true,
+      });
+      setResponses(prev => [...prev, created]);
+      toast.success("บันทึกคำตอบสำเร็จ");
+    }
     setFormData({ name: "", text: "", image_urls: [], file_urls: [] });
     setShowForm(false);
+    setEditingId(null);
     setSaving(false);
-    toast.success("บันทึกคำตอบสำเร็จ");
+  };
+
+  const handleEdit = (resp) => {
+    setEditingId(resp.id);
+    setFormData({
+      name: resp.name || "",
+      text: resp.text || "",
+      image_urls: resp.image_urls || [],
+      file_urls: resp.file_urls || [],
+    });
+    setShowForm(true);
   };
 
   const handleDelete = async (id) => {
@@ -181,11 +203,11 @@ export default function QuickResponsePopup({ show, onSelect, onClose, filter }) 
               <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple onChange={handleFileUpload} className="hidden" />
             </label>
             <div className="flex-1" />
-            <button onClick={() => { setShowForm(false); setFormData({ name: "", text: "", image_urls: [], file_urls: [] }); }}
+            <button onClick={() => { setShowForm(false); setEditingId(null); setFormData({ name: "", text: "", image_urls: [], file_urls: [] }); }}
               className="px-3 py-1 rounded-lg text-xs text-muted-foreground hover:bg-muted">ยกเลิก</button>
             <button onClick={handleSave} disabled={saving || !formData.name.trim() || !formData.text.trim()}
               className="px-3 py-1 rounded-lg bg-green-600 text-white text-xs hover:bg-green-700 disabled:opacity-50 flex items-center gap-1">
-              {saving && <Loader2 className="w-3 h-3 animate-spin" />} บันทึก
+              {saving && <Loader2 className="w-3 h-3 animate-spin" />} {editingId ? "อัปเดต" : "บันทึก"}
             </button>
           </div>
         </div>
@@ -215,12 +237,20 @@ export default function QuickResponsePopup({ show, onSelect, onClose, filter }) 
                   </div>
                 )}
               </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(resp.id); }}
-                className="p-1 rounded text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleEdit(resp); }}
+                  className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(resp.id); }}
+                  className="p-1 rounded text-red-400 hover:text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </button>
           );
         })}
