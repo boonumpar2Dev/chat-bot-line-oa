@@ -69,6 +69,14 @@ export default function Layout({ children, currentPageName }) {
     return unsub;
   }, [authChecked, currentPageName]);
 
+  if (isLoading || !authChecked) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   const navItems = user?.role === 'executive'
     ? [allNavItems[0]]
     : allNavItems;
