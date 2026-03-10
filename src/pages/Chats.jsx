@@ -500,7 +500,9 @@ export default function Chats() {
             </button>
           </div>
 
-          <CooldownBanner messages={messages} cooldownMinutes={cooldownMinutes} />
+          {selectedCustomer.ai_active && (
+            <CooldownBanner messages={messages} cooldownMinutes={cooldownMinutes} />
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4" style={{ background: "hsl(220 20% 97%)" }}>
@@ -594,8 +596,8 @@ export default function Chats() {
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
               </button>
 
-              <input
-                type="text" value={newMessage}
+              <textarea
+                value={newMessage}
                 onChange={e => {
                   const val = e.target.value;
                   setNewMessage(val);
@@ -607,13 +609,20 @@ export default function Chats() {
                   }
                 }}
                 onKeyDown={e => {
-                  if (e.key === "/" && !newMessage) {
-                    // will be handled by onChange
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    e.target.closest("form")?.requestSubmit();
                   }
+                }}
+                onInput={e => {
+                  e.target.style.height = "auto";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 160) + "px";
                 }}
                 placeholder='พิมพ์ข้อความ หรือพิมพ์ "/" เพื่อใช้ข้อความสำเร็จรูป'
                 disabled={sending || uploading}
-                className="flex-1 px-4 py-2.5 rounded-full border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                rows={1}
+                className="flex-1 px-4 py-2.5 rounded-2xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all resize-none overflow-y-auto"
+                style={{ maxHeight: 160 }}
               />
               <button
                 type="submit"
