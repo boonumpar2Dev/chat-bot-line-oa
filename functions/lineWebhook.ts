@@ -111,6 +111,14 @@ Deno.serve(async (req) => {
         sender: 'customer',
       });
 
+      // Update unread count, last message time & snippet for chat list
+      const snippet = messageText.replace(/\[.*?\]\n?/, '').replace(/📎\s*https?:\/\/\S+/g, '').replace(/📛\s*.+/g, '').trim().slice(0, 60) || messageText.slice(0, 60);
+      await base44.asServiceRole.entities.Customer.update(customer.id, {
+        unread_count: (customer.unread_count || 0) + 1,
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: snippet,
+      });
+
       // Only process AI reply for text messages
       if (!isTextMessage) continue;
 
