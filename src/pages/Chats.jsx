@@ -307,6 +307,17 @@ export default function Chats() {
     sentIds.current.add(msg.id);
     setMessages(prev => [...prev, msg]);
 
+    // Update last message time & snippet for the chat list
+    const adminSnippet = text ? `👤 ${text.slice(0, 60)}` : "👤 ส่งไฟล์";
+    await base44.entities.Customer.update(selectedId, {
+      last_message_at: new Date().toISOString(),
+      last_message_snippet: adminSnippet,
+    });
+    setCustomers(prev => prev.map(c => c.id === selectedId
+      ? { ...c, last_message_at: new Date().toISOString(), last_message_snippet: adminSnippet }
+      : c
+    ));
+
     // Handoff: auto-pause AI when admin sends a message
     if (selectedCustomer?.ai_active) {
       await base44.entities.Customer.update(selectedCustomer.id, { ai_active: false });

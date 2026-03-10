@@ -286,6 +286,12 @@ ${recentMsgs || '(ยังไม่มี)'}
         sender: 'ai',
         confidence_score: confidence,
       });
+
+      // Update last message for AI reply (snippet shows AI response)
+      await base44.asServiceRole.entities.Customer.update(customer.id, {
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
+      });
     }
 
     return Response.json({ ok: true });
