@@ -90,6 +90,9 @@ Deno.serve(async (req) => {
         sender: 'customer',
       });
 
+      // Only process AI reply for text messages
+      if (!isTextMessage) continue;
+
       // Get AI settings
       const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' });
       const cfg = settingsList[0] || {};
