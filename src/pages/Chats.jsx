@@ -241,6 +241,12 @@ export default function Chats() {
     sentIds.current.add(msg.id);
     setMessages(prev => [...prev, msg]);
 
+    // Handoff: auto-pause AI when admin sends a message
+    if (selectedCustomer?.ai_active) {
+      await base44.entities.Customer.update(selectedCustomer.id, { ai_active: false });
+      setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ai_active: false } : c));
+    }
+
     if (selectedCustomer?.line_user_id) {
       const lineMessages = [{ type: "text", text }];
       for (const imgUrl of imageUrls) {
