@@ -87,7 +87,7 @@ export default function Dashboard() {
   });
 
   // --- Status breakdown pie ---
-  const statusGroups = ["new", "returning", "pending_confirm", "confirmed", "cancelled"].map((s) => ({
+  const statusGroups = ["new", "returning", "pending_quote", "pending_confirm", "confirmed", "cancelled"].map((s) => ({
     name: statusLabel(s),
     value: customers.filter((c) => c.status === s).length,
   })).filter((d) => d.value > 0);
