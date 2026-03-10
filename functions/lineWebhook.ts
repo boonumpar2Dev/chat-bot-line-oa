@@ -46,21 +46,42 @@ Deno.serve(async (req) => {
       // Determine message text based on type
       let messageText;
       let isTextMessage = false;
+      const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
+
       if (msgType === 'text') {
         messageText = event.message.text;
         isTextMessage = true;
+      } else if (msgType === 'image' || msgType === 'video' || msgType === 'audio' || msgType === 'file') {
+        // Download binary content from LINE and upload to Base44
+        const messageId = event.message.id;
+        const ext = msgType === 'image' ? '.jpg' : msgType === 'video' ? '.mp4' : msgType === 'audio' ? '.m4a' : '';
+        const fileName = event.message?.fileName || `${msgType}_${messageId}${ext}`;
+        const label = msgType === 'image' ? 'รูปภาพ' : msgType === 'video' ? 'วิดีโอ' : msgType === 'audio' ? 'เสียง' : 'ไฟล์';
+
+        let fileUrl = null;
+        try {
+          const contentRes = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          if (contentRes.ok) {
+            const blob = await contentRes.blob();
+            const file = new File([blob], fileName, { type: blob.type });
+            const uploadResult = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+            fileUrl = uploadResult.file_url;
+          }
+        } catch (e) {
+          console.error('Failed to download/upload LINE content:', e.message);
+        }
+
+        if (fileUrl) {
+          messageText = `[${label}]\n📎 ${fileUrl}`;
+        } else {
+          messageText = `[${label}]`;
+        }
       } else if (msgType === 'sticker') {
         messageText = '[สติกเกอร์]';
-      } else if (msgType === 'image') {
-        messageText = '[รูปภาพ]';
-      } else if (msgType === 'video') {
-        messageText = '[วิดีโอ]';
-      } else if (msgType === 'audio') {
-        messageText = '[เสียง]';
       } else if (msgType === 'location') {
         messageText = `[ตำแหน่ง: ${event.message.title || event.message.address || 'ไม่ระบุ'}]`;
-      } else if (msgType === 'file') {
-        messageText = `[ไฟล์: ${event.message.fileName || 'ไม่ระบุ'}]`;
       } else {
         messageText = `[${msgType || 'ไม่ทราบประเภท'}]`;
       }
