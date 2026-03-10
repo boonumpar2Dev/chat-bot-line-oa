@@ -233,6 +233,7 @@ export default function Chats() {
   const [stagedFiles, setStagedFiles] = useState([]);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
   // Track IDs we already added locally to prevent duplicates from subscription
   const sentIds = useRef(new Set());
 
@@ -298,6 +299,15 @@ export default function Chats() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-resize textarea when newMessage changes programmatically (e.g. quick response)
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = Math.min(el.scrollHeight, 160) + "px";
+    }
+  }, [newMessage]);
 
   const selectedCustomer = customers.find(c => c.id === selectedId);
 
@@ -597,6 +607,7 @@ export default function Chats() {
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={newMessage}
                 onChange={e => {
                   const val = e.target.value;
