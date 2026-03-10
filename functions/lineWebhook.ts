@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     }
 
     const { events = [] } = JSON.parse(body);
-    const base44 = createClientFromRequest(req);
+    const base44 = createClient({ appId: Deno.env.get('BASE44_APP_ID') });
 
     for (const event of events) {
       if (event.type !== 'message' || event.message?.type !== 'text') continue;
