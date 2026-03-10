@@ -18,11 +18,30 @@ const allNavItems = [
 
 export default function Layout({ children, currentPageName }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  const { data: user } = useQuery({
+  const { data: user, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: () => base44.auth.me(),
   });
+
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user) {
+        base44.auth.redirectToLogin();
+      } else {
+        setAuthChecked(true);
+      }
+    }
+  }, [user, isLoading]);
+
+  if (isLoading || !authChecked) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const navItems = user?.role === 'executive'
     ? [allNavItems[0]]
