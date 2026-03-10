@@ -20,7 +20,9 @@ const AI_OFF_STATUSES = ['pending_quote', 'pending_confirm', 'confirmed'];
 
 Deno.serve(async (req) => {
   try {
-    const body = await req.text();
+    // Clone request before consuming body, so SDK can still read headers from original
+    const clonedReq = req.clone();
+    const body = await clonedReq.text();
     const signature = req.headers.get('x-line-signature') || '';
     const channelSecret = Deno.env.get('LINE_CHANNEL_SECRET') || '';
 
