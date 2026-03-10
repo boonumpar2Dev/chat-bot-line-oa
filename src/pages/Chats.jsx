@@ -576,6 +576,11 @@ export default function Chats() {
               }}
               onClose={() => { setShowQuickReply(false); setQuickFilter(""); }}
             />
+            <StagedMessageBar
+              files={stagedFiles}
+              onRemoveFile={(url) => setStagedFiles(prev => prev.filter(u => u !== url))}
+              onClearAll={() => setStagedFiles([])}
+            />
             <form onSubmit={sendMessage} className="px-3 lg:px-4 py-3 flex items-center gap-2">
               {/* Image upload */}
               <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleImageUpload} />
@@ -612,7 +617,7 @@ export default function Chats() {
               />
               <button
                 type="submit"
-                disabled={sending || !newMessage.trim() || uploading || showQuickReply}
+                disabled={sending || (!newMessage.trim() && stagedFiles.length === 0) || uploading || showQuickReply}
                 className="h-10 px-5 rounded-full font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-40 bg-green-600 text-white hover:bg-green-700 shrink-0"
               >
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /><span>ส่ง</span></>}
