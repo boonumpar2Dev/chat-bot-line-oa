@@ -35,6 +35,7 @@ Deno.serve(async (req) => {
 
     const { events = [] } = JSON.parse(body);
     const base44 = createClientFromRequest(req);
+    const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
 
     for (const event of events) {
       if (event.type !== 'message') continue;
@@ -46,7 +47,6 @@ Deno.serve(async (req) => {
       // Determine message text based on type
       let messageText;
       let isTextMessage = false;
-      const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
 
       if (msgType === 'text') {
         messageText = event.message.text;
