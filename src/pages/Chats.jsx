@@ -9,6 +9,7 @@ import QuickResponsePopup from "@/components/chats/QuickResponsePopup.jsx";
 import StagedMessageBar from "@/components/chats/StagedMessageBar.jsx";
 import StatusSelector from "@/components/chats/StatusSelector.jsx";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal.jsx";
+import CustomerInfoPanel from "@/components/chats/CustomerInfoPanel.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -231,6 +232,8 @@ export default function Chats() {
   const [showQuickReply, setShowQuickReply] = useState(false);
   const [quickFilter, setQuickFilter] = useState("");
   const [stagedFiles, setStagedFiles] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showInfoPanel, setShowInfoPanel] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -387,7 +390,18 @@ export default function Chats() {
   };
 
   const filteredCustomers = customers
-    .filter(c => !searchQuery || ((c.nickname || c.display_name || "").toLowerCase().includes(searchQuery.toLowerCase())))
+    .filter(c => {
+      // Status filter
+      if (statusFilter !== "all" && c.status !== statusFilter) return false;
+      // Search by name or phone
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const nameMatch = (c.nickname || c.display_name || "").toLowerCase().includes(q);
+        const phoneMatch = (c.phone || "").replace(/[-\s]/g, "").includes(q.replace(/[-\s]/g, ""));
+        return nameMatch || phoneMatch;
+      }
+      return true;
+    })
     .sort((a, b) => new Date(b.last_message_at || b.updated_date || 0) - new Date(a.last_message_at || a.updated_date || 0));
 
   if (loading) {
@@ -399,15 +413,33 @@ export default function Chats() {
 
       {/* ── Sidebar (responsive: hidden on mobile unless selected) ────── */}
       <div className={`${!selectedCustomer ? "flex" : "hidden"} lg:flex w-full lg:w-72 shrink-0 flex-col border-b lg:border-r border-border bg-card overflow-y-auto`}>
-        <div className="p-4 border-b border-border">
-          <h2 className="font-bold text-foreground mb-3 text-base">แชท</h2>
+        <div className="p-4 border-b border-border space-y-2.5">
+          <h2 className="font-bold text-foreground text-base">แชท</h2>
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
-              type="text" placeholder="ค้นหาลูกค้า" value={searchQuery}
+              type="text" placeholder="ค้นหาชื่อ / เบอร์โทร" value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-8 pr-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {[
+              { value: "all", label: "ทั้งหมด" },
+              ...Object.entries(STATUS_LABEL).map(([v, l]) => ({ value: v, label: l }))
+            ].map(opt => (
+              <button
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
+                  statusFilter === opt.value
+                    ? "bg-green-600 text-white"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
