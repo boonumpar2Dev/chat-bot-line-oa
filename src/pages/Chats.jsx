@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
 import AutoResponseManager from "@/components/chats/AutoResponseManager.jsx";
+import StatusSelector from "@/components/chats/StatusSelector.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -387,9 +388,10 @@ export default function Chats() {
                     ? <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-semibold">LINE ✓</span>
                     : <span className="text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">ไม่มี LINE</span>
                   }
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_BADGE[selectedCustomer.status] || ""}`}>
-                    {STATUS_LABEL[selectedCustomer.status]}
-                  </span>
+                  <StatusSelector
+                    customer={selectedCustomer}
+                    onUpdate={updated => setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))}
+                  />
                 </div>
                 <TagManager
                   customer={selectedCustomer}
