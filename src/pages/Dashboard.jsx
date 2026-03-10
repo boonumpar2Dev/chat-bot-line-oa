@@ -3,21 +3,25 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
-import { Users, MessageSquare, CheckCircle, Clock, TrendingUp, ArrowUpRight, Loader2 } from "lucide-react";
+import { Users, MessageSquare, CheckCircle, Clock, TrendingUp, ArrowUpRight, Loader2, AlertTriangle } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { format, subDays, startOfDay, isToday } from "date-fns";
+import SLAAlerts from "@/components/dashboard/SLAAlerts";
+import CLVTable from "@/components/dashboard/CLVTable";
 import { th } from "date-fns/locale";
 
 const PIE_COLORS = ["hsl(210, 92%, 55%)", "hsl(160, 84%, 39%)", "hsl(38, 92%, 50%)", "hsl(280, 60%, 55%)", "hsl(220, 14%, 70%)"];
 
 const statusLabel = (s) => ({
   new: "ลูกค้าใหม่", returning: "ลูกค้าเก่า",
-  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
+  pending_quote: "รอใบเสนอราคา", pending_confirm: "รอคอนเฟิร์ม",
+  confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
 }[s] || s);
 
 const statusBadge = (s) => ({
   new: "badge-new", returning: "badge-new",
-  pending_confirm: "badge-pending", confirmed: "badge-confirmed", cancelled: "badge-cancelled",
+  pending_quote: "badge-pending", pending_confirm: "badge-pending",
+  confirmed: "badge-confirmed", cancelled: "badge-cancelled",
 }[s] || "badge-new");
 
 const formatTimeAgo = (dateStr) => {
@@ -32,16 +36,19 @@ const formatTimeAgo = (dateStr) => {
 export default function Dashboard() {
   const [customers, setCustomers] = useState([]);
   const [conversations, setConversations] = useState([]);
+  const [slaHours, setSlaHours] = useState(24);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const [custs, convs] = await Promise.all([
+      const [custs, convs, settings] = await Promise.all([
         base44.entities.Customer.list("-created_date", 500),
         base44.entities.Conversation.list("-created_date", 500),
+        base44.entities.AppSettings.filter({ key: "ai_config" }),
       ]);
       setCustomers(custs || []);
       setConversations(convs || []);
+      if (settings?.[0]) setSlaHours(settings[0].sla_hours || 24);
       setLoading(false);
     };
     load();
@@ -59,7 +66,7 @@ export default function Dashboard() {
   const totalCustomers = customers.length;
   const todayChats = conversations.filter((c) => isToday(new Date(c.created_date))).length;
   const confirmed = customers.filter((c) => c.status === "confirmed").length;
-  const pending = customers.filter((c) => c.status === "pending_confirm").length;
+  const pending = customers.filter((c) => c.status === "pending_confirm" || c.status === "pending_quote").length;
 
   const stats = [
     { label: "ลูกค้าทั้งหมด", value: totalCustomers.toLocaleString(), icon: Users, color: "bg-blue-100 text-blue-600", accent: "#3b82f6" },
@@ -105,6 +112,9 @@ export default function Dashboard() {
         <h1 className="text-2xl font-bold text-foreground" style={{ fontFamily: "var(--font-display)" }}>Dashboard</h1>
         <p className="text-muted-foreground text-sm mt-1">ภาพรวมธุรกิจและสถิติลูกค้า</p>
       </div>
+
+      {/* SLA Alerts */}
+      <SLAAlerts customers={customers} slaHours={slaHours} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -196,7 +206,7 @@ export default function Dashboard() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">{c.display_name || "ไม่ทราบชื่อ"}</div>
+                    <div className="text-sm font-medium text-foreground truncate">{c.nickname || c.display_name || "ไม่ทราบชื่อ"}</div>
                     <div className="text-xs text-muted-foreground">{c.event_type || "-"}</div>
                   </div>
                   <div className="text-right shrink-0">
@@ -209,6 +219,9 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* CLV Section */}
+      <CLVTable customers={customers} />
     </div>
   );
 }
