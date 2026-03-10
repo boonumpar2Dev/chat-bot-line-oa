@@ -206,7 +206,10 @@ function TagManager({ customer, onUpdate }) {
 
 export default function Chats() {
   const [customers, setCustomers] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("customer") || null;
+  });
   const [messages, setMessages] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
