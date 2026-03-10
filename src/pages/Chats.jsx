@@ -196,6 +196,7 @@ export default function Chats() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [cooldownMinutes, setCooldownMinutes] = useState(1);
+  const [previewImage, setPreviewImage] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   // Track IDs we already added locally to prevent duplicates from subscription
@@ -473,7 +474,7 @@ export default function Chats() {
                         border: isCustomer ? "1px solid hsl(220 13% 90%)" : isAdmin ? "1px solid #fde68a" : "none",
                       }}
                     >
-                      <MessageContent text={msg.message} />
+                      <MessageContent text={msg.message} onImageClick={setPreviewImage} />
                     </div>
 
                     <span className="text-[10px] text-muted-foreground mt-1 px-1">{formatTime(msg.created_date)}</span>
@@ -522,6 +523,10 @@ export default function Chats() {
             </button>
           </form>
         </div>
+      )}
+
+      {previewImage && (
+        <ImagePreviewModal url={previewImage} onClose={() => setPreviewImage(null)} />
       )}
     </div>
   );
