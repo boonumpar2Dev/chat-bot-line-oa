@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Bot, Send, PowerOff, Search, Loader2, MessageSquareOff,
-  Plus, X, Tag, Timer, Paperclip, ChevronLeft,
+  Plus, X, Tag, Timer, Paperclip, ChevronLeft, StickyNote,
 } from "lucide-react";
 
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
@@ -533,14 +533,31 @@ export default function Chats() {
                 />
               </div>
             </div>
-            <button
-              onClick={toggleAI}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${selectedCustomer.ai_active ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"}`}
-            >
-              {selectedCustomer.ai_active ? <Bot className="w-3.5 h-3.5" /> : <PowerOff className="w-3.5 h-3.5" />}
-              AI {selectedCustomer.ai_active ? "เปิด" : "ปิด"}
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setShowInfoPanel(prev => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${showInfoPanel ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                title="โน้ต / ข้อมูลลูกค้า"
+              >
+                <StickyNote className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">โน้ต</span>
+              </button>
+              <button
+                onClick={toggleAI}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedCustomer.ai_active ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-red-100 text-red-700 hover:bg-red-200"}`}
+              >
+                {selectedCustomer.ai_active ? <Bot className="w-3.5 h-3.5" /> : <PowerOff className="w-3.5 h-3.5" />}
+                AI {selectedCustomer.ai_active ? "เปิด" : "ปิด"}
+              </button>
+            </div>
           </div>
+
+          {showInfoPanel && (
+            <CustomerInfoPanel
+              customer={selectedCustomer}
+              onUpdate={updated => setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))}
+            />
+          )}
 
           {selectedCustomer.ai_active && (
             <CooldownBanner messages={messages} cooldownMinutes={cooldownMinutes} />
