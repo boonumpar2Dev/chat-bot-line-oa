@@ -15,6 +15,7 @@ import { th } from "date-fns/locale";
 const STATUS_BADGE = {
   new: "bg-blue-100 text-blue-700",
   returning: "bg-purple-100 text-purple-700",
+  pending_quote: "bg-orange-100 text-orange-700",
   pending_confirm: "bg-yellow-100 text-yellow-700",
   confirmed: "bg-green-100 text-green-700",
   cancelled: "bg-red-100 text-red-700",
@@ -22,8 +23,12 @@ const STATUS_BADGE = {
 
 const STATUS_LABEL = {
   new: "ลูกค้าใหม่", returning: "ลูกค้าเก่า",
-  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
+  pending_quote: "รอใบเสนอราคา", pending_confirm: "รอคอนเฟิร์ม",
+  confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
 };
+
+// Statuses that force AI off
+const AI_OFF_STATUSES = ['pending_quote', 'pending_confirm', 'confirmed'];
 
 const formatTime = (dateStr) => {
   try {
