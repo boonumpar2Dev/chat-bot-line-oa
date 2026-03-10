@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard, MessageSquare, BookOpen, Settings,
-  LogOut, Bot, ChevronLeft, ChevronRight, Users
+  LogOut, Bot, ChevronLeft, ChevronRight, Users, Loader2
 } from 'lucide-react';
 
 const allNavItems = [
