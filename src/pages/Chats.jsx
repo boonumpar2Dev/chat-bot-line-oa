@@ -354,9 +354,9 @@ export default function Chats() {
     setUploading(false);
   };
 
-  const filteredCustomers = customers.filter(c =>
-    !searchQuery || (c.display_name || "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredCustomers = customers
+    .filter(c => !searchQuery || ((c.nickname || c.display_name || "").toLowerCase().includes(searchQuery.toLowerCase())))
+    .sort((a, b) => new Date(b.last_message_at || b.updated_date || 0) - new Date(a.last_message_at || a.updated_date || 0));
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
@@ -409,13 +409,22 @@ export default function Chats() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="font-medium text-foreground text-sm truncate">{c.nickname || c.display_name || "ไม่ทราบชื่อ"}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(c.updated_date)}</span>
-                </div>
-                <div className="mt-0.5">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_BADGE[c.status] || "bg-muted text-muted-foreground"}`}>
-                    {STATUS_LABEL[c.status] || c.status}
+                  <span className={`text-sm truncate ${(c.unread_count || 0) > 0 ? "font-bold text-foreground" : "font-medium text-foreground"}`}>
+                    {c.nickname || c.display_name || "ไม่ทราบชื่อ"}
                   </span>
+                  <span className={`text-[10px] shrink-0 ${(c.unread_count || 0) > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}`}>
+                    {formatTime(c.last_message_at || c.updated_date)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-1 mt-0.5">
+                  <span className="text-xs text-muted-foreground truncate flex-1">
+                    {c.last_message_snippet || STATUS_LABEL[c.status] || c.status}
+                  </span>
+                  {(c.unread_count || 0) > 0 && (
+                    <span className="shrink-0 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1">
+                      {c.unread_count > 99 ? "99+" : c.unread_count}
+                    </span>
+                  )}
                 </div>
               </div>
             </button>
