@@ -6,6 +6,7 @@ import {
 
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup.jsx";
+import StagedMessageBar from "@/components/chats/StagedMessageBar.jsx";
 import StatusSelector from "@/components/chats/StatusSelector.jsx";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal.jsx";
 import { base44 } from "@/api/base44Client";
@@ -229,6 +230,7 @@ export default function Chats() {
   const [previewImage, setPreviewImage] = useState(null);
   const [showQuickReply, setShowQuickReply] = useState(false);
   const [quickFilter, setQuickFilter] = useState("");
+  const [stagedFiles, setStagedFiles] = useState([]);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   // Track IDs we already added locally to prevent duplicates from subscription
@@ -353,18 +355,13 @@ export default function Chats() {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedId || sending) return;
+    if ((!newMessage.trim() && stagedFiles.length === 0) || !selectedId || sending) return;
     setSending(true);
     const text = newMessage.trim();
+    const files = [...stagedFiles];
     setNewMessage("");
-    await doSend(text, "text", []);
-    setSending(false);
-  };
-
-  const handleUseResponse = async (response) => {
-    if (!selectedId || sending) return;
-    setSending(true);
-    await doSend(response.text, "text", response.image_urls || []);
+    setStagedFiles([]);
+    await doSend(text, "text", files);
     setSending(false);
   };
 
@@ -570,9 +567,11 @@ export default function Chats() {
               show={showQuickReply}
               filter={quickFilter}
               onSelect={(resp) => {
-                handleUseResponse(resp);
+                // Stage the response for review, don't send immediately
+                setNewMessage(resp.text || "");
+                const allFiles = [...(resp.image_urls || []), ...(resp.file_urls || [])];
+                setStagedFiles(allFiles);
                 setShowQuickReply(false);
-                setNewMessage("");
                 setQuickFilter("");
               }}
               onClose={() => { setShowQuickReply(false); setQuickFilter(""); }}
