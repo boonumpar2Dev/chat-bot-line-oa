@@ -37,11 +37,33 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
 
     for (const event of events) {
-      if (event.type !== 'message' || event.message?.type !== 'text') continue;
+      if (event.type !== 'message') continue;
 
+      const msgType = event.message?.type;
       const lineUserId = event.source.userId;
-      const messageText = event.message.text;
       const replyToken = event.replyToken;
+
+      // Determine message text based on type
+      let messageText;
+      let isTextMessage = false;
+      if (msgType === 'text') {
+        messageText = event.message.text;
+        isTextMessage = true;
+      } else if (msgType === 'sticker') {
+        messageText = '[สติกเกอร์]';
+      } else if (msgType === 'image') {
+        messageText = '[รูปภาพ]';
+      } else if (msgType === 'video') {
+        messageText = '[วิดีโอ]';
+      } else if (msgType === 'audio') {
+        messageText = '[เสียง]';
+      } else if (msgType === 'location') {
+        messageText = `[ตำแหน่ง: ${event.message.title || event.message.address || 'ไม่ระบุ'}]`;
+      } else if (msgType === 'file') {
+        messageText = `[ไฟล์: ${event.message.fileName || 'ไม่ระบุ'}]`;
+      } else {
+        messageText = `[${msgType || 'ไม่ทราบประเภท'}]`;
+      }
 
       // Find or create customer
       const existing = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
