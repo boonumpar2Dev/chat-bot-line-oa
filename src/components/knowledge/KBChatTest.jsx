@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Send, RefreshCw, Sparkles } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-const SUGGESTIONS = ["ร้านตั้งอยู่ที่ไหน", "เวลาทำการกี่โมงคะ", "นโยบายการจัดส่งมีอะไรบ้าง"];
+const SUGGESTIONS = ["สอบถามแพ็กเกจจัดเลี้ยงค่ะ", "มีบริการจัดงานบุญไหมคะ", "ราคาโต๊ะจีนเท่าไหร่"];
 
 function getItemImages(item) {
   const arr = Array.isArray(item.image_urls) ? [...item.image_urls] : [];
@@ -29,20 +29,40 @@ export default function KBChatTest() {
     setInput("");
     setLoading(true);
 
-    const [kbItems, settingsList] = await Promise.all([
+    const [kbItems, settingsList, pkgs] = await Promise.all([
       base44.entities.KnowledgeBase.filter({ status: "active" }),
       base44.entities.AppSettings.filter({ key: "ai_config" }),
+      base44.entities.CateringPackage.filter({ is_active: true }),
     ]);
     const cfg = settingsList?.[0] || {};
     const itemsWithImages = kbItems.filter(i => getItemImages(i).length > 0);
+    const pkgsWithImages = (pkgs || []).filter(p => p.image_urls?.length > 0);
 
     const knowledgeContext = kbItems.map((item) => {
       const imgs = getItemImages(item);
       return `[ชื่อข้อมูล: "${item.title}"]\n${item.content || ""}${imgs.length > 0 ? `\n[มีรูปภาพประกอบ ${imgs.length} รูป]` : ""}`;
     }).join("\n\n");
 
-    const imageListStr = itemsWithImages.length > 0
-      ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${itemsWithImages.map(i => `"${i.title}"`).join(", ")}`
+    // Build package context
+    const pkgContext = (pkgs || []).length > 0 ? '\n\n--- แคตตาล็อกแพ็กเกจ ---\n' + pkgs.map(p => {
+      let s = `[แพ็กเกจ: "${p.name}"]`;
+      if (p.min_condition) s += `\nเงื่อนไขขั้นต่ำ: ${p.min_condition}`;
+      if (p.pricing_tiers?.length > 0) {
+        s += '\nราคา:';
+        p.pricing_tiers.forEach(t => { s += `\n  - ${t.guest_count}: ${t.price}`; });
+      }
+      if (p.description) s += `\nรายละเอียดอาหาร: ${p.description}`;
+      if (p.notes) s += `\nหมายเหตุ: ${p.notes}`;
+      if (p.image_urls?.length > 0) s += `\n[มีรูปภาพโบรชัวร์ ${p.image_urls.length} รูป]`;
+      return s;
+    }).join('\n\n') : '';
+
+    const allImageSources = [
+      ...itemsWithImages.map(i => `"${i.title}"`),
+      ...pkgsWithImages.map(p => `"แพ็กเกจ: ${p.name}"`),
+    ];
+    const imageListStr = allImageSources.length > 0
+      ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${allImageSources.join(", ")}`
       : "";
 
     const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
@@ -52,7 +72,10 @@ export default function KBChatTest() {
       ? `\n\n⚠️ กฎเข้มงวดที่ต้องปฏิบัติตามเสมอ:\n${strictRules}`
       : "";
 
-    const topicNames = kbItems.map(k => k.title).filter(Boolean);
+    const topicNames = [
+      ...kbItems.map(k => k.title).filter(Boolean),
+      ...(pkgs || []).map(p => `แพ็กเกจ: ${p.name}`).filter(Boolean),
+    ];
 
     const confidenceThreshold = cfg.confidence_threshold || 75;
 
@@ -70,6 +93,7 @@ ${strictRulesSection}
 
 Knowledge Base:
 ${knowledgeContext || "ยังไม่มีข้อมูล"}
+${pkgContext}
 ${imageListStr}
 
 ประวัติการสนทนา:
@@ -78,7 +102,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
 ตอบเป็น JSON โดย:
 - answer: คำตอบ (ใช้การขึ้นบรรทัดใหม่จริงๆ เพื่อจัดรูปแบบ)
 - confidence: คะแนนความมั่นใจ 0-100 ว่าคำตอบถูกต้องตาม KB
-- image_titles: ชื่อข้อมูล KB ที่มีรูปภาพควรแสดงประกอบ`,
+- image_titles: ชื่อข้อมูล KB หรือ "แพ็กเกจ: ..." ที่มีรูปภาพควรแสดงประกอบ`,
       model: "gemini_3_flash",
       response_json_schema: {
         type: "object",
@@ -102,9 +126,9 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
     const sortedLast = [...lastSentTitles].sort().join('|');
     const isSameTitles = sortedCurrent === sortedLast && sortedCurrent.length > 0;
 
-    const imagesToShow = isSameTitles ? [] : itemsWithImages
-      .filter(item => currentTitles.includes(item.title))
-      .flatMap(item => getItemImages(item));
+    const kbImages = itemsWithImages.filter(item => currentTitles.includes(item.title)).flatMap(item => getItemImages(item));
+    const pkgImages = pkgsWithImages.filter(p => currentTitles.includes(`แพ็กเกจ: ${p.name}`)).flatMap(p => p.image_urls || []);
+    const imagesToShow = isSameTitles ? [] : [...kbImages, ...pkgImages];
 
     if (currentTitles.length > 0) {
       setLastSentTitles(currentTitles);
