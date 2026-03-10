@@ -3,6 +3,7 @@ import {
   Bot, Send, PowerOff, Search, Loader2, MessageSquareOff,
   Plus, X, Tag, Timer, Paperclip, ChevronLeft,
 } from "lucide-react";
+
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
 import AutoResponseManager from "@/components/chats/AutoResponseManager.jsx";
 import StatusSelector from "@/components/chats/StatusSelector.jsx";
