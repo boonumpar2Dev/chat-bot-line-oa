@@ -54,6 +54,8 @@ export default function KBChatTest() {
 
     const topicNames = kbItems.map(k => k.title).filter(Boolean);
 
+    const confidenceThreshold = cfg.confidence_threshold || 75;
+
     const response = await base44.integrations.Core.InvokeLLM({
       prompt: `คุณเป็น AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง
 
@@ -62,6 +64,8 @@ export default function KBChatTest() {
 - ถ้าลูกค้าทักทายกว้างๆ เช่น "สอบถามค่ะ" "สวัสดีค่ะ" "สนใจค่ะ" → ให้ต้อนรับอย่างอบอุ่นและแนะนำหัวข้อบริการ/ข้อมูลที่มีอยู่ให้ลูกค้าเลือกถาม
 - หัวข้อข้อมูลที่มีอยู่: ${topicNames.length > 0 ? topicNames.join(', ') : 'ยังไม่มีข้อมูล'}
 - ถ้าลูกค้าถามเรื่องที่ไม่มีใน Knowledge Base เลย → ตอบสุภาพว่าจะให้เจ้าหน้าที่ติดต่อกลับ
+- จัดรูปแบบข้อความให้อ่านง่าย ใช้การเว้นบรรทัดจริงๆ แยกหัวข้อ/ประเด็นให้ชัดเจน ห้ามใส่ \\n เป็นตัวอักษร
+- เมื่อมีหลายประเด็น ให้เว้นบรรทัดระหว่างแต่ละประเด็น
 ${strictRulesSection}
 
 Knowledge Base:
@@ -71,21 +75,27 @@ ${imageListStr}
 ประวัติการสนทนา:
 ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.content}`).join("\n")}
 
-ถ้าคำตอบเกี่ยวข้องกับข้อมูลที่มีรูปภาพให้ระบุชื่อข้อมูลนั้นใน image_titles ด้วย`,
+ตอบเป็น JSON โดย:
+- answer: คำตอบ (ใช้การขึ้นบรรทัดใหม่จริงๆ เพื่อจัดรูปแบบ)
+- confidence: คะแนนความมั่นใจ 0-100 ว่าคำตอบถูกต้องตาม KB
+- image_titles: ชื่อข้อมูล KB ที่มีรูปภาพควรแสดงประกอบ`,
       model: "gemini_3_flash",
       response_json_schema: {
         type: "object",
         properties: {
           answer: { type: "string" },
+          confidence: { type: "number", description: "ความมั่นใจ 0-100" },
           image_titles: {
             type: "array",
             items: { type: "string" },
             description: "ชื่อข้อมูล KB ที่มีรูปภาพควรแสดงประกอบ"
           }
         },
-        required: ["answer"]
+        required: ["answer", "confidence"]
       }
     });
+
+    const confidence = typeof response.confidence === 'number' ? response.confidence : 85;
 
     const currentTitles = response.image_titles || [];
     const sortedCurrent = [...currentTitles].sort().join('|');
@@ -105,11 +115,22 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
-    setMessages((prev) => [...prev, {
-      role: "assistant",
-      content: cleanAnswer,
-      images: imagesToShow
-    }]);
+    // Zero Hallucination: show fallback if confidence is low
+    if (confidence < confidenceThreshold) {
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: `[Confidence: ${confidence}%] ขอบคุณสำหรับคำถามค่ะ เจ้าหน้าที่จะติดต่อกลับเพื่อตอบข้อมูลที่ถูกต้องให้โดยเร็วนะคะ 🙏`,
+        images: [],
+        isFallback: true,
+      }]);
+    } else {
+      setMessages((prev) => [...prev, {
+        role: "assistant",
+        content: cleanAnswer,
+        images: imagesToShow,
+        confidence,
+      }]);
+    }
     setLoading(false);
   };
 

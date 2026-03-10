@@ -15,6 +15,9 @@ function getItemImages(item) {
   return arr;
 }
 
+// Statuses where AI must be force-off
+const AI_OFF_STATUSES = ['pending_quote', 'pending_confirm', 'confirmed'];
+
 Deno.serve(async (req) => {
   try {
     const body = await req.text();
@@ -60,14 +63,42 @@ Deno.serve(async (req) => {
         sender: 'customer',
       });
 
-      if (!customer.ai_active) continue;
-
       // Get AI settings
       const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' });
       const cfg = settingsList[0] || {};
+      const fallbackMessage = cfg.fallback_message || 'ขอบคุณที่ติดต่อมาค่ะ เจ้าหน้าที่จะรีบติดต่อกลับโดยเร็วที่สุดนะคะ 🙏';
+
+      // ──── Stage Control: Force AI off for critical statuses ────
+      if (AI_OFF_STATUSES.includes(customer.status)) {
+        // Send rule-based fallback reply
+        await fetch('https://api.line.me/v2/bot/message/reply', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')}`,
+          },
+          body: JSON.stringify({
+            replyToken,
+            messages: [{ type: 'text', text: fallbackMessage }],
+          }),
+        });
+
+        await base44.asServiceRole.entities.Conversation.create({
+          customer_id: customer.id,
+          message: fallbackMessage,
+          sender: 'ai',
+          is_fallback: true,
+        });
+        continue;
+      }
+
+      // ──── Check if AI is manually disabled for this customer ────
+      if (!customer.ai_active) continue;
+
+      // ──── Global AI toggle ────
       if (cfg.ai_enabled === false) continue;
 
-      // Check schedule
+      // ──── Check schedule (AI working hours) ────
       if (cfg.schedule_enabled) {
         const bkk = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
         const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
@@ -79,13 +110,13 @@ Deno.serve(async (req) => {
         if (!inWindow) continue;
       }
 
-      // Check cooldown
+      // ──── Handoff Cooldown: check last admin message ────
       const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
       const recentConvs = await base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, 'created_date', 50);
       const lastAdmin = [...recentConvs].reverse().find(m => m.sender === 'admin');
       if (lastAdmin && Date.now() - new Date(lastAdmin.created_date).getTime() < cooldownMs) continue;
 
-      // Build context from knowledge base
+      // ──── Build context from knowledge base ────
       const kb = await base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' });
       const itemsWithImages = kb.filter(i => getItemImages(i).length > 0);
 
@@ -106,10 +137,16 @@ Deno.serve(async (req) => {
         ? `\n\n⚠️ กฎเข้มงวดที่ต้องปฏิบัติตามเสมอ:\n${strictRules}`
         : '';
 
-      // Build list of KB topic names for greeting
       const topicNames = kb.map(k => k.title).filter(Boolean);
+      const confidenceThreshold = cfg.confidence_threshold || 75;
 
-      // Generate AI reply with image selection
+      // ──── Build conversation history for context ────
+      const recentMsgs = recentConvs.slice(-10).map(m => {
+        const role = m.sender === 'customer' ? 'ลูกค้า' : (m.sender === 'admin' ? 'แอดมิน' : 'AI');
+        return `${role}: ${m.message}`;
+      }).join('\n');
+
+      // ──── Generate AI reply ────
       const aiResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt: `คุณคือ AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง ห้ามยาวเกิน 200 คำ
 
@@ -118,31 +155,68 @@ Deno.serve(async (req) => {
 - ถ้าลูกค้าทักทายกว้างๆ เช่น "สอบถามค่ะ" "สวัสดีค่ะ" "สนใจค่ะ" → ให้ต้อนรับอย่างอบอุ่นและแนะนำหัวข้อบริการ/ข้อมูลที่มีอยู่ให้ลูกค้าเลือกถาม
 - หัวข้อข้อมูลที่มีอยู่: ${topicNames.length > 0 ? topicNames.join(', ') : 'ยังไม่มีข้อมูล'}
 - ถ้าลูกค้าถามเรื่องที่ไม่มีใน Knowledge Base เลย → ตอบสุภาพว่าจะให้เจ้าหน้าที่ติดต่อกลับ
-- จัดรูปแบบข้อความให้อ่านง่าย เว้นบรรทัดแยกหัวข้อ/ประเด็นชัดเจน ใช้ขึ้นบรรทัดใหม่จริงๆ (ห้ามใส่ \\n เป็นตัวอักษรลงในคำตอบเด็ดขาด)
+- จัดรูปแบบข้อความให้อ่านง่าย ใช้การเว้นบรรทัดจริงๆ แยกหัวข้อ/ประเด็นให้ชัดเจน ห้ามใส่ \\n เป็นตัวอักษร
+- เมื่อมีหลายประเด็น ให้เว้นบรรทัดระหว่างแต่ละประเด็น
 ${strictRulesSection}
 
 ข้อมูลธุรกิจ:
 ${context || '(ยังไม่มีข้อมูลธุรกิจ)'}
 ${imageListStr}
 
+ประวัติการสนทนาล่าสุด:
+${recentMsgs || '(ยังไม่มี)'}
+
 ลูกค้าส่งมาว่า: "${messageText}"
 
-ถ้าคำตอบเกี่ยวข้องกับข้อมูลที่มีรูปภาพ ให้ระบุชื่อข้อมูลนั้นใน image_titles เพื่อส่งรูปให้ลูกค้าประกอบ (ส่งได้สูงสุด 3 รูป)`,
+ตอบเป็น JSON โดย:
+- answer: คำตอบ (ใช้การขึ้นบรรทัดใหม่จริงๆ เพื่อจัดรูปแบบ)
+- confidence: คะแนนความมั่นใจ 0-100 ว่าคำตอบถูกต้องตาม KB
+- image_titles: ชื่อข้อมูล KB ที่มีรูปภาพควรส่งประกอบ (สูงสุด 3)`,
         model: 'gemini_3_flash',
         response_json_schema: {
           type: 'object',
           properties: {
             answer: { type: 'string', description: 'คำตอบสำหรับลูกค้า' },
+            confidence: { type: 'number', description: 'ความมั่นใจ 0-100' },
             image_titles: {
               type: 'array',
               items: { type: 'string' },
               description: 'ชื่อข้อมูล KB ที่มีรูปภาพควรส่งให้ลูกค้าประกอบ'
             }
           },
-          required: ['answer']
+          required: ['answer', 'confidence']
         }
       });
 
+      const confidence = typeof aiResponse.confidence === 'number' ? aiResponse.confidence : 85;
+
+      // ──── Zero Hallucination: if confidence below threshold, fallback ────
+      if (confidence < confidenceThreshold) {
+        const lowConfMsg = 'ขอบคุณสำหรับคำถามค่ะ เจ้าหน้าที่จะติดต่อกลับเพื่อตอบข้อมูลที่ถูกต้องให้โดยเร็วนะคะ 🙏';
+
+        await fetch('https://api.line.me/v2/bot/message/reply', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')}`,
+          },
+          body: JSON.stringify({
+            replyToken,
+            messages: [{ type: 'text', text: lowConfMsg }],
+          }),
+        });
+
+        await base44.asServiceRole.entities.Conversation.create({
+          customer_id: customer.id,
+          message: `[Confidence: ${confidence}%] ${lowConfMsg}`,
+          sender: 'ai',
+          confidence_score: confidence,
+          is_fallback: true,
+        });
+        continue;
+      }
+
+      // ──── Process answer text ────
       const answerText = String(aiResponse.answer || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้')
         .replace(/\\n/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
@@ -150,20 +224,17 @@ ${imageListStr}
         .slice(0, 5000);
       const imageTitles = aiResponse.image_titles || [];
 
-      // Collect relevant images (max 3)
+      // ──── Image dedup logic ────
       const allRelevantImages = itemsWithImages
         .filter(item => imageTitles.includes(item.title));
 
-      // Check which titles were already sent last time
       const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
       const sortedCurrent = [...imageTitles].sort().join('|');
       const sortedLast = [...lastSent].sort().join('|');
       const isSameTitles = sortedCurrent === sortedLast && sortedCurrent.length > 0;
-
-      // Only send images if it's a different set of titles than last time
       const imagesToSend = isSameTitles ? [] : allRelevantImages.flatMap(item => getItemImages(item)).slice(0, 3);
 
-      // Build LINE messages
+      // ──── Build LINE messages ────
       const lineMessages = [{ type: 'text', text: answerText }];
       for (const imgUrl of imagesToSend) {
         lineMessages.push({
@@ -173,7 +244,7 @@ ${imageListStr}
         });
       }
 
-      // Reply via LINE
+      // ──── Reply via LINE ────
       await fetch('https://api.line.me/v2/bot/message/reply', {
         method: 'POST',
         headers: {
@@ -183,14 +254,14 @@ ${imageListStr}
         body: JSON.stringify({ replyToken, messages: lineMessages }),
       });
 
-      // Update last sent image titles on customer (always update to current titles)
+      // ──── Update customer tracking ────
       if (imageTitles.length > 0) {
         await base44.asServiceRole.entities.Customer.update(customer.id, {
           last_sent_image_titles: imageTitles,
         });
       }
 
-      // Save AI reply to DB
+      // ──── Save AI reply to DB ────
       const savedMsg = imagesToSend.length > 0
         ? `${answerText}\n${imagesToSend.map(u => `📎 ${u}`).join('\n')}`
         : answerText;
@@ -199,7 +270,7 @@ ${imageListStr}
         customer_id: customer.id,
         message: savedMsg,
         sender: 'ai',
-        confidence_score: 85,
+        confidence_score: confidence,
       });
     }
 
