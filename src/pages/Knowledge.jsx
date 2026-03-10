@@ -1,69 +1,109 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, Loader2, ArrowLeft, X } from "lucide-react";
+import { Plus, FileText, Loader2, ArrowLeft, Package, BookOpen, List } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
 import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
 import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
+import PackageList from "@/components/knowledge/PackageList.jsx";
+import PackageCatalogForm from "@/components/knowledge/PackageCatalogForm.jsx";
+
+const TABS = [
+  { id: "base", label: "ข้อมูลส่วนกลาง", icon: BookOpen, desc: "พิธีสงฆ์ อุปกรณ์ ข้อมูลที่ใช้ร่วมกัน" },
+  { id: "catalog", label: "แคตตาล็อกแพ็กเกจ", icon: Package, desc: "แพ็กเกจราคา โบรชัวร์ เมนูอาหาร" },
+  { id: "general", label: "ข้อมูลทั่วไป", icon: List, desc: "FAQ ข้อมูลอื่นๆ" },
+];
 
 export default function Knowledge() {
+  const [activeTab, setActiveTab] = useState("base");
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [packages, setPackages] = useState([]);
+  const [loadingKB, setLoadingKB] = useState(true);
+  const [loadingPkg, setLoadingPkg] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedPkg, setSelectedPkg] = useState(null);
   const [adding, setAdding] = useState(false);
-  const [view, setView] = useState("list"); // "list" | "edit" | "chat"
+  const [view, setView] = useState("list"); // mobile: "list" | "edit" | "chat"
 
-  useEffect(() => { fetchItems(); }, []);
+  useEffect(() => { fetchAll(); }, []);
 
-  const fetchItems = async () => {
-    const data = await base44.entities.KnowledgeBase.list("-created_date");
-    setItems(data || []);
-    setLoading(false);
+  const fetchAll = async () => {
+    base44.entities.KnowledgeBase.list("-created_date").then(data => { setItems(data || []); setLoadingKB(false); });
+    base44.entities.CateringPackage.filter({ is_active: true }, "-created_date").then(data => { setPackages(data || []); setLoadingPkg(false); });
   };
 
-  const handleAddNew = async (type) => {
+  // Split KB items by type
+  const baseItems = items.filter(i => i.type === "file");
+  const priceItems = items.filter(i => i.type === "price");
+
+  const handleAddKB = async (type) => {
     setAdding(true);
     const title = type === "price" ? "รายการราคาใหม่" : "ข้อมูลใหม่";
     const created = await base44.entities.KnowledgeBase.create({ title, content: "", type, status: "processing" });
-    setItems((prev) => [created, ...prev]);
+    setItems(prev => [created, ...prev]);
     setSelectedItem(created);
     setAdding(false);
     setView("edit");
   };
 
-  const handleSelect = (item) => {
-    setSelectedItem(item);
+  const handleAddPkg = () => {
+    setSelectedPkg({ name: "", pricing_tiers: [{ guest_count: "", price: "" }] }); // new package marker (no id)
     setView("edit");
   };
 
-  const handleDelete = (id) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const handleDeleteKB = (id) => {
+    setItems(prev => prev.filter(i => i.id !== id));
     if (selectedItem?.id === id) { setSelectedItem(null); setView("list"); }
   };
 
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-[50vh]"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
-  }
+  const handleDeletePkg = () => {
+    if (selectedPkg?.id) setPackages(prev => prev.filter(p => p.id !== selectedPkg.id));
+    setSelectedPkg(null);
+    setView("list");
+  };
 
-  // ── MOBILE layout (< lg) ──────────────────────────────────────────────────
+  const refreshPkgs = async () => {
+    const data = await base44.entities.CateringPackage.filter({ is_active: true }, "-created_date");
+    setPackages(data || []);
+    setSelectedPkg(null);
+    setView("list");
+  };
+
+  const refreshKB = async () => {
+    const data = await base44.entities.KnowledgeBase.list("-created_date");
+    setItems(data || []);
+    setSelectedItem(null);
+    setView("list");
+  };
+
+  // Current list based on tab
+  const currentKBItems = activeTab === "base" ? baseItems : priceItems;
+  const kbType = activeTab === "base" ? "file" : "price";
+
+  // ── MOBILE ──
   const MobileView = () => {
+    if (view === "edit" && activeTab === "catalog" && selectedPkg) {
+      return (
+        <div className="flex flex-col h-screen overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-3 shrink-0">
+            <button onClick={() => { setView("list"); setSelectedPkg(null); }} className="p-1.5 rounded-lg hover:bg-muted"><ArrowLeft className="w-5 h-5 text-muted-foreground" /></button>
+            <span className="font-semibold text-foreground">{selectedPkg.id ? "แก้ไขแพ็กเกจ" : "เพิ่มแพ็กเกจใหม่"}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <PackageCatalogForm key={selectedPkg.id || "new"} item={selectedPkg} onSaved={refreshPkgs} onDeleted={handleDeletePkg} onCancel={() => { setView("list"); setSelectedPkg(null); }} />
+          </div>
+        </div>
+      );
+    }
     if (view === "edit" && selectedItem) {
       return (
         <div className="flex flex-col h-screen overflow-hidden">
           <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-3 shrink-0">
-            <button onClick={() => { setView("list"); setSelectedItem(null); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-            </button>
+            <button onClick={() => { setView("list"); setSelectedItem(null); }} className="p-1.5 rounded-lg hover:bg-muted"><ArrowLeft className="w-5 h-5 text-muted-foreground" /></button>
             <span className="font-semibold text-foreground">แก้ไขข้อมูล</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <KBEditForm
-              key={selectedItem.id}
-              item={selectedItem}
-              onSaved={() => { fetchItems(); setView("list"); setSelectedItem(null); }}
-              onDeleted={() => handleDelete(selectedItem.id)}
-              onCancel={() => { setView("list"); setSelectedItem(null); }}
-            />
+            <KBEditForm key={selectedItem.id} item={selectedItem} onSaved={refreshKB} onDeleted={() => handleDeleteKB(selectedItem.id)} onCancel={() => { setView("list"); setSelectedItem(null); }} />
           </div>
         </div>
       );
@@ -72,98 +112,132 @@ export default function Knowledge() {
       return (
         <div className="flex flex-col h-screen overflow-hidden">
           <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-3 shrink-0">
-            <button onClick={() => setView("list")} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-            </button>
+            <button onClick={() => setView("list")} className="p-1.5 rounded-lg hover:bg-muted"><ArrowLeft className="w-5 h-5 text-muted-foreground" /></button>
             <span className="font-semibold text-foreground">แชททดสอบ AI</span>
           </div>
-          <div className="flex-1 overflow-hidden p-4">
-            <KBChatTest />
-          </div>
+          <div className="flex-1 overflow-hidden p-4"><KBChatTest /></div>
         </div>
       );
     }
     return (
       <div className="flex flex-col h-screen overflow-hidden">
         <div className="p-4 border-b border-border bg-card shrink-0">
-          <h1 className="text-lg font-bold text-foreground">เพิ่มข้อมูล</h1>
-          <p className="text-muted-foreground text-xs mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI</p>
+          <h1 className="text-lg font-bold text-foreground">สอน AI</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">จัดการข้อมูลทั้งหมดสำหรับ AI ตอบลูกค้า</p>
         </div>
+        {/* Tabs */}
+        <div className="flex border-b border-border shrink-0 overflow-x-auto">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id ? "border-green-600 text-green-700" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              <tab.icon className="w-4 h-4" /> {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* Actions */}
         <div className="flex gap-2 px-4 py-3 border-b border-border shrink-0">
-          <button onClick={() => handleAddNew("file")} disabled={adding}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
-            <Plus className="w-4 h-4" /> เพิ่มข้อมูล
-          </button>
-          <button onClick={() => handleAddNew("price")} disabled={adding}
-            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
-            <FileText className="w-4 h-4" /> เพิ่มรายการราคา
-          </button>
+          {activeTab === "catalog" ? (
+            <button onClick={handleAddPkg} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
+              <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
+            </button>
+          ) : (
+            <button onClick={() => handleAddKB(kbType)} disabled={adding}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted">
+              <Plus className="w-4 h-4" /> เพิ่มข้อมูล
+            </button>
+          )}
           <button onClick={() => setView("chat")}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors">
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
             ทดสอบ AI
           </button>
         </div>
+        {/* List */}
         <div className="flex-1 overflow-y-auto p-4">
-          <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
+          {activeTab === "catalog" ? (
+            <PackageList packages={packages} selectedId={selectedPkg?.id || null} onSelect={(pkg) => { setSelectedPkg(pkg); setView("edit"); }} loading={loadingPkg} />
+          ) : (
+            <KBItemList items={currentKBItems} selectedId={selectedItem?.id || null} onSelect={(item) => { setSelectedItem(item); setView("edit"); }} onDelete={handleDeleteKB} />
+          )}
         </div>
       </div>
     );
   };
 
-  // ── DESKTOP layout (≥ lg) ─────────────────────────────────────────────────
+  // ── DESKTOP ──
   return (
     <>
-      {/* Mobile */}
-      <div className="lg:hidden h-screen overflow-hidden">
-        <MobileView />
-      </div>
+      <div className="lg:hidden h-screen overflow-hidden"><MobileView /></div>
 
-      {/* Desktop */}
       <div className="hidden lg:flex flex-col h-screen overflow-hidden p-6 gap-4">
         <div className="shrink-0">
-          <h1 className="text-xl font-bold text-foreground">เพิ่มข้อมูล</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">สอนวิธีตอบคำถามของลูกค้าให้ AI ของคุณ</p>
+          <h1 className="text-xl font-bold text-foreground">สอน AI</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">จัดการข้อมูลทั้งหมดสำหรับ AI ตอบลูกค้า</p>
         </div>
 
+        {/* Tabs */}
+        <div className="flex items-center gap-1 shrink-0 border-b border-border">
+          {TABS.map(tab => (
+            <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSelectedItem(null); setSelectedPkg(null); }}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id ? "border-green-600 text-green-700" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              <span className="text-xs text-muted-foreground">
+                ({activeTab === tab.id && tab.id === "catalog" ? packages.length : tab.id === "catalog" ? packages.length : tab.id === "base" ? baseItems.length : priceItems.length})
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Action bar */}
         <div className="flex gap-2 shrink-0">
-          <button onClick={() => handleAddNew("file")} disabled={adding}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
-            <Plus className="w-4 h-4" /> เพิ่มข้อมูล
-          </button>
-          <button onClick={() => handleAddNew("price")} disabled={adding}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted transition-colors">
-            <FileText className="w-4 h-4" /> เพิ่มรายการราคา
-          </button>
+          {activeTab === "catalog" ? (
+            <button onClick={handleAddPkg}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
+              <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
+            </button>
+          ) : (
+            <button onClick={() => handleAddKB(kbType)} disabled={adding}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted">
+              <Plus className="w-4 h-4" /> เพิ่มข้อมูล
+            </button>
+          )}
         </div>
 
+        {/* Content */}
         <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
-          {/* List */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            <div className="overflow-y-auto flex-1">
-              <KBItemList items={items} selectedId={selectedItem?.id || null} onSelect={handleSelect} onDelete={handleDelete} />
-            </div>
+          <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
+            {activeTab === "catalog" ? (
+              <PackageList packages={packages} selectedId={selectedPkg?.id || null} onSelect={setSelectedPkg} loading={loadingPkg} />
+            ) : (
+              <KBItemList items={currentKBItems} selectedId={selectedItem?.id || null} onSelect={setSelectedItem} onDelete={handleDeleteKB} />
+            )}
           </div>
-
-          {/* Chat test */}
           <div className="w-96 shrink-0 min-h-0 flex flex-col">
             <KBChatTest />
           </div>
         </div>
 
-        {/* Edit form Dialog */}
-        <Dialog open={!!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
+        {/* KB Edit Dialog */}
+        <Dialog open={activeTab !== "catalog" && !!selectedItem} onOpenChange={(open) => { if (!open) setSelectedItem(null); }}>
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>แก้ไขข้อมูล</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>แก้ไขข้อมูล</DialogTitle></DialogHeader>
             {selectedItem && (
-              <KBEditForm
-                key={selectedItem.id + "-dialog"}
-                item={selectedItem}
-                onSaved={() => { fetchItems(); setSelectedItem(null); }}
-                onDeleted={() => handleDelete(selectedItem.id)}
-                onCancel={() => setSelectedItem(null)}
-              />
+              <KBEditForm key={selectedItem.id + "-dlg"} item={selectedItem}
+                onSaved={() => { refreshKB(); setSelectedItem(null); }}
+                onDeleted={() => handleDeleteKB(selectedItem.id)}
+                onCancel={() => setSelectedItem(null)} />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Package Edit Dialog */}
+        <Dialog open={activeTab === "catalog" && !!selectedPkg} onOpenChange={(open) => { if (!open) setSelectedPkg(null); }}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{selectedPkg?.id ? "แก้ไขแพ็กเกจ" : "เพิ่มแพ็กเกจใหม่"}</DialogTitle></DialogHeader>
+            {selectedPkg && (
+              <PackageCatalogForm key={selectedPkg.id || "new-dlg"} item={selectedPkg}
+                onSaved={refreshPkgs} onDeleted={handleDeletePkg}
+                onCancel={() => setSelectedPkg(null)} />
             )}
           </DialogContent>
         </Dialog>
