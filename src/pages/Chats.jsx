@@ -565,33 +565,61 @@ export default function Chats() {
           </div>
 
           {/* Input Bar */}
-          <form onSubmit={sendMessage} className="px-3 lg:px-4 py-3 border-t border-border bg-card flex items-center gap-2">
-            {/* Image upload */}
-            <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleImageUpload} />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 disabled:opacity-40"
-              title="แนบไฟล์ (รูปภาพ, วิดีโอ, PDF)"
-            >
-              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
-            </button>
-
-            <input
-              type="text" value={newMessage} onChange={e => setNewMessage(e.target.value)}
-              placeholder={selectedCustomer?.line_user_id ? "พิมพ์ข้อความ (ส่งผ่าน LINE)..." : "พิมพ์ข้อความ..."}
-              disabled={sending || uploading}
-              className="flex-1 px-4 py-2.5 rounded-full border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+          <div className="relative border-t border-border bg-card">
+            <QuickResponsePopup
+              show={showQuickReply}
+              filter={quickFilter}
+              onSelect={(resp) => {
+                handleUseResponse(resp);
+                setShowQuickReply(false);
+                setNewMessage("");
+                setQuickFilter("");
+              }}
+              onClose={() => { setShowQuickReply(false); setQuickFilter(""); }}
             />
-            <button
-              type="submit"
-              disabled={sending || !newMessage.trim() || uploading}
-              className="h-10 px-5 rounded-full font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-40 bg-green-600 text-white hover:bg-green-700 shrink-0"
-            >
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /><span>ส่ง</span></>}
-            </button>
-          </form>
+            <form onSubmit={sendMessage} className="px-3 lg:px-4 py-3 flex items-center gap-2">
+              {/* Image upload */}
+              <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleImageUpload} />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-9 h-9 rounded-full flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors shrink-0 disabled:opacity-40"
+                title="แนบไฟล์"
+              >
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+
+              <input
+                type="text" value={newMessage}
+                onChange={e => {
+                  const val = e.target.value;
+                  setNewMessage(val);
+                  if (val.startsWith("/")) {
+                    setShowQuickReply(true);
+                    setQuickFilter(val.slice(1));
+                  } else {
+                    if (showQuickReply) { setShowQuickReply(false); setQuickFilter(""); }
+                  }
+                }}
+                onKeyDown={e => {
+                  if (e.key === "/" && !newMessage) {
+                    // will be handled by onChange
+                  }
+                }}
+                placeholder='พิมพ์ข้อความ หรือพิมพ์ "/" เพื่อใช้ข้อความสำเร็จรูป'
+                disabled={sending || uploading}
+                className="flex-1 px-4 py-2.5 rounded-full border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+              />
+              <button
+                type="submit"
+                disabled={sending || !newMessage.trim() || uploading || showQuickReply}
+                className="h-10 px-5 rounded-full font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-40 bg-green-600 text-white hover:bg-green-700 shrink-0"
+              >
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /><span>ส่ง</span></>}
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
