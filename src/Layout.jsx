@@ -13,6 +13,7 @@ const allNavItems = [
   { page: "Dashboard", label: "Dashboard", icon: LayoutDashboard },
   { page: "Chats", label: "จัดการแชท", icon: MessageSquare },
   { page: "Knowledge", label: "สอน AI", icon: BookOpen },
+
   { page: "RoleManagement", label: "จัดการผู้ใช้", icon: Users },
   { page: "Settings", label: "ตั้งค่า", icon: Settings },
 ];
