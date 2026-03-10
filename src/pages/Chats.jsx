@@ -6,6 +6,7 @@ import {
 import CustomerNameEditor from "@/components/chats/CustomerNameEditor.jsx";
 import AutoResponseManager from "@/components/chats/AutoResponseManager.jsx";
 import StatusSelector from "@/components/chats/StatusSelector.jsx";
+import ImagePreviewModal from "@/components/chats/ImagePreviewModal.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -51,8 +52,25 @@ function getFileType(url = "") {
 
 // ─── Message Content ─────────────────────────────────────────────────────────
 
-function MessageContent({ text }) {
+function MessageContent({ text, onImageClick }) {
   const parts = text.split("\n");
+
+  const downloadFile = async (url, filename) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(url, "_blank");
+    }
+  };
+
   return (
     <div className="text-sm whitespace-pre-line leading-relaxed">
       {parts.map((part, i) => {
@@ -62,29 +80,28 @@ function MessageContent({ text }) {
           const type = getFileType(url);
           if (type === "image") {
             return (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                <img src={url} alt="รูปภาพ" className="max-w-[240px] rounded-xl mt-1 cursor-pointer hover:opacity-90 transition-opacity shadow-sm" />
-              </a>
+              <img key={i} src={url} alt="รูปภาพ"
+                onClick={() => onImageClick?.(url)}
+                className="max-w-[240px] rounded-xl mt-1 cursor-pointer hover:opacity-90 transition-opacity shadow-sm" />
             );
           }
           if (type === "video") {
             return <video key={i} src={url} controls className="max-w-[280px] rounded-xl mt-1 shadow-sm" />;
           }
+          const filename = url.split("/").pop().split("?")[0] || "ไฟล์แนบ";
           if (type === "pdf") {
             return (
-              <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+              <button key={i} onClick={() => downloadFile(url, filename)}
                 className="flex items-center gap-2 mt-1 px-3 py-2 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors text-xs text-red-700 w-fit">
-                📄 เปิดไฟล์ PDF
-              </a>
+                📄 ดาวน์โหลด PDF
+              </button>
             );
           }
-          // Other files
-          const filename = url.split("/").pop().split("?")[0] || "ไฟล์แนบ";
           return (
-            <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+            <button key={i} onClick={() => downloadFile(url, filename)}
               className="flex items-center gap-2 mt-1 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors text-xs text-blue-700 w-fit">
-              📎 {filename}
-            </a>
+              📎 ดาวน์โหลด {filename}
+            </button>
           );
         }
         return <span key={i}>{part}{i < parts.length - 1 ? "\n" : ""}</span>;
