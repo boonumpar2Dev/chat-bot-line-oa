@@ -286,7 +286,8 @@ export default function Chats() {
     e.target.value = "";
     setUploading(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await doSend("", "image", file_url);
+    const urls = Array.isArray(file_url) ? file_url : [file_url];
+    await doSend("", "image", urls);
     setUploading(false);
   };
 
