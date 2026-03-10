@@ -1,4 +1,4 @@
-import { Bot, Clock, Bell, Shield, Save, Loader2, Plus, Trash2 } from "lucide-react";
+import { Bot, Clock, Bell, Shield, Save, Loader2, Plus, Trash2, AlertTriangle, MessageSquareText } from "lucide-react";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
@@ -10,6 +10,8 @@ const defaultConfig = {
   schedule_enabled: false,
   start_time: "18:00",
   end_time: "08:00",
+  sla_hours: 24,
+  fallback_message: "ขอบคุณที่ติดต่อมาค่ะ ขณะนี้อยู่นอกเวลาทำการ เจ้าหน้าที่จะรีบติดต่อกลับโดยเร็วที่สุดนะคะ 🙏",
   strict_rules: [
     "ห้ามเสนอส่วนลดหรือเงื่อนไขพิเศษนอกเหนือจาก Knowledge Base",
     "ห้าม AI แต่งเรื่องหรือสร้างข้อมูลเอง (Zero Hallucination)",
@@ -39,6 +41,8 @@ export default function Settings() {
         schedule_enabled: s.schedule_enabled ?? false,
         start_time: s.start_time ?? "18:00",
         end_time: s.end_time ?? "08:00",
+        sla_hours: s.sla_hours ?? 24,
+        fallback_message: s.fallback_message ?? defaultConfig.fallback_message,
         strict_rules: Array.isArray(s.strict_rules) && s.strict_rules.length > 0
           ? s.strict_rules
           : defaultConfig.strict_rules,

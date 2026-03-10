@@ -175,9 +175,14 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className="max-w-[85%] space-y-2">
               <div className={`px-3 py-2 rounded-xl text-sm ${
-                msg.role === "user" ? "bg-green-600 text-white rounded-br-sm" : "bg-muted text-foreground rounded-bl-sm"
+                msg.role === "user" ? "bg-green-600 text-white rounded-br-sm" 
+                  : msg.isFallback ? "bg-amber-50 text-amber-800 border border-amber-200 rounded-bl-sm"
+                  : "bg-muted text-foreground rounded-bl-sm"
               }`}>
                 <span className="whitespace-pre-line">{msg.content}</span>
+                {msg.confidence && !msg.isFallback && (
+                  <div className="mt-1 text-[10px] opacity-60">Confidence: {msg.confidence}%</div>
+                )}
               </div>
               {msg.images?.length > 0 && (
                 <div className="flex flex-wrap gap-2">
