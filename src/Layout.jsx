@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import {
   LayoutDashboard, MessageSquare, BookOpen, Settings,
   LogOut, Bot, ChevronLeft, ChevronRight, Users, Loader2
@@ -42,6 +43,40 @@ export default function Layout({ children, currentPageName }) {
       </div>
     );
   }
+
+  const navigate = useNavigate();
+  const totalUnread = useRef(0);
+
+  // Global real-time notification for new customer messages
+  useEffect(() => {
+    if (!authChecked) return;
+    // Track total unread across all customers for badge
+    base44.entities.Customer.list("-last_message_at", 200).then(custs => {
+      totalUnread.current = (custs || []).reduce((sum, c) => sum + (c.unread_count || 0), 0);
+    });
+
+    const unsub = base44.entities.Customer.subscribe((event) => {
+      if (event.type === "update" && event.data && (event.data.unread_count || 0) > 0) {
+        // Only show toast if NOT on Chats page
+        if (currentPageName !== "Chats") {
+          const name = event.data.nickname || event.data.display_name || "ลูกค้า";
+          const snippet = event.data.last_message_snippet || "ส่งข้อความใหม่";
+          toast.info(
+            `ข้อความใหม่จาก ${name}`,
+            {
+              description: snippet.length > 50 ? snippet.slice(0, 50) + "..." : snippet,
+              duration: 6000,
+              action: {
+                label: "เปิดแชท",
+                onClick: () => navigate(createPageUrl("Chats") + "?customer=" + event.data.id),
+              },
+            }
+          );
+        }
+      }
+    });
+    return unsub;
+  }, [authChecked, currentPageName]);
 
   const navItems = user?.role === 'executive'
     ? [allNavItems[0]]
