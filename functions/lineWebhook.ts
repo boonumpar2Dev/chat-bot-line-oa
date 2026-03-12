@@ -125,15 +125,20 @@ Deno.serve(async (req) => {
       // Only process AI reply for text messages
       if (!isTextMessage) continue;
 
-      // Get AI settings
-      const settingsList = await base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' });
-      const cfg = settingsList[0] || {};
-
       // ──── Stage Control: Skip AI for critical statuses ────
       if (AI_OFF_STATUSES.includes(customer.status)) continue;
 
       // ──── Check if AI is manually disabled for this customer ────
       if (!customer.ai_active) continue;
+
+      // ──── Fetch all AI data in parallel for speed ────
+      const [settingsList, recentConvs, kb, pkgs] = await Promise.all([
+        base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
+        base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, 'created_date', 50),
+        base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' }),
+        base44.asServiceRole.entities.CateringPackage.filter({ is_active: true }),
+      ]);
+      const cfg = settingsList[0] || {};
 
       // ──── Global AI toggle ────
       if (cfg.ai_enabled === false) continue;
@@ -152,13 +157,8 @@ Deno.serve(async (req) => {
 
       // ──── Handoff Cooldown: check last admin message ────
       const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
-      const recentConvs = await base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, 'created_date', 50);
       const lastAdmin = [...recentConvs].reverse().find(m => m.sender === 'admin');
       if (lastAdmin && Date.now() - new Date(lastAdmin.created_date).getTime() < cooldownMs) continue;
-
-      // ──── Build context from knowledge base + catering packages ────
-      const kb = await base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' });
-      const pkgs = await base44.asServiceRole.entities.CateringPackage.filter({ is_active: true });
       const itemsWithImages = kb.filter(i => getItemImages(i).length > 0);
 
       // Add packages as image sources too
