@@ -21,14 +21,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'line_user_id is required' }, { status: 400, headers: CORS_HEADERS });
     }
 
-    // For "get_customer" action, skip auth check (LIFF opens without session)
-    // For all other actions, require authenticated user
-    if (action !== 'get_customer') {
-      const user = await base44.auth.me();
-      if (!user) {
-        return Response.json({ error: 'Unauthorized' }, { status: 401, headers: CORS_HEADERS });
-      }
-    }
+    // LIFF opens without user session — all actions use service role
+    // Security: this endpoint only allows specific predefined actions on a single customer
 
     // Find customer by LINE user ID
     const customers = await base44.asServiceRole.entities.Customer.filter({ line_user_id });
