@@ -67,17 +67,19 @@ const AuthenticatedApp = () => {
 function App() {
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <Routes>
-            <Route path="/LiffPanel" element={<LiffPanel />} />
-            <Route path="*" element={<AuthenticatedApp />} />
-          </Routes>
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        <Routes>
+          <Route path="/LiffPanel" element={<LiffPanel />} />
+          <Route path="*" element={
+            <AuthProvider>
+              <AuthenticatedApp />
+              <Toaster />
+            </AuthProvider>
+          } />
+        </Routes>
+      </Router>
+    </QueryClientProvider>
   )
 }
 
