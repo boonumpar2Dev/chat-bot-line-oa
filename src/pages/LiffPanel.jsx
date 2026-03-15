@@ -33,11 +33,6 @@ export default function LiffPanel() {
 
   const loadCustomer = async () => {
     setLoading(true);
-    const res = await base44.functions.invoke("liffAdminPanel", {
-      action: "mute", // dummy call to get customer — we'll fix with a proper get
-      line_user_id: targetUid,
-    });
-    // Actually, let's just use a dedicated "get" by calling the entity directly
     const customers = await base44.entities.Customer.filter({ line_user_id: targetUid });
     if (customers.length === 0) {
       setError("ไม่พบลูกค้ารายนี้ในระบบ");
