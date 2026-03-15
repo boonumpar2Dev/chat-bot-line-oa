@@ -10,6 +10,7 @@ import StagedMessageBar from "@/components/chats/StagedMessageBar.jsx";
 import StatusSelector from "@/components/chats/StatusSelector.jsx";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal.jsx";
 import CustomerInfoPanel from "@/components/chats/CustomerInfoPanel.jsx";
+import LiffLinkButton from "@/components/chats/LiffLinkButton.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
