@@ -58,7 +58,6 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
-      <Route path="/LiffPanel" element={<LiffPanel />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
