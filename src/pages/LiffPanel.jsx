@@ -12,8 +12,16 @@ const STATUS_LABEL = {
 };
 
 export default function LiffPanel() {
+  // LIFF encodes the original query inside liff.state, e.g. ?liff.state=%3FtargetUid%3Dxxx
   const params = new URLSearchParams(window.location.search);
-  const targetUid = params.get("targetUid") || "";
+  let targetUid = params.get("targetUid") || "";
+  if (!targetUid) {
+    const liffState = params.get("liff.state") || "";
+    if (liffState) {
+      const inner = new URLSearchParams(liffState.replace(/^\?/, ""));
+      targetUid = inner.get("targetUid") || "";
+    }
+  }
 
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
