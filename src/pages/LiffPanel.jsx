@@ -11,17 +11,21 @@ const STATUS_LABEL = {
   cancelled: "ยกเลิก",
 };
 
-export default function LiffPanel() {
-  // LIFF encodes the original query inside liff.state, e.g. ?liff.state=%3FtargetUid%3Dxxx
+function getTargetUid() {
   const params = new URLSearchParams(window.location.search);
-  let targetUid = params.get("targetUid") || "";
-  if (!targetUid) {
+  let uid = params.get("targetUid") || "";
+  if (!uid) {
     const liffState = params.get("liff.state") || "";
     if (liffState) {
       const inner = new URLSearchParams(liffState.replace(/^\?/, ""));
-      targetUid = inner.get("targetUid") || "";
+      uid = inner.get("targetUid") || "";
     }
   }
+  return uid;
+}
+
+export default function LiffPanel() {
+  const targetUid = getTargetUid();
 
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,39 +45,43 @@ export default function LiffPanel() {
 
   const loadCustomer = async () => {
     setLoading(true);
-    const customers = await base44.entities.Customer.filter({ line_user_id: targetUid });
-    if (customers.length === 0) {
-      setError("ไม่พบลูกค้ารายนี้ในระบบ");
-      setLoading(false);
-      return;
+    try {
+      const res = await base44.functions.invoke("liffAdminPanel", {
+        action: "get_customer",
+        line_user_id: targetUid,
+      });
+      if (res.data?.ok && res.data.customer) {
+        setCustomer(res.data.customer);
+        setEventDate(res.data.customer.event_date || "");
+      } else {
+        setError(res.data?.error || "ไม่พบลูกค้ารายนี้ในระบบ");
+      }
+    } catch (e) {
+      setError("ไม่สามารถโหลดข้อมูลได้ — " + (e.message || ""));
     }
-    setCustomer(customers[0]);
-    setEventDate(customers[0].event_date || "");
     setLoading(false);
-  };
-
-  // Reload customer directly from entity (lighter)
-  const refreshCustomer = async () => {
-    const customers = await base44.entities.Customer.filter({ line_user_id: targetUid });
-    if (customers[0]) {
-      setCustomer(customers[0]);
-      setEventDate(customers[0].event_date || "");
-    }
   };
 
   const doAction = async (action, extra = {}) => {
     setActionLoading(action);
     setToast(null);
-    const res = await base44.functions.invoke("liffAdminPanel", {
-      action,
-      line_user_id: targetUid,
-      ...extra,
-    });
-    if (res.data?.ok) {
-      setToast({ type: "success", message: res.data.message });
-      await refreshCustomer();
-    } else {
-      setToast({ type: "error", message: res.data?.error || "เกิดข้อผิดพลาด" });
+    try {
+      const res = await base44.functions.invoke("liffAdminPanel", {
+        action,
+        line_user_id: targetUid,
+        ...extra,
+      });
+      if (res.data?.ok) {
+        setToast({ type: "success", message: res.data.message });
+        if (res.data.customer) {
+          setCustomer(res.data.customer);
+          setEventDate(res.data.customer.event_date || "");
+        }
+      } else {
+        setToast({ type: "error", message: res.data?.error || "เกิดข้อผิดพลาด" });
+      }
+    } catch (e) {
+      setToast({ type: "error", message: "เกิดข้อผิดพลาด: " + (e.message || "") });
     }
     setActionLoading(null);
   };
@@ -123,7 +131,7 @@ export default function LiffPanel() {
             )}
             <div className="flex-1 min-w-0">
               <div className="font-bold text-gray-900 truncate">
-                {customer.nickname || customer.display_name || "ไม่ทราบชื่อ"}
+                {customer.display_name || "ไม่ทราบชื่อ"}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
@@ -221,7 +229,7 @@ export default function LiffPanel() {
           )}
         </div>
 
-        {/* LIFF Link Info */}
+        {/* Footer */}
         <div className="text-center text-xs text-gray-400 py-2">
           LIFF Admin Panel • {customer.line_user_id?.slice(0, 10)}...
         </div>
