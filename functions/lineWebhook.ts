@@ -38,10 +38,35 @@ Deno.serve(async (req) => {
     const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
 
     for (const event of events) {
+      const lineUserId = event.source?.userId;
+      
+      // ──── Chat Control Detection: mode "standby" means admin switched to Manual Chat ────
+      if (event.mode === 'standby' && lineUserId) {
+        // LINE sent this event in standby mode — admin is chatting manually
+        // Set manual_chat_until timer based on global setting
+        const existing = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
+        if (existing[0]) {
+          const customer = existing[0];
+          // Only set timer if not already set (avoid resetting on every standby event)
+          if (!customer.manual_chat_until || new Date(customer.manual_chat_until) < new Date()) {
+            const [cfgList] = await Promise.all([
+              base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
+            ]);
+            const manualHours = cfgList[0]?.manual_chat_hours || 360; // default 15 days
+            const until = new Date(Date.now() + manualHours * 3600000).toISOString();
+            await base44.asServiceRole.entities.Customer.update(customer.id, {
+              ai_active: false,
+              manual_chat_until: until,
+            });
+            console.log(`[ChatControl] Muted AI for ${lineUserId} until ${until} (${manualHours}h)`);
+          }
+        }
+        continue; // Don't process standby events further — bot should not reply
+      }
+
       if (event.type !== 'message') continue;
 
       const msgType = event.message?.type;
-      const lineUserId = event.source.userId;
       const replyToken = event.replyToken;
 
       // Determine message text based on type
