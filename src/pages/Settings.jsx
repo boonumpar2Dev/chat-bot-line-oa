@@ -7,6 +7,7 @@ const defaultConfig = {
   ai_enabled: true,
   confidence_threshold: 75,
   cooldown_minutes: 1,
+  manual_chat_hours: 360,
   schedule_enabled: false,
   start_time: "18:00",
   end_time: "08:00",
@@ -37,6 +38,7 @@ export default function Settings() {
         ai_enabled: s.ai_enabled ?? true,
         confidence_threshold: s.confidence_threshold ?? 75,
         cooldown_minutes: s.cooldown_minutes ?? 1,
+        manual_chat_hours: s.manual_chat_hours ?? 360,
         schedule_enabled: s.schedule_enabled ?? false,
         start_time: s.start_time ?? "18:00",
         end_time: s.end_time ?? "08:00",
@@ -125,6 +127,34 @@ export default function Settings() {
             onChange={(e) => update("cooldown_minutes", Number(e.target.value))}
             className="w-full accent-blue-500" />
           <p className="text-xs text-muted-foreground">AI จะรอ {config.cooldown_minutes} นาที หลังจากแอดมินส่งข้อความสุดท้าย ก่อนกลับมาทำงาน</p>
+        </div>
+        <div className="border-t border-border pt-4 space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            ⏱ Manual Chat Timer: {config.manual_chat_hours} ชั่วโมง ({Math.round(config.manual_chat_hours / 24 * 10) / 10} วัน)
+          </label>
+          <input type="range" min="1" max="720" step="1" value={config.manual_chat_hours}
+            onChange={(e) => update("manual_chat_hours", Number(e.target.value))}
+            className="w-full accent-blue-500" />
+          <p className="text-xs text-muted-foreground">
+            เมื่อแอดมินกด "แชทแบบแมนนวล" บน LINE OA → AI จะถูก Mute เป็นเวลา <strong>{config.manual_chat_hours} ชม.</strong> (Override ข้อจำกัด 1 นาทีของ LINE)
+          </p>
+          <div className="flex gap-2 mt-2">
+            {[1, 24, 72, 168, 360, 720].map(h => (
+              <button key={h} onClick={() => update("manual_chat_hours", h)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${config.manual_chat_hours === h ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                {h < 24 ? `${h}ชม.` : `${Math.round(h / 24)}วัน`}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <div className="text-xs font-medium text-blue-700 mb-1">📱 วิธีใช้ Manual Chat Timer</div>
+          <p className="text-xs text-blue-600">
+            เมื่อแอดมินกดปุ่มสลับโหมดเป็น "แชทแบบแมนนวล" ในแอป LINE → ระบบจะดักจับสัญญาณอัตโนมัติ และ Mute AI ตามเวลาที่ตั้งไว้ข้างบน แม้ LINE จะสลับกลับเป็นบอทหลัง 1 นาที AI ของเราจะยัง Mute อยู่จนครบกำหนด
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            💡 แอดมินสามารถกด "ปลุกบอททันที" ในหน้าแชทหรือ LIFF เพื่อล้าง Timer และเปิด AI กลับก่อนกำหนดได้
+          </p>
         </div>
       </div>
 
