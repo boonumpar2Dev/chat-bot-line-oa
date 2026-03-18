@@ -150,6 +150,12 @@ Deno.serve(async (req) => {
       // Only process AI reply for text messages
       if (!isTextMessage) continue;
 
+      // ──── Keyword Filtering: skip trivial messages to save tokens ────
+      const trimmedMsg = messageText.trim().toLowerCase();
+      const trivialPatterns = ['👍', '👌', 'ok', 'oki', 'ได้เลย', 'โอเค', 'ขอบคุณ', 'ขอบคุณค่ะ', 'ขอบคุณครับ', 'ค่ะ', 'ครับ', 'ดีค่ะ', 'ดีครับ'];
+      if (trimmedMsg.length <= 3 && !trimmedMsg.match(/[?？]/)) continue;
+      if (trivialPatterns.includes(trimmedMsg)) continue;
+
       // ──── Stage Control: Skip AI for critical statuses ────
       if (AI_OFF_STATUSES.includes(customer.status)) continue;
 
