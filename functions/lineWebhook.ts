@@ -53,6 +53,8 @@ Deno.serve(async (req) => {
     for (const event of events) {
       const lineUserId = event.source?.userId;
       
+      console.log(`[Event] type=${event.type} mode=${event.mode} userId=${lineUserId}`);
+
       // ──── Chat Control Detection: mode "standby" means admin switched to Manual Chat ────
       if (event.mode === 'standby' && lineUserId) {
         // LINE sent this event in standby mode — admin is chatting manually
