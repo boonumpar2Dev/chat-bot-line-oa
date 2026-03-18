@@ -253,8 +253,8 @@ Deno.serve(async (req) => {
       ];
       const confidenceThreshold = cfg.confidence_threshold || 75;
 
-      // ──── Build conversation history for context ────
-      const recentMsgs = recentConvs.slice(-10).map(m => {
+      // ──── Build conversation history for context (limited to save tokens) ────
+      const recentMsgs = recentConvs.slice(-6).map(m => {
         const role = m.sender === 'customer' ? 'ลูกค้า' : (m.sender === 'admin' ? 'แอดมิน' : 'AI');
         return `${role}: ${m.message}`;
       }).join('\n');
