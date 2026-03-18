@@ -153,6 +153,12 @@ Deno.serve(async (req) => {
       // ──── Stage Control: Skip AI for critical statuses ────
       if (AI_OFF_STATUSES.includes(customer.status)) continue;
 
+      // ──── Check Manual Chat Timer: override LINE's 1-min limit ────
+      if (customer.manual_chat_until && new Date(customer.manual_chat_until) > new Date()) {
+        console.log(`[ManualTimer] AI blocked for ${lineUserId} — timer until ${customer.manual_chat_until}`);
+        continue;
+      }
+
       // ──── Check if AI is manually disabled for this customer ────
       if (!customer.ai_active) continue;
 
