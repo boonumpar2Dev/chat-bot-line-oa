@@ -34,7 +34,20 @@ Deno.serve(async (req) => {
     }
 
     const { events = [] } = JSON.parse(body);
-    const base44 = createClientFromRequest(req);
+    if (events.length === 0) {
+      return Response.json({ ok: true }); // LINE verification ping
+    }
+
+    let base44;
+    try {
+      base44 = createClientFromRequest(req);
+    } catch (e) {
+      console.error('SDK init error (non-fatal for webhook):', e.message);
+      // Fallback: create from minimal request with just app context
+      base44 = createClientFromRequest(new Request(req.url, {
+        headers: { 'Content-Type': 'application/json' },
+      }));
+    }
     const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
 
     for (const event of events) {
