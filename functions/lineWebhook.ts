@@ -169,17 +169,27 @@ Deno.serve(async (req) => {
       if (trimmedMsg.length <= 3 && !trimmedMsg.match(/[?？]/)) continue;
       if (trivialPatterns.includes(trimmedMsg)) continue;
 
+      // ──── Re-read customer to catch admin handoff that happened between message save and now ────
+      const freshCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
+      const freshCustomer = freshCustomers[0] || customer;
+
       // ──── Stage Control: Skip AI for critical statuses ────
-      if (AI_OFF_STATUSES.includes(customer.status)) continue;
+      if (AI_OFF_STATUSES.includes(freshCustomer.status)) {
+        console.log(`[StageControl] AI blocked for ${lineUserId} — status: ${freshCustomer.status}`);
+        continue;
+      }
 
       // ──── Check Manual Chat Timer: override LINE's 1-min limit ────
-      if (customer.manual_chat_until && new Date(customer.manual_chat_until) > new Date()) {
-        console.log(`[ManualTimer] AI blocked for ${lineUserId} — timer until ${customer.manual_chat_until}`);
+      if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) {
+        console.log(`[ManualTimer] AI blocked for ${lineUserId} — timer until ${freshCustomer.manual_chat_until}`);
         continue;
       }
 
       // ──── Check if AI is manually disabled for this customer ────
-      if (!customer.ai_active) continue;
+      if (!freshCustomer.ai_active) {
+        console.log(`[AIDisabled] AI blocked for ${lineUserId} — ai_active is false`);
+        continue;
+      }
 
       // ──── Fetch all AI data in parallel for speed ────
       const [settingsList, recentConvs, kb, pkgs] = await Promise.all([
