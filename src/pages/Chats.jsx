@@ -346,10 +346,14 @@ export default function Chats() {
       : c
     ));
 
-    // Handoff: auto-pause AI when admin sends a message
-    if (selectedCustomer?.ai_active) {
-      await base44.entities.Customer.update(selectedCustomer.id, { ai_active: false });
-      setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ai_active: false } : c));
+    // Handoff: auto-pause AI when admin sends a message + set manual timer
+    if (selectedCustomer) {
+      const manualUntil = new Date(Date.now() + 60 * 60000).toISOString(); // 1 hour default
+      await base44.entities.Customer.update(selectedCustomer.id, { 
+        ai_active: false, 
+        manual_chat_until: manualUntil,
+      });
+      setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ai_active: false, manual_chat_until: manualUntil } : c));
     }
 
     if (selectedCustomer?.line_user_id) {
