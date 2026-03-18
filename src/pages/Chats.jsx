@@ -11,6 +11,7 @@ import StatusSelector from "@/components/chats/StatusSelector.jsx";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal.jsx";
 import CustomerInfoPanel from "@/components/chats/CustomerInfoPanel.jsx";
 import LiffLinkButton from "@/components/chats/LiffLinkButton.jsx";
+import ManualTimerBanner from "@/components/chats/ManualTimerBanner.jsx";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -563,6 +564,11 @@ export default function Chats() {
               onUpdate={updated => setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))}
             />
           )}
+
+          <ManualTimerBanner
+            customer={selectedCustomer}
+            onUpdate={updated => setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))}
+          />
 
           {selectedCustomer.ai_active && (
             <CooldownBanner messages={messages} cooldownMinutes={cooldownMinutes} />
