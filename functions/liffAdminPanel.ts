@@ -43,6 +43,7 @@ Deno.serve(async (req) => {
           ai_active: customer.ai_active,
           event_date: customer.event_date,
           line_user_id: customer.line_user_id,
+          manual_chat_until: customer.manual_chat_until,
         },
       }, { headers: CORS_HEADERS });
     }
@@ -81,8 +82,15 @@ Deno.serve(async (req) => {
       }
 
       case 'unmute': {
-        updateData = { ai_active: true };
+        updateData = { ai_active: true, manual_chat_until: null };
         message = 'เปิด AI (Unmute) สำเร็จ';
+        break;
+      }
+
+      case 'resume_bot': {
+        // ปลุกบอททันที — ล้าง timer + เปิด AI
+        updateData = { ai_active: true, manual_chat_until: null };
+        message = 'ปลุกบอทสำเร็จ — AI กลับมาทำงานทันที';
         break;
       }
 
@@ -105,6 +113,7 @@ Deno.serve(async (req) => {
         ai_active: updated.ai_active,
         event_date: updated.event_date,
         line_user_id: updated.line_user_id,
+        manual_chat_until: updated.manual_chat_until,
       },
     }, { headers: CORS_HEADERS });
   } catch (err) {
