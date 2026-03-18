@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
-import { CalendarDays, X, Bot, BotOff, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { CalendarDays, X, Bot, BotOff, Loader2, CheckCircle2, AlertCircle, Zap, Timer } from "lucide-react";
 
 const STATUS_LABEL = {
   new: "ลูกค้าใหม่",
@@ -115,6 +115,19 @@ export default function LiffPanel() {
 
   const isAiActive = customer?.ai_active;
   const hasJob = !!customer?.event_date;
+  const hasTimer = customer?.manual_chat_until && new Date(customer.manual_chat_until) > new Date();
+
+  // Format timer remaining
+  const getTimerText = () => {
+    if (!hasTimer) return "";
+    const diff = new Date(customer.manual_chat_until).getTime() - Date.now();
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    if (days > 0) return `${days} วัน ${hours} ชม.`;
+    if (hours > 0) return `${hours} ชม. ${mins} นาที`;
+    return `${mins} นาที`;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -198,6 +211,24 @@ export default function LiffPanel() {
             >
               {actionLoading === "cancel_job" ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />}
               ยกเลิกงาน (Unmute AI อัตโนมัติ)
+            </button>
+          </div>
+        )}
+
+        {/* ปลุกบอททันที (Manual Resume) */}
+        {hasTimer && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border border-purple-200">
+            <div className="flex items-center gap-2 text-sm text-purple-700 bg-purple-50 px-3 py-2 rounded-lg mb-3">
+              <Timer className="w-4 h-4 shrink-0" />
+              <span>Manual Chat Timer เหลือ: <strong>{getTimerText()}</strong></span>
+            </div>
+            <button
+              onClick={() => doAction("resume_bot")}
+              disabled={actionLoading === "resume_bot"}
+              className="w-full py-3 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {actionLoading === "resume_bot" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              ปลุกบอททันที (ล้าง Timer)
             </button>
           </div>
         )}
