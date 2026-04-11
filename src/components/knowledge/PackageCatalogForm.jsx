@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Loader2, X, Image as ImageIcon, Save, Bot } from "lucide-react";
+import { Plus, Trash2, Loader2, X, Image as ImageIcon, Save, Bot, Copy } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import CustomAttributesEditor from "./CustomAttributesEditor";
@@ -80,7 +80,7 @@ function PricingRow({ tier, onChange, onRemove }) {
   );
 }
 
-export default function PackageCatalogForm({ item, categories, onSaved, onDeleted, onCancel }) {
+export default function PackageCatalogForm({ item, categories, onSaved, onDeleted, onCancel, onDuplicate }) {
   const [name, setName] = useState(item?.name || "");
   const [category, setCategory] = useState(item?.category || "");
   const [description, setDescription] = useState(item?.description || "");
@@ -255,12 +255,20 @@ export default function PackageCatalogForm({ item, categories, onSaved, onDelete
 
       {/* Actions */}
       <div className="flex items-center justify-between pt-3 border-t border-border">
-        {item?.id ? (
-          <button onClick={handleDelete} disabled={deleting}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors">
-            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} ลบแพ็กเกจ
-          </button>
-        ) : <div />}
+        <div className="flex items-center gap-2">
+          {item?.id && (
+            <button onClick={handleDelete} disabled={deleting}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors">
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} ลบ
+            </button>
+          )}
+          {item?.id && onDuplicate && (
+            <button onClick={() => onDuplicate(item)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-blue-600 hover:bg-blue-50 transition-colors">
+              <Copy className="w-4 h-4" /> คัดลอก
+            </button>
+          )}
+        </div>
         <div className="flex gap-2">
           <button onClick={onCancel} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted transition-colors">ยกเลิก</button>
           <button onClick={handleSave} disabled={saving || !name.trim()}

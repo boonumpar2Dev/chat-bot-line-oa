@@ -57,7 +57,23 @@ export default function Knowledge() {
   };
 
   const handleAddPkg = () => {
-    setSelectedPkg({ name: "", pricing_tiers: [{ guest_count: "", price: "" }] }); // new package marker (no id)
+    setSelectedPkg({ name: "", pricing_tiers: [{ tier_name: "", guest_count: "", price: "" }] });
+    setView("edit");
+  };
+
+  const handleDuplicatePkg = (pkg) => {
+    const copy = {
+      name: pkg.name + " (สำเนา)",
+      category: pkg.category || "",
+      description: pkg.description || "",
+      min_condition: pkg.min_condition || "",
+      pricing_tiers: pkg.pricing_tiers || [],
+      custom_attributes: pkg.custom_attributes || [],
+      ai_instruction: pkg.ai_instruction || "",
+      notes: pkg.notes || "",
+      image_urls: pkg.image_urls || [],
+    };
+    setSelectedPkg(copy);
     setView("edit");
   };
 
@@ -100,7 +116,7 @@ export default function Knowledge() {
             <span className="font-semibold text-foreground">{selectedPkg.id ? "แก้ไขแพ็กเกจ" : "เพิ่มแพ็กเกจใหม่"}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <PackageCatalogForm key={selectedPkg.id || "new"} item={selectedPkg} categories={categories} onSaved={refreshPkgs} onDeleted={handleDeletePkg} onCancel={() => { setView("list"); setSelectedPkg(null); }} />
+            <PackageCatalogForm key={selectedPkg.id || "new"} item={selectedPkg} categories={categories} onSaved={refreshPkgs} onDeleted={handleDeletePkg} onCancel={() => { setView("list"); setSelectedPkg(null); }} onDuplicate={handleDuplicatePkg} />
           </div>
         </div>
       );
@@ -258,7 +274,7 @@ export default function Knowledge() {
             {selectedPkg && (
               <PackageCatalogForm key={selectedPkg.id || "new-dlg"} item={selectedPkg} categories={categories}
                 onSaved={refreshPkgs} onDeleted={handleDeletePkg}
-                onCancel={() => setSelectedPkg(null)} />
+                onCancel={() => setSelectedPkg(null)} onDuplicate={handleDuplicatePkg} />
             )}
           </DialogContent>
         </Dialog>
