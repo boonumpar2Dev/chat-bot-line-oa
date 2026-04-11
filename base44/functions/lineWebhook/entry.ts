@@ -242,12 +242,13 @@ Deno.serve(async (req) => {
             const total = t.total_pax || 0;
             const monk = t.monk_pax || 0;
             const guest = t.guest_pax || (total - monk);
+            const tierLabel = t.tier_name ? `[${t.tier_name}] ` : '';
             if (total > 0 && monk > 0) {
-              s += `\n  - ${total} ท่าน (รวมพระสงฆ์ ${monk} รูป + แขก ${guest} ท่าน): ${t.price}`;
+              s += `\n  - ${tierLabel}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}`;
             } else if (t.guest_count) {
-              s += `\n  - ${t.guest_count}: ${t.price}`;
+              s += `\n  - ${tierLabel}${t.guest_count}: ${t.price}`;
             } else {
-              s += `\n  - ${total || '?'} ท่าน: ${t.price}`;
+              s += `\n  - ${tierLabel}${total || '?'} ท่าน: ${t.price}`;
             }
           });
         }

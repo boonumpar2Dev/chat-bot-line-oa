@@ -23,6 +23,10 @@
       "items": {
         "type": "object",
         "properties": {
+          "tier_name": {
+            "type": "string",
+            "description": "\u0e0a\u0e37\u0e48\u0e2d\u0e40\u0e01\u0e23\u0e14/\u0e40\u0e21\u0e19\u0e39 \u0e40\u0e0a\u0e48\u0e19 \u0e40\u0e01\u0e23\u0e14 A (\u0e1e\u0e23\u0e35\u0e40\u0e21\u0e35\u0e22\u0e21)"
+          },
           "total_pax": {
             "type": "number"
           },

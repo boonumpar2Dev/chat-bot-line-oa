@@ -34,20 +34,26 @@ function PricingRow({ tier, onChange, onRemove }) {
   return (
     <div className="p-3 rounded-lg border border-input bg-card/50 space-y-2">
       <div className="flex items-center gap-2">
+        <div className="w-40 space-y-1">
+          <label className="text-[11px] text-purple-600 font-medium">เกรด/เมนู</label>
+          <input type="text" placeholder="เช่น เกรด A" value={tier.tier_name || ""}
+            onChange={e => onChange({ ...tier, tier_name: e.target.value })}
+            className="w-full px-2.5 py-1.5 rounded-md border border-purple-200 bg-purple-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-purple-300" />
+        </div>
         <div className="flex-1 space-y-1">
-          <label className="text-[11px] text-muted-foreground font-medium">จำนวนรวม (Total)</label>
+          <label className="text-[11px] text-muted-foreground font-medium">จำนวนรวม</label>
           <input type="number" min="0" placeholder="เช่น 40" value={tier.total_pax || ""}
             onChange={e => handleTotalChange(e.target.value)}
             className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div className="flex-1 space-y-1">
-          <label className="text-[11px] text-amber-600 font-medium">พระสงฆ์ (Monk)</label>
+          <label className="text-[11px] text-amber-600 font-medium">พระสงฆ์</label>
           <input type="number" min="0" placeholder="เช่น 9" value={tier.monk_pax || ""}
             onChange={e => handleMonkChange(e.target.value)}
             className="w-full px-2.5 py-1.5 rounded-md border border-amber-200 bg-amber-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
         </div>
-        <div className="flex-1 space-y-1">
-          <label className="text-[11px] text-blue-600 font-medium">แขก (Guest)</label>
+        <div className="w-16 space-y-1">
+          <label className="text-[11px] text-blue-600 font-medium">แขก</label>
           <div className="px-2.5 py-1.5 rounded-md border border-blue-200 bg-blue-50/50 text-sm text-blue-700 font-medium">
             {tier.total_pax ? (guestPax >= 0 ? guestPax : 0) : "—"}
           </div>
@@ -64,7 +70,7 @@ function PricingRow({ tier, onChange, onRemove }) {
       </div>
       {tier.total_pax > 0 && (
         <div className="text-[11px] text-muted-foreground bg-muted/50 px-2.5 py-1 rounded">
-          สรุป: <span className="font-medium text-foreground">{tier.total_pax} ท่าน</span>
+          {tier.tier_name && <><span className="font-medium text-purple-600">{tier.tier_name}</span> — </>}สรุป: <span className="font-medium text-foreground">{tier.total_pax} ท่าน</span>
           {(tier.monk_pax || 0) > 0 && (
             <> = พระสงฆ์ <span className="font-medium text-amber-600">{tier.monk_pax} รูป</span> + แขก <span className="font-medium text-blue-600">{guestPax >= 0 ? guestPax : 0} ท่าน</span></>
           )}
@@ -80,7 +86,7 @@ export default function PackageCatalogForm({ item, categories, onSaved, onDelete
   const [description, setDescription] = useState(item?.description || "");
   const [minCondition, setMinCondition] = useState(item?.min_condition || "");
   const [pricingTiers, setPricingTiers] = useState(
-    item?.pricing_tiers?.length ? item.pricing_tiers : [{ total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]
+    item?.pricing_tiers?.length ? item.pricing_tiers : [{ tier_name: "", total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]
   );
   const [customAttributes, setCustomAttributes] = useState(item?.custom_attributes || []);
   const [aiInstruction, setAiInstruction] = useState(item?.ai_instruction || "");
@@ -92,7 +98,7 @@ export default function PackageCatalogForm({ item, categories, onSaved, onDelete
 
   const updateTier = (idx, tier) => setPricingTiers(prev => prev.map((t, i) => i === idx ? tier : t));
   const removeTier = (idx) => setPricingTiers(prev => prev.filter((_, i) => i !== idx));
-  const addTier = () => setPricingTiers(prev => [...prev, { total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]);
+  const addTier = () => setPricingTiers(prev => [...prev, { tier_name: "", total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]);
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
