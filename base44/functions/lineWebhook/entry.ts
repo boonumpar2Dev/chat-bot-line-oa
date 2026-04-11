@@ -234,6 +234,7 @@ Deno.serve(async (req) => {
       // Build catering package context
       const pkgContext = pkgs.length > 0 ? '\n\n--- แคตตาล็อกแพ็กเกจ ---\n' + pkgs.map(p => {
         let s = `## แพ็กเกจ: ${p.name}`;
+        if (p.category) s += `\nประเภท: ${p.category}`;
         if (p.min_condition) s += `\nเงื่อนไขขั้นต่ำ: ${p.min_condition}`;
         if (p.pricing_tiers?.length > 0) {
           s += '\nราคา:';
@@ -250,8 +251,17 @@ Deno.serve(async (req) => {
             }
           });
         }
-        if (p.description) s += `\nรายละเอียดอาหาร: ${p.description}`;
+        // Custom Attributes (Key-Value)
+        if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
+          s += '\nข้อมูลเพิ่มเติม:';
+          p.custom_attributes.forEach(attr => {
+            if (attr.label && attr.value) s += `\n  - ${attr.label}: ${attr.value}`;
+          });
+        }
+        if (p.description) s += `\nรายละเอียดอาหาร:\n${p.description}`;
         if (p.notes) s += `\nหมายเหตุ: ${p.notes}`;
+        // AI Instruction for this package
+        if (p.ai_instruction) s += `\n🤖 คำสั่ง AI สำหรับแพ็กเกจนี้: ${p.ai_instruction}`;
         if (p.image_urls?.length > 0) s += `\n[มีรูปภาพโบรชัวร์ ${p.image_urls.length} รูป]`;
         return s;
       }).join('\n\n') : '';

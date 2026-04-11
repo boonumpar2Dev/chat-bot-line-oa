@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, Loader2, ArrowLeft, Package, BookOpen, List } from "lucide-react";
+import { Plus, FileText, Loader2, ArrowLeft, Package, BookOpen, List, FolderOpen } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
@@ -7,6 +7,7 @@ import KBEditForm from "@/components/knowledge/KBEditForm.jsx";
 import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
 import PackageList from "@/components/knowledge/PackageList.jsx";
 import PackageCatalogForm from "@/components/knowledge/PackageCatalogForm.jsx";
+import CategoryManager from "@/components/knowledge/CategoryManager.jsx";
 
 const TABS = [
   { id: "base", label: "ข้อมูลส่วนกลาง", icon: BookOpen, desc: "พิธีสงฆ์ อุปกรณ์ ข้อมูลที่ใช้ร่วมกัน" },
@@ -18,18 +19,27 @@ export default function Knowledge() {
   const [activeTab, setActiveTab] = useState("base");
   const [items, setItems] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loadingKB, setLoadingKB] = useState(true);
   const [loadingPkg, setLoadingPkg] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [adding, setAdding] = useState(false);
-  const [view, setView] = useState("list"); // mobile: "list" | "edit" | "chat"
+  const [view, setView] = useState("list");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   useEffect(() => { fetchAll(); }, []);
 
   const fetchAll = async () => {
     base44.entities.KnowledgeBase.list("-created_date").then(data => { setItems(data || []); setLoadingKB(false); });
     base44.entities.CateringPackage.filter({ is_active: true }, "-created_date").then(data => { setPackages(data || []); setLoadingPkg(false); });
+    base44.entities.PackageCategory.list("sort_order").then(data => setCategories(data || []));
+  };
+
+  const refreshCategories = async () => {
+    const data = await base44.entities.PackageCategory.list("sort_order");
+    setCategories(data || []);
   };
 
   // Split KB items by type
@@ -90,7 +100,7 @@ export default function Knowledge() {
             <span className="font-semibold text-foreground">{selectedPkg.id ? "แก้ไขแพ็กเกจ" : "เพิ่มแพ็กเกจใหม่"}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
-            <PackageCatalogForm key={selectedPkg.id || "new"} item={selectedPkg} onSaved={refreshPkgs} onDeleted={handleDeletePkg} onCancel={() => { setView("list"); setSelectedPkg(null); }} />
+            <PackageCatalogForm key={selectedPkg.id || "new"} item={selectedPkg} categories={categories} onSaved={refreshPkgs} onDeleted={handleDeletePkg} onCancel={() => { setView("list"); setSelectedPkg(null); }} />
           </div>
         </div>
       );
@@ -137,9 +147,14 @@ export default function Knowledge() {
         {/* Actions */}
         <div className="flex gap-2 px-4 py-3 border-b border-border shrink-0">
           {activeTab === "catalog" ? (
-            <button onClick={handleAddPkg} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
-              <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
-            </button>
+            <>
+              <button onClick={handleAddPkg} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
+                <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
+              </button>
+              <button onClick={() => setShowCategoryManager(true)} className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted">
+                <FolderOpen className="w-4 h-4" /> ประเภท
+              </button>
+            </>
           ) : (
             <button onClick={() => handleAddKB(kbType)} disabled={adding}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted">
@@ -154,7 +169,7 @@ export default function Knowledge() {
         {/* List */}
         <div className="flex-1 overflow-y-auto p-4">
           {activeTab === "catalog" ? (
-            <PackageList packages={packages} selectedId={selectedPkg?.id || null} onSelect={(pkg) => { setSelectedPkg(pkg); setView("edit"); }} loading={loadingPkg} />
+            <PackageList packages={categoryFilter && categoryFilter !== "all" ? packages.filter(p => p.category === categoryFilter) : packages} selectedId={selectedPkg?.id || null} onSelect={(pkg) => { setSelectedPkg(pkg); setView("edit"); }} loading={loadingPkg} categories={categories} categoryFilter={categoryFilter} onCategoryFilter={setCategoryFilter} />
           ) : (
             <KBItemList items={currentKBItems} selectedId={selectedItem?.id || null} onSelect={(item) => { setSelectedItem(item); setView("edit"); }} onDelete={handleDeleteKB} />
           )}
@@ -191,10 +206,16 @@ export default function Knowledge() {
         {/* Action bar */}
         <div className="flex gap-2 shrink-0">
           {activeTab === "catalog" ? (
-            <button onClick={handleAddPkg}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
-              <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
-            </button>
+            <div className="flex gap-2">
+              <button onClick={handleAddPkg}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
+                <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
+              </button>
+              <button onClick={() => setShowCategoryManager(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted">
+                <FolderOpen className="w-4 h-4" /> จัดการประเภท
+              </button>
+            </div>
           ) : (
             <button onClick={() => handleAddKB(kbType)} disabled={adding}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-input text-sm font-medium hover:bg-muted">
@@ -207,7 +228,7 @@ export default function Knowledge() {
         <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
           <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
             {activeTab === "catalog" ? (
-              <PackageList packages={packages} selectedId={selectedPkg?.id || null} onSelect={setSelectedPkg} loading={loadingPkg} />
+              <PackageList packages={categoryFilter && categoryFilter !== "all" ? packages.filter(p => p.category === categoryFilter) : packages} selectedId={selectedPkg?.id || null} onSelect={setSelectedPkg} loading={loadingPkg} categories={categories} categoryFilter={categoryFilter} onCategoryFilter={setCategoryFilter} />
             ) : (
               <KBItemList items={currentKBItems} selectedId={selectedItem?.id || null} onSelect={setSelectedItem} onDelete={handleDeleteKB} />
             )}
@@ -235,12 +256,19 @@ export default function Knowledge() {
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{selectedPkg?.id ? "แก้ไขแพ็กเกจ" : "เพิ่มแพ็กเกจใหม่"}</DialogTitle></DialogHeader>
             {selectedPkg && (
-              <PackageCatalogForm key={selectedPkg.id || "new-dlg"} item={selectedPkg}
+              <PackageCatalogForm key={selectedPkg.id || "new-dlg"} item={selectedPkg} categories={categories}
                 onSaved={refreshPkgs} onDeleted={handleDeletePkg}
                 onCancel={() => setSelectedPkg(null)} />
             )}
           </DialogContent>
         </Dialog>
+      {/* Category Manager Dialog */}
+      <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>จัดการประเภทแพ็กเกจ</DialogTitle></DialogHeader>
+          <CategoryManager categories={categories} onRefresh={refreshCategories} />
+        </DialogContent>
+      </Dialog>
       </div>
     </>
   );

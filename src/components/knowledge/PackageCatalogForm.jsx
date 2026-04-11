@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, Trash2, Loader2, X, Image as ImageIcon, Save } from "lucide-react";
+import { Plus, Trash2, Loader2, X, Image as ImageIcon, Save, Bot } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
+import CustomAttributesEditor from "./CustomAttributesEditor";
 
 function PricingRow({ tier, onChange, onRemove }) {
   const handleTotalChange = (val) => {
@@ -35,21 +36,15 @@ function PricingRow({ tier, onChange, onRemove }) {
       <div className="flex items-center gap-2">
         <div className="flex-1 space-y-1">
           <label className="text-[11px] text-muted-foreground font-medium">จำนวนรวม (Total)</label>
-          <input
-            type="number" min="0" placeholder="เช่น 40"
-            value={tier.total_pax || ""}
+          <input type="number" min="0" placeholder="เช่น 40" value={tier.total_pax || ""}
             onChange={e => handleTotalChange(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+            className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <div className="flex-1 space-y-1">
           <label className="text-[11px] text-amber-600 font-medium">พระสงฆ์ (Monk)</label>
-          <input
-            type="number" min="0" placeholder="เช่น 9"
-            value={tier.monk_pax || ""}
+          <input type="number" min="0" placeholder="เช่น 9" value={tier.monk_pax || ""}
             onChange={e => handleMonkChange(e.target.value)}
-            className="w-full px-2.5 py-1.5 rounded-md border border-amber-200 bg-amber-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
-          />
+            className="w-full px-2.5 py-1.5 rounded-md border border-amber-200 bg-amber-50/50 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
         </div>
         <div className="flex-1 space-y-1">
           <label className="text-[11px] text-blue-600 font-medium">แขก (Guest)</label>
@@ -59,12 +54,9 @@ function PricingRow({ tier, onChange, onRemove }) {
         </div>
         <div className="flex-1 space-y-1">
           <label className="text-[11px] text-muted-foreground font-medium">ราคา</label>
-          <input
-            type="text" placeholder="25,000 บาท"
-            value={tier.price || ""}
+          <input type="text" placeholder="25,000 บาท" value={tier.price || ""}
             onChange={e => onChange({ ...tier, price: e.target.value })}
-            className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+            className="w-full px-2.5 py-1.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         <button onClick={onRemove} className="p-1.5 rounded-lg text-red-400 hover:text-red-600 hover:bg-red-50 shrink-0 mt-4">
           <X className="w-4 h-4" />
@@ -82,13 +74,16 @@ function PricingRow({ tier, onChange, onRemove }) {
   );
 }
 
-export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel }) {
+export default function PackageCatalogForm({ item, categories, onSaved, onDeleted, onCancel }) {
   const [name, setName] = useState(item?.name || "");
+  const [category, setCategory] = useState(item?.category || "");
   const [description, setDescription] = useState(item?.description || "");
   const [minCondition, setMinCondition] = useState(item?.min_condition || "");
   const [pricingTiers, setPricingTiers] = useState(
     item?.pricing_tiers?.length ? item.pricing_tiers : [{ total_pax: "", monk_pax: "", guest_pax: "", guest_count: "", price: "" }]
   );
+  const [customAttributes, setCustomAttributes] = useState(item?.custom_attributes || []);
+  const [aiInstruction, setAiInstruction] = useState(item?.ai_instruction || "");
   const [notes, setNotes] = useState(item?.notes || "");
   const [imageUrls, setImageUrls] = useState(item?.image_urls || []);
   const [saving, setSaving] = useState(false);
@@ -117,9 +112,11 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
     if (!name.trim()) { toast.error("ต้องกรอกชื่อแพ็กเกจ"); return; }
     setSaving(true);
     const validTiers = pricingTiers.filter(t => t.guest_count || t.price);
+    const validAttrs = customAttributes.filter(a => a.label && a.value);
     const data = {
-      name, description, min_condition: minCondition,
-      pricing_tiers: validTiers, notes, image_urls: imageUrls, is_active: true,
+      name, category, description, min_condition: minCondition,
+      pricing_tiers: validTiers, custom_attributes: validAttrs,
+      ai_instruction: aiInstruction, notes, image_urls: imageUrls, is_active: true,
     };
     if (item?.id) {
       await base44.entities.CateringPackage.update(item.id, data);
@@ -140,13 +137,32 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
     onDeleted();
   };
 
+  const catList = categories || [];
+
   return (
     <div className="space-y-5">
+      {/* Name */}
       <div>
         <label className="text-sm font-medium text-foreground">ชื่อแพ็กเกจ</label>
         <input type="text" value={name} onChange={e => setName(e.target.value)}
           placeholder="เช่น แพ็กเกจงานบุญ + โต๊ะจีน"
           className="w-full mt-1 px-3 py-2.5 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+      </div>
+
+      {/* Category */}
+      <div>
+        <label className="text-sm font-medium text-foreground">ประเภทแพ็กเกจ</label>
+        {catList.length > 0 ? (
+          <select value={category} onChange={e => setCategory(e.target.value)}
+            className="w-full mt-1 px-3 py-2.5 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+            <option value="">-- เลือกประเภท --</option>
+            {catList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+          </select>
+        ) : (
+          <input type="text" value={category} onChange={e => setCategory(e.target.value)}
+            placeholder="เช่น งานบุญ, โต๊ะจีน"
+            className="w-full mt-1 px-3 py-2.5 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        )}
       </div>
 
       {/* Brochure Images */}
@@ -184,9 +200,7 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
       {/* Pricing Matrix */}
       <div>
         <label className="text-sm font-medium text-foreground">โครงสร้างราคา</label>
-        <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-          กรอกจำนวนรวม + พระสงฆ์ → ระบบจะคำนวณจำนวนแขกอัตโนมัติ
-        </p>
+        <p className="text-xs text-muted-foreground mt-0.5 mb-2">กรอกจำนวนรวม + พระสงฆ์ → ระบบจะคำนวณจำนวนแขกอัตโนมัติ</p>
         <div className="space-y-2">
           {pricingTiers.map((tier, idx) => (
             <PricingRow key={idx} tier={tier} onChange={t => updateTier(idx, t)} onRemove={() => removeTier(idx)} />
@@ -198,13 +212,30 @@ export default function PackageCatalogForm({ item, onSaved, onDeleted, onCancel 
         </div>
       </div>
 
-      {/* Food Description */}
+      {/* Custom Attributes */}
+      <CustomAttributesEditor attributes={customAttributes} onChange={setCustomAttributes} />
+
+      {/* Food Description (Rich Text / Bullet Points) */}
       <div>
         <label className="text-sm font-medium text-foreground">รายละเอียดอาหาร</label>
+        <p className="text-xs text-muted-foreground mt-0.5 mb-1">ใส่รายการเมนูทีละบรรทัด — AI จะแยกแยะรายการได้ง่าย</p>
         <textarea value={description} onChange={e => setDescription(e.target.value)}
-          placeholder="เช่น เลือกอาหารคาวได้ 5 อย่าง ของหวาน 2 อย่าง น้ำดื่ม 1 อย่าง"
-          rows={4}
-          className="w-full mt-1 px-3 py-2.5 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+          placeholder={"- ข้าวสวย\n- แกงเขียวหวานไก่\n- ผัดกะเพราหมูสับ\n- ส้มตำ\n- ผลไม้รวม\n- น้ำดื่ม"}
+          rows={6}
+          className="w-full px-3 py-2.5 rounded-lg border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none font-mono leading-relaxed" />
+      </div>
+
+      {/* AI Instruction */}
+      <div className="p-4 rounded-lg border border-purple-200 bg-purple-50/50 space-y-2">
+        <div className="flex items-center gap-2">
+          <Bot className="w-4 h-4 text-purple-600" />
+          <label className="text-sm font-medium text-purple-800">Instruction พิเศษสำหรับ AI</label>
+        </div>
+        <p className="text-xs text-purple-600">คำสั่งเฉพาะที่ AI จะปฏิบัติตามเมื่อลูกค้าถามเกี่ยวกับแพ็กเกจนี้</p>
+        <textarea value={aiInstruction} onChange={e => setAiInstruction(e.target.value)}
+          placeholder={"เช่น ถ้าลูกค้าถามเรื่องที่จอดรถ ให้ตอบว่าแพ็กเกจนี้รวมค่าบริการขนส่งแล้ว\nหรือ ห้ามลดราคาจากที่ระบุไว้ ให้แนะนำติดต่อแอดมินแทน"}
+          rows={3}
+          className="w-full px-3 py-2.5 rounded-lg border border-purple-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-300 resize-none" />
       </div>
 
       {/* Notes */}
