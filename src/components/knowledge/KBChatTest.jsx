@@ -29,10 +29,11 @@ export default function KBChatTest() {
     setInput("");
     setLoading(true);
 
-    const [kbItems, settingsList, pkgs] = await Promise.all([
+    const [kbItems, settingsList, pkgs, promos] = await Promise.all([
       base44.entities.KnowledgeBase.filter({ status: "active" }),
       base44.entities.AppSettings.filter({ key: "ai_config" }),
       base44.entities.CateringPackage.filter({ is_active: true }),
+      base44.entities.Promotion.filter({ is_active: true }),
     ]);
     const cfg = settingsList?.[0] || {};
     const itemsWithImages = kbItems.filter(i => getItemImages(i).length > 0);
@@ -77,9 +78,19 @@ export default function KBChatTest() {
       return s;
     }).join('\n\n') : '';
 
+    const promosWithImages = (promos || []).filter(pr => pr.image_urls?.length > 0);
+    const promoContext = (promos || []).length > 0 ? '\n\n--- โปรโมชั่นปัจจุบัน ---\n' + promos.map(pr => {
+      let s = `[โปรโมชั่น: "${pr.name}"]`;
+      if (pr.applicable_categories?.length > 0) s += `\nใช้กับ: ${pr.applicable_categories.join(', ')}`;
+      if (pr.description) s += `\n${pr.description}`;
+      if (pr.image_urls?.length > 0) s += `\n[มีรูปโปรโมชั่น ${pr.image_urls.length} รูป]`;
+      return s;
+    }).join('\n\n') : '';
+
     const allImageSources = [
       ...itemsWithImages.map(i => `"${i.title}"`),
       ...pkgsWithImages.map(p => `"แพ็กเกจ: ${p.name}"`),
+      ...promosWithImages.map(pr => `"โปรโมชั่น: ${pr.name}"`),
     ];
     const imageListStr = allImageSources.length > 0
       ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${allImageSources.join(", ")}`
@@ -123,6 +134,7 @@ ${strictRulesSection}
 Knowledge Base:
 ${knowledgeContext || "ยังไม่มีข้อมูล"}
 ${pkgContext}
+${promoContext}
 ${imageListStr}
 
 ประวัติการสนทนา:
@@ -157,7 +169,8 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
 
     const kbImages = itemsWithImages.filter(item => currentTitles.includes(item.title)).flatMap(item => getItemImages(item));
     const pkgImages = pkgsWithImages.filter(p => currentTitles.includes(`แพ็กเกจ: ${p.name}`)).flatMap(p => p.image_urls || []);
-    const imagesToShow = isSameTitles ? [] : [...kbImages, ...pkgImages];
+    const promoImages = promosWithImages.filter(pr => currentTitles.includes(`โปรโมชั่น: ${pr.name}`)).flatMap(pr => pr.image_urls || []);
+    const imagesToShow = isSameTitles ? [] : [...kbImages, ...pkgImages, ...promoImages];
 
     if (currentTitles.length > 0) {
       setLastSentTitles(currentTitles);

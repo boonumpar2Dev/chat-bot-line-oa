@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, FileText, Loader2, ArrowLeft, Package, BookOpen, List, FolderOpen } from "lucide-react";
+import { Plus, FileText, Loader2, ArrowLeft, Package, BookOpen, List, FolderOpen, Percent } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import KBItemList from "@/components/knowledge/KBItemList.jsx";
@@ -8,10 +8,13 @@ import KBChatTest from "@/components/knowledge/KBChatTest.jsx";
 import PackageList from "@/components/knowledge/PackageList.jsx";
 import PackageCatalogForm from "@/components/knowledge/PackageCatalogForm.jsx";
 import CategoryManager from "@/components/knowledge/CategoryManager.jsx";
+import PromotionList from "@/components/knowledge/PromotionList.jsx";
+import PromotionForm from "@/components/knowledge/PromotionForm.jsx";
 
 const TABS = [
   { id: "base", label: "ข้อมูลส่วนกลาง", icon: BookOpen, desc: "พิธีสงฆ์ อุปกรณ์ ข้อมูลที่ใช้ร่วมกัน" },
   { id: "catalog", label: "แคตตาล็อกแพ็กเกจ", icon: Package, desc: "แพ็กเกจราคา โบรชัวร์ เมนูอาหาร" },
+  { id: "promo", label: "โปรโมชั่น", icon: Percent, desc: "ส่วนลด ของแถม โปรโมชั่นพิเศษ" },
   { id: "general", label: "ข้อมูลทั่วไป", icon: List, desc: "FAQ ข้อมูลอื่นๆ" },
 ];
 
@@ -20,8 +23,11 @@ export default function Knowledge() {
   const [items, setItems] = useState([]);
   const [packages, setPackages] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [promotions, setPromotions] = useState([]);
   const [loadingKB, setLoadingKB] = useState(true);
   const [loadingPkg, setLoadingPkg] = useState(true);
+  const [loadingPromo, setLoadingPromo] = useState(true);
+  const [selectedPromo, setSelectedPromo] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [selectedPkg, setSelectedPkg] = useState(null);
   const [adding, setAdding] = useState(false);
@@ -35,6 +41,7 @@ export default function Knowledge() {
     base44.entities.KnowledgeBase.list("-created_date").then(data => { setItems(data || []); setLoadingKB(false); });
     base44.entities.CateringPackage.filter({ is_active: true }, "-created_date").then(data => { setPackages(data || []); setLoadingPkg(false); });
     base44.entities.PackageCategory.list("sort_order").then(data => setCategories(data || []));
+    base44.entities.Promotion.filter({ is_active: true }, "-created_date").then(data => { setPromotions(data || []); setLoadingPromo(false); });
   };
 
   const refreshCategories = async () => {
@@ -95,6 +102,24 @@ export default function Knowledge() {
     setView("list");
   };
 
+  const handleAddPromo = () => {
+    setSelectedPromo({ name: "" });
+    setView("edit");
+  };
+
+  const handleDeletePromo = () => {
+    if (selectedPromo?.id) setPromotions(prev => prev.filter(p => p.id !== selectedPromo.id));
+    setSelectedPromo(null);
+    setView("list");
+  };
+
+  const refreshPromos = async () => {
+    const data = await base44.entities.Promotion.filter({ is_active: true }, "-created_date");
+    setPromotions(data || []);
+    setSelectedPromo(null);
+    setView("list");
+  };
+
   const refreshKB = async () => {
     const data = await base44.entities.KnowledgeBase.list("-created_date");
     setItems(data || []);
@@ -108,6 +133,19 @@ export default function Knowledge() {
 
   // ── MOBILE ──
   const MobileView = () => {
+    if (view === "edit" && activeTab === "promo" && selectedPromo) {
+      return (
+        <div className="flex flex-col h-screen overflow-hidden">
+          <div className="px-4 py-3 border-b border-border bg-card flex items-center gap-3 shrink-0">
+            <button onClick={() => { setView("list"); setSelectedPromo(null); }} className="p-1.5 rounded-lg hover:bg-muted"><ArrowLeft className="w-5 h-5 text-muted-foreground" /></button>
+            <span className="font-semibold text-foreground">{selectedPromo.id ? "แก้ไขโปรโมชั่น" : "เพิ่มโปรโมชั่นใหม่"}</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <PromotionForm key={selectedPromo.id || "new"} item={selectedPromo} categories={categories} onSaved={refreshPromos} onDeleted={handleDeletePromo} onCancel={() => { setView("list"); setSelectedPromo(null); }} />
+          </div>
+        </div>
+      );
+    }
     if (view === "edit" && activeTab === "catalog" && selectedPkg) {
       return (
         <div className="flex flex-col h-screen overflow-hidden">
@@ -162,7 +200,12 @@ export default function Knowledge() {
         </div>
         {/* Actions */}
         <div className="flex gap-2 px-4 py-3 border-b border-border shrink-0">
-          {activeTab === "catalog" ? (
+          {activeTab === "promo" ? (
+            <button onClick={handleAddPromo}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600">
+              <Plus className="w-4 h-4" /> เพิ่มโปรโมชั่น
+            </button>
+          ) : activeTab === "catalog" ? (
             <>
               <button onClick={handleAddPkg} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
                 <Plus className="w-4 h-4" /> เพิ่มแพ็กเกจ
@@ -184,7 +227,9 @@ export default function Knowledge() {
         </div>
         {/* List */}
         <div className="flex-1 overflow-y-auto p-4">
-          {activeTab === "catalog" ? (
+          {activeTab === "promo" ? (
+            <PromotionList promotions={promotions} selectedId={selectedPromo?.id || null} onSelect={(p) => { setSelectedPromo(p); setView("edit"); }} loading={loadingPromo} />
+          ) : activeTab === "catalog" ? (
             <PackageList packages={categoryFilter && categoryFilter !== "all" ? packages.filter(p => p.category === categoryFilter) : packages} selectedId={selectedPkg?.id || null} onSelect={(pkg) => { setSelectedPkg(pkg); setView("edit"); }} loading={loadingPkg} categories={categories} categoryFilter={categoryFilter} onCategoryFilter={setCategoryFilter} />
           ) : (
             <KBItemList items={currentKBItems} selectedId={selectedItem?.id || null} onSelect={(item) => { setSelectedItem(item); setView("edit"); }} onDelete={handleDeleteKB} />
@@ -221,7 +266,12 @@ export default function Knowledge() {
 
         {/* Action bar */}
         <div className="flex gap-2 shrink-0">
-          {activeTab === "catalog" ? (
+          {activeTab === "promo" ? (
+            <button onClick={handleAddPromo}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-orange-500 text-white text-sm font-medium hover:bg-orange-600">
+              <Plus className="w-4 h-4" /> เพิ่มโปรโมชั่น
+            </button>
+          ) : activeTab === "catalog" ? (
             <div className="flex gap-2">
               <button onClick={handleAddPkg}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700">
@@ -243,7 +293,9 @@ export default function Knowledge() {
         {/* Content */}
         <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
           <div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
-            {activeTab === "catalog" ? (
+            {activeTab === "promo" ? (
+              <PromotionList promotions={promotions} selectedId={selectedPromo?.id || null} onSelect={setSelectedPromo} loading={loadingPromo} />
+            ) : activeTab === "catalog" ? (
               <PackageList packages={categoryFilter && categoryFilter !== "all" ? packages.filter(p => p.category === categoryFilter) : packages} selectedId={selectedPkg?.id || null} onSelect={setSelectedPkg} loading={loadingPkg} categories={categories} categoryFilter={categoryFilter} onCategoryFilter={setCategoryFilter} />
             ) : (
               <KBItemList items={currentKBItems} selectedId={selectedItem?.id || null} onSelect={setSelectedItem} onDelete={handleDeleteKB} />
@@ -278,6 +330,18 @@ export default function Knowledge() {
             )}
           </DialogContent>
         </Dialog>
+        {/* Promotion Edit Dialog */}
+        <Dialog open={activeTab === "promo" && !!selectedPromo} onOpenChange={(open) => { if (!open) setSelectedPromo(null); }}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>{selectedPromo?.id ? "แก้ไขโปรโมชั่น" : "เพิ่มโปรโมชั่นใหม่"}</DialogTitle></DialogHeader>
+            {selectedPromo && (
+              <PromotionForm key={selectedPromo.id || "new-promo-dlg"} item={selectedPromo} categories={categories}
+                onSaved={refreshPromos} onDeleted={handleDeletePromo}
+                onCancel={() => setSelectedPromo(null)} />
+            )}
+          </DialogContent>
+        </Dialog>
+
       {/* Category Manager Dialog */}
       <Dialog open={showCategoryManager} onOpenChange={setShowCategoryManager}>
         <DialogContent className="max-w-md">

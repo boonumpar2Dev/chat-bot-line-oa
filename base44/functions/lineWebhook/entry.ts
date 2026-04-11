@@ -194,11 +194,12 @@ Deno.serve(async (req) => {
       }
 
       // ──── Fetch all AI data in parallel for speed ────
-      const [settingsList, recentConvs, kb, pkgs] = await Promise.all([
+      const [settingsList, recentConvs, kb, pkgs, promos] = await Promise.all([
         base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
         base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, 'created_date', 50),
         base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' }),
         base44.asServiceRole.entities.CateringPackage.filter({ is_active: true }),
+        base44.asServiceRole.entities.Promotion.filter({ is_active: true }),
       ]);
       const cfg = settingsList[0] || {};
 
@@ -267,9 +268,20 @@ Deno.serve(async (req) => {
         return s;
       }).join('\n\n') : '';
 
+      // Build promotion context
+      const promosWithImages = (promos || []).filter(p => p.image_urls?.length > 0);
+      const promoContext = (promos || []).length > 0 ? '\n\n--- โปรโมชั่นปัจจุบัน ---\n' + promos.map(pr => {
+        let s = `## โปรโมชั่น: ${pr.name}`;
+        if (pr.applicable_categories?.length > 0) s += `\nใช้กับ: ${pr.applicable_categories.join(', ')}`;
+        if (pr.description) s += `\n${pr.description}`;
+        if (pr.image_urls?.length > 0) s += `\n[มีรูปโปรโมชั่น ${pr.image_urls.length} รูป]`;
+        return s;
+      }).join('\n\n') : '';
+
       const allImageSources = [
         ...itemsWithImages.map(i => `"${i.title}"`),
         ...pkgsWithImages.map(p => `"แพ็กเกจ: ${p.name}"`),
+        ...promosWithImages.map(pr => `"โปรโมชั่น: ${pr.name}"`),
       ];
       const imageListStr = allImageSources.length > 0
         ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${allImageSources.join(', ')}`
@@ -320,6 +332,7 @@ ${strictRulesSection}
 ข้อมูลธุรกิจ:
 ${context || '(ยังไม่มีข้อมูลธุรกิจ)'}
 ${pkgContext}
+${promoContext}
 ${imageListStr}
 
 ประวัติการสนทนาล่าสุด:
@@ -364,10 +377,11 @@ ${recentMsgs || '(ยังไม่มี)'}
       // Collect images from KB items and packages
       const kbRelevantImages = itemsWithImages.filter(item => imageTitles.includes(item.title));
       const pkgRelevantImages = pkgsWithImages.filter(p => imageTitles.includes(`แพ็กเกจ: ${p.name}`));
+      const promoRelevantImages = promosWithImages.filter(pr => imageTitles.includes(`โปรโมชั่น: ${pr.name}`));
       const allRelevantImages = [
         ...kbRelevantImages,
-        // Wrap packages as image sources with same interface
         ...pkgRelevantImages.map(p => ({ title: `แพ็กเกจ: ${p.name}`, image_urls: p.image_urls })),
+        ...promoRelevantImages.map(pr => ({ title: `โปรโมชั่น: ${pr.name}`, image_urls: pr.image_urls })),
       ];
 
       const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
