@@ -178,14 +178,26 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Save customer message (dedup by LINE message ID)
+      // Save customer message (dedup: by LINE message ID OR by same content within 5 min)
       const lineMsgId = event.message?.id || null;
       if (lineMsgId) {
-        const existingMsgs = await base44.asServiceRole.entities.Conversation.filter({ line_message_id: lineMsgId });
-        if (existingMsgs.length > 0) {
-          console.log(`[Dedup] Message ${lineMsgId} already saved — skipping entire processing`);
+        const existingById = await base44.asServiceRole.entities.Conversation.filter({ line_message_id: lineMsgId });
+        if (existingById.length > 0) {
+          console.log(`[Dedup] Message ID ${lineMsgId} already saved — skipping`);
           continue;
         }
+      }
+      // Content-based dedup: same customer + same text within last 5 minutes
+      const recentSame = await base44.asServiceRole.entities.Conversation.filter(
+        { customer_id: customer.id, sender: 'customer' }, '-created_date', 5
+      );
+      const fiveMinAgo = new Date(Date.now() - 5 * 60000).toISOString();
+      const isDuplicateContent = recentSame.some(
+        m => m.message === messageText && m.created_date > fiveMinAgo
+      );
+      if (isDuplicateContent) {
+        console.log(`[Dedup] Same content "${messageText.slice(0, 30)}" within 5min — skipping`);
+        continue;
       }
       await base44.asServiceRole.entities.Conversation.create({
         customer_id: customer.id,
