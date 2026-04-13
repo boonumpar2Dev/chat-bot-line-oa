@@ -15,27 +15,36 @@ export default function KBChatTest() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastSentTitles, setLastSentTitles] = useState([]);
+  const cachedData = useRef(null);
+  const [dataReady, setDataReady] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // Pre-load all data once on mount
+  useEffect(() => {
+    Promise.all([
+      base44.entities.KnowledgeBase.filter({ status: "active" }),
+      base44.entities.AppSettings.filter({ key: "ai_config" }),
+      base44.entities.CateringPackage.filter({ is_active: true }),
+      base44.entities.Promotion.filter({ is_active: true }),
+    ]).then(([kb, settings, pkgs, promos]) => {
+      cachedData.current = { kb: kb || [], settings: settings?.[0] || {}, pkgs: pkgs || [], promos: promos || [] };
+      setDataReady(true);
+    });
+  }, []);
+
   const sendMessage = async (text) => {
-    if (!text.trim() || loading) return;
+    if (!text.trim() || loading || !cachedData.current) return;
     const userMsg = { role: "user", content: text.trim() };
     const updated = [...messages, userMsg];
     setMessages(updated);
     setInput("");
     setLoading(true);
 
-    const [kbItems, settingsList, pkgs, promos] = await Promise.all([
-      base44.entities.KnowledgeBase.filter({ status: "active" }),
-      base44.entities.AppSettings.filter({ key: "ai_config" }),
-      base44.entities.CateringPackage.filter({ is_active: true }),
-      base44.entities.Promotion.filter({ is_active: true }),
-    ]);
-    const cfg = settingsList?.[0] || {};
+    const { kb: kbItems, settings: cfg, pkgs, promos } = cachedData.current;
     const itemsWithImages = kbItems.filter(i => getItemImages(i).length > 0);
     const pkgsWithImages = (pkgs || []).filter(p => p.image_urls?.length > 0);
 
