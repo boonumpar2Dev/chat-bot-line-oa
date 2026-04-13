@@ -23,9 +23,10 @@ const AI_OFF_STATUSES = ['pending_quote', 'pending_confirm', 'confirmed'];
 
 Deno.serve(async (req) => {
   try {
-    // Clone request before consuming body, so SDK can still read headers from original
-    const clonedReq = req.clone();
-    const body = await clonedReq.text();
+    // Clone request: one for body reading, one for SDK init
+    const bodyClone = req.clone();
+    const sdkClone = req.clone();
+    const body = await bodyClone.text();
     const signature = req.headers.get('x-line-signature') || '';
     const channelSecret = Deno.env.get('LINE_CHANNEL_SECRET') || '';
 
@@ -41,7 +42,8 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true }); // LINE verification ping
     }
 
-    const base44 = createClientFromRequest(req);
+    // Use the unconsumed clone for SDK init — this ensures headers + body are intact
+    const base44 = createClientFromRequest(sdkClone);
     const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
 
     for (const event of events) {
