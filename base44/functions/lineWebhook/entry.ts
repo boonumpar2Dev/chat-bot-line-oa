@@ -1,4 +1,7 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+// In-memory set to track message IDs currently being processed (race condition guard)
+const processingIds = new Set();
 
 async function verifySignature(body, signature, secret) {
   const key = await crypto.subtle.importKey(
@@ -38,16 +41,7 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true }); // LINE verification ping
     }
 
-    let base44;
-    try {
-      base44 = createClientFromRequest(req);
-    } catch (e) {
-      console.error('SDK init error (non-fatal for webhook):', e.message);
-      // Fallback: create from minimal request with just app context
-      base44 = createClientFromRequest(new Request(req.url, {
-        headers: { 'Content-Type': 'application/json' },
-      }));
-    }
+    const base44 = createClientFromRequest(req);
     const accessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN');
 
     for (const event of events) {
@@ -178,26 +172,24 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Save customer message (dedup: by LINE message ID OR by same content within 5 min)
+      // Save customer message (dedup: by LINE message ID + in-memory lock for race conditions)
       const lineMsgId = event.message?.id || null;
       if (lineMsgId) {
-        const existingById = await base44.asServiceRole.entities.Conversation.filter({ line_message_id: lineMsgId });
-        if (existingById.length > 0) {
-          console.log(`[Dedup] Message ID ${lineMsgId} already saved — skipping`);
+        // In-memory guard: if another request is already processing this ID, skip
+        if (processingIds.has(lineMsgId)) {
+          console.log(`[Dedup] Message ID ${lineMsgId} already being processed (in-memory) — skipping`);
           continue;
         }
-      }
-      // Content-based dedup: same customer + same text within last 5 minutes
-      const recentSame = await base44.asServiceRole.entities.Conversation.filter(
-        { customer_id: customer.id, sender: 'customer' }, '-created_date', 5
-      );
-      const fiveMinAgo = new Date(Date.now() - 5 * 60000).toISOString();
-      const isDuplicateContent = recentSame.some(
-        m => m.message === messageText && m.created_date > fiveMinAgo
-      );
-      if (isDuplicateContent) {
-        console.log(`[Dedup] Same content "${messageText.slice(0, 30)}" within 5min — skipping`);
-        continue;
+        processingIds.add(lineMsgId);
+        // Clean up after 60 seconds to prevent memory leak
+        setTimeout(() => processingIds.delete(lineMsgId), 60000);
+
+        const existingById = await base44.asServiceRole.entities.Conversation.filter({ line_message_id: lineMsgId });
+        if (existingById.length > 0) {
+          console.log(`[Dedup] Message ID ${lineMsgId} already saved in DB — skipping`);
+          processingIds.delete(lineMsgId);
+          continue;
+        }
       }
       await base44.asServiceRole.entities.Conversation.create({
         customer_id: customer.id,
@@ -313,13 +305,15 @@ Deno.serve(async (req) => {
       const freshCustomer = freshCustomers[0] || customer;
 
       // ──── Skip stale messages using event.timestamp vs ai_resumed_at ────
+      // LINE event.timestamp is milliseconds since epoch (number).
       // When admin resumes AI, ai_resumed_at is set. Any message the customer sent
       // BEFORE that moment (during manual/standby) should not trigger AI reply.
-      if (freshCustomer.ai_resumed_at && event.timestamp) {
-        const msgTime = new Date(event.timestamp);
-        const resumedAt = new Date(freshCustomer.ai_resumed_at);
-        if (msgTime < resumedAt) {
-          console.log(`[SkipStale] msg timestamp ${msgTime.toISOString()} < ai_resumed_at ${resumedAt.toISOString()} — skipping AI`);
+      if (freshCustomer.ai_resumed_at) {
+        const msgTimeMs = typeof event.timestamp === 'number' ? event.timestamp : 0;
+        const resumedAtMs = new Date(freshCustomer.ai_resumed_at).getTime();
+        console.log(`[StaleCheck] msgTime=${msgTimeMs} resumedAt=${resumedAtMs} diff=${msgTimeMs - resumedAtMs}ms`);
+        if (msgTimeMs > 0 && msgTimeMs < resumedAtMs) {
+          console.log(`[SkipStale] msg sent at ${new Date(msgTimeMs).toISOString()} before ai_resumed_at ${freshCustomer.ai_resumed_at} — skipping AI`);
           continue;
         }
       }
