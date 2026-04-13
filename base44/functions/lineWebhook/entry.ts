@@ -172,14 +172,26 @@ Deno.serve(async (req) => {
       if (trivialPatterns.includes(trimmedMsg)) continue;
 
       // ──── Phone Number Detection (no AI needed) ────
-      const digitsOnly = messageText.replace(/[\s\-().+]/g, '');
-      const phoneMatch = digitsOnly.match(/^0\d+$/) || digitsOnly.match(/^(0\d{8,10})$/);
-      if (phoneMatch || (/^\d{7,12}$/.test(digitsOnly) && digitsOnly.length !== 10)) {
-        const phoneDigits = phoneMatch ? phoneMatch[0] : digitsOnly;
-        if (/^0\d{9}$/.test(phoneDigits)) {
+      // Extract phone-like number from anywhere in the message (handles "เบอร์ 081-234-5678", "โทร0812345678", etc.)
+      const phoneExtract = messageText.replace(/[^0-9]/g, ''); // strip ALL non-digits
+      const embeddedPhone = messageText.match(/0[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9]/);
+      // Also check if the message is purely digits (with separators)
+      const pureDigits = messageText.replace(/[\s\-().+]/g, '');
+      const isPureNumber = /^\d+$/.test(pureDigits);
+      
+      // Determine the phone candidate
+      let phoneCandidate = null;
+      if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
+        phoneCandidate = pureDigits;
+      } else if (embeddedPhone) {
+        phoneCandidate = embeddedPhone[0].replace(/[^0-9]/g, '');
+      }
+      
+      if (phoneCandidate) {
+        if (/^0\d{9}$/.test(phoneCandidate)) {
           // Valid 10-digit Thai phone → save & confirm
-          await base44.asServiceRole.entities.Customer.update(customer.id, { phone: phoneDigits });
-          const confirmText = `ขอบคุณค่ะ บันทึกเบอร์ ${phoneDigits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} เรียบร้อยแล้วนะคะ 🙏`;
+          await base44.asServiceRole.entities.Customer.update(customer.id, { phone: phoneCandidate });
+          const confirmText = `ขอบคุณค่ะ บันทึกเบอร์ ${phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} เรียบร้อยแล้วนะคะ 🙏`;
           await fetch('https://api.line.me/v2/bot/message/reply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -187,11 +199,11 @@ Deno.serve(async (req) => {
           });
           await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' });
           await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
-          console.log(`[Phone] Saved valid phone ${phoneDigits} for ${lineUserId}`);
+          console.log(`[Phone] Saved valid phone ${phoneCandidate} for ${lineUserId}`);
           continue;
-        } else if (/^\d{7,12}$/.test(digitsOnly)) {
-          // Looks like a phone attempt but wrong digit count → ask to re-enter
-          const errorText = `ขออภัยค่ะ เบอร์โทรที่ให้มา "${messageText.trim()}" ดูเหมือนไม่ครบ/เกิน ${digitsOnly.length} หลักค่ะ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะคะ 🙏`;
+        } else if (isPureNumber && phoneCandidate.length >= 7 && phoneCandidate.length <= 12 && phoneCandidate.length !== 10) {
+          // Pure number input but wrong digit count → ask to re-enter
+          const errorText = `ขออภัยค่ะ เบอร์โทรที่ให้มา "${messageText.trim()}" ดูเหมือนไม่ครบ/เกิน ${phoneCandidate.length} หลักค่ะ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะคะ 🙏`;
           await fetch('https://api.line.me/v2/bot/message/reply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -199,7 +211,7 @@ Deno.serve(async (req) => {
           });
           await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
           await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
-          console.log(`[Phone] Invalid phone attempt ${digitsOnly} (${digitsOnly.length} digits) for ${lineUserId}`);
+          console.log(`[Phone] Invalid phone attempt ${phoneCandidate} (${phoneCandidate.length} digits) for ${lineUserId}`);
           continue;
         }
       }
