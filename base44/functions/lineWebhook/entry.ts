@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
       const isPureNumber = /^\d+$/.test(pureDigits);
       
       // Extract all phone-like sequences: digits possibly separated by - ( ) . or spaces
-      const phoneSeqs = messageText.match(/0[\d][\d\s\-().]{7,15}[\d]/g) || [];
+      const phoneSeqs = messageText.match(/0[\d][\d\s\-().]{7,25}[\d]/g) || [];
       let phoneCandidate = null;
       
       if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
@@ -194,11 +194,16 @@ Deno.serve(async (req) => {
       
       if (phoneCandidate) {
         if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
-          // Valid 10-digit Thai phone → save + summarize + mute AI 1 hour
+          // Valid 10-digit Thai phone → save + summarize + mute AI
+          // Get phone_mute_hours from settings
+          const [phoneCfgList] = await Promise.all([
+            base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
+          ]);
+          const phoneMuteHours = phoneCfgList[0]?.phone_mute_hours ?? 1;
           await base44.asServiceRole.entities.Customer.update(customer.id, { 
             phone: phoneCandidate,
             ai_active: false,
-            manual_chat_until: new Date(Date.now() + 1 * 3600000).toISOString(),
+            manual_chat_until: new Date(Date.now() + phoneMuteHours * 3600000).toISOString(),
           });
           
           // Re-read customer for summary

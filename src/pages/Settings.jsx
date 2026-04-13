@@ -8,6 +8,7 @@ const defaultConfig = {
   confidence_threshold: 75,
   cooldown_minutes: 1,
   manual_chat_hours: 360,
+  phone_mute_hours: 1,
   schedule_enabled: false,
   start_time: "18:00",
   end_time: "08:00",
@@ -39,6 +40,7 @@ export default function Settings() {
         confidence_threshold: s.confidence_threshold ?? 75,
         cooldown_minutes: s.cooldown_minutes ?? 1,
         manual_chat_hours: s.manual_chat_hours ?? 360,
+        phone_mute_hours: s.phone_mute_hours ?? 1,
         schedule_enabled: s.schedule_enabled ?? false,
         start_time: s.start_time ?? "18:00",
         end_time: s.end_time ?? "08:00",
@@ -155,6 +157,26 @@ export default function Settings() {
           <p className="text-xs text-blue-600 mt-1">
             💡 แอดมินสามารถกด "ปลุกบอททันที" ในหน้าแชทหรือ LIFF เพื่อล้าง Timer และเปิด AI กลับก่อนกำหนดได้
           </p>
+        </div>
+
+        <div className="border-t border-border pt-4 space-y-2">
+          <label className="text-sm font-medium text-foreground">
+            📞 หยุด AI หลังได้เบอร์โทร: {config.phone_mute_hours} ชั่วโมง
+          </label>
+          <input type="range" min="1" max="24" value={config.phone_mute_hours}
+            onChange={(e) => update("phone_mute_hours", Number(e.target.value))}
+            className="w-full accent-blue-500" />
+          <p className="text-xs text-muted-foreground">
+            เมื่อลูกค้าให้เบอร์โทรมา ระบบจะบันทึกเบอร์ สรุปข้อมูล แล้วหยุด AI <strong>{config.phone_mute_hours} ชม.</strong> เพื่อให้แอดมินติดต่อกลับ
+          </p>
+          <div className="flex gap-2 mt-2">
+            {[1, 2, 4, 8, 12, 24].map(h => (
+              <button key={h} onClick={() => update("phone_mute_hours", h)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${config.phone_mute_hours === h ? "bg-blue-600 text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                {h}ชม.
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
