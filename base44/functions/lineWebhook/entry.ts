@@ -193,26 +193,19 @@ Deno.serve(async (req) => {
       }
       
       if (phoneCandidate) {
-        // Auto-correct: if 11+ digits starting with 0, trim to first 10
-        let finalPhone = phoneCandidate;
-        if (finalPhone.length > 10 && finalPhone.startsWith('0')) {
-          finalPhone = finalPhone.slice(0, 10);
-          console.log(`[Phone] Auto-corrected ${phoneCandidate} → ${finalPhone}`);
-        }
-        
-        if (/^0\d{9}$/.test(finalPhone) && finalPhone.length === 10) {
-          // Valid 10-digit Thai phone → save, summarize info, set pending_quote
+        if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
+          // Valid 10-digit Thai phone → save + summarize + mute AI 1 hour
           await base44.asServiceRole.entities.Customer.update(customer.id, { 
-            phone: finalPhone,
-            status: (customer.status === 'new' || customer.status === 'returning') ? 'pending_quote' : customer.status,
+            phone: phoneCandidate,
+            ai_active: false,
+            manual_chat_until: new Date(Date.now() + 1 * 3600000).toISOString(),
           });
           
-          // Re-read customer to get latest data for summary
+          // Re-read customer for summary
           const updatedCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
           const updatedCust = updatedCustomers[0] || customer;
           
-          // Build summary of collected info
-          const fmtPhone = finalPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+          const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
           let summaryLines = [`ขอบคุณสำหรับข้อมูลครับ เพื่อให้ข้อมูลที่ถูกต้องแม่นยำที่สุด รอสักครู่นะครับ`];
           summaryLines.push('');
           summaryLines.push(`จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ`);
@@ -224,10 +217,6 @@ Deno.serve(async (req) => {
           if (updatedCust.venue) summaryLines.push(`- สถานที่/จังหวัด: ${updatedCust.venue}`);
           if (updatedCust.event_date) summaryLines.push(`- วันจัดงาน: ${updatedCust.event_date}`);
           if (updatedCust.guest_count) summaryLines.push(`- จำนวนคน: ${updatedCust.guest_count} ท่าน`);
-          if (phoneCandidate !== finalPhone) {
-            summaryLines.push('');
-            summaryLines.push(`(เบอร์ที่ให้มา ${phoneCandidate} ดูเหมือนพิมพ์เกิน — บันทึกเป็น ${fmtPhone} นะครับ ถ้าไม่ถูกต้องแจ้งได้เลยครับ)`);
-          }
           
           const confirmText = summaryLines.join('\n');
           await fetch('https://api.line.me/v2/bot/message/reply', {
@@ -237,10 +226,10 @@ Deno.serve(async (req) => {
           });
           await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' });
           await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
-          console.log(`[Phone] Saved phone ${finalPhone} for ${lineUserId}, status → pending_quote`);
+          console.log(`[Phone] Saved ${phoneCandidate} for ${lineUserId}, AI muted 1hr`);
           continue;
-        } else if (isPureNumber && phoneCandidate.length >= 7 && phoneCandidate.length < 10) {
-          // Too few digits → ask to re-enter
+        } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
+          // Wrong digit count → always ask customer to re-enter
           const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
           if (nonDigitText.length <= 15) {
             const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
@@ -251,7 +240,7 @@ Deno.serve(async (req) => {
             });
             await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
             await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
-            console.log(`[Phone] Too few digits ${phoneCandidate} (${phoneCandidate.length}) for ${lineUserId}`);
+            console.log(`[Phone] Invalid ${phoneCandidate} (${phoneCandidate.length} digits) for ${lineUserId}`);
             continue;
           }
         }
