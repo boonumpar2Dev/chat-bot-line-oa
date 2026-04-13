@@ -269,25 +269,21 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // ──── AI just resumed: mark ai_resumed_at so we skip old messages ────
-      // If manual_chat_until has passed and ai_resumed_at is older than manual_chat_until, update it
-      if (freshCustomer.manual_chat_until && !freshCustomer.ai_resumed_at ||
-          (freshCustomer.manual_chat_until && freshCustomer.ai_resumed_at && 
-           new Date(freshCustomer.ai_resumed_at) < new Date(freshCustomer.manual_chat_until))) {
-        const now = new Date().toISOString();
-        await base44.asServiceRole.entities.Customer.update(freshCustomer.id, { ai_resumed_at: now });
-        freshCustomer.ai_resumed_at = now;
-        console.log(`[AIResume] Set ai_resumed_at=${now} for ${lineUserId}`);
+      // ──── Skip stale messages: if message was sent DURING manual chat period, skip ────
+      // This catches the case where LINE re-delivers messages after admin returns bot control
+      const msgTimestamp = event.timestamp ? new Date(event.timestamp) : new Date();
+      const resumedAt = freshCustomer.ai_resumed_at ? new Date(freshCustomer.ai_resumed_at) : null;
+      const manualUntil = freshCustomer.manual_chat_until ? new Date(freshCustomer.manual_chat_until) : null;
+      
+      // If ai_resumed_at is set, skip messages sent before it
+      if (resumedAt && msgTimestamp < resumedAt) {
+        console.log(`[SkipOld] msg at ${msgTimestamp.toISOString()} < ai_resumed_at ${resumedAt.toISOString()} — skipping`);
+        continue;
       }
-
-      // ──── Skip old messages: only reply to messages sent AFTER AI resumed ────
-      if (freshCustomer.ai_resumed_at) {
-        const msgTime = new Date(event.timestamp || Date.now());
-        const resumeTime = new Date(freshCustomer.ai_resumed_at);
-        if (msgTime < resumeTime) {
-          console.log(`[SkipOld] Message at ${msgTime.toISOString()} is before ai_resumed_at ${freshCustomer.ai_resumed_at} — skipping`);
-          continue;
-        }
+      // If manual_chat_until was set (even if expired now), skip messages sent during that period
+      if (manualUntil && msgTimestamp < manualUntil) {
+        console.log(`[SkipOld] msg at ${msgTimestamp.toISOString()} < manual_chat_until ${manualUntil.toISOString()} — skipping`);
+        continue;
       }
 
       // ──── Check if AI is manually disabled for this customer ────
