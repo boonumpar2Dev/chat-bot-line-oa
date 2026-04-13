@@ -177,19 +177,24 @@ Deno.serve(async (req) => {
       const isPureNumber = /^\d+$/.test(pureDigits);
       
       // Extract all phone-like sequences: digits possibly separated by - ( ) . or spaces
-      const phoneSeqs = messageText.match(/0[\d][\d\s\-().]{7,25}[\d]/g) || [];
+      const phoneSeqs = messageText.match(/\d[\d\s\-().]{6,25}\d/g) || [];
       let phoneCandidate = null;
       
-      if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
+      if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 15) {
         phoneCandidate = pureDigits;
       } else {
         for (const seq of phoneSeqs) {
           const digits = seq.replace(/[^0-9]/g, '');
-          if (digits.length >= 7 && digits.length <= 12) {
+          if (digits.length >= 7 && digits.length <= 15) {
             phoneCandidate = digits;
             break;
           }
         }
+      }
+      // Only treat as phone if message is mostly numbers
+      if (phoneCandidate) {
+        const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
+        if (nonDigitText.length > 15) phoneCandidate = null;
       }
       
       if (phoneCandidate) {

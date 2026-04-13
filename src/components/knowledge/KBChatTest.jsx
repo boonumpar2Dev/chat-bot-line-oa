@@ -49,15 +49,21 @@ export default function KBChatTest() {
     // ──── Phone Number Detection (same logic as lineWebhook) ────
     const pureDigits = text.trim().replace(/[\s\-().+]/g, '');
     const isPureNumber = /^\d+$/.test(pureDigits);
-    const phoneSeqs = text.trim().match(/0[\d][\d\s\-().]{7,25}[\d]/g) || [];
+    // Match any digit sequence (starting with 0 or not) that looks like a phone attempt
+    const phoneSeqs = text.trim().match(/\d[\d\s\-().]{6,25}\d/g) || [];
     let phoneCandidate = null;
-    if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
+    if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 15) {
       phoneCandidate = pureDigits;
     } else {
       for (const seq of phoneSeqs) {
         const digits = seq.replace(/[^0-9]/g, '');
-        if (digits.length >= 7 && digits.length <= 12) { phoneCandidate = digits; break; }
+        if (digits.length >= 7 && digits.length <= 15) { phoneCandidate = digits; break; }
       }
+    }
+    // Only treat as phone attempt if message is mostly numbers (non-digit text is short)
+    if (phoneCandidate) {
+      const nonDigitText = text.trim().replace(/[0-9\s\-().+]/g, '').trim();
+      if (nonDigitText.length > 15) phoneCandidate = null; // too much text, probably not a phone number
     }
     if (phoneCandidate) {
       if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
