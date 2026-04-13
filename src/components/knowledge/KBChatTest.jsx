@@ -45,6 +45,39 @@ export default function KBChatTest() {
     setLoading(true);
 
     const { kb: kbItems, settings: cfg, pkgs, promos } = cachedData.current;
+
+    // ──── Phone Number Detection (same logic as lineWebhook) ────
+    const pureDigits = text.trim().replace(/[\s\-().+]/g, '');
+    const isPureNumber = /^\d+$/.test(pureDigits);
+    const phoneSeqs = text.trim().match(/0[\d][\d\s\-().]{7,25}[\d]/g) || [];
+    let phoneCandidate = null;
+    if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
+      phoneCandidate = pureDigits;
+    } else {
+      for (const seq of phoneSeqs) {
+        const digits = seq.replace(/[^0-9]/g, '');
+        if (digits.length >= 7 && digits.length <= 12) { phoneCandidate = digits; break; }
+      }
+    }
+    if (phoneCandidate) {
+      if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
+        const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        const confirmText = `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtPhone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ 🙏`;
+        setMessages(prev => [...prev, { role: 'assistant', content: confirmText, confidence: 100 }]);
+        setLoading(false);
+        return;
+      } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
+        const nonDigitText = text.trim().replace(/[0-9\s\-().+]/g, '').trim();
+        if (nonDigitText.length <= 15) {
+          const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+          setMessages(prev => [...prev, { role: 'assistant', content: errorText, confidence: 100 }]);
+          setLoading(false);
+          return;
+        }
+      }
+    }
+    // ──── End Phone Detection ────
+
     const itemsWithImages = kbItems.filter(i => getItemImages(i).length > 0);
     const pkgsWithImages = (pkgs || []).filter(p => p.image_urls?.length > 0);
 
