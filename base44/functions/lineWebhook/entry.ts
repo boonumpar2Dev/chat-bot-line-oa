@@ -312,6 +312,18 @@ Deno.serve(async (req) => {
       const freshCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
       const freshCustomer = freshCustomers[0] || customer;
 
+      // ──── Skip stale messages using event.timestamp vs ai_resumed_at ────
+      // When admin resumes AI, ai_resumed_at is set. Any message the customer sent
+      // BEFORE that moment (during manual/standby) should not trigger AI reply.
+      if (freshCustomer.ai_resumed_at && event.timestamp) {
+        const msgTime = new Date(event.timestamp);
+        const resumedAt = new Date(freshCustomer.ai_resumed_at);
+        if (msgTime < resumedAt) {
+          console.log(`[SkipStale] msg timestamp ${msgTime.toISOString()} < ai_resumed_at ${resumedAt.toISOString()} — skipping AI`);
+          continue;
+        }
+      }
+
       // ──── Stage Control: Skip AI for critical statuses ────
       if (AI_OFF_STATUSES.includes(freshCustomer.status)) {
         console.log(`[StageControl] AI blocked for ${lineUserId} — status: ${freshCustomer.status}`);
