@@ -306,6 +306,8 @@ Deno.serve(async (req) => {
       const freshCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
       const freshCustomer = freshCustomers[0] || customer;
 
+      console.log(`[AICheck] customer=${lineUserId} ai_active=${freshCustomer.ai_active} manual_until=${freshCustomer.manual_chat_until} status=${freshCustomer.status} ai_resumed_at=${freshCustomer.ai_resumed_at}`);
+
       // ──── Skip stale messages using event.timestamp vs ai_resumed_at ────
       // LINE event.timestamp is milliseconds since epoch (number).
       // When admin resumes AI, ai_resumed_at is set. Any message the customer sent
