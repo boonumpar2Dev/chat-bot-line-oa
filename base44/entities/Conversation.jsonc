@@ -1,0 +1,39 @@
+{
+  "name": "Conversation",
+  "type": "object",
+  "properties": {
+    "customer_id": {
+      "type": "string",
+      "description": "Reference to Customer ID"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "sender": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "ai",
+        "admin"
+      ],
+      "default": "customer"
+    },
+    "confidence_score": {
+      "type": "number"
+    },
+    "is_fallback": {
+      "type": "boolean",
+      "default": false
+    },
+    "line_message_id": {
+      "type": "string",
+      "description": "LINE message ID for deduplication"
+    }
+  },
+  "required": [
+    "customer_id",
+    "message",
+    "sender"
+  ]
+}

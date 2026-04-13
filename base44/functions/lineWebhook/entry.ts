@@ -56,21 +56,55 @@ Deno.serve(async (req) => {
       console.log(`[Event] type=${event.type} mode=${event.mode} userId=${lineUserId}`);
 
       // ──── Chat Control Detection: mode "standby" means admin switched to Manual Chat ────
-      if (event.mode === 'standby' && lineUserId) {
-        const existing = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
-        if (existing[0]) {
-          const customer = existing[0];
-          if (!customer.manual_chat_until || new Date(customer.manual_chat_until) < new Date()) {
-            const [cfgList] = await Promise.all([
-              base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
-            ]);
-            const manualHours = cfgList[0]?.manual_chat_hours || 360;
-            const until = new Date(Date.now() + manualHours * 3600000).toISOString();
-            await base44.asServiceRole.entities.Customer.update(customer.id, {
-              ai_active: false,
-              manual_chat_until: until,
-            });
-            console.log(`[ChatControl] Muted AI for ${lineUserId} until ${until} (${manualHours}h)`);
+      if (event.mode === 'standby') {
+        if (lineUserId) {
+          const existing = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
+          if (existing[0]) {
+            const customer = existing[0];
+            // Set manual timer if not already set
+            if (!customer.manual_chat_until || new Date(customer.manual_chat_until) < new Date()) {
+              const [cfgList] = await Promise.all([
+                base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
+              ]);
+              const manualHours = cfgList[0]?.manual_chat_hours || 360;
+              const until = new Date(Date.now() + manualHours * 3600000).toISOString();
+              await base44.asServiceRole.entities.Customer.update(customer.id, {
+                ai_active: false,
+                manual_chat_until: until,
+              });
+              console.log(`[ChatControl] Muted AI for ${lineUserId} until ${until} (${manualHours}h)`);
+            }
+
+            // Save the message even in standby mode (for dedup when LINE re-delivers)
+            if (event.type === 'message' && event.message) {
+              const lineMsgId = event.message.id;
+              // Build message text
+              let standbyText;
+              if (event.message.type === 'text') {
+                standbyText = event.message.text;
+              } else if (event.message.type === 'sticker') {
+                const stkId = event.message.stickerId;
+                standbyText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${stkId}/android/sticker.png`;
+              } else if (event.message.type === 'location') {
+                standbyText = `[ตำแหน่ง: ${event.message.title || event.message.address || 'ไม่ระบุ'}]`;
+              } else {
+                const label = event.message.type === 'image' ? 'รูปภาพ' : event.message.type === 'video' ? 'วิดีโอ' : event.message.type === 'audio' ? 'เสียง' : 'ไฟล์';
+                standbyText = `[${label}]`;
+              }
+              await base44.asServiceRole.entities.Conversation.create({
+                customer_id: customer.id,
+                message: standbyText,
+                sender: 'customer',
+                line_message_id: lineMsgId,
+              });
+              const snippet = standbyText.replace(/\[.*?\]\n?/, '').trim().slice(0, 60) || standbyText.slice(0, 60);
+              await base44.asServiceRole.entities.Customer.update(customer.id, {
+                unread_count: (customer.unread_count || 0) + 1,
+                last_message_at: new Date().toISOString(),
+                last_message_snippet: snippet,
+              });
+              console.log(`[Standby] Saved message ${lineMsgId} for ${lineUserId} (no AI reply)`);
+            }
           }
         }
         continue; // Don't process standby events further — bot should not reply
@@ -144,11 +178,20 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Save customer message
+      // Save customer message (dedup by LINE message ID)
+      const lineMsgId = event.message?.id || null;
+      if (lineMsgId) {
+        const existingMsgs = await base44.asServiceRole.entities.Conversation.filter({ line_message_id: lineMsgId });
+        if (existingMsgs.length > 0) {
+          console.log(`[Dedup] Message ${lineMsgId} already saved — skipping entire processing`);
+          continue;
+        }
+      }
       await base44.asServiceRole.entities.Conversation.create({
         customer_id: customer.id,
         message: messageText,
         sender: 'customer',
+        line_message_id: lineMsgId,
       });
 
       // Update unread count, last message time & snippet for chat list
@@ -266,23 +309,6 @@ Deno.serve(async (req) => {
       // ──── Check Manual Chat Timer: override LINE's 1-min limit ────
       if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) {
         console.log(`[ManualTimer] AI blocked for ${lineUserId} — timer until ${freshCustomer.manual_chat_until}`);
-        continue;
-      }
-
-      // ──── Skip stale messages: if message was sent DURING manual chat period, skip ────
-      // This catches the case where LINE re-delivers messages after admin returns bot control
-      const msgTimestamp = event.timestamp ? new Date(event.timestamp) : new Date();
-      const resumedAt = freshCustomer.ai_resumed_at ? new Date(freshCustomer.ai_resumed_at) : null;
-      const manualUntil = freshCustomer.manual_chat_until ? new Date(freshCustomer.manual_chat_until) : null;
-      
-      // If ai_resumed_at is set, skip messages sent before it
-      if (resumedAt && msgTimestamp < resumedAt) {
-        console.log(`[SkipOld] msg at ${msgTimestamp.toISOString()} < ai_resumed_at ${resumedAt.toISOString()} — skipping`);
-        continue;
-      }
-      // If manual_chat_until was set (even if expired now), skip messages sent during that period
-      if (manualUntil && msgTimestamp < manualUntil) {
-        console.log(`[SkipOld] msg at ${msgTimestamp.toISOString()} < manual_chat_until ${manualUntil.toISOString()} — skipping`);
         continue;
       }
 
