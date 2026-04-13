@@ -172,23 +172,33 @@ Deno.serve(async (req) => {
       if (trivialPatterns.includes(trimmedMsg)) continue;
 
       // ──── Phone Number Detection (no AI needed) ────
-      // Extract phone-like number from anywhere in the message (handles "เบอร์ 081-234-5678", "โทร0812345678", etc.)
-      const phoneExtract = messageText.replace(/[^0-9]/g, ''); // strip ALL non-digits
-      const embeddedPhone = messageText.match(/0[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9][\s\-().]*[0-9]/);
-      // Also check if the message is purely digits (with separators)
+      // Strategy: find all digit-groups in the message, join consecutive ones separated only by [-() .]
+      // Then check if the result is a valid Thai phone number
       const pureDigits = messageText.replace(/[\s\-().+]/g, '');
       const isPureNumber = /^\d+$/.test(pureDigits);
       
-      // Determine the phone candidate
+      // Extract all phone-like sequences: digits possibly separated by - ( ) . or spaces
+      const phoneSeqs = messageText.match(/0[\d][\d\s\-().]{7,15}[\d]/g) || [];
+      // Clean each match to pure digits and pick the best candidate
       let phoneCandidate = null;
+      
       if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
+        // Message is purely a number (maybe with separators)
         phoneCandidate = pureDigits;
-      } else if (embeddedPhone) {
-        phoneCandidate = embeddedPhone[0].replace(/[^0-9]/g, '');
+      } else {
+        // Find embedded phone in mixed text
+        for (const seq of phoneSeqs) {
+          const digits = seq.replace(/[^0-9]/g, '');
+          // Must be exactly 10 digits for Thai phone, or 7-12 for error feedback
+          if (digits.length >= 7 && digits.length <= 12) {
+            phoneCandidate = digits;
+            break;
+          }
+        }
       }
       
       if (phoneCandidate) {
-        if (/^0\d{9}$/.test(phoneCandidate)) {
+        if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
           // Valid 10-digit Thai phone → save & confirm
           await base44.asServiceRole.entities.Customer.update(customer.id, { phone: phoneCandidate });
           const confirmText = `ขอบคุณค่ะ บันทึกเบอร์ ${phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} เรียบร้อยแล้วนะคะ 🙏`;
@@ -201,18 +211,24 @@ Deno.serve(async (req) => {
           await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
           console.log(`[Phone] Saved valid phone ${phoneCandidate} for ${lineUserId}`);
           continue;
-        } else if (isPureNumber && phoneCandidate.length >= 7 && phoneCandidate.length <= 12 && phoneCandidate.length !== 10) {
-          // Pure number input but wrong digit count → ask to re-enter
-          const errorText = `ขออภัยค่ะ เบอร์โทรที่ให้มา "${messageText.trim()}" ดูเหมือนไม่ครบ/เกิน ${phoneCandidate.length} หลักค่ะ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะคะ 🙏`;
-          await fetch('https://api.line.me/v2/bot/message/reply', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: errorText }] }),
-          });
-          await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
-          await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
-          console.log(`[Phone] Invalid phone attempt ${phoneCandidate} (${phoneCandidate.length} digits) for ${lineUserId}`);
-          continue;
+        } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
+          // Wrong digit count → ask to re-enter (only if message looks like it's primarily a phone number)
+          // Don't trigger error for mixed long messages that happen to contain digits
+          const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
+          if (nonDigitText.length <= 15) {
+            // Short surrounding text = likely a phone attempt
+            const errorText = `ขออภัยค่ะ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักค่ะ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะคะ 🙏`;
+            await fetch('https://api.line.me/v2/bot/message/reply', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+              body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: errorText }] }),
+            });
+            await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
+            await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
+            console.log(`[Phone] Invalid phone attempt ${phoneCandidate} (${phoneCandidate.length} digits) for ${lineUserId}`);
+            continue;
+          }
+          // If surrounding text is long, it's probably a normal message with some numbers — let AI handle it
         }
       }
 
