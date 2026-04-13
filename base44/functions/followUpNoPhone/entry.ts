@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
       const lastMsg = recentConvs[0];
       if (lastMsg && lastMsg.sender === 'ai') continue;
 
-      // Send follow-up via LINE push message
-      const name = cust.nickname || cust.display_name || 'คุณลูกค้า';
-      const followupText = `สวัสดีครับ ${name} 😊\n\nเมื่อวานที่คุยกันไว้ ยังสนใจอยู่ไหมครับ?\n\nถ้าสะดวก รบกวนฝากเบอร์โทรไว้ได้เลยนะครับ จะให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดแพ็กเกจและคิวงานโดยตรงเลยครับ 🙏`;
+      // Send follow-up via LINE push message — prefer nickname over LINE display name
+      const name = cust.nickname || 'คุณลูกค้า';
+      const followupText = `สวัสดีครับ ${name} 😊\n\nยังสนใจเรื่องจัดเลี้ยงอยู่ไหมครับ?\n\nถ้าสะดวก รบกวนฝากเบอร์โทรไว้ได้เลยนะครับ จะให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดแพ็กเกจและคิวงานโดยตรงเลยครับ 🙏`;
 
       const pushRes = await fetch('https://api.line.me/v2/bot/message/push', {
         method: 'POST',
