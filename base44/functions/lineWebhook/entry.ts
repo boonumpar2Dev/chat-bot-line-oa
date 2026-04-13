@@ -171,6 +171,39 @@ Deno.serve(async (req) => {
       if (trimmedMsg.length <= 3 && !trimmedMsg.match(/[?？]/)) continue;
       if (trivialPatterns.includes(trimmedMsg)) continue;
 
+      // ──── Phone Number Detection (no AI needed) ────
+      const digitsOnly = messageText.replace(/[\s\-().+]/g, '');
+      const phoneMatch = digitsOnly.match(/^0\d+$/) || digitsOnly.match(/^(0\d{8,10})$/);
+      if (phoneMatch || (/^\d{7,12}$/.test(digitsOnly) && digitsOnly.length !== 10)) {
+        const phoneDigits = phoneMatch ? phoneMatch[0] : digitsOnly;
+        if (/^0\d{9}$/.test(phoneDigits)) {
+          // Valid 10-digit Thai phone → save & confirm
+          await base44.asServiceRole.entities.Customer.update(customer.id, { phone: phoneDigits });
+          const confirmText = `ขอบคุณค่ะ บันทึกเบอร์ ${phoneDigits.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} เรียบร้อยแล้วนะคะ 🙏`;
+          await fetch('https://api.line.me/v2/bot/message/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: confirmText }] }),
+          });
+          await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' });
+          await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
+          console.log(`[Phone] Saved valid phone ${phoneDigits} for ${lineUserId}`);
+          continue;
+        } else if (/^\d{7,12}$/.test(digitsOnly)) {
+          // Looks like a phone attempt but wrong digit count → ask to re-enter
+          const errorText = `ขออภัยค่ะ เบอร์โทรที่ให้มา "${messageText.trim()}" ดูเหมือนไม่ครบ/เกิน ${digitsOnly.length} หลักค่ะ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะคะ 🙏`;
+          await fetch('https://api.line.me/v2/bot/message/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: errorText }] }),
+          });
+          await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
+          await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
+          console.log(`[Phone] Invalid phone attempt ${digitsOnly} (${digitsOnly.length} digits) for ${lineUserId}`);
+          continue;
+        }
+      }
+
       // ──── Re-read customer to catch admin handoff that happened between message save and now ────
       const freshCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
       const freshCustomer = freshCustomers[0] || customer;
