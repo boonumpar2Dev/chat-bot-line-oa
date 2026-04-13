@@ -226,6 +226,7 @@ ${updated.map((m) => `${m.role === "user" ? "ลูกค้า" : "AI"}: ${m.co
 
     const cleanAnswer = String(response.answer || "ไม่สามารถตอบได้")
       .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 

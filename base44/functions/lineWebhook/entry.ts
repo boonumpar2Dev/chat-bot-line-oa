@@ -456,6 +456,7 @@ ${recentMsgs || '(ยังไม่มี)'}
       // ──── Process answer text ────
       const answerText = String(aiResponse.answer || 'ขออภัย ไม่สามารถตอบได้ในขณะนี้')
         .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim()
         .slice(0, 5000);
