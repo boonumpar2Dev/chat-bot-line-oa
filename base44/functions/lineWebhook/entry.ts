@@ -426,8 +426,17 @@ Deno.serve(async (req) => {
       ];
       const confidenceThreshold = cfg.confidence_threshold || 75;
 
-      // ──── Build conversation history for context (limited to save tokens) ────
-      const recentMsgs = recentConvs.slice(-6).map(m => {
+      // ──── Build conversation history for context (only after last admin message) ────
+      // If admin recently replied, AI should only see messages AFTER the last admin message
+      // This prevents AI from "catching up" on old unanswered messages
+      let historyConvs = recentConvs.slice(-12);
+      const lastAdminIdx = historyConvs.map((m, i) => m.sender === 'admin' ? i : -1).filter(i => i >= 0).pop();
+      if (lastAdminIdx !== undefined && lastAdminIdx >= 0) {
+        historyConvs = historyConvs.slice(lastAdminIdx);
+      } else {
+        historyConvs = historyConvs.slice(-6);
+      }
+      const recentMsgs = historyConvs.map(m => {
         const role = m.sender === 'customer' ? 'ลูกค้า' : (m.sender === 'admin' ? 'แอดมิน' : 'AI');
         return `${role}: ${m.message}`;
       }).join('\n');
