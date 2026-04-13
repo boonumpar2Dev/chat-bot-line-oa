@@ -34,11 +34,13 @@ export default function ManualTimerBanner({ customer, onUpdate }) {
 
   const handleResume = async () => {
     setResuming(true);
+    const now = new Date().toISOString();
     await base44.entities.Customer.update(customer.id, {
       ai_active: true,
       manual_chat_until: null,
+      ai_resumed_at: now,
     });
-    onUpdate({ ...customer, ai_active: true, manual_chat_until: null });
+    onUpdate({ ...customer, ai_active: true, manual_chat_until: null, ai_resumed_at: now });
     toast.success("ปลุกบอทสำเร็จ — AI กลับมาทำงานทันที");
     setResuming(false);
   };

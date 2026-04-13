@@ -1,0 +1,116 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "description": "\u0e0a\u0e37\u0e48\u0e2d\u0e08\u0e32\u0e01 LINE (\u0e15\u0e49\u0e19\u0e09\u0e1a\u0e31\u0e1a)"
+    },
+    "nickname": {
+      "type": "string",
+      "description": "\u0e0a\u0e37\u0e48\u0e2d\u0e17\u0e35\u0e48\u0e41\u0e2d\u0e14\u0e21\u0e34\u0e19\u0e15\u0e31\u0e49\u0e07"
+    },
+    "line_user_id": {
+      "type": "string",
+      "description": "LINE user ID"
+    },
+    "picture_url": {
+      "type": "string",
+      "description": "Profile picture URL"
+    },
+    "phone": {
+      "type": "string",
+      "description": "\u0e40\u0e1a\u0e2d\u0e23\u0e4c\u0e42\u0e17\u0e23\u0e28\u0e31\u0e1e\u0e17\u0e4c\u0e25\u0e39\u0e01\u0e04\u0e49\u0e32"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "returning",
+        "pending_quote",
+        "pending_confirm",
+        "confirmed",
+        "cancelled"
+      ],
+      "default": "new"
+    },
+    "ai_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "manual_chat_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u0e40\u0e27\u0e25\u0e32\u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38 Manual Chat Timer \u2014 AI \u0e08\u0e30\u0e44\u0e21\u0e48\u0e15\u0e2d\u0e1a\u0e08\u0e19\u0e01\u0e27\u0e48\u0e32\u0e08\u0e30\u0e16\u0e36\u0e07\u0e40\u0e27\u0e25\u0e32\u0e19\u0e35\u0e49"
+    },
+    "ai_resumed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u0e40\u0e27\u0e25\u0e32\u0e17\u0e35\u0e48 AI \u0e01\u0e25\u0e31\u0e1a\u0e21\u0e32\u0e17\u0e33\u0e07\u0e32\u0e19\u0e25\u0e48\u0e32\u0e2a\u0e38\u0e14 \u2014 \u0e43\u0e0a\u0e49\u0e40\u0e1e\u0e37\u0e48\u0e2d\u0e44\u0e21\u0e48\u0e15\u0e2d\u0e1a\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e40\u0e01\u0e48\u0e32\u0e0b\u0e49\u0e33"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "event_type": {
+      "type": "string"
+    },
+    "event_month": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date",
+      "description": "\u0e27\u0e31\u0e19\u0e17\u0e35\u0e48\u0e08\u0e31\u0e14\u0e07\u0e32\u0e19 (\u0e08\u0e32\u0e01 LIFF Admin Panel)"
+    },
+    "guest_count": {
+      "type": "number"
+    },
+    "contact_year": {
+      "type": "number"
+    },
+    "venue": {
+      "type": "string"
+    },
+    "clv_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "\u0e22\u0e2d\u0e14\u0e43\u0e0a\u0e49\u0e08\u0e48\u0e32\u0e22\u0e2a\u0e30\u0e2a\u0e21 (CLV)"
+    },
+    "sla_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u0e40\u0e27\u0e25\u0e32\u0e17\u0e35\u0e48 SLA \u0e08\u0e30\u0e2b\u0e21\u0e14\u0e2d\u0e32\u0e22\u0e38"
+    },
+    "last_sent_image_titles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "\u0e0a\u0e37\u0e48\u0e2d KB \u0e17\u0e35\u0e48\u0e2a\u0e48\u0e07\u0e23\u0e39\u0e1b\u0e44\u0e1b\u0e25\u0e48\u0e32\u0e2a\u0e38\u0e14"
+    },
+    "unread_count": {
+      "type": "number",
+      "default": 0,
+      "description": "\u0e08\u0e33\u0e19\u0e27\u0e19\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e17\u0e35\u0e48\u0e41\u0e2d\u0e14\u0e21\u0e34\u0e19\u0e22\u0e31\u0e07\u0e44\u0e21\u0e48\u0e44\u0e14\u0e49\u0e2d\u0e48\u0e32\u0e19"
+    },
+    "last_message_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u0e40\u0e27\u0e25\u0e32\u0e02\u0e2d\u0e07\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e25\u0e48\u0e32\u0e2a\u0e38\u0e14 \u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e40\u0e23\u0e35\u0e22\u0e07\u0e25\u0e33\u0e14\u0e31\u0e1a\u0e41\u0e0a\u0e17"
+    },
+    "last_message_snippet": {
+      "type": "string",
+      "description": "\u0e02\u0e49\u0e2d\u0e04\u0e27\u0e32\u0e21\u0e25\u0e48\u0e32\u0e2a\u0e38\u0e14\u0e2a\u0e33\u0e2b\u0e23\u0e31\u0e1a\u0e41\u0e2a\u0e14\u0e07\u0e1e\u0e23\u0e35\u0e27\u0e34\u0e27"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "\u0e42\u0e19\u0e49\u0e15\u0e08\u0e32\u0e01\u0e41\u0e2d\u0e14\u0e21\u0e34\u0e19\u0e40\u0e01\u0e35\u0e48\u0e22\u0e27\u0e01\u0e31\u0e1a\u0e25\u0e39\u0e01\u0e04\u0e49\u0e32\u0e04\u0e19\u0e19\u0e35\u0e49"
+    }
+  },
+  "required": [
+    "line_user_id"
+  ]
+}

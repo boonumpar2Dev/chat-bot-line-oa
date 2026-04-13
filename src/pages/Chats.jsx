@@ -319,8 +319,14 @@ export default function Chats() {
   const toggleAI = async () => {
     if (!selectedCustomer) return;
     const next = !selectedCustomer.ai_active;
-    await base44.entities.Customer.update(selectedCustomer.id, { ai_active: next });
-    setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ai_active: next } : c));
+    const updateData = { ai_active: next };
+    // When turning AI back on, set ai_resumed_at so it won't reply to old messages
+    if (next) {
+      updateData.ai_resumed_at = new Date().toISOString();
+      updateData.manual_chat_until = null;
+    }
+    await base44.entities.Customer.update(selectedCustomer.id, updateData);
+    setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ...updateData } : c));
     toast.success(next ? "เปิด AI สำหรับลูกค้านี้แล้ว" : "ปิด AI สำหรับลูกค้านี้แล้ว");
   };
 

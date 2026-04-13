@@ -57,17 +57,14 @@ Deno.serve(async (req) => {
 
       // ──── Chat Control Detection: mode "standby" means admin switched to Manual Chat ────
       if (event.mode === 'standby' && lineUserId) {
-        // LINE sent this event in standby mode — admin is chatting manually
-        // Set manual_chat_until timer based on global setting
         const existing = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
         if (existing[0]) {
           const customer = existing[0];
-          // Only set timer if not already set (avoid resetting on every standby event)
           if (!customer.manual_chat_until || new Date(customer.manual_chat_until) < new Date()) {
             const [cfgList] = await Promise.all([
               base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
             ]);
-            const manualHours = cfgList[0]?.manual_chat_hours || 360; // default 15 days
+            const manualHours = cfgList[0]?.manual_chat_hours || 360;
             const until = new Date(Date.now() + manualHours * 3600000).toISOString();
             await base44.asServiceRole.entities.Customer.update(customer.id, {
               ai_active: false,
@@ -270,6 +267,27 @@ Deno.serve(async (req) => {
       if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) {
         console.log(`[ManualTimer] AI blocked for ${lineUserId} — timer until ${freshCustomer.manual_chat_until}`);
         continue;
+      }
+
+      // ──── AI just resumed: mark ai_resumed_at so we skip old messages ────
+      // If manual_chat_until has passed and ai_resumed_at is older than manual_chat_until, update it
+      if (freshCustomer.manual_chat_until && !freshCustomer.ai_resumed_at ||
+          (freshCustomer.manual_chat_until && freshCustomer.ai_resumed_at && 
+           new Date(freshCustomer.ai_resumed_at) < new Date(freshCustomer.manual_chat_until))) {
+        const now = new Date().toISOString();
+        await base44.asServiceRole.entities.Customer.update(freshCustomer.id, { ai_resumed_at: now });
+        freshCustomer.ai_resumed_at = now;
+        console.log(`[AIResume] Set ai_resumed_at=${now} for ${lineUserId}`);
+      }
+
+      // ──── Skip old messages: only reply to messages sent AFTER AI resumed ────
+      if (freshCustomer.ai_resumed_at) {
+        const msgTime = new Date(event.timestamp || Date.now());
+        const resumeTime = new Date(freshCustomer.ai_resumed_at);
+        if (msgTime < resumeTime) {
+          console.log(`[SkipOld] Message at ${msgTime.toISOString()} is before ai_resumed_at ${freshCustomer.ai_resumed_at} — skipping`);
+          continue;
+        }
       }
 
       // ──── Check if AI is manually disabled for this customer ────
