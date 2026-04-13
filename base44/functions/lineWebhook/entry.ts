@@ -172,24 +172,19 @@ Deno.serve(async (req) => {
       if (trivialPatterns.includes(trimmedMsg)) continue;
 
       // ──── Phone Number Detection (no AI needed) ────
-      // Strategy: find all digit-groups in the message, join consecutive ones separated only by [-() .]
-      // Then check if the result is a valid Thai phone number
+      // Strategy: find digit sequences, auto-correct to 10 digits if possible
       const pureDigits = messageText.replace(/[\s\-().+]/g, '');
       const isPureNumber = /^\d+$/.test(pureDigits);
       
       // Extract all phone-like sequences: digits possibly separated by - ( ) . or spaces
       const phoneSeqs = messageText.match(/0[\d][\d\s\-().]{7,15}[\d]/g) || [];
-      // Clean each match to pure digits and pick the best candidate
       let phoneCandidate = null;
       
       if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) {
-        // Message is purely a number (maybe with separators)
         phoneCandidate = pureDigits;
       } else {
-        // Find embedded phone in mixed text
         for (const seq of phoneSeqs) {
           const digits = seq.replace(/[^0-9]/g, '');
-          // Must be exactly 10 digits for Thai phone, or 7-12 for error feedback
           if (digits.length >= 7 && digits.length <= 12) {
             phoneCandidate = digits;
             break;
@@ -198,10 +193,43 @@ Deno.serve(async (req) => {
       }
       
       if (phoneCandidate) {
-        if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
-          // Valid 10-digit Thai phone → save & confirm
-          await base44.asServiceRole.entities.Customer.update(customer.id, { phone: phoneCandidate });
-          const confirmText = `ขอบคุณค่ะ บันทึกเบอร์ ${phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} เรียบร้อยแล้วนะคะ 🙏`;
+        // Auto-correct: if 11+ digits starting with 0, trim to first 10
+        let finalPhone = phoneCandidate;
+        if (finalPhone.length > 10 && finalPhone.startsWith('0')) {
+          finalPhone = finalPhone.slice(0, 10);
+          console.log(`[Phone] Auto-corrected ${phoneCandidate} → ${finalPhone}`);
+        }
+        
+        if (/^0\d{9}$/.test(finalPhone) && finalPhone.length === 10) {
+          // Valid 10-digit Thai phone → save, summarize info, set pending_quote
+          await base44.asServiceRole.entities.Customer.update(customer.id, { 
+            phone: finalPhone,
+            status: (customer.status === 'new' || customer.status === 'returning') ? 'pending_quote' : customer.status,
+          });
+          
+          // Re-read customer to get latest data for summary
+          const updatedCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
+          const updatedCust = updatedCustomers[0] || customer;
+          
+          // Build summary of collected info
+          const fmtPhone = finalPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+          let summaryLines = [`ขอบคุณสำหรับข้อมูลครับ เพื่อให้ข้อมูลที่ถูกต้องแม่นยำที่สุด รอสักครู่นะครับ`];
+          summaryLines.push('');
+          summaryLines.push(`จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ`);
+          summaryLines.push('');
+          summaryLines.push(`📋 สรุปข้อมูลที่ได้รับ:`);
+          summaryLines.push(`- ชื่อ: ${updatedCust.nickname || updatedCust.display_name || '-'}`);
+          summaryLines.push(`- เบอร์โทร: ${fmtPhone}`);
+          if (updatedCust.event_type) summaryLines.push(`- ประเภทงาน: ${updatedCust.event_type}`);
+          if (updatedCust.venue) summaryLines.push(`- สถานที่/จังหวัด: ${updatedCust.venue}`);
+          if (updatedCust.event_date) summaryLines.push(`- วันจัดงาน: ${updatedCust.event_date}`);
+          if (updatedCust.guest_count) summaryLines.push(`- จำนวนคน: ${updatedCust.guest_count} ท่าน`);
+          if (phoneCandidate !== finalPhone) {
+            summaryLines.push('');
+            summaryLines.push(`(เบอร์ที่ให้มา ${phoneCandidate} ดูเหมือนพิมพ์เกิน — บันทึกเป็น ${fmtPhone} นะครับ ถ้าไม่ถูกต้องแจ้งได้เลยครับ)`);
+          }
+          
+          const confirmText = summaryLines.join('\n');
           await fetch('https://api.line.me/v2/bot/message/reply', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -209,15 +237,13 @@ Deno.serve(async (req) => {
           });
           await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' });
           await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
-          console.log(`[Phone] Saved valid phone ${phoneCandidate} for ${lineUserId}`);
+          console.log(`[Phone] Saved phone ${finalPhone} for ${lineUserId}, status → pending_quote`);
           continue;
-        } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
-          // Wrong digit count → ask to re-enter (only if message looks like it's primarily a phone number)
-          // Don't trigger error for mixed long messages that happen to contain digits
+        } else if (isPureNumber && phoneCandidate.length >= 7 && phoneCandidate.length < 10) {
+          // Too few digits → ask to re-enter
           const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
           if (nonDigitText.length <= 15) {
-            // Short surrounding text = likely a phone attempt
-            const errorText = `ขออภัยค่ะ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักค่ะ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะคะ 🙏`;
+            const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
             await fetch('https://api.line.me/v2/bot/message/reply', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -225,10 +251,9 @@ Deno.serve(async (req) => {
             });
             await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
             await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
-            console.log(`[Phone] Invalid phone attempt ${phoneCandidate} (${phoneCandidate.length} digits) for ${lineUserId}`);
+            console.log(`[Phone] Too few digits ${phoneCandidate} (${phoneCandidate.length}) for ${lineUserId}`);
             continue;
           }
-          // If surrounding text is long, it's probably a normal message with some numbers — let AI handle it
         }
       }
 
@@ -374,8 +399,11 @@ Deno.serve(async (req) => {
 
 หลักการตอบ:
 - ตอบจากข้อมูลใน Knowledge Base เท่านั้น ห้ามแต่งข้อมูลตัวเลข ราคา รายละเอียดที่ไม่มีอยู่
-- ถ้าลูกค้าทักทายกว้างๆ เช่น "สอบถามค่ะ" "สวัสดีค่ะ" "สนใจค่ะ" → ให้ต้อนรับอย่างอบอุ่น แล้วถามเก็บข้อมูลเลย เช่น งานจัดเลี้ยงประเภทไหน จำนวนคนประมาณเท่าไหร่ วันที่จัดงาน ฯลฯ เพื่อจะได้แนะนำแพ็กเกจที่เหมาะสม
-- ห้ามแสดงรายการหัวข้อให้ลูกค้าเลือก ห้ามบอกว่า "มีหัวข้อดังนี้..." หรือ "สามารถเลือกสอบถามได้ดังนี้..." เพราะดูเหมือนเมนูหุ่นยนต์ ให้สนทนาเป็นธรรมชาติแทน
+- **ตอบคำถามลูกค้าก่อนเสมอ** — ถ้าลูกค้าถาม "รับจัดต่างจังหวัดไหม" ให้ตอบเรื่องจังหวัดก่อน แล้วค่อยถามข้อมูลเพิ่มเติม
+- **ถามทีละเรื่อง ไม่ถามรวดเดียว** — อย่าถามประเภทงาน+จำนวนคน+วันจัด+เบอร์ พร้อมกัน ให้ถามทีละข้อตามบริบท เช่น ลูกค้าถามเรื่องจังหวัด → ตอบเรื่องจังหวัด แล้วถามจังหวัดไหน, จำนวนคนเท่าไหร่ (2 ข้อพอ)
+- **ลำดับการเก็บข้อมูล**: ตอบคำถาม → ถามประเภทงาน → จังหวัด/สถานที่ → จำนวนคน → วันจัดงาน → สุดท้ายขอเบอร์โทร
+- ถ้าลูกค้าทักทายกว้างๆ เช่น "สอบถามค่ะ" "สวัสดีค่ะ" "สนใจค่ะ" → ให้ต้อนรับอย่างอบอุ่น แล้วถามว่าสนใจงานแบบไหน
+- ห้ามแสดงรายการหัวข้อให้ลูกค้าเลือก ห้ามบอกว่า "มีหัวข้อดังนี้..." เพราะดูเหมือนเมนูหุ่นยนต์ ให้สนทนาเป็นธรรมชาติแทน
 - ถ้าลูกค้าถามเรื่องที่ไม่มีใน Knowledge Base เลย → ตอบสุภาพว่าจะให้เจ้าหน้าที่ติดต่อกลับ
 - จัดรูปแบบข้อความให้อ่านง่าย ใช้การขึ้นบรรทัดใหม่จริงๆ (newline character) แยกหัวข้อ/ประเด็นให้ชัดเจน
 - ห้ามใส่ \\n เป็นตัวอักษร ต้องขึ้นบรรทัดใหม่จริงๆ
