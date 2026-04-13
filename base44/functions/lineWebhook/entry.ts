@@ -308,6 +308,17 @@ Deno.serve(async (req) => {
 
       console.log(`[AICheck] customer=${lineUserId} ai_active=${freshCustomer.ai_active} manual_until=${freshCustomer.manual_chat_until} status=${freshCustomer.status} ai_resumed_at=${freshCustomer.ai_resumed_at}`);
 
+      // ──── Safety: If AI is off OR manual timer active → skip immediately ────
+      // This is the FIRST gate — before any other checks
+      if (!freshCustomer.ai_active) {
+        console.log(`[AIDisabled] AI blocked for ${lineUserId} — ai_active is false (early check)`);
+        continue;
+      }
+      if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) {
+        console.log(`[ManualTimer] AI blocked for ${lineUserId} — timer until ${freshCustomer.manual_chat_until} (early check)`);
+        continue;
+      }
+
       // ──── Skip stale messages using event.timestamp vs ai_resumed_at ────
       // LINE event.timestamp is milliseconds since epoch (number).
       // When admin resumes AI, ai_resumed_at is set. Any message the customer sent
