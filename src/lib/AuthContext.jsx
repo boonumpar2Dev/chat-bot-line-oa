@@ -67,6 +67,28 @@ export const AuthProvider = ({ children }) => {
               message: appError.message
             });
           }
+        } else if (appError.status === 422) {
+          // Platform validation error — retry once after delay
+          console.warn('Platform 422 error, retrying in 3s...');
+          await new Promise(r => setTimeout(r, 3000));
+          try {
+            const retrySettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+            setAppPublicSettings(retrySettings);
+            if (appParams.token) {
+              await checkUserAuth();
+            } else {
+              setIsLoadingAuth(false);
+              setIsAuthenticated(false);
+            }
+            setIsLoadingPublicSettings(false);
+            return;
+          } catch (retryErr) {
+            console.error('Retry also failed:', retryErr);
+            setAuthError({
+              type: 'platform_error',
+              message: 'ระบบขัดข้องชั่วคราว กรุณารีเฟรชหน้าอีกครั้ง'
+            });
+          }
         } else {
           setAuthError({
             type: 'unknown',
