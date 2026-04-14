@@ -111,6 +111,64 @@ Deno.serve(async (req) => {
       const msgType = event.message?.type;
       const replyToken = event.replyToken;
 
+      // ──── Admin Command Detection: #m = mute, #u = unmute, #s = status ────
+      // Admin types these in LINE OA Manager chat. Customer unlikely to type #m/#u/#s.
+      if (msgType === 'text') {
+        const cmdText = (event.message.text || '').trim().toLowerCase();
+        const isAdminCmd = ['#m', '#u', '#s'].includes(cmdText);
+        if (isAdminCmd && lineUserId) {
+          const cmdCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
+          const cmdCust = cmdCustomers[0];
+          if (cmdCust) {
+            const [cmdCfgList] = await Promise.all([
+              base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
+            ]);
+            const manualHours = cmdCfgList[0]?.manual_chat_hours || 360;
+
+            if (cmdText === '#m') {
+              const until = new Date(Date.now() + manualHours * 3600000).toISOString();
+              await base44.asServiceRole.entities.Customer.update(cmdCust.id, {
+                ai_active: false,
+                manual_chat_until: until,
+              });
+              console.log(`[AdminCmd] Muted AI for ${lineUserId} via ${cmdText} until ${until}`);
+              // Reply confirmation (visible in chat — acts as admin's note)
+              await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: `🔇 AI หยุดตอบแล้ว (${manualHours} ชม.)\nพิมพ์ #u เพื่อเปิด AI กลับ` }] }),
+              });
+              continue;
+            } else if (cmdText === '#u') {
+              const now = new Date().toISOString();
+              await base44.asServiceRole.entities.Customer.update(cmdCust.id, {
+                ai_active: true,
+                manual_chat_until: null,
+                ai_resumed_at: now,
+              });
+              console.log(`[AdminCmd] Unmuted AI for ${lineUserId} via ${cmdText}`);
+              await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: `🔊 AI กลับมาตอบแล้ว` }] }),
+              });
+              continue;
+            } else if (cmdText === '#s') {
+              const aiStatus = cmdCust.ai_active ? '🟢 เปิด' : '🔴 ปิด';
+              const timerText = cmdCust.manual_chat_until && new Date(cmdCust.manual_chat_until) > new Date()
+                ? `⏰ Timer: ${new Date(cmdCust.manual_chat_until).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}`
+                : '⏰ Timer: ไม่มี';
+              await fetch('https://api.line.me/v2/bot/message/reply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+                body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: `📊 สถานะลูกค้า\nAI: ${aiStatus}\nStatus: ${cmdCust.status}\n${timerText}` }] }),
+              });
+              continue;
+            }
+          }
+        }
+      }
+
       // Determine message text based on type
       let messageText;
       let isTextMessage = false;
