@@ -48,6 +48,18 @@ export const AuthProvider = ({ children }) => {
       } catch (appError) {
         console.error('App state check failed:', appError);
         
+        // Platform 422 error — show error page, do NOT redirect to login
+        if (appError.status === 422) {
+          console.warn('Platform 422 error — showing error page');
+          setAuthError({
+            type: 'platform_error',
+            message: 'ระบบขัดข้องชั่วคราว กรุณารีเฟรชหน้าอีกครั้ง หรือติดต่อ Base44 Support'
+          });
+          setIsLoadingPublicSettings(false);
+          setIsLoadingAuth(false);
+          return;
+        }
+        
         // Handle app-level errors
         if (appError.status === 403 && appError.data?.extra_data?.reason) {
           const reason = appError.data.extra_data.reason;
@@ -67,32 +79,10 @@ export const AuthProvider = ({ children }) => {
               message: appError.message
             });
           }
-        } else if (appError.status === 422) {
-          // Platform validation error — retry once after delay
-          console.warn('Platform 422 error, retrying in 3s...');
-          await new Promise(r => setTimeout(r, 3000));
-          try {
-            const retrySettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
-            setAppPublicSettings(retrySettings);
-            if (appParams.token) {
-              await checkUserAuth();
-            } else {
-              setIsLoadingAuth(false);
-              setIsAuthenticated(false);
-            }
-            setIsLoadingPublicSettings(false);
-            return;
-          } catch (retryErr) {
-            console.error('Retry also failed:', retryErr);
-            setAuthError({
-              type: 'platform_error',
-              message: 'ระบบขัดข้องชั่วคราว กรุณารีเฟรชหน้าอีกครั้ง'
-            });
-          }
         } else {
           setAuthError({
-            type: 'unknown',
-            message: appError.message || 'Failed to load app'
+            type: 'platform_error',
+            message: appError.message || 'ระบบขัดข้อง กรุณารีเฟรชหน้าอีกครั้ง'
           });
         }
         setIsLoadingPublicSettings(false);
