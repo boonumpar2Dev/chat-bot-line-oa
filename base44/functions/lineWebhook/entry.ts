@@ -474,8 +474,8 @@ Deno.serve(async (req) => {
         return `${role}: ${m.message}`;
       }).join('\n');
 
-      // ──── Generate AI reply ────
-      const aiResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({
+      // ──── Generate AI reply (with model fallback) ────
+      const llmPayload = {
         prompt: `คุณคือ AI ผู้ช่วยสำหรับธุรกิจจัดงานและจัดเลี้ยง ตอบเป็นภาษาไทย กระชับ เป็นกันเอง ห้ามยาวเกิน 200 คำ
 
 หลักการตอบ:
@@ -514,7 +514,6 @@ ${recentMsgs || '(ยังไม่มี)'}
 - answer: คำตอบ (ใช้การขึ้นบรรทัดใหม่จริงๆ เพื่อจัดรูปแบบ)
 - confidence: คะแนนความมั่นใจ 0-100 ว่าคำตอบถูกต้องตาม KB
 - image_titles: ชื่อข้อมูล KB หรือชื่อ "แพ็กเกจ: ..." ที่มีรูปภาพควรส่งประกอบ (สูงสุด 3)`,
-        model: 'gemini_3_flash',
         response_json_schema: {
           type: 'object',
           properties: {
@@ -528,7 +527,15 @@ ${recentMsgs || '(ยังไม่มี)'}
           },
           required: ['answer', 'confidence']
         }
-      });
+      };
+
+      let aiResponse;
+      try {
+        aiResponse = await base44.asServiceRole.integrations.Core.InvokeLLM({ ...llmPayload, model: 'gemini_3_flash' });
+      } catch (llmErr) {
+        console.warn(`[LLM] gemini_3_flash failed: ${llmErr.message} — falling back to default model`);
+        aiResponse = await base44.asServiceRole.integrations.Core.InvokeLLM(llmPayload);
+      }
 
       const confidence = typeof aiResponse.confidence === 'number' ? aiResponse.confidence : 85;
 
