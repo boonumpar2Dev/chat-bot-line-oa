@@ -221,16 +221,13 @@ async function processEvent(event, base44, accessToken) {
   if (phoneCandidate) {
     // Thai mobile: 10 digits (0xx-xxx-xxxx), Thai landline: 9 digits (0x-xxx-xxxx)
     if (/^0\d{8,9}$/.test(phoneCandidate)) {
-      const phoneMuteHours = cfg.phone_mute_hours ?? 1;
+      // Save phone but keep AI active — AI will continue answering while waiting for admin
       await base44.asServiceRole.entities.Customer.update(customer.id, {
         phone: phoneCandidate,
-        ai_active: false,
-        manual_chat_until: new Date(Date.now() + phoneMuteHours * 3600000).toISOString(),
       });
 
-      // Use freshCustomer we already fetched instead of re-querying
       const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-      let summaryLines = [`ขอบคุณสำหรับข้อมูลครับ เพื่อให้ข้อมูลที่ถูกต้องแม่นยำที่สุด รอสักครู่นะครับ`];
+      let summaryLines = [`ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtPhone} เรียบร้อยแล้ว`];
       summaryLines.push('');
       summaryLines.push(`จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ`);
       summaryLines.push('');
@@ -240,6 +237,8 @@ async function processEvent(event, base44, accessToken) {
       if (freshCustomer.venue) summaryLines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
       if (freshCustomer.event_date) summaryLines.push(`- วันจัดงาน: ${freshCustomer.event_date}`);
       if (freshCustomer.guest_count) summaryLines.push(`- จำนวนคน: ${freshCustomer.guest_count} ท่าน`);
+      summaryLines.push('');
+      summaryLines.push(`ระหว่างรอเจ้าหน้าที่ หากมีข้อสงสัยเพิ่มเติมสอบถามได้เลยนะครับ 😊`);
 
       const confirmText = summaryLines.join('\n');
       // Send LINE + save conv + update customer in parallel
@@ -252,7 +251,7 @@ async function processEvent(event, base44, accessToken) {
         base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' }),
         base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` }),
       ]);
-      console.log(`[Phone] Saved ${phoneCandidate} for ${lineUserId}, AI muted ${phoneMuteHours}hr`);
+      console.log(`[Phone] Saved ${phoneCandidate} for ${lineUserId}, AI stays active for follow-up questions`);
       return;
     } else if ((phoneCandidate.length === 9 || phoneCandidate.length === 10) && !/^0/.test(phoneCandidate)) {
       const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
@@ -430,13 +429,15 @@ async function processEvent(event, base44, accessToken) {
   const hasPhone = !!freshCustomer.phone;
   const fmtExistingPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3') : '';
   const returningCustomerPrompt = hasPhone
-    ? `\n\n🔵 ลูกค้ารายนี้เคยให้เบอร์โทรไว้แล้ว: ${fmtExistingPhone}
+    ? `\n\n🔵 ลูกค้ารายนี้มีเบอร์โทรในระบบแล้ว: ${fmtExistingPhone}
 กฎสำหรับลูกค้าที่มีเบอร์แล้ว:
-- ตอบคำถามลูกค้าตามปกติก่อน ให้ข้อมูลที่ลูกค้าถาม
+- ห้ามขอเบอร์โทรซ้ำอีก เพราะมีอยู่แล้ว
+- ตอบคำถามลูกค้าตามปกติ ให้ข้อมูลที่ลูกค้าถามจาก KB
 - พยายามเก็บข้อมูลเพิ่ม: ประเภทงาน, จำนวนคน, สถานที่/จังหวัด (ถามทีละเรื่อง)
 - เมื่อได้ข้อมูลอย่างน้อย 2 อย่าง (เช่น ประเภทงาน+จำนวนคน หรือ ประเภทงาน+สถานที่) → ถามลูกค้าว่า "ให้เจ้าหน้าที่ติดต่อกลับที่เบอร์ ${fmtExistingPhone} เลยได้ไหมครับ?"
 - ถ้าสนทนาครบ 3 รอบแล้วยังไม่ได้ข้อมูลเพิ่ม → ถามยืนยันเบอร์เลย
-- เมื่อลูกค้ายืนยัน (ตอบว่าได้/ได้เลย/ค่ะ/ครับ/OK ฯลฯ) → ตอบ JSON พิเศษ: ใส่ "confirm_existing_phone": true ในคำตอบ`
+- เมื่อลูกค้ายืนยัน (ตอบว่าได้/ได้เลย/ค่ะ/ครับ/OK ฯลฯ) → ตอบ JSON พิเศษ: ใส่ "confirm_existing_phone": true ในคำตอบ
+- ระหว่างรอแอดมิน ถ้าลูกค้ายังถามข้อมูลเพิ่ม → ตอบตามปกติจาก KB ได้เลย`
     : '';
 
   // ──── Generate AI reply ────

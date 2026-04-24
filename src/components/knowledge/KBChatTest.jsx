@@ -72,7 +72,7 @@ export default function KBChatTest() {
     if (phoneCandidate) {
       if (/^0\d{8,9}$/.test(phoneCandidate)) {
         const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-        const confirmText = `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtPhone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ 🙏`;
+        const confirmText = `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtPhone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ\n\nระหว่างรอเจ้าหน้าที่ หากมีข้อสงสัยเพิ่มเติมสอบถามได้เลยนะครับ 😊`;
         setMessages(prev => [...prev, { role: 'assistant', content: confirmText, confidence: 100 }]);
         setLoading(false);
         return;
