@@ -317,6 +317,30 @@ async function processEvent(event, base44, accessToken) {
     return;
   }
 
+  // ──── Returning customer with phone — confirm & handoff to admin ────
+  if (freshCustomer.phone) {
+    const fmtPhone = freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+    const phoneMuteHours = cfg.phone_mute_hours ?? 1;
+    const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
+    const confirmText = `ขอบคุณที่ติดต่อกลับมาครับ 😊\n\nระบบมีเบอร์โทรติดต่อของคุณอยู่แล้วที่ ${fmtPhone}\n\nจะประสานงานให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปที่เบอร์นี้โดยเร็วเลยนะครับ 🙏`;
+    await Promise.all([
+      fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: confirmText }] }),
+      }),
+      base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' }),
+      base44.asServiceRole.entities.Customer.update(customer.id, {
+        ai_active: false,
+        manual_chat_until: muteUntil,
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: `🤖 ${confirmText.slice(0, 60)}`,
+      }),
+    ]);
+    console.log(`[ReturningCustomer] Has phone ${freshCustomer.phone}, confirmed & muted AI for ${phoneMuteHours}hr`);
+    return;
+  }
+
   // ──── Fetch AI data in parallel (settings already fetched above) ────
   const [recentConvs, kb, pkgs, promos] = await Promise.all([
     base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, '-created_date', 12),
