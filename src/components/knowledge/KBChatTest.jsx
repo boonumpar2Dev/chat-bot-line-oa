@@ -63,7 +63,11 @@ export default function KBChatTest() {
     // Only treat as phone attempt if message is mostly numbers (non-digit text is short)
     if (phoneCandidate) {
       const nonDigitText = text.trim().replace(/[0-9\s\-().+]/g, '').trim();
-      if (nonDigitText.length > 15) phoneCandidate = null; // too much text, probably not a phone number
+      if (nonDigitText.length > 15) phoneCandidate = null;
+    }
+    // Normalize +66 / 66 prefix to 0
+    if (phoneCandidate && /^66\d{9}$/.test(phoneCandidate)) {
+      phoneCandidate = '0' + phoneCandidate.slice(2);
     }
     if (phoneCandidate) {
       if (/^0\d{9}$/.test(phoneCandidate)) {
