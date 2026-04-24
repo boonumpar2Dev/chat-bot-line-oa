@@ -473,7 +473,33 @@ ${recentMsgs || '(ยังไม่มี)'}
   const confidence = typeof aiResponse.confidence === 'number' ? aiResponse.confidence : 85;
 
   if (confidence < confidenceThreshold) {
-    console.log(`[LowConfidence] ${confidence}% < ${confidenceThreshold}% — skipping AI reply`);
+    console.log(`[LowConfidence] ${confidence}% < ${confidenceThreshold}% — fallback, auto-muting AI`);
+
+    // Send fallback message to customer
+    const fallbackText = cfg.fallback_message || 'ขอบคุณที่ติดต่อมาค่ะ ขณะนี้อยู่นอกเวลาทำการ เจ้าหน้าที่จะรีบติดต่อกลับโดยเร็วที่สุดนะคะ 🙏';
+    await fetch('https://api.line.me/v2/bot/message/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: fallbackText }] }),
+    });
+    await base44.asServiceRole.entities.Conversation.create({
+      customer_id: customer.id,
+      message: fallbackText,
+      sender: 'ai',
+      confidence_score: confidence,
+      is_fallback: true,
+    });
+
+    // Auto-mute AI with timer
+    const fallbackMuteHours = cfg.fallback_mute_hours ?? 1;
+    const muteUntil = new Date(Date.now() + fallbackMuteHours * 3600000).toISOString();
+    await base44.asServiceRole.entities.Customer.update(customer.id, {
+      ai_active: false,
+      manual_chat_until: muteUntil,
+      last_message_at: new Date().toISOString(),
+      last_message_snippet: `🤖 ${fallbackText.slice(0, 60)}`,
+    });
+    console.log(`[Fallback] Auto-muted AI for ${lineUserId} for ${fallbackMuteHours}hr until ${muteUntil}`);
     return;
   }
 
