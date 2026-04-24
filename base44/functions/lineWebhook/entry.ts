@@ -209,14 +209,15 @@ async function processEvent(event, base44, accessToken) {
     if (nonDigitText.length > 15) phoneCandidate = null;
   }
 
-  // Normalize +66 / 66 prefix to 0
-  if (phoneCandidate && /^66\d{9}$/.test(phoneCandidate)) {
+  // Normalize +66 / 66 prefix to 0 (mobile: 66+9 digits, landline: 66+8 digits)
+  if (phoneCandidate && /^66\d{8,9}$/.test(phoneCandidate)) {
     phoneCandidate = '0' + phoneCandidate.slice(2);
     console.log(`[Phone] Normalized 66... to ${phoneCandidate}`);
   }
 
   if (phoneCandidate) {
-    if (/^0\d{9}$/.test(phoneCandidate)) {
+    // Thai mobile: 10 digits (0xx-xxx-xxxx), Thai landline: 9 digits (0x-xxx-xxxx)
+    if (/^0\d{8,9}$/.test(phoneCandidate)) {
       const [phoneCfgList] = await Promise.all([
         base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
       ]);
@@ -254,11 +255,11 @@ async function processEvent(event, base44, accessToken) {
       await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
       console.log(`[Phone] Saved ${phoneCandidate} for ${lineUserId}, AI muted ${phoneMuteHours}hr`);
       return;
-    } else if (phoneCandidate.length === 10 && !/^0/.test(phoneCandidate)) {
-      // 10 digits but doesn't start with 0
+    } else if ((phoneCandidate.length === 9 || phoneCandidate.length === 10) && !/^0/.test(phoneCandidate)) {
+      // 9-10 digits but doesn't start with 0
       const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
       if (nonDigitText.length <= 15) {
-        const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+        const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
         await fetch('https://api.line.me/v2/bot/message/push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
@@ -269,10 +270,10 @@ async function processEvent(event, base44, accessToken) {
         console.log(`[Phone] Invalid ${phoneCandidate} (no leading 0) for ${lineUserId}`);
         return;
       }
-    } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
+    } else if (phoneCandidate.length >= 7 && (phoneCandidate.length < 9 || phoneCandidate.length > 10)) {
       const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
       if (nonDigitText.length <= 15) {
-        const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+        const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 9-10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
         await fetch('https://api.line.me/v2/bot/message/push', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },

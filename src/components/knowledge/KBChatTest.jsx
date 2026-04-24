@@ -65,12 +65,12 @@ export default function KBChatTest() {
       const nonDigitText = text.trim().replace(/[0-9\s\-().+]/g, '').trim();
       if (nonDigitText.length > 15) phoneCandidate = null;
     }
-    // Normalize +66 / 66 prefix to 0
-    if (phoneCandidate && /^66\d{9}$/.test(phoneCandidate)) {
+    // Normalize +66 / 66 prefix to 0 (mobile: 66+9 digits, landline: 66+8 digits)
+    if (phoneCandidate && /^66\d{8,9}$/.test(phoneCandidate)) {
       phoneCandidate = '0' + phoneCandidate.slice(2);
     }
     if (phoneCandidate) {
-      if (/^0\d{9}$/.test(phoneCandidate)) {
+      if (/^0\d{8,9}$/.test(phoneCandidate)) {
         const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
         const confirmText = `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtPhone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ 🙏`;
         setMessages(prev => [...prev, { role: 'assistant', content: confirmText, confidence: 100 }]);
