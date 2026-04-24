@@ -235,7 +235,6 @@ async function processEvent(event, base44, accessToken) {
       summaryLines.push(`จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ`);
       summaryLines.push('');
       summaryLines.push(`📋 สรุปข้อมูลที่ได้รับ:`);
-      summaryLines.push(`- ชื่อ: ${freshCustomer.nickname || freshCustomer.display_name || '-'}`);
       summaryLines.push(`- เบอร์โทร: ${fmtPhone}`);
       if (freshCustomer.event_type) summaryLines.push(`- ประเภทงาน: ${freshCustomer.event_type}`);
       if (freshCustomer.venue) summaryLines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
