@@ -210,7 +210,7 @@ async function processEvent(event, base44, accessToken) {
   }
 
   if (phoneCandidate) {
-    if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
+    if (/^0\d{9}$/.test(phoneCandidate)) {
       const [phoneCfgList] = await Promise.all([
         base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
       ]);
@@ -248,6 +248,21 @@ async function processEvent(event, base44, accessToken) {
       await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
       console.log(`[Phone] Saved ${phoneCandidate} for ${lineUserId}, AI muted ${phoneMuteHours}hr`);
       return;
+    } else if (phoneCandidate.length === 10 && !/^0/.test(phoneCandidate)) {
+      // 10 digits but doesn't start with 0
+      const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
+      if (nonDigitText.length <= 15) {
+        const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+        await fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: errorText }] }),
+        });
+        await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
+        await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
+        console.log(`[Phone] Invalid ${phoneCandidate} (no leading 0) for ${lineUserId}`);
+        return;
+      }
     } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
       const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
       if (nonDigitText.length <= 15) {

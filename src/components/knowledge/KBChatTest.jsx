@@ -66,12 +66,20 @@ export default function KBChatTest() {
       if (nonDigitText.length > 15) phoneCandidate = null; // too much text, probably not a phone number
     }
     if (phoneCandidate) {
-      if (/^0\d{9}$/.test(phoneCandidate) && phoneCandidate.length === 10) {
+      if (/^0\d{9}$/.test(phoneCandidate)) {
         const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
         const confirmText = `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtPhone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ 🙏`;
         setMessages(prev => [...prev, { role: 'assistant', content: confirmText, confidence: 100 }]);
         setLoading(false);
         return;
+      } else if (phoneCandidate.length === 10 && !/^0/.test(phoneCandidate)) {
+        const nonDigitText = text.trim().replace(/[0-9\s\-().+]/g, '').trim();
+        if (nonDigitText.length <= 15) {
+          const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+          setMessages(prev => [...prev, { role: 'assistant', content: errorText, confidence: 100 }]);
+          setLoading(false);
+          return;
+        }
       } else if (phoneCandidate.length !== 10 && phoneCandidate.length >= 7) {
         const nonDigitText = text.trim().replace(/[0-9\s\-().+]/g, '').trim();
         if (nonDigitText.length <= 15) {
