@@ -167,19 +167,21 @@ async function processEvent(event, base44, accessToken) {
       return;
     }
   }
-  await base44.asServiceRole.entities.Conversation.create({
-    customer_id: customer.id,
-    message: messageText,
-    sender: 'customer',
-    line_message_id: lineMsgId,
-  });
-
   const snippet = messageText.replace(/\[.*?\]\n?/, '').replace(/📎\s*https?:\/\/\S+/g, '').replace(/📛\s*.+/g, '').trim().slice(0, 60) || messageText.slice(0, 60);
-  await base44.asServiceRole.entities.Customer.update(customer.id, {
-    unread_count: (customer.unread_count || 0) + 1,
-    last_message_at: new Date().toISOString(),
-    last_message_snippet: snippet,
-  });
+  // Save message + update customer in parallel
+  await Promise.all([
+    base44.asServiceRole.entities.Conversation.create({
+      customer_id: customer.id,
+      message: messageText,
+      sender: 'customer',
+      line_message_id: lineMsgId,
+    }),
+    base44.asServiceRole.entities.Customer.update(customer.id, {
+      unread_count: (customer.unread_count || 0) + 1,
+      last_message_at: new Date().toISOString(),
+      last_message_snippet: snippet,
+    }),
+  ]);
 
   // Only process AI reply for text messages
   if (!isTextMessage) return;
@@ -189,6 +191,14 @@ async function processEvent(event, base44, accessToken) {
   const trivialPatterns = ['👍', '👌', 'ok', 'oki', 'ได้เลย', 'โอเค', 'ขอบคุณ', 'ขอบคุณค่ะ', 'ขอบคุณครับ', 'ค่ะ', 'ครับ', 'ดีค่ะ', 'ดีครับ'];
   if (trimmedMsg.length <= 3 && !trimmedMsg.match(/[?？]/)) return;
   if (trivialPatterns.includes(trimmedMsg)) return;
+
+  // ──── Fetch settings + re-read customer in parallel (single query for both phone & AI paths) ────
+  const [settingsListEarly, freshCustomers] = await Promise.all([
+    base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
+    base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId }),
+  ]);
+  const cfg = settingsListEarly[0] || {};
+  const freshCustomer = freshCustomers[0] || customer;
 
   // ──── Phone Number Detection ────
   const pureDigits = messageText.replace(/[\s\-().+]/g, '');
@@ -218,55 +228,53 @@ async function processEvent(event, base44, accessToken) {
   if (phoneCandidate) {
     // Thai mobile: 10 digits (0xx-xxx-xxxx), Thai landline: 9 digits (0x-xxx-xxxx)
     if (/^0\d{8,9}$/.test(phoneCandidate)) {
-      const [phoneCfgList] = await Promise.all([
-        base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
-      ]);
-      const phoneMuteHours = phoneCfgList[0]?.phone_mute_hours ?? 1;
+      const phoneMuteHours = cfg.phone_mute_hours ?? 1;
       await base44.asServiceRole.entities.Customer.update(customer.id, {
         phone: phoneCandidate,
         ai_active: false,
         manual_chat_until: new Date(Date.now() + phoneMuteHours * 3600000).toISOString(),
       });
 
-      const updatedCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
-      const updatedCust = updatedCustomers[0] || customer;
-
+      // Use freshCustomer we already fetched instead of re-querying
       const fmtPhone = phoneCandidate.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
       let summaryLines = [`ขอบคุณสำหรับข้อมูลครับ เพื่อให้ข้อมูลที่ถูกต้องแม่นยำที่สุด รอสักครู่นะครับ`];
       summaryLines.push('');
       summaryLines.push(`จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ`);
       summaryLines.push('');
       summaryLines.push(`📋 สรุปข้อมูลที่ได้รับ:`);
-      summaryLines.push(`- ชื่อ: ${updatedCust.nickname || updatedCust.display_name || '-'}`);
+      summaryLines.push(`- ชื่อ: ${freshCustomer.nickname || freshCustomer.display_name || '-'}`);
       summaryLines.push(`- เบอร์โทร: ${fmtPhone}`);
-      if (updatedCust.event_type) summaryLines.push(`- ประเภทงาน: ${updatedCust.event_type}`);
-      if (updatedCust.venue) summaryLines.push(`- สถานที่/จังหวัด: ${updatedCust.venue}`);
-      if (updatedCust.event_date) summaryLines.push(`- วันจัดงาน: ${updatedCust.event_date}`);
-      if (updatedCust.guest_count) summaryLines.push(`- จำนวนคน: ${updatedCust.guest_count} ท่าน`);
+      if (freshCustomer.event_type) summaryLines.push(`- ประเภทงาน: ${freshCustomer.event_type}`);
+      if (freshCustomer.venue) summaryLines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
+      if (freshCustomer.event_date) summaryLines.push(`- วันจัดงาน: ${freshCustomer.event_date}`);
+      if (freshCustomer.guest_count) summaryLines.push(`- จำนวนคน: ${freshCustomer.guest_count} ท่าน`);
 
       const confirmText = summaryLines.join('\n');
-      // Use PUSH message (no timeout) instead of reply
-      await fetch('https://api.line.me/v2/bot/message/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: confirmText }] }),
-      });
-      await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' });
-      await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` });
+      // Send LINE + save conv + update customer in parallel
+      await Promise.all([
+        fetch('https://api.line.me/v2/bot/message/push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: confirmText }] }),
+        }),
+        base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' }),
+        base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${confirmText.slice(0, 60)}` }),
+      ]);
       console.log(`[Phone] Saved ${phoneCandidate} for ${lineUserId}, AI muted ${phoneMuteHours}hr`);
       return;
     } else if ((phoneCandidate.length === 9 || phoneCandidate.length === 10) && !/^0/.test(phoneCandidate)) {
-      // 9-10 digits but doesn't start with 0
       const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
       if (nonDigitText.length <= 15) {
         const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
-        await fetch('https://api.line.me/v2/bot/message/push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: errorText }] }),
-        });
-        await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
-        await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
+        await Promise.all([
+          fetch('https://api.line.me/v2/bot/message/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: errorText }] }),
+          }),
+          base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' }),
+          base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` }),
+        ]);
         console.log(`[Phone] Invalid ${phoneCandidate} (no leading 0) for ${lineUserId}`);
         return;
       }
@@ -274,22 +282,20 @@ async function processEvent(event, base44, accessToken) {
       const nonDigitText = messageText.replace(/[0-9\s\-().+]/g, '').trim();
       if (nonDigitText.length <= 15) {
         const errorText = `ขออภัยครับ เบอร์โทรที่ให้มา "${phoneCandidate}" มี ${phoneCandidate.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 9-10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
-        await fetch('https://api.line.me/v2/bot/message/push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-          body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: errorText }] }),
-        });
-        await base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' });
-        await base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` });
+        await Promise.all([
+          fetch('https://api.line.me/v2/bot/message/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+            body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: errorText }] }),
+          }),
+          base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: errorText, sender: 'ai' }),
+          base44.asServiceRole.entities.Customer.update(customer.id, { last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${errorText.slice(0, 60)}` }),
+        ]);
         console.log(`[Phone] Invalid ${phoneCandidate} (${phoneCandidate.length} digits) for ${lineUserId}`);
         return;
       }
     }
   }
-
-  // ──── Re-read customer ────
-  const freshCustomers = await base44.asServiceRole.entities.Customer.filter({ line_user_id: lineUserId });
-  const freshCustomer = freshCustomers[0] || customer;
 
   console.log(`[AICheck] customer=${lineUserId} ai_active=${freshCustomer.ai_active} manual_until=${freshCustomer.manual_chat_until} status=${freshCustomer.status} ai_resumed_at=${freshCustomer.ai_resumed_at}`);
 
@@ -319,15 +325,13 @@ async function processEvent(event, base44, accessToken) {
     return;
   }
 
-  // ──── Fetch all AI data in parallel ────
-  const [settingsList, recentConvs, kb, pkgs, promos] = await Promise.all([
-    base44.asServiceRole.entities.AppSettings.filter({ key: 'ai_config' }),
-    base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, 'created_date', 50),
+  // ──── Fetch AI data in parallel (settings already fetched above) ────
+  const [recentConvs, kb, pkgs, promos] = await Promise.all([
+    base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, '-created_date', 12),
     base44.asServiceRole.entities.KnowledgeBase.filter({ status: 'active' }),
     base44.asServiceRole.entities.CateringPackage.filter({ is_active: true }),
     base44.asServiceRole.entities.Promotion.filter({ is_active: true }),
   ]);
-  const cfg = settingsList[0] || {};
 
   if (cfg.ai_enabled === false) return;
 
@@ -353,7 +357,8 @@ async function processEvent(event, base44, accessToken) {
 
   const context = kb.map(k => {
     const imgs = getItemImages(k);
-    return `## ${k.title}\n${k.content}${imgs.length > 0 ? `\n[มีรูปภาพประกอบ ${imgs.length} รูป]` : ''}`;
+    const content = (k.content || '').slice(0, 1500); // Limit per KB item
+    return `## ${k.title}\n${content}${imgs.length > 0 ? `\n[มีรูปภาพประกอบ ${imgs.length} รูป]` : ''}`;
   }).join('\n\n');
 
   const pkgContext = pkgs.length > 0 ? '\n\n--- แคตตาล็อกแพ็กเกจ ---\n' + pkgs.map(p => {
@@ -416,8 +421,8 @@ async function processEvent(event, base44, accessToken) {
 
   const confidenceThreshold = cfg.confidence_threshold || 75;
 
-  // ──── Build conversation history ────
-  let historyConvs = recentConvs.slice(-12);
+  // ──── Build conversation history (recentConvs is newest-first, reverse to chronological) ────
+  let historyConvs = [...recentConvs].reverse();
   const lastAdminIdx = historyConvs.map((m, i) => m.sender === 'admin' ? i : -1).filter(i => i >= 0).pop();
   if (lastAdminIdx !== undefined && lastAdminIdx >= 0) {
     historyConvs = historyConvs.slice(lastAdminIdx);
@@ -499,28 +504,29 @@ ${recentMsgs || '(ยังไม่มี)'}
 
     // Send fallback message to customer
     const fallbackText = cfg.fallback_message || 'ขอบคุณที่ติดต่อมาค่ะ ขณะนี้อยู่นอกเวลาทำการ เจ้าหน้าที่จะรีบติดต่อกลับโดยเร็วที่สุดนะคะ 🙏';
-    await fetch('https://api.line.me/v2/bot/message/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: fallbackText }] }),
-    });
-    await base44.asServiceRole.entities.Conversation.create({
-      customer_id: customer.id,
-      message: fallbackText,
-      sender: 'ai',
-      confidence_score: confidence,
-      is_fallback: true,
-    });
-
-    // Auto-mute AI with timer
     const fallbackMuteHours = cfg.fallback_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + fallbackMuteHours * 3600000).toISOString();
-    await base44.asServiceRole.entities.Customer.update(customer.id, {
-      ai_active: false,
-      manual_chat_until: muteUntil,
-      last_message_at: new Date().toISOString(),
-      last_message_snippet: `🤖 ${fallbackText.slice(0, 60)}`,
-    });
+    // Send LINE + save conv + mute AI in parallel
+    await Promise.all([
+      fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: fallbackText }] }),
+      }),
+      base44.asServiceRole.entities.Conversation.create({
+        customer_id: customer.id,
+        message: fallbackText,
+        sender: 'ai',
+        confidence_score: confidence,
+        is_fallback: true,
+      }),
+      base44.asServiceRole.entities.Customer.update(customer.id, {
+        ai_active: false,
+        manual_chat_until: muteUntil,
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: `🤖 ${fallbackText.slice(0, 60)}`,
+      }),
+    ]);
     console.log(`[Fallback] Auto-muted AI for ${lineUserId} for ${fallbackMuteHours}hr until ${muteUntil}`);
     return;
   }
@@ -575,27 +581,26 @@ ${recentMsgs || '(ยังไม่มี)'}
     console.log(`[PushSent] AI reply sent to ${lineUserId}`);
   }
 
-  if (imageTitles.length > 0) {
-    await base44.asServiceRole.entities.Customer.update(customer.id, {
-      last_sent_image_titles: imageTitles,
-    });
-  }
-
   const savedMsg = imagesToSend.length > 0
     ? `${answerText}\n${imagesToSend.map(u => `📎 ${u}`).join('\n')}`
     : answerText;
 
-  await base44.asServiceRole.entities.Conversation.create({
-    customer_id: customer.id,
-    message: savedMsg,
-    sender: 'ai',
-    confidence_score: confidence,
-  });
-
-  await base44.asServiceRole.entities.Customer.update(customer.id, {
+  // Save conversation + update customer in parallel
+  const customerUpdate = {
     last_message_at: new Date().toISOString(),
     last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
-  });
+  };
+  if (imageTitles.length > 0) customerUpdate.last_sent_image_titles = imageTitles;
+
+  await Promise.all([
+    base44.asServiceRole.entities.Conversation.create({
+      customer_id: customer.id,
+      message: savedMsg,
+      sender: 'ai',
+      confidence_score: confidence,
+    }),
+    base44.asServiceRole.entities.Customer.update(customer.id, customerUpdate),
+  ]);
 }
 
 // ──── Main handler: return 200 OK immediately, process async ────
