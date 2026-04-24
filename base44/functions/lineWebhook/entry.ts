@@ -317,30 +317,6 @@ async function processEvent(event, base44, accessToken) {
     return;
   }
 
-  // ──── Returning customer with phone — confirm & handoff to admin ────
-  if (freshCustomer.phone) {
-    const fmtPhone = freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-    const phoneMuteHours = cfg.phone_mute_hours ?? 1;
-    const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
-    const confirmText = `ขอบคุณที่ติดต่อกลับมาครับ 😊\n\nระบบมีเบอร์โทรติดต่อของคุณอยู่แล้วที่ ${fmtPhone}\n\nจะประสานงานให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปที่เบอร์นี้โดยเร็วเลยนะครับ 🙏`;
-    await Promise.all([
-      fetch('https://api.line.me/v2/bot/message/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: confirmText }] }),
-      }),
-      base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: confirmText, sender: 'ai' }),
-      base44.asServiceRole.entities.Customer.update(customer.id, {
-        ai_active: false,
-        manual_chat_until: muteUntil,
-        last_message_at: new Date().toISOString(),
-        last_message_snippet: `🤖 ${confirmText.slice(0, 60)}`,
-      }),
-    ]);
-    console.log(`[ReturningCustomer] Has phone ${freshCustomer.phone}, confirmed & muted AI for ${phoneMuteHours}hr`);
-    return;
-  }
-
   // ──── Fetch AI data in parallel (settings already fetched above) ────
   const [recentConvs, kb, pkgs, promos] = await Promise.all([
     base44.asServiceRole.entities.Conversation.filter({ customer_id: customer.id }, '-created_date', 12),
@@ -450,6 +426,19 @@ async function processEvent(event, base44, accessToken) {
     return `${role}: ${m.message}`;
   }).join('\n');
 
+  // ──── Returning customer context ────
+  const hasPhone = !!freshCustomer.phone;
+  const fmtExistingPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3') : '';
+  const returningCustomerPrompt = hasPhone
+    ? `\n\n🔵 ลูกค้ารายนี้เคยให้เบอร์โทรไว้แล้ว: ${fmtExistingPhone}
+กฎสำหรับลูกค้าที่มีเบอร์แล้ว:
+- ตอบคำถามลูกค้าตามปกติก่อน ให้ข้อมูลที่ลูกค้าถาม
+- พยายามเก็บข้อมูลเพิ่ม: ประเภทงาน, จำนวนคน, สถานที่/จังหวัด (ถามทีละเรื่อง)
+- เมื่อได้ข้อมูลอย่างน้อย 2 อย่าง (เช่น ประเภทงาน+จำนวนคน หรือ ประเภทงาน+สถานที่) → ถามลูกค้าว่า "ให้เจ้าหน้าที่ติดต่อกลับที่เบอร์ ${fmtExistingPhone} เลยได้ไหมครับ?"
+- ถ้าสนทนาครบ 3 รอบแล้วยังไม่ได้ข้อมูลเพิ่ม → ถามยืนยันเบอร์เลย
+- เมื่อลูกค้ายืนยัน (ตอบว่าได้/ได้เลย/ค่ะ/ครับ/OK ฯลฯ) → ตอบ JSON พิเศษ: ใส่ "confirm_existing_phone": true ในคำตอบ`
+    : '';
+
   // ──── Generate AI reply ────
   const llmPayload = {
     prompt: `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย กระชับ เป็นกันเอง ห้ามเกิน 150 คำ
@@ -463,6 +452,7 @@ async function processEvent(event, base44, accessToken) {
 - ห้ามแสดงเมนูหัวข้อ สนทนาธรรมชาติ
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
 - จัดย่อหน้าชัดเจน ขึ้นบรรทัดใหม่แยกหัวข้อ
+${returningCustomerPrompt}
 
 กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ
 ${strictRulesSection}
@@ -488,7 +478,8 @@ ${recentMsgs || '(ใหม่)'}
           type: 'array',
           items: { type: 'string' },
           description: 'ชื่อข้อมูล KB ที่มีรูปภาพควรส่งให้ลูกค้าประกอบ'
-        }
+        },
+        confirm_existing_phone: { type: 'boolean', description: 'true เมื่อลูกค้ายืนยันว่าติดต่อเบอร์เดิมได้เลย' }
       },
       required: ['answer', 'confidence']
     }
@@ -543,6 +534,28 @@ ${recentMsgs || '(ใหม่)'}
     .trim()
     .slice(0, 5000);
   const imageTitles = aiResponse.image_titles || [];
+
+  // ──── Handle returning customer phone confirmation ────
+  if (aiResponse.confirm_existing_phone && hasPhone) {
+    const phoneMuteHours = cfg.phone_mute_hours ?? 1;
+    const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
+    await Promise.all([
+      fetch('https://api.line.me/v2/bot/message/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ to: lineUserId, messages: [{ type: 'text', text: answerText }] }),
+      }),
+      base44.asServiceRole.entities.Conversation.create({ customer_id: customer.id, message: answerText, sender: 'ai', confidence_score: confidence }),
+      base44.asServiceRole.entities.Customer.update(customer.id, {
+        ai_active: false,
+        manual_chat_until: muteUntil,
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
+      }),
+    ]);
+    console.log(`[ReturningConfirm] Customer confirmed phone ${freshCustomer.phone}, muted AI for ${phoneMuteHours}hr`);
+    return;
+  }
 
   // ──── Image dedup ────
   const kbRelevantImages = itemsWithImages.filter(item => imageTitles.includes(item.title));
