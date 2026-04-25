@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -90,9 +90,7 @@ export default function AppLayout() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="lg:hidden h-14 border-b flex items-center px-3 gap-2 bg-card">
-          <SheetTrigger asChild>
-            <Button size="icon" variant="ghost" onClick={() => setMobileOpen(true)}><Menu /></Button>
-          </SheetTrigger>
+          <Button size="icon" variant="ghost" onClick={() => setMobileOpen(true)}><Menu /></Button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-md bg-brand-gradient flex items-center justify-center"><ChefHat className="w-4 h-4 text-primary-foreground" /></div>
             <span className="font-display font-semibold">Catering Bot</span>
