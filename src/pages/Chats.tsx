@@ -248,8 +248,34 @@ function MessageBubble({ m }: { m: any }) {
 
 function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p: any) => void }) {
   const [local, setLocal] = useState(customer);
+  const [tagInput, setTagInput] = useState("");
   useEffect(() => setLocal(customer), [customer.id]);
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
+
+  const tags: string[] = Array.isArray(local.tags) ? local.tags : [];
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (!t || tags.includes(t)) return;
+    const next = [...tags, t];
+    setLocal({ ...local, tags: next });
+    onUpdate({ tags: next });
+    setTagInput("");
+  };
+  const removeTag = (t: string) => {
+    const next = tags.filter(x => x !== t);
+    setLocal({ ...local, tags: next });
+    onUpdate({ tags: next });
+  };
+
+  // LIFF link — opens admin panel inside LINE app
+  const liffUrl = LIFF_ID
+    ? `https://liff.line.me/${LIFF_ID}?uid=${customer.line_user_id}`
+    : `${window.location.origin}/liff?uid=${customer.line_user_id}`;
+  const copyLiff = async () => {
+    try { await navigator.clipboard.writeText(liffUrl); toast.success("คัดลอกลิงก์แล้ว"); }
+    catch { toast.error("คัดลอกไม่สำเร็จ"); }
+  };
+
   return (
     <div className="space-y-4 pt-6">
       <div className="flex items-center gap-3">
@@ -263,6 +289,46 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
         </div>
       </div>
       <Separator/>
+
+      {/* Tags */}
+      <div>
+        <Label className="text-xs flex items-center gap-1 mb-2"><Tag className="w-3 h-3"/>แท็ก</Label>
+        <div className="flex flex-wrap gap-1 mb-2">
+          {tags.length === 0 && <span className="text-xs text-muted-foreground">ยังไม่มีแท็ก</span>}
+          {tags.map(t => (
+            <Badge key={t} variant="secondary" className="text-xs gap-1 pr-1">
+              {t}
+              <button onClick={() => removeTag(t)} className="hover:bg-destructive/20 rounded-full p-0.5">
+                <X className="w-3 h-3"/>
+              </button>
+            </Badge>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          <Input value={tagInput} onChange={e => setTagInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+            placeholder="เพิ่มแท็ก แล้วกด Enter" className="h-8 text-sm"/>
+          <Button size="sm" variant="outline" onClick={addTag}>+</Button>
+        </div>
+      </div>
+
+      <Separator/>
+
+      {/* LIFF Link */}
+      <div>
+        <Label className="text-xs flex items-center gap-1 mb-2"><Smartphone className="w-3 h-3"/>ลิงก์ LIFF (เปิด/ปิดบอท ในมือถือ)</Label>
+        <div className="flex gap-1">
+          <Input value={liffUrl} readOnly className="h-8 text-xs font-mono"/>
+          <Button size="sm" variant="outline" onClick={copyLiff} title="คัดลอก"><Copy className="w-3 h-3"/></Button>
+          <Button size="sm" variant="outline" asChild title="เปิด">
+            <a href={liffUrl} target="_blank" rel="noreferrer"><ExternalLink className="w-3 h-3"/></a>
+          </Button>
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1">ส่งลิงก์นี้ให้ทีมเปิดในมือถือ → จัดการสถานะลูกค้าผ่าน LIFF</p>
+      </div>
+
+      <Separator/>
+
       <div className="space-y-3">
         <div><Label className="text-xs">ชื่อเล่น</Label>
           <Input value={local.nickname || ""} onChange={e => setLocal({ ...local, nickname: e.target.value })} onBlur={() => onUpdate({ nickname: local.nickname })}/></div>
