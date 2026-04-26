@@ -188,8 +188,12 @@ async function processEvent(event: any, supabase: any) {
   if (!isText) return;
 
   const trimmed = messageText.trim().toLowerCase();
-  const trivial = ["👍", "👌", "ok", "oki", "ได้เลย", "โอเค", "ขอบคุณ", "ขอบคุณค่ะ", "ขอบคุณครับ", "ค่ะ", "ครับ", "ดีค่ะ", "ดีครับ"];
-  if (trimmed.length <= 3 && !trimmed.match(/[?？]/)) return;
+  const trivial = [
+    "👍", "👌", "🙏", "❤️", "ok", "oki", "okay", "hi", "hello",
+    "ได้เลย", "โอเค", "ขอบคุณ", "ขอบคุณค่ะ", "ขอบคุณครับ",
+    "ค่ะ", "คะ", "ครับ", "คับ", "ดีค่ะ", "ดีครับ", "สวัสดี",
+    "สวัสดีค่ะ", "สวัสดีครับ", "หวัดดี", "ทักทาย"
+  ];
   if (trivial.includes(trimmed)) return;
 
   const [{ data: cfgArr }, { data: freshArr }] = await Promise.all([
