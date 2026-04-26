@@ -203,21 +203,33 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
-  // Phone detection
+  // Phone detection — collect ALL candidates, pick best valid one
   const pureDigits = messageText.replace(/[\s\-().+]/g, "");
   const isPure = /^\d+$/.test(pureDigits);
   const phoneSeqs = messageText.match(/\d[\d\s\-().]{6,25}\d/g) || [];
-  let phone: string | null = null;
-  if (isPure && pureDigits.length >= 7 && pureDigits.length <= 15) phone = pureDigits;
-  else for (const s of phoneSeqs) {
-    const d = s.replace(/[^0-9]/g, "");
-    if (d.length >= 7 && d.length <= 15) { phone = d; break; }
+
+  const candidates: string[] = [];
+  if (isPure && pureDigits.length >= 7 && pureDigits.length <= 15) {
+    candidates.push(pureDigits);
+  } else {
+    for (const s of phoneSeqs) {
+      const d = s.replace(/[^0-9]/g, "");
+      if (d.length >= 7 && d.length <= 15) candidates.push(d);
+    }
   }
-  if (phone && messageText.replace(/[0-9\s\-().+]/g, "").trim().length > 15) phone = null;
-  if (phone && /^66\d{8,9}$/.test(phone)) phone = "0" + phone.slice(2);
+  // Normalize +66/66 → 0
+  const normalized = candidates.map(p => /^66\d{8,9}$/.test(p) ? "0" + p.slice(2) : p);
+
+  // Reject only if message has lots of non-digit text (likely casual chat with stray numbers)
+  const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
+  const tooMuchText = nonDigit.length > 40;
+
+  // Prefer first VALID Thai phone; fall back to first candidate so we can ask them to fix it
+  const validPhone = normalized.find(p => /^0\d{8,9}$/.test(p));
+  const phone = tooMuchText ? null : (validPhone || normalized[0] || null);
+  const multipleValid = normalized.filter(p => /^0\d{8,9}$/.test(p)).length > 1;
 
   if (phone) {
-    const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
     // Valid Thai phone (9-10 digits, starts with 0)
     if (/^0\d{8,9}$/.test(phone)) {
       const phoneMuteHours = cfg.phone_mute_hours ?? 1;
@@ -228,12 +240,17 @@ async function processEvent(event: any, supabase: any) {
       const fmt = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
       const lines = [
         `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmt} เรียบร้อยแล้ว`,
+      ];
+      if (multipleValid) {
+        lines.push(`(พบหลายเบอร์ในข้อความ — บันทึกเบอร์แรก หากต้องการเปลี่ยนแจ้งได้เลยครับ)`);
+      }
+      lines.push(
         "",
         "จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ",
         "",
         "📋 สรุปข้อมูลที่ได้รับ:",
         `- เบอร์โทร: ${fmt}`,
-      ];
+      );
       if (freshCustomer.event_type) lines.push(`- ประเภทงาน: ${freshCustomer.event_type}`);
       if (freshCustomer.venue) lines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
       if (freshCustomer.event_date) lines.push(`- วันจัดงาน: ${freshCustomer.event_date}`);
@@ -242,13 +259,13 @@ async function processEvent(event: any, supabase: any) {
       return;
     }
     // Phone-like but invalid: doesn't start with 0
-    if ((phone.length === 9 || phone.length === 10) && !/^0/.test(phone) && nonDigit.length <= 15) {
+    if ((phone.length === 9 || phone.length === 10) && !/^0/.test(phone)) {
       const text = `ขออภัยครับ เบอร์โทรที่ให้มา "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
       await sendAndSave(supabase, customer.id, lineUserId, text);
       return;
     }
     // Phone-like but wrong digit count
-    if (phone.length >= 7 && (phone.length < 9 || phone.length > 10) && nonDigit.length <= 15) {
+    if (phone.length >= 7 && (phone.length < 9 || phone.length > 10)) {
       const text = `ขออภัยครับ เบอร์โทรที่ให้มา "${phone}" มี ${phone.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 9-10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
       await sendAndSave(supabase, customer.id, lineUserId, text);
       return;
