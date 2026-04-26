@@ -13,10 +13,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Bot, BotOff, Clock, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft } from "lucide-react";
+import { Loader2, Send, Search, Bot, BotOff, Clock, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+
+const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
 
 type Customer = any;
 type Conversation = any;
