@@ -77,6 +77,42 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_responses: {
+        Row: {
+          created_at: string
+          file_urls: string[]
+          id: string
+          image_urls: string[]
+          is_active: boolean
+          name: string
+          sort_order: number
+          text: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_urls?: string[]
+          id?: string
+          image_urls?: string[]
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          text?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_urls?: string[]
+          id?: string
+          image_urls?: string[]
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          text?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catering_packages: {
         Row: {
           ai_instruction: string | null
