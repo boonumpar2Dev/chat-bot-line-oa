@@ -174,15 +174,15 @@ export default function Chats() {
                 <p className="font-semibold truncate">{selected.nickname || selected.display_name}</p>
                 <p className="text-xs text-muted-foreground">{STATUS_LABEL[selected.status] || selected.status}{selected.phone ? ` • ${selected.phone}` : ""}</p>
               </div>
-              <div className="hidden md:flex items-center gap-2">
-                <Label htmlFor="ai-tog" className="text-xs">AI</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
                 <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
               </div>
               <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
                 <SheetTrigger asChild>
                   <Button size="icon" variant="ghost"><Info className="w-4 h-4"/></Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[340px] overflow-y-auto">
+                <SheetContent side="right" className="w-full sm:w-[380px] overflow-y-auto">
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer}/>
                 </SheetContent>
               </Sheet>
