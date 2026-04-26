@@ -1,1 +1,13 @@
 project_id = "xfyrzvazzqaienlpumzq"
+
+[functions.line-webhook]
+verify_jwt = false
+
+[functions.liff-admin-panel]
+verify_jwt = false
+
+[functions.expire-manual-chat]
+verify_jwt = false
+
+[functions.follow-up-no-phone]
+verify_jwt = false
