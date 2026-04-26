@@ -253,6 +253,45 @@ export type Database = {
         }
         Relationships: []
       }
+      knowledge_base: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          id: string
+          image_urls: string[]
+          sort_order: number
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          image_urls?: string[]
+          sort_order?: number
+          status?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          image_urls?: string[]
+          sort_order?: number
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       package_categories: {
         Row: {
           created_at: string

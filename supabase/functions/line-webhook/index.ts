@@ -19,19 +19,25 @@ async function verifySignature(body: string, signature: string, secret: string) 
 }
 
 async function pushLine(to: string, messages: any[]) {
-  return fetch("https://api.line.me/v2/bot/message/push", {
+  const r = await fetch("https://api.line.me/v2/bot/message/push", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LINE_TOKEN}` },
     body: JSON.stringify({ to, messages }),
   });
+  if (!r.ok) console.error(`[PushFailed] ${r.status}: ${await r.text()}`);
+  return r;
 }
 
-async function callAI(prompt: string): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean }> {
+function getItemImages(item: any): string[] {
+  return Array.isArray(item.image_urls) ? [...item.image_urls] : [];
+}
+
+async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model,
       messages: [{ role: "user", content: prompt }],
       response_format: {
         type: "json_schema",
@@ -77,10 +83,21 @@ async function uploadLineMedia(messageId: string, msgType: string, supabase: any
   }
 }
 
+async function sendAndSave(supabase: any, customerId: string, lineUserId: string, text: string, extra: Record<string, any> = {}) {
+  await pushLine(lineUserId, [{ type: "text", text }]);
+  await supabase.from("conversations").insert({ customer_id: customerId, message: text, sender: "ai", ...extra });
+  await supabase.from("customers").update({
+    last_message_at: new Date().toISOString(),
+    last_message_snippet: `🤖 ${text.slice(0, 60)}`,
+  }).eq("id", customerId);
+}
+
 async function processEvent(event: any, supabase: any) {
   const lineUserId = event.source?.userId;
   if (!lineUserId) return;
   if (event.deliveryContext?.isRedelivery) return;
+
+  console.log(`[Event] type=${event.type} mode=${event.mode} userId=${lineUserId}`);
 
   // Standby mode = admin took over
   if (event.mode === "standby") {
@@ -94,12 +111,20 @@ async function processEvent(event: any, supabase: any) {
       await supabase.from("customers").update({ ai_active: false, manual_chat_until: until }).eq("id", customer.id);
     }
     if (event.type === "message" && event.message) {
-      let text = event.message.type === "text" ? event.message.text : `[${event.message.type}]`;
+      let text: string;
+      if (event.message.type === "text") text = event.message.text;
+      else if (event.message.type === "sticker") text = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
+      else if (event.message.type === "location") text = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
+      else {
+        const label = event.message.type === "image" ? "รูปภาพ" : event.message.type === "video" ? "วิดีโอ" : event.message.type === "audio" ? "เสียง" : "ไฟล์";
+        text = `[${label}]`;
+      }
       await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id });
+      const snippet = text.replace(/\[.*?\]\n?/, "").trim().slice(0, 60) || text.slice(0, 60);
       await supabase.from("customers").update({
         unread_count: (customer.unread_count || 0) + 1,
         last_message_at: new Date().toISOString(),
-        last_message_snippet: text.slice(0, 60),
+        last_message_snippet: snippet,
       }).eq("id", customer.id);
     }
     return;
@@ -119,8 +144,7 @@ async function processEvent(event: any, supabase: any) {
     const fileUrl = await uploadLineMedia(event.message.id, msgType, supabase);
     messageText = fileUrl ? `[${label}]\n📎 ${fileUrl}` : `[${label}]`;
   } else if (msgType === "sticker") {
-    const stkId = event.message.stickerId;
-    messageText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${stkId}/android/sticker.png`;
+    messageText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
   } else if (msgType === "location") {
     messageText = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
   } else {
@@ -188,19 +212,43 @@ async function processEvent(event: any, supabase: any) {
   if (phone && messageText.replace(/[0-9\s\-().+]/g, "").trim().length > 15) phone = null;
   if (phone && /^66\d{8,9}$/.test(phone)) phone = "0" + phone.slice(2);
 
-  if (phone && /^0\d{8,9}$/.test(phone)) {
-    const phoneMuteHours = cfg.phone_mute_hours ?? 1;
-    const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
-    await supabase.from("customers").update({
-      phone, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
-    }).eq("id", customer.id);
-    const fmt = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
-    const lines = [`ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmt} เรียบร้อยแล้ว`, "", "จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ"];
-    const text = lines.join("\n");
-    await pushLine(lineUserId, [{ type: "text", text }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "ai" });
-    await supabase.from("customers").update({ last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${text.slice(0, 60)}` }).eq("id", customer.id);
-    return;
+  if (phone) {
+    const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
+    // Valid Thai phone (9-10 digits, starts with 0)
+    if (/^0\d{8,9}$/.test(phone)) {
+      const phoneMuteHours = cfg.phone_mute_hours ?? 1;
+      const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
+      await supabase.from("customers").update({
+        phone, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
+      }).eq("id", customer.id);
+      const fmt = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+      const lines = [
+        `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmt} เรียบร้อยแล้ว`,
+        "",
+        "จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ",
+        "",
+        "📋 สรุปข้อมูลที่ได้รับ:",
+        `- เบอร์โทร: ${fmt}`,
+      ];
+      if (freshCustomer.event_type) lines.push(`- ประเภทงาน: ${freshCustomer.event_type}`);
+      if (freshCustomer.venue) lines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
+      if (freshCustomer.event_date) lines.push(`- วันจัดงาน: ${freshCustomer.event_date}`);
+      if (freshCustomer.guest_count) lines.push(`- จำนวนคน: ${freshCustomer.guest_count} ท่าน`);
+      await sendAndSave(supabase, customer.id, lineUserId, lines.join("\n"));
+      return;
+    }
+    // Phone-like but invalid: doesn't start with 0
+    if ((phone.length === 9 || phone.length === 10) && !/^0/.test(phone) && nonDigit.length <= 15) {
+      const text = `ขออภัยครับ เบอร์โทรที่ให้มา "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+      await sendAndSave(supabase, customer.id, lineUserId, text);
+      return;
+    }
+    // Phone-like but wrong digit count
+    if (phone.length >= 7 && (phone.length < 9 || phone.length > 10) && nonDigit.length <= 15) {
+      const text = `ขออภัยครับ เบอร์โทรที่ให้มา "${phone}" มี ${phone.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 9-10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
+      await sendAndSave(supabase, customer.id, lineUserId, text);
+      return;
+    }
   }
 
   // Safety gates
@@ -224,9 +272,10 @@ async function processEvent(event: any, supabase: any) {
     if (!inWindow) return;
   }
 
-  // Fetch AI context
-  const [{ data: recentConvs }, { data: pkgs }, { data: promos }] = await Promise.all([
+  // Fetch AI context (KB + packages + promos + history)
+  const [{ data: recentConvs }, { data: kb }, { data: pkgs }, { data: promos }] = await Promise.all([
     supabase.from("conversations").select("*").eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(12),
+    supabase.from("knowledge_base").select("*").eq("status", "active").order("sort_order", { ascending: true }),
     supabase.from("catering_packages").select("*").eq("is_active", true),
     supabase.from("promotions").select("*").eq("is_active", true),
   ]);
@@ -235,7 +284,18 @@ async function processEvent(event: any, supabase: any) {
   const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
   if (lastAdmin && Date.now() - new Date(lastAdmin.created_at).getTime() < cooldownMs) return;
 
-  const pkgContext = (pkgs || []).map((p: any) => {
+  // KB context
+  const kbItems = kb || [];
+  const kbWithImages = kbItems.filter((i: any) => getItemImages(i).length > 0);
+  const kbContext = kbItems.map((k: any) => {
+    const imgs = getItemImages(k);
+    const content = (k.content || "").slice(0, 800);
+    return `## ${k.title}\n${content}${imgs.length > 0 ? `\n[มีรูป ${imgs.length} รูป]` : ""}`;
+  }).join("\n\n");
+
+  // Package context (with custom_attributes + tier.guest_count fallback)
+  const pkgsWithImages = (pkgs || []).filter((p: any) => p.image_urls?.length > 0);
+  const pkgContext = (pkgs || []).length > 0 ? "\n\n--- แคตตาล็อกแพ็กเกจ ---\n" + (pkgs || []).map((p: any) => {
     let s = `## แพ็กเกจ: ${p.name}`;
     if (p.category) s += `\nประเภท: ${p.category}`;
     if (p.min_condition) s += `\nเงื่อนไขขั้นต่ำ: ${p.min_condition}`;
@@ -245,26 +305,32 @@ async function processEvent(event: any, supabase: any) {
         const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
         const label = t.tier_name ? `[${t.tier_name}] ` : "";
         if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}`;
+        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}`;
         else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}`;
       });
+    }
+    if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
+      s += "\nข้อมูลเพิ่มเติม:";
+      p.custom_attributes.forEach((a: any) => { if (a.label && a.value) s += `\n  - ${a.label}: ${a.value}`; });
     }
     if (p.description) s += `\nอาหาร: ${(p.description || "").slice(0, 300)}`;
     if (p.notes) s += `\nหมายเหตุ: ${(p.notes || "").slice(0, 200)}`;
     if (p.ai_instruction) s += `\n🤖 คำสั่ง AI: ${p.ai_instruction}`;
     if (p.image_urls?.length > 0) s += `\n[มีรูป ${p.image_urls.length} รูป]`;
     return s;
-  }).join("\n\n");
+  }).join("\n\n") : "";
 
-  const promoContext = (promos || []).map((pr: any) => {
+  const promosWithImages = (promos || []).filter((pr: any) => pr.image_urls?.length > 0);
+  const promoContext = (promos || []).length > 0 ? "\n\n--- โปรโมชั่น ---\n" + (promos || []).map((pr: any) => {
     let s = `## โปรโมชั่น: ${pr.name}`;
     if (pr.applicable_categories?.length > 0) s += `\nใช้กับ: ${pr.applicable_categories.join(", ")}`;
     if (pr.description) s += `\n${pr.description}`;
+    if (pr.image_urls?.length > 0) s += `\n[มีรูป ${pr.image_urls.length} รูป]`;
     return s;
-  }).join("\n\n");
+  }).join("\n\n") : "";
 
-  const pkgsWithImages = (pkgs || []).filter((p: any) => p.image_urls?.length > 0);
-  const promosWithImages = (promos || []).filter((pr: any) => pr.image_urls?.length > 0);
   const allImageSources = [
+    ...kbWithImages.map((i: any) => `"${i.title}"`),
     ...pkgsWithImages.map((p: any) => `"แพ็กเกจ: ${p.name}"`),
     ...promosWithImages.map((pr: any) => `"โปรโมชั่น: ${pr.name}"`),
   ];
@@ -282,19 +348,32 @@ async function processEvent(event: any, supabase: any) {
 
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
-  const returningPrompt = hasPhone ? `\n\n🔵 ลูกค้ามีเบอร์แล้ว: ${fmtPhone}\n- ตอบคำถามก่อน เก็บข้อมูลเพิ่ม (ประเภทงาน/จำนวน/สถานที่)\n- ได้ข้อมูล 2 อย่าง → ถามว่า "ติดต่อกลับเบอร์ ${fmtPhone} เลยไหม?"\n- ลูกค้ายืนยัน → set confirm_existing_phone: true` : "";
+  const returningPrompt = hasPhone ? `
+
+🔵 ลูกค้ารายนี้เคยให้เบอร์โทรไว้แล้ว: ${fmtPhone}
+กฎ:
+- ตอบคำถามตามปกติก่อน
+- พยายามเก็บข้อมูลเพิ่ม: ประเภทงาน, จำนวนคน, สถานที่/จังหวัด (ทีละเรื่อง)
+- ได้ข้อมูล 2+ → ถาม "ให้เจ้าหน้าที่ติดต่อกลับที่เบอร์ ${fmtPhone} เลยได้ไหมครับ?"
+- สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
+- ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
   const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย กระชับ เป็นกันเอง ห้ามเกิน 150 คำ
 
-กฎ:
-- ตอบจาก KB เท่านั้น ห้ามแต่งราคา
-- เก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวน → วันจัด → เบอร์โทร
-- ได้ข้อมูล 2+ → ขอเบอร์
+กฎหลัก:
+- ตอบจาก KB เท่านั้น ห้ามแต่งราคา/ตัวเลข
+- ตอบคำถามก่อน แล้วค่อยถามข้อมูลเพิ่ม (ทีละเรื่อง)
+- ลำดับเก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร
+- 🔴 กฎเหล็กเบอร์โทร: ได้ข้อมูล 2+ → ขอเบอร์ทันที / สนทนาครบ 3 รอบ → ต้องขอเบอร์
+- ทักทายกว้างๆ → ต้อนรับแล้วถามสนใจงานแบบไหน
+- ห้ามแสดงเมนูหัวข้อ สนทนาธรรมชาติ
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
-${returningPrompt}${strictRulesSection}
 
+กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ${returningPrompt}${strictRulesSection}
+
+KB:
+${kbContext || "(ว่าง)"}
 ${pkgContext}
-
 ${promoContext}
 ${imageListStr}
 
@@ -303,11 +382,16 @@ ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${messageText}"
 
-ตอบเป็น JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone`;
 
   let aiResp: any;
-  try { aiResp = await callAI(prompt); }
-  catch (e) { console.error("AI failed", e); return; }
+  try {
+    aiResp = await callAI(prompt, "google/gemini-3-flash-preview");
+  } catch (e: any) {
+    console.warn(`[LLM] gemini-3-flash failed: ${e.message} — fallback to gemini-2.5-flash`);
+    try { aiResp = await callAI(prompt, "google/gemini-2.5-flash"); }
+    catch (e2: any) { console.error("AI failed:", e2.message); return; }
+  }
 
   const confidence = typeof aiResp.confidence === "number" ? aiResp.confidence : 85;
   const threshold = cfg.confidence_threshold || 75;
@@ -325,7 +409,9 @@ ${recentMsgs || "(ใหม่)"}
     return;
   }
 
-  const answerText = String(aiResp.answer || "ขออภัย ไม่สามารถตอบได้").replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
+  const answerText = String(aiResp.answer || "ขออภัย ไม่สามารถตอบได้")
+    .replace(/\\n/g, "\n").replace(/\\r/g, "")
+    .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   const imageTitles: string[] = aiResp.image_titles || [];
 
   if (aiResp.confirm_existing_phone && hasPhone) {
@@ -341,9 +427,10 @@ ${recentMsgs || "(ใหม่)"}
   }
 
   // Image dedup
+  const kbImgs = kbWithImages.filter((i: any) => imageTitles.includes(i.title));
   const pkgImgs = pkgsWithImages.filter((p: any) => imageTitles.includes(`แพ็กเกจ: ${p.name}`));
   const promoImgs = promosWithImages.filter((pr: any) => imageTitles.includes(`โปรโมชั่น: ${pr.name}`));
-  const allImgs = [...pkgImgs, ...promoImgs].flatMap((x: any) => x.image_urls || []).slice(0, 3);
+  const allImgs = [...kbImgs, ...pkgImgs, ...promoImgs].flatMap((x: any) => getItemImages(x)).slice(0, 3);
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const imagesToSend = sameTitles ? [] : allImgs;
@@ -382,7 +469,7 @@ Deno.serve(async (req) => {
         catch (e: any) { console.error("processEvent error:", e.message); }
       }
     })();
-    // @ts-ignore - EdgeRuntime is provided by Supabase Edge Runtime
+    // @ts-ignore
     if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(work);
     else work.catch(e => console.error(e));
 
