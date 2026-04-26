@@ -9,54 +9,55 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, X, Image as ImageIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X } from "lucide-react";
 import { toast } from "sonner";
+import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
+import KBChatTest from "@/components/knowledge/KBChatTest";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; is_active: boolean; };
-type Cat = { id?: string; name: string; sort_order: number; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; is_active: boolean; };
+type KB = { id?: string; title: string; content: string; category: string | null; tags: string[]; image_urls: string[]; status: string; sort_order: number; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], is_active: true };
+const blankKB: KB = { title: "", content: "", category: "", tags: [], image_urls: [], status: "active", sort_order: 0 };
 
 export default function Knowledge() {
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
-        <p className="text-muted-foreground mt-1">จัดการข้อมูลแพ็คเกจ ประเภท และโปรโมชั่นที่ AI ใช้ตอบลูกค้า</p>
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
+          <p className="text-muted-foreground mt-1">จัดการข้อมูลที่ AI ใช้ตอบลูกค้า + ทดสอบได้ทันที</p>
+        </div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="default" className="shrink-0">
+              <MessageSquare className="w-4 h-4"/> ทดสอบ AI
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+            <div className="p-4 pb-2"><h2 className="font-semibold">ทดสอบ AI ตอบลูกค้า</h2>
+              <p className="text-xs text-muted-foreground">คุยเหมือนเป็นลูกค้า ดูว่า AI จะตอบอย่างไร</p>
+            </div>
+            <div className="flex-1 p-4 pt-2 min-h-0"><KBChatTest/></div>
+          </SheetContent>
+        </Sheet>
       </div>
       <Tabs defaultValue="packages">
         <TabsList>
           <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
           <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
           <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
+          <TabsTrigger value="kb"><BookOpen className="w-4 h-4 mr-1.5"/>ข้อมูลทั่วไป</TabsTrigger>
         </TabsList>
         <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
         <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
         <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
+        <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-function ImageUrlsField({ urls, onChange }: { urls: string[]; onChange: (v: string[]) => void }) {
-  const [u, setU] = useState("");
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Input placeholder="https://..." value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u.trim()){onChange([...urls,u.trim()]);setU("");}}} />
-        <Button type="button" variant="outline" onClick={()=>{if(u.trim()){onChange([...urls,u.trim()]);setU("");}}}><Plus/></Button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {urls.map((url,i)=>(
-          <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border bg-muted">
-            <img src={url} alt="" className="w-full h-full object-cover"/>
-            <button type="button" onClick={()=>onChange(urls.filter((_,j)=>j!==i))} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3 h-3"/></button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -242,6 +243,129 @@ function PromotionsTab() {
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted"><Label>เปิดใช้งาน</Label><Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button><Button onClick={save} disabled={!edit.name}>บันทึก</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function KnowledgeBaseTab() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState<KB>(blankKB);
+  const [tagInput, setTagInput] = useState("");
+  const { data: items, isLoading } = useQuery({
+    queryKey: ["kb"],
+    queryFn: async () => (await supabase.from("knowledge_base").select("*").order("sort_order")).data ?? [],
+  });
+
+  const openNew = () => { setEdit(blankKB); setOpen(true); };
+  const openEdit = (i: any) => { setEdit({ ...i, tags: i.tags || [], image_urls: i.image_urls || [] }); setOpen(true); };
+  const save = async () => {
+    const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
+    const res = edit.id
+      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
+      : await supabase.from("knowledge_base").insert(payload);
+    if (res.error) return toast.error(res.error.message);
+    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({ queryKey: ["kb"] });
+  };
+  const del = async (id: string) => {
+    if (!confirm("ลบรายการนี้?")) return;
+    await supabase.from("knowledge_base").delete().eq("id", id);
+    toast.success("ลบแล้ว"); qc.invalidateQueries({ queryKey: ["kb"] });
+  };
+
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (!t || edit.tags.includes(t)) return;
+    setEdit({ ...edit, tags: [...edit.tags, t] });
+    setTagInput("");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end"><Button onClick={openNew}><Plus/>เพิ่มข้อมูล</Button></div>
+      {isLoading && <Loader2 className="animate-spin mx-auto"/>}
+      <div className="grid md:grid-cols-2 gap-4">
+        {items?.map((i: any) => (
+          <Card key={i.id} className="p-5 shadow-soft border-border/60">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display font-semibold truncate">{i.title}</h3>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {i.category && <Badge variant="secondary">{i.category}</Badge>}
+                  {i.status !== "active" && <Badge variant="outline">ปิดใช้งาน</Badge>}
+                  {(i.tags || []).map((t: string) => <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>)}
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <Button size="icon" variant="ghost" onClick={() => openEdit(i)}><Edit2 className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => del(i.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+              </div>
+            </div>
+            {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{i.content}</p>}
+            {i.image_urls?.length > 0 && (
+              <div className="flex gap-1 mt-3">
+                {i.image_urls.slice(0, 4).map((u: string, k: number) => (
+                  <img key={k} src={u} className="w-12 h-12 rounded object-cover border" alt=""/>
+                ))}
+              </div>
+            )}
+          </Card>
+        ))}
+        {!isLoading && !items?.length && (
+          <Card className="p-10 text-center md:col-span-2">
+            <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-2"/>
+            <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูล — เพิ่ม FAQ หรือข้อมูลทั่วไปสำหรับ AI</p>
+          </Card>
+        )}
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{edit.id ? "แก้ไขข้อมูล" : "เพิ่มข้อมูล"}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5"><Label>หัวข้อ *</Label>
+              <Input value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })}/>
+            </div>
+            <div className="space-y-1.5"><Label>หมวดหมู่</Label>
+              <Input value={edit.category || ""} onChange={e => setEdit({ ...edit, category: e.target.value })}
+                placeholder="เช่น พิธีสงฆ์, อุปกรณ์, FAQ"/>
+            </div>
+            <div className="space-y-1.5"><Label>เนื้อหา</Label>
+              <Textarea rows={6} value={edit.content} onChange={e => setEdit({ ...edit, content: e.target.value })}
+                placeholder="ใส่ข้อมูล/คำถาม/คำตอบที่ AI ต้องรู้"/>
+            </div>
+            <div className="space-y-1.5"><Label>แท็ก</Label>
+              <div className="flex gap-2">
+                <Input value={tagInput} onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                  placeholder="เพิ่มแท็กแล้ว Enter"/>
+                <Button type="button" variant="outline" onClick={addTag}><Plus className="w-4 h-4"/></Button>
+              </div>
+              <div className="flex flex-wrap gap-1 mt-2">
+                {edit.tags.map(t => (
+                  <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                    {t}
+                    <button onClick={() => setEdit({ ...edit, tags: edit.tags.filter(x => x !== t) })}
+                      className="hover:bg-destructive/20 rounded-full p-0.5"><X className="w-3 h-3"/></button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ</Label>
+              <ImageUrlsField urls={edit.image_urls} onChange={u => setEdit({ ...edit, image_urls: u })}/>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+              <Label>เปิดใช้งาน</Label>
+              <Switch checked={edit.status === "active"}
+                onCheckedChange={v => setEdit({ ...edit, status: v ? "active" : "inactive" })}/>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+            <Button onClick={save} disabled={!edit.title}>บันทึก</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
