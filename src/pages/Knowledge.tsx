@@ -9,54 +9,55 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, X, Image as ImageIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
+import KBChatTest from "@/components/knowledge/KBChatTest";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; is_active: boolean; };
-type Cat = { id?: string; name: string; sort_order: number; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; is_active: boolean; };
+type KB = { id?: string; title: string; content: string; category: string | null; tags: string[]; image_urls: string[]; status: string; sort_order: number; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], is_active: true };
+const blankKB: KB = { title: "", content: "", category: "", tags: [], image_urls: [], status: "active", sort_order: 0 };
 
 export default function Knowledge() {
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
-        <p className="text-muted-foreground mt-1">จัดการข้อมูลแพ็คเกจ ประเภท และโปรโมชั่นที่ AI ใช้ตอบลูกค้า</p>
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
+          <p className="text-muted-foreground mt-1">จัดการข้อมูลที่ AI ใช้ตอบลูกค้า + ทดสอบได้ทันที</p>
+        </div>
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="default" className="shrink-0">
+              <MessageSquare className="w-4 h-4"/> ทดสอบ AI
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+            <div className="p-4 pb-2"><h2 className="font-semibold">ทดสอบ AI ตอบลูกค้า</h2>
+              <p className="text-xs text-muted-foreground">คุยเหมือนเป็นลูกค้า ดูว่า AI จะตอบอย่างไร</p>
+            </div>
+            <div className="flex-1 p-4 pt-2 min-h-0"><KBChatTest/></div>
+          </SheetContent>
+        </Sheet>
       </div>
       <Tabs defaultValue="packages">
         <TabsList>
           <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
           <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
           <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
+          <TabsTrigger value="kb"><BookOpen className="w-4 h-4 mr-1.5"/>ข้อมูลทั่วไป</TabsTrigger>
         </TabsList>
         <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
         <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
         <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
+        <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
       </Tabs>
-    </div>
-  );
-}
-
-function ImageUrlsField({ urls, onChange }: { urls: string[]; onChange: (v: string[]) => void }) {
-  const [u, setU] = useState("");
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Input placeholder="https://..." value={u} onChange={e=>setU(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&u.trim()){onChange([...urls,u.trim()]);setU("");}}} />
-        <Button type="button" variant="outline" onClick={()=>{if(u.trim()){onChange([...urls,u.trim()]);setU("");}}}><Plus/></Button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {urls.map((url,i)=>(
-          <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border bg-muted">
-            <img src={url} alt="" className="w-full h-full object-cover"/>
-            <button type="button" onClick={()=>onChange(urls.filter((_,j)=>j!==i))} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100"><X className="w-3 h-3"/></button>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
