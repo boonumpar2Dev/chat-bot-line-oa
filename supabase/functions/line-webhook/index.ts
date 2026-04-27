@@ -288,6 +288,24 @@ async function processEvent(event: any, supabase: any) {
   if (AI_OFF_STATUSES.includes(freshCustomer.status)) return;
   if (cfg.ai_enabled === false) return;
 
+  // 🕐 Debounce 15s: รอให้ลูกค้าพิมพ์เสร็จก่อนตอบ (กันกรณีพิมพ์เป็นบรรทัดสั้นๆ ติดๆ กัน)
+  // ถ้ามีข้อความใหม่จากลูกค้าเข้ามาในช่วง 15 วิ → ตัวเก่า skip ปล่อยตัวใหม่ตอบรวมทีเดียว
+  if (lineMsgId) {
+    await new Promise(r => setTimeout(r, 15000));
+    const { data: latestArr } = await supabase
+      .from("conversations")
+      .select("line_message_id")
+      .eq("customer_id", customer.id)
+      .eq("sender", "customer")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const latest = latestArr?.[0];
+    if (latest && latest.line_message_id && latest.line_message_id !== lineMsgId) {
+      console.log(`[Debounce] skip ${lineMsgId} — newer customer message arrived`);
+      return;
+    }
+  }
+
   // Schedule
   if (cfg.schedule_enabled) {
     const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
