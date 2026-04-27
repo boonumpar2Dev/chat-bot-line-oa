@@ -32,7 +32,7 @@ function getItemImages(item: any): string[] {
   return Array.isArray(item.image_urls) ? [...item.image_urls] : [];
 }
 
-async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean }> {
+async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null } }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -52,8 +52,19 @@ async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): 
               confidence: { type: "number" },
               image_titles: { type: "array", items: { type: "string" } },
               confirm_existing_phone: { type: "boolean" },
+              intent: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  event_type: { type: ["string", "null"] },
+                  venue: { type: ["string", "null"] },
+                  guest_count: { type: ["number", "null"] },
+                  event_date: { type: ["string", "null"] },
+                },
+                required: ["event_type", "venue", "guest_count", "event_date"],
+              },
             },
-            required: ["answer", "confidence", "image_titles", "confirm_existing_phone"],
+            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent"],
           },
         },
       },
@@ -367,6 +378,18 @@ async function processEvent(event: any, supabase: any) {
   else history = history.slice(-6);
   const recentMsgs = history.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
 
+  // นับรอบสนทนา = จำนวนข้อความลูกค้าใน history (รวมข้อความปัจจุบัน)
+  const customerTurns = history.filter((m: any) => m.sender === "customer").length;
+
+  // ข้อมูล intent ที่มีอยู่แล้ว
+  const knownIntent: string[] = [];
+  if (freshCustomer.event_type) knownIntent.push(`ประเภทงาน: ${freshCustomer.event_type}`);
+  if (freshCustomer.venue) knownIntent.push(`สถานที่: ${freshCustomer.venue}`);
+  if (freshCustomer.guest_count) knownIntent.push(`จำนวนคน: ${freshCustomer.guest_count}`);
+  if (freshCustomer.event_date) knownIntent.push(`วันจัดงาน: ${freshCustomer.event_date}`);
+  const knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+  const intentCount = knownIntent.length;
+
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
   const returningPrompt = hasPhone ? `
@@ -379,6 +402,9 @@ async function processEvent(event: any, supabase: any) {
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
+  const forceAskPhone = !hasPhone && (intentCount >= 2 || customerTurns >= 3);
+  const forceAskSection = forceAskPhone ? `\n\n🔴🔴🔴 บังคับ: ตอนนี้ต้องขอเบอร์โทรในข้อความนี้ทันที (ได้ข้อมูล ${intentCount} อย่าง / สนทนา ${customerTurns} รอบ) — ห้ามถามเรื่องอื่นก่อน` : "";
+
   const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย กระชับ เป็นกันเอง ห้ามเกิน 150 คำ
 
 กฎหลัก:
@@ -390,7 +416,13 @@ async function processEvent(event: any, supabase: any) {
 - ห้ามแสดงเมนูหัวข้อ สนทนาธรรมชาติ
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
 
-กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ${returningPrompt}${strictRulesSection}
+กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ
+
+📥 สกัด intent: อ่านข้อความลูกค้าแล้วเติมใน intent (ถ้าไม่มี/ไม่ชัด ใส่ null — ห้ามเดา)
+- event_type: ประเภทงาน เช่น "งานบุญ", "งานแต่ง", "งานบวช", "งานศพ", "ขึ้นบ้านใหม่"
+- venue: สถานที่/จังหวัด เช่น "วัดสระเกศ", "เชียงใหม่", "บ้าน"
+- guest_count: จำนวนคน (เลขจำนวนเต็ม) — ถ้าลูกค้าบอก "100 คน" ใส่ 100
+- event_date: วันจัด ในรูปแบบ YYYY-MM-DD ถ้าระบุวันที่ชัด หรือคำบรรยายสั้นๆ เช่น "เดือนหน้า", "15 ธค"${returningPrompt}${strictRulesSection}${knownIntentStr}${forceAskSection}
 
 KB:
 ${kbContext || "(ว่าง)"}
@@ -398,12 +430,12 @@ ${pkgContext}
 ${promoContext}
 ${imageListStr}
 
-สนทนา:
+สนทนา (ลูกค้าพูดมาแล้ว ${customerTurns} รอบ):
 ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${messageText}"
 
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone, intent`;
 
   let aiResp: any;
   try {
@@ -434,6 +466,23 @@ ${recentMsgs || "(ใหม่)"}
     .replace(/\\n/g, "\n").replace(/\\r/g, "")
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   const imageTitles: string[] = aiResp.image_titles || [];
+
+  // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
+  const intent = aiResp.intent || {};
+  const intentUpdate: any = {};
+  if (intent.event_type && !freshCustomer.event_type) intentUpdate.event_type = String(intent.event_type).slice(0, 100);
+  if (intent.venue && !freshCustomer.venue) intentUpdate.venue = String(intent.venue).slice(0, 200);
+  if (typeof intent.guest_count === "number" && intent.guest_count > 0 && !freshCustomer.guest_count) {
+    intentUpdate.guest_count = Math.floor(intent.guest_count);
+  }
+  if (intent.event_date && !freshCustomer.event_date) {
+    const d = String(intent.event_date);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) intentUpdate.event_date = d;
+  }
+  if (Object.keys(intentUpdate).length > 0) {
+    await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
+    console.log(`[Intent] saved`, intentUpdate);
+  }
 
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
