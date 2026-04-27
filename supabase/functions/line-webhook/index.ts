@@ -32,7 +32,7 @@ function getItemImages(item: any): string[] {
   return Array.isArray(item.image_urls) ? [...item.image_urls] : [];
 }
 
-async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean }> {
+async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null } }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -52,8 +52,19 @@ async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): 
               confidence: { type: "number" },
               image_titles: { type: "array", items: { type: "string" } },
               confirm_existing_phone: { type: "boolean" },
+              intent: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  event_type: { type: ["string", "null"] },
+                  venue: { type: ["string", "null"] },
+                  guest_count: { type: ["number", "null"] },
+                  event_date: { type: ["string", "null"] },
+                },
+                required: ["event_type", "venue", "guest_count", "event_date"],
+              },
             },
-            required: ["answer", "confidence", "image_titles", "confirm_existing_phone"],
+            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent"],
           },
         },
       },
