@@ -378,6 +378,18 @@ async function processEvent(event: any, supabase: any) {
   else history = history.slice(-6);
   const recentMsgs = history.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
 
+  // นับรอบสนทนา = จำนวนข้อความลูกค้าใน history (รวมข้อความปัจจุบัน)
+  const customerTurns = history.filter((m: any) => m.sender === "customer").length;
+
+  // ข้อมูล intent ที่มีอยู่แล้ว
+  const knownIntent: string[] = [];
+  if (freshCustomer.event_type) knownIntent.push(`ประเภทงาน: ${freshCustomer.event_type}`);
+  if (freshCustomer.venue) knownIntent.push(`สถานที่: ${freshCustomer.venue}`);
+  if (freshCustomer.guest_count) knownIntent.push(`จำนวนคน: ${freshCustomer.guest_count}`);
+  if (freshCustomer.event_date) knownIntent.push(`วันจัดงาน: ${freshCustomer.event_date}`);
+  const knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+  const intentCount = knownIntent.length;
+
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
   const returningPrompt = hasPhone ? `
@@ -390,6 +402,9 @@ async function processEvent(event: any, supabase: any) {
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
+  const forceAskPhone = !hasPhone && (intentCount >= 2 || customerTurns >= 3);
+  const forceAskSection = forceAskPhone ? `\n\n🔴🔴🔴 บังคับ: ตอนนี้ต้องขอเบอร์โทรในข้อความนี้ทันที (ได้ข้อมูล ${intentCount} อย่าง / สนทนา ${customerTurns} รอบ) — ห้ามถามเรื่องอื่นก่อน` : "";
+
   const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย กระชับ เป็นกันเอง ห้ามเกิน 150 คำ
 
 กฎหลัก:
@@ -401,7 +416,13 @@ async function processEvent(event: any, supabase: any) {
 - ห้ามแสดงเมนูหัวข้อ สนทนาธรรมชาติ
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
 
-กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ${returningPrompt}${strictRulesSection}
+กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ
+
+📥 สกัด intent: อ่านข้อความลูกค้าแล้วเติมใน intent (ถ้าไม่มี/ไม่ชัด ใส่ null — ห้ามเดา)
+- event_type: ประเภทงาน เช่น "งานบุญ", "งานแต่ง", "งานบวช", "งานศพ", "ขึ้นบ้านใหม่"
+- venue: สถานที่/จังหวัด เช่น "วัดสระเกศ", "เชียงใหม่", "บ้าน"
+- guest_count: จำนวนคน (เลขจำนวนเต็ม) — ถ้าลูกค้าบอก "100 คน" ใส่ 100
+- event_date: วันจัด ในรูปแบบ YYYY-MM-DD ถ้าระบุวันที่ชัด หรือคำบรรยายสั้นๆ เช่น "เดือนหน้า", "15 ธค"${returningPrompt}${strictRulesSection}${knownIntentStr}${forceAskSection}
 
 KB:
 ${kbContext || "(ว่าง)"}
@@ -409,12 +430,12 @@ ${pkgContext}
 ${promoContext}
 ${imageListStr}
 
-สนทนา:
+สนทนา (ลูกค้าพูดมาแล้ว ${customerTurns} รอบ):
 ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${messageText}"
 
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone, intent`;
 
   let aiResp: any;
   try {
