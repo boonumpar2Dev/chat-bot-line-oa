@@ -249,14 +249,16 @@ async function processEvent(event: any, supabase: any) {
   // Normalize +66/66 → 0
   const normalized = candidates.map(p => /^66\d{8,9}$/.test(p) ? "0" + p.slice(2) : p);
 
-  // Reject if message has lots of non-digit text (likely casual chat with stray numbers)
-  const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
-  const tooMuchText = nonDigit.length > 40;
+  // เบอร์ไทย valid (ขึ้นต้น 0, 9-10 หลัก) → เก็บเสมอ ไม่ว่าข้อความยาวแค่ไหน
+  const validPhones = Array.from(new Set(normalized.filter(p => /^0\d{8,9}$/.test(p))));
 
-  // Separate valid vs invalid Thai phones
-  const validPhones = tooMuchText ? [] : Array.from(new Set(normalized.filter(p => /^0\d{8,9}$/.test(p))));
-  const invalidPhones = tooMuchText ? [] : normalized.filter(p => !/^0\d{8,9}$/.test(p));
-  const hasAnyCandidate = validPhones.length > 0 || invalidPhones.length > 0;
+  // Invalid phone-like: ถามใหม่ ก็ต่อเมื่อข้อความสั้นและดูเหมือนตั้งใจให้เบอร์ (กันเก็บเลขสุ่มจากแชททั่วไป)
+  const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
+  const looksLikePhoneIntent = nonDigit.length <= 40;
+  const invalidPhones = (validPhones.length === 0 && looksLikePhoneIntent)
+    ? normalized.filter(p => !/^0\d{8,9}$/.test(p))
+    : [];
+  
 
   if (validPhones.length > 0) {
     // Save ALL valid phones (comma-separated). Merge with existing if any.
