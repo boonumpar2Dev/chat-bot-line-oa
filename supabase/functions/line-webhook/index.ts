@@ -214,7 +214,7 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
-  // Phone detection — collect ALL candidates, pick best valid one
+  // Phone detection — collect ALL candidates
   const pureDigits = messageText.replace(/[\s\-().+]/g, "");
   const isPure = /^\d+$/.test(pureDigits);
   const phoneSeqs = messageText.match(/\d[\d\s\-().]{6,25}\d/g) || [];
@@ -231,56 +231,51 @@ async function processEvent(event: any, supabase: any) {
   // Normalize +66/66 → 0
   const normalized = candidates.map(p => /^66\d{8,9}$/.test(p) ? "0" + p.slice(2) : p);
 
-  // Reject only if message has lots of non-digit text (likely casual chat with stray numbers)
+  // Reject if message has lots of non-digit text (likely casual chat with stray numbers)
   const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
   const tooMuchText = nonDigit.length > 40;
 
-  // Prefer first VALID Thai phone; fall back to first candidate so we can ask them to fix it
-  const validPhone = normalized.find(p => /^0\d{8,9}$/.test(p));
-  const phone = tooMuchText ? null : (validPhone || normalized[0] || null);
-  const multipleValid = normalized.filter(p => /^0\d{8,9}$/.test(p)).length > 1;
+  // Separate valid vs invalid Thai phones
+  const validPhones = tooMuchText ? [] : Array.from(new Set(normalized.filter(p => /^0\d{8,9}$/.test(p))));
+  const invalidPhones = tooMuchText ? [] : normalized.filter(p => !/^0\d{8,9}$/.test(p));
+  const hasAnyCandidate = validPhones.length > 0 || invalidPhones.length > 0;
 
-  if (phone) {
-    // Valid Thai phone (9-10 digits, starts with 0)
-    if (/^0\d{8,9}$/.test(phone)) {
-      const phoneMuteHours = cfg.phone_mute_hours ?? 1;
-      const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
-      await supabase.from("customers").update({
-        phone, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
-      }).eq("id", customer.id);
-      const fmt = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
-      const lines = [
-        `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmt} เรียบร้อยแล้ว`,
-      ];
-      if (multipleValid) {
-        lines.push(`(พบหลายเบอร์ในข้อความ — บันทึกเบอร์แรก หากต้องการเปลี่ยนแจ้งได้เลยครับ)`);
-      }
-      lines.push(
-        "",
-        "จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ",
-        "",
-        "📋 สรุปข้อมูลที่ได้รับ:",
-        `- เบอร์โทร: ${fmt}`,
-      );
-      if (freshCustomer.event_type) lines.push(`- ประเภทงาน: ${freshCustomer.event_type}`);
-      if (freshCustomer.venue) lines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
-      if (freshCustomer.event_date) lines.push(`- วันจัดงาน: ${freshCustomer.event_date}`);
-      if (freshCustomer.guest_count) lines.push(`- จำนวนคน: ${freshCustomer.guest_count} ท่าน`);
-      await sendAndSave(supabase, customer.id, lineUserId, lines.join("\n"));
-      return;
-    }
-    // Phone-like but invalid: doesn't start with 0
-    if ((phone.length === 9 || phone.length === 10) && !/^0/.test(phone)) {
-      const text = `ขออภัยครับ เบอร์โทรที่ให้มา "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ครับ\n\nเบอร์โทรศัพท์ไทยต้องขึ้นต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
-      await sendAndSave(supabase, customer.id, lineUserId, text);
-      return;
-    }
-    // Phone-like but wrong digit count
-    if (phone.length >= 7 && (phone.length < 9 || phone.length > 10)) {
-      const text = `ขออภัยครับ เบอร์โทรที่ให้มา "${phone}" มี ${phone.length} หลักครับ\n\nเบอร์โทรศัพท์ไทยต้อง 9-10 หลัก เริ่มต้นด้วย 0 เช่น 081-234-5678 หรือ 02-345-6789\nรบกวนทวนเบอร์อีกครั้งนะครับ 🙏`;
-      await sendAndSave(supabase, customer.id, lineUserId, text);
-      return;
-    }
+  if (validPhones.length > 0) {
+    // Save ALL valid phones (comma-separated). Merge with existing if any.
+    const existingPhones = (freshCustomer.phone || "").split(/[,\s]+/).filter((p: string) => /^0\d{8,9}$/.test(p));
+    const allPhones = Array.from(new Set([...existingPhones, ...validPhones]));
+    const phoneStr = allPhones.join(", ");
+    const phoneMuteHours = cfg.phone_mute_hours ?? 1;
+    const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
+    await supabase.from("customers").update({
+      phone: phoneStr, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
+    }).eq("id", customer.id);
+    const fmtList = validPhones.map(p => p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3"));
+    const fmtStr = fmtList.length === 1 ? fmtList[0] : fmtList.join(", ");
+    const lines = [
+      validPhones.length === 1
+        ? `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทร ${fmtStr} เรียบร้อยแล้ว`
+        : `ขอบคุณสำหรับข้อมูลครับ บันทึกเบอร์โทรทั้ง ${validPhones.length} เบอร์เรียบร้อยแล้ว: ${fmtStr}`,
+      "",
+      "จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยครับ",
+      "",
+      "📋 สรุปข้อมูลที่ได้รับ:",
+      `- เบอร์โทร: ${fmtStr}`,
+    ];
+    if (freshCustomer.event_type) lines.push(`- ประเภทงาน: ${freshCustomer.event_type}`);
+    if (freshCustomer.venue) lines.push(`- สถานที่/จังหวัด: ${freshCustomer.venue}`);
+    if (freshCustomer.event_date) lines.push(`- วันจัดงาน: ${freshCustomer.event_date}`);
+    if (freshCustomer.guest_count) lines.push(`- จำนวนคน: ${freshCustomer.guest_count} ท่าน`);
+    await sendAndSave(supabase, customer.id, lineUserId, lines.join("\n"));
+    return;
+  }
+
+  // Invalid phone-like: ไม่เก็บ + ถามนุ่มๆ
+  if (invalidPhones.length > 0) {
+    const bad = invalidPhones[0];
+    const text = `ขอเบอร์อีกครั้งได้ไหมครับ เบอร์ที่ให้มา "${bad}" เหมือนจะไม่ครบ 10 หลักนะครับ 🙏\n\nเบอร์โทรศัพท์ไทยขึ้นต้นด้วย 0 และมี 9-10 หลัก เช่น 081-234-5678`;
+    await sendAndSave(supabase, customer.id, lineUserId, text);
+    return;
   }
 
   // Safety gates
