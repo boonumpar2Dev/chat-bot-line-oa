@@ -467,6 +467,23 @@ ${recentMsgs || "(ใหม่)"}
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   const imageTitles: string[] = aiResp.image_titles || [];
 
+  // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
+  const intent = aiResp.intent || {};
+  const intentUpdate: any = {};
+  if (intent.event_type && !freshCustomer.event_type) intentUpdate.event_type = String(intent.event_type).slice(0, 100);
+  if (intent.venue && !freshCustomer.venue) intentUpdate.venue = String(intent.venue).slice(0, 200);
+  if (typeof intent.guest_count === "number" && intent.guest_count > 0 && !freshCustomer.guest_count) {
+    intentUpdate.guest_count = Math.floor(intent.guest_count);
+  }
+  if (intent.event_date && !freshCustomer.event_date) {
+    const d = String(intent.event_date);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) intentUpdate.event_date = d;
+  }
+  if (Object.keys(intentUpdate).length > 0) {
+    await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
+    console.log(`[Intent] saved`, intentUpdate);
+  }
+
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
