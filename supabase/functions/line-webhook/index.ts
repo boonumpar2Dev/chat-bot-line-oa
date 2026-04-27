@@ -199,11 +199,11 @@ async function processEvent(event: any, supabase: any) {
   if (!isText) return;
 
   const trimmed = messageText.trim().toLowerCase();
+  // Skip only pure acknowledgements (ไม่ใช่ทักทาย เพราะทักทายต้องตอบกลับ+ถาม)
   const trivial = [
-    "👍", "👌", "🙏", "❤️", "ok", "oki", "okay", "hi", "hello",
+    "👍", "👌", "🙏", "❤️", "ok", "oki", "okay",
     "ได้เลย", "โอเค", "ขอบคุณ", "ขอบคุณค่ะ", "ขอบคุณครับ",
-    "ค่ะ", "คะ", "ครับ", "คับ", "ดีค่ะ", "ดีครับ", "สวัสดี",
-    "สวัสดีค่ะ", "สวัสดีครับ", "หวัดดี", "ทักทาย"
+    "ค่ะ", "คะ", "ครับ", "คับ", "ดีค่ะ", "ดีครับ"
   ];
   if (trivial.includes(trimmed)) return;
 
