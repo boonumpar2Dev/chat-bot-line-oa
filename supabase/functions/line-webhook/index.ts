@@ -258,7 +258,7 @@ async function processEvent(event: any, supabase: any) {
   const invalidPhones = (validPhones.length === 0 && looksLikePhoneIntent)
     ? normalized.filter(p => !/^0\d{8,9}$/.test(p))
     : [];
-  const hasAnyCandidate = validPhones.length > 0 || invalidPhones.length > 0;
+  
 
   if (validPhones.length > 0) {
     // Save ALL valid phones (comma-separated). Merge with existing if any.
