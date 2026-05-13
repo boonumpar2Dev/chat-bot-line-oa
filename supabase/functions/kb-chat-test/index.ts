@@ -191,6 +191,7 @@ ${recentMsgs || "(ใหม่)"}
     (kb || []).forEach((i: any) => { lookup[`"${i.title}"`] = getItemImages(i); });
     (pkgs || []).forEach((p: any) => { lookup[`"แพ็กเกจ: ${p.name}"`] = p.image_urls || []; });
     (promos || []).forEach((pr: any) => { lookup[`"โปรโมชั่น: ${pr.name}"`] = pr.image_urls || []; });
+    tierImageRefs.forEach(r => { lookup[`"${r.title}"`] = [r.url]; });
     const imageUrls: string[] = [];
     for (const t of imageTitles) {
       const arr = lookup[t] || lookup[`"${t}"`] || [];
