@@ -353,13 +353,6 @@ function KnowledgeBaseTab() {
               </div>
             </div>
             {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{i.content}</p>}
-            {i.image_urls?.length > 0 && (
-              <div className="flex gap-1 mt-3">
-                {i.image_urls.slice(0, 4).map((u: string, k: number) => (
-                  <img key={k} src={u} className="w-12 h-12 rounded object-cover border" alt=""/>
-                ))}
-              </div>
-            )}
           </Card>
         ))}
         {!isLoading && !filtered.length && (
