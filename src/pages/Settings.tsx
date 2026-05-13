@@ -81,6 +81,11 @@ export default function Settings() {
             <div className="space-y-1.5"><Label>Confidence Threshold (%)</Label><Input type="number" value={s.confidence_threshold} onChange={e=>upd("confidence_threshold",+e.target.value)} /><p className="text-xs text-muted-foreground">ต่ำกว่าค่านี้จะส่ง Fallback</p></div>
             <div className="space-y-1.5"><Label>Cooldown (นาที)</Label><Input type="number" value={s.cooldown_minutes} onChange={e=>upd("cooldown_minutes",+e.target.value)} /><p className="text-xs text-muted-foreground">เว้นช่วงระหว่างข้อความ AI</p></div>
           </div>
+          <div className="space-y-1.5 p-4 rounded-lg bg-muted/50">
+            <Label>รอลูกค้าพิมพ์เสร็จก่อนตอบ (วินาที)</Label>
+            <Input type="number" min={0} max={120} value={s.debounce_seconds ?? 15} onChange={e=>upd("debounce_seconds",+e.target.value)} />
+            <p className="text-xs text-muted-foreground">ถ้าลูกค้าพิมพ์หลายข้อความติดกัน AI จะรอตามจำนวนวินาทีนี้แล้วตอบรวมทีเดียว (แนะนำ 10–20 วิ, ใส่ 0 = ปิด)</p>
+          </div>
         </div>
       </Card>
 
