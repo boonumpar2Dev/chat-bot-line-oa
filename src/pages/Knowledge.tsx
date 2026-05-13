@@ -15,6 +15,7 @@ import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIco
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
+import TierImageField from "@/components/knowledge/TierImageField";
 import KBChatTest from "@/components/knowledge/KBChatTest";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; is_active: boolean; };
