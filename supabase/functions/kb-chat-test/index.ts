@@ -57,7 +57,8 @@ Deno.serve(async (req) => {
     const history: Array<{ role: string; content: string }> = body.history || [];
     if (!text) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
-    // Phone validation (mirror line-webhook)
+    // Phone validation — strict Thai format
+    // Mobile: 10 digits, starts 06/08/09  | Landline: 9 digits, starts 02-07
     const pureDigits = text.replace(/[\s\-().+]/g, "");
     const isPureNumber = /^\d+$/.test(pureDigits);
     let phone: string | null = null;
@@ -75,20 +76,24 @@ Deno.serve(async (req) => {
       if (nonDigit.length > 15) phone = null;
     }
     if (phone) {
-      if (/^0\d{8,9}$/.test(phone)) {
-        const fmt = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+      const isValidMobile = /^0[689]\d{8}$/.test(phone); // 10 digits, 06/08/09
+      const isValidLandline = /^0[2-7]\d{7}$/.test(phone); // 9 digits, 02-07
+      if (isValidMobile || isValidLandline) {
+        const fmt = isValidMobile
+          ? phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
+          : phone.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
         return Response.json({
-          answer: `ขอบคุณครับ บันทึกเบอร์ ${fmt} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะครับ 🙏`,
+          answer: `ขอบคุณค่ะ บันทึกเบอร์ ${fmt} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`,
           confidence: 100, image_titles: [],
         }, { headers: corsHeaders });
-      } else if (phone.length === 10 && !/^0/.test(phone)) {
+      } else if (!/^0/.test(phone) && phone.length >= 9) {
         return Response.json({
-          answer: `เบอร์ "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ครับ เบอร์ไทยต้องขึ้นต้นด้วย 0 รบกวนทวนใหม่นะครับ`,
+          answer: `เบอร์ "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ค่ะ เบอร์ไทยต้องขึ้นต้นด้วย 0 รบกวนทวนใหม่นะคะ`,
           confidence: 100, image_titles: [],
         }, { headers: corsHeaders });
-      } else if (phone.length !== 10 && phone.length >= 7) {
+      } else if (/^0\d+$/.test(phone) && phone.length >= 7) {
         return Response.json({
-          answer: `เบอร์ "${phone}" มี ${phone.length} หลักครับ เบอร์ไทยต้อง 10 หลัก ขึ้นต้นด้วย 0`,
+          answer: `เบอร์ "${phone}" ดูไม่ตรงรูปแบบเบอร์ไทยค่ะ (มือถือ 10 หลัก ขึ้นต้น 06/08/09 หรือ เบอร์บ้าน 9 หลัก ขึ้นต้น 02-07) รบกวนทวนใหม่นะคะ`,
           confidence: 100, image_titles: [],
         }, { headers: corsHeaders });
       }
