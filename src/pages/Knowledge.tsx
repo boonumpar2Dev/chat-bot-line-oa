@@ -19,11 +19,11 @@ import KBChatTest from "@/components/knowledge/KBChatTest";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; is_active: boolean; };
-type KB = { id?: string; title: string; content: string; category: string | null; tags: string[]; image_urls: string[]; status: string; sort_order: number; };
+type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; status: string; sort_order: number; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], is_active: true };
-const blankKB: KB = { title: "", content: "", category: "", tags: [], image_urls: [], status: "active", sort_order: 0 };
+const blankKB: KB = { title: "", content: "", category: "", image_urls: [], status: "active", sort_order: 0 };
 
 export default function Knowledge() {
   return (
