@@ -411,9 +411,6 @@ function KnowledgeBaseTab() {
               <Textarea rows={6} value={edit.content} onChange={e => setEdit({ ...edit, content: e.target.value })}
                 placeholder="ใส่ข้อมูล/คำถาม/คำตอบที่ AI ต้องรู้"/>
             </div>
-            <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ</Label>
-              <ImageUrlsField urls={edit.image_urls} onChange={u => setEdit({ ...edit, image_urls: u })}/>
-            </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>
               <Switch checked={edit.status === "active"}
