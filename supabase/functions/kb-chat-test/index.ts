@@ -57,17 +57,34 @@ Deno.serve(async (req) => {
     const history: Array<{ role: string; content: string }> = body.history || [];
     if (!text) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
-    // Tax ID detection (13 หลัก หรือมี keyword tag/ภาษี)
+    // เช็ค context จาก history: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า
+    const lastAi = [...history].reverse().find(h => h.role === "assistant")?.content || "";
+    const aiAskedTax = /(tag\s*id|เลขผู้เสีย|เลขประจำตัวผู้เสียภาษี|นิติบุคคล|tax\s*id)/i.test(lastAi);
+
+    // Tax ID detection
     const allDigitRuns = (text.match(/\d+/g) || []);
     const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(text);
     let taxId: string | null = null;
+    let taxIdMaybe: string | null = null;
     for (const d of allDigitRuns) {
       if (d.length === 13) { taxId = d; break; }
       if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
+      // เลข 11-12 หลัก ไม่ใช่เบอร์ไทย → ถือเป็น tax พิมพ์ผิด
+      // เลข 9-10 หลัก = tax พิมพ์ผิด เฉพาะกรณี AI เพิ่งถามมา
+      if (!taxIdMaybe) {
+        if (d.length === 11 || d.length === 12) taxIdMaybe = d;
+        else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
+      }
     }
     if (taxId) {
       return Response.json({
         answer: `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`,
+        confidence: 100, image_titles: [],
+      }, { headers: corsHeaders });
+    }
+    if (taxIdMaybe) {
+      return Response.json({
+        answer: `เลข "${taxIdMaybe}" ดูไม่ครบ 13 หลักนะคะ Tax ID ของบริษัทจะมี 13 หลักพอดีค่ะ รบกวนทวนใหม่อีกครั้งนะคะ 🙏`,
         confidence: 100, image_titles: [],
       }, { headers: corsHeaders });
     }
