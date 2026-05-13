@@ -173,7 +173,7 @@ function CategoriesTab() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
-  const add = async () => { if(!name.trim()) return; const { error } = await supabase.from("package_categories").insert({ name: name.trim(), sort_order: (cats?.length||0)+1 }); if(error) toast.error(error.message); else { toast.success("เพิ่มแล้ว"); setName(""); qc.invalidateQueries({queryKey:["pkg-cats"]}); } };
+  const add = async () => { const v = name.trim(); if(!v) { toast.error("กรอกชื่อประเภทก่อน"); return; } const { error } = await supabase.from("package_categories").insert({ name: v, sort_order: (cats?.length||0)+1 }); if(error) toast.error(error.message); else { toast.success("เพิ่มแล้ว"); setName(""); qc.invalidateQueries({queryKey:["pkg-cats"]}); } };
   const del = async (id:string) => { await supabase.from("package_categories").delete().eq("id",id); qc.invalidateQueries({queryKey:["pkg-cats"]}); };
   return (
     <Card className="p-6 shadow-soft border-border/60 max-w-xl">
