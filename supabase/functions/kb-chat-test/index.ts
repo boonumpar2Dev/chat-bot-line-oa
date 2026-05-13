@@ -60,9 +60,8 @@ Deno.serve(async (req) => {
     // เช็ค context จาก history: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า
     const lastAi = [...history].reverse().find(h => h.role === "assistant")?.content || "";
     const aiAskedTax = /(tag\s*id|เลขผู้เสีย|เลขประจำตัวผู้เสียภาษี|นิติบุคคล|tax\s*id)/i.test(lastAi);
-    console.log("[DEBUG] historyLen=", history.length, "lastAi=", lastAi.slice(0,80), "aiAskedTax=", aiAskedTax);
 
-    // Tax ID detection (13 หลัก / มี keyword / หรือ AI เพิ่งถามมา)
+    // Tax ID detection
     const allDigitRuns = (text.match(/\d+/g) || []);
     const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(text);
     let taxId: string | null = null;
@@ -70,7 +69,12 @@ Deno.serve(async (req) => {
     for (const d of allDigitRuns) {
       if (d.length === 13) { taxId = d; break; }
       if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
-      if (aiAskedTax && d.length >= 9 && d.length <= 14 && !taxIdMaybe) taxIdMaybe = d;
+      // เลข 11-12 หลัก ไม่ใช่เบอร์ไทย → ถือเป็น tax พิมพ์ผิด
+      // เลข 9-10 หลัก = tax พิมพ์ผิด เฉพาะกรณี AI เพิ่งถามมา
+      if (!taxIdMaybe) {
+        if (d.length === 11 || d.length === 12) taxIdMaybe = d;
+        else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
+      }
     }
     if (taxId) {
       return Response.json({
