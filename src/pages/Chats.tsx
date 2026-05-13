@@ -417,6 +417,8 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
           <Input value={local.nickname || ""} onChange={e => setLocal({ ...local, nickname: e.target.value })} onBlur={() => onUpdate({ nickname: local.nickname })}/></div>
         <div><Label className="text-xs flex items-center gap-1"><Phone className="w-3 h-3"/>เบอร์โทร</Label>
           <Input value={local.phone || ""} onChange={e => setLocal({ ...local, phone: e.target.value })} onBlur={() => onUpdate({ phone: local.phone })}/></div>
+        <div><Label className="text-xs">เลขผู้เสียภาษี / Tag</Label>
+          <Input value={local.tax_id || ""} onChange={e => setLocal({ ...local, tax_id: e.target.value })} onBlur={() => onUpdate({ tax_id: local.tax_id })}/></div>
         <div><Label className="text-xs">สถานะ</Label>
           <Select value={local.status} onValueChange={v => save("status", v)}>
             <SelectTrigger><SelectValue/></SelectTrigger>
