@@ -353,9 +353,10 @@ async function processEvent(event: any, supabase: any) {
       p.pricing_tiers.forEach((t: any) => {
         const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
         const label = t.tier_name ? `[${t.tier_name}] ` : "";
-        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}`;
-        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}`;
-        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}`;
+        const imgFlag = t.image_url ? " 🖼️" : "";
+        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}`;
+        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}`;
+        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}`;
       });
     }
     if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
@@ -365,7 +366,7 @@ async function processEvent(event: any, supabase: any) {
     if (p.description) s += `\nอาหาร: ${(p.description || "").slice(0, 300)}`;
     if (p.notes) s += `\nหมายเหตุ: ${(p.notes || "").slice(0, 200)}`;
     if (p.ai_instruction) s += `\n🤖 คำสั่ง AI: ${p.ai_instruction}`;
-    if (p.image_urls?.length > 0) s += `\n[มีรูป ${p.image_urls.length} รูป]`;
+    if (p.image_urls?.length > 0) s += `\n[รูปรวมแพ็ก ${p.image_urls.length} รูป]`;
     return s;
   }).join("\n\n") : "";
 
@@ -378,12 +379,24 @@ async function processEvent(event: any, supabase: any) {
     return s;
   }).join("\n\n") : "";
 
+  // Tier-level images: title format "แพ็กเกจ: <name> — <tier_name>"
+  const tierImageRefs: { title: string; url: string }[] = [];
+  for (const p of (pkgs || [])) {
+    for (const t of (p.pricing_tiers || [])) {
+      if (t.image_url && t.tier_name) {
+        tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name}`, url: t.image_url });
+      }
+    }
+  }
+
   const allImageSources = [
     ...kbWithImages.map((i: any) => `"${i.title}"`),
-    ...pkgsWithImages.map((p: any) => `"แพ็กเกจ: ${p.name}"`),
+    ...pkgsWithImages.map((p: any) => `"แพ็กเกจ: ${p.name}" (รูปรวม/เปรียบเทียบ)`),
+    ...tierImageRefs.map((t) => `"${t.title}" (รูปเฉพาะ tier)`),
     ...promosWithImages.map((pr: any) => `"โปรโมชั่น: ${pr.name}"`),
   ];
-  const imageListStr = allImageSources.length ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${allImageSources.join(", ")}` : "";
+  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูปที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกรูป:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- ตอบสั้นๆ ได้ใจความ + แนบรูปให้ลูกค้าเอาไปแชร์ต่อได้` : "";
+
 
   const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
     ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
