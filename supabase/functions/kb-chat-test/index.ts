@@ -57,17 +57,32 @@ Deno.serve(async (req) => {
     const history: Array<{ role: string; content: string }> = body.history || [];
     if (!text) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
+    // Tax ID detection (13 หลัก หรือมี keyword tag/ภาษี)
+    const allDigitRuns = (text.match(/\d+/g) || []);
+    const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(text);
+    let taxId: string | null = null;
+    for (const d of allDigitRuns) {
+      if (d.length === 13) { taxId = d; break; }
+      if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
+    }
+    if (taxId) {
+      return Response.json({
+        answer: `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`,
+        confidence: 100, image_titles: [],
+      }, { headers: corsHeaders });
+    }
+
     // Phone validation — strict Thai format
     // Mobile: 10 digits, starts 06/08/09  | Landline: 9 digits, starts 02-07
     const pureDigits = text.replace(/[\s\-().+]/g, "");
     const isPureNumber = /^\d+$/.test(pureDigits);
     let phone: string | null = null;
-    if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 15) phone = pureDigits;
+    if (isPureNumber && pureDigits.length >= 7 && pureDigits.length <= 12) phone = pureDigits;
     else {
       const seqs = text.match(/\d[\d\s\-().]{6,25}\d/g) || [];
       for (const s of seqs) {
         const d = s.replace(/[^0-9]/g, "");
-        if (d.length >= 7 && d.length <= 15) { phone = d; break; }
+        if (d.length >= 7 && d.length <= 12) { phone = d; break; }
       }
     }
     if (phone && /^66\d{8,9}$/.test(phone)) phone = "0" + phone.slice(2);
