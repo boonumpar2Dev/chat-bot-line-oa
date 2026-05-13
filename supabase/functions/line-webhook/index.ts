@@ -255,7 +255,12 @@ async function processEvent(event: any, supabase: any) {
   for (const d of allDigitRuns) {
     if (d.length === 13) { taxId = d; break; }
     if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
-    if (aiAskedTax && d.length >= 9 && d.length <= 14 && !taxIdMaybe) taxIdMaybe = d;
+    // เลข 11-12 หลัก ไม่ใช่เบอร์ไทย → ถือเป็น tax พิมพ์ผิด
+    // เลข 9-10 หลัก = tax พิมพ์ผิด เฉพาะกรณี AI เพิ่งถามมา
+    if (!taxIdMaybe) {
+      if (d.length === 11 || d.length === 12) taxIdMaybe = d;
+      else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
+    }
   }
   if (taxId) {
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
