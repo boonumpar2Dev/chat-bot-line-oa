@@ -338,7 +338,8 @@ async function processEvent(event: any, supabase: any) {
   const kbContext = kbItems.map((k: any) => {
     const imgs = getItemImages(k);
     const content = (k.content || "").slice(0, 800);
-    return `## ${k.title}\n${content}${imgs.length > 0 ? `\n[มีรูป ${imgs.length} รูป]` : ""}`;
+    const cat = k.category ? `[${k.category}] ` : "";
+    return `## ${cat}${k.title}\n${content}${imgs.length > 0 ? `\n[มีรูป ${imgs.length} รูป]` : ""}`;
   }).join("\n\n");
 
   // Package context (with custom_attributes + tier.guest_count fallback)
