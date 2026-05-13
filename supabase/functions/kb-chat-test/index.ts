@@ -108,9 +108,10 @@ Deno.serve(async (req) => {
         p.pricing_tiers.forEach((t: any) => {
           const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
           const label = t.tier_name ? `[${t.tier_name}] ` : "";
-          if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}`;
-          else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}`;
-          else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}`;
+          const imgFlag = t.image_url ? " 🖼️" : "";
+          if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}`;
+          else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}`;
+          else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}`;
         });
       }
       if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
