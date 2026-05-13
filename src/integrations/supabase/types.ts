@@ -230,6 +230,7 @@ export type Database = {
           sla_deadline: string | null
           status: Database["public"]["Enums"]["customer_status"]
           tags: string[]
+          tax_id: string | null
           unread_count: number
           updated_at: string
           venue: string | null
@@ -258,6 +259,7 @@ export type Database = {
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
           tags?: string[]
+          tax_id?: string | null
           unread_count?: number
           updated_at?: string
           venue?: string | null
@@ -286,6 +288,7 @@ export type Database = {
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
           tags?: string[]
+          tax_id?: string | null
           unread_count?: number
           updated_at?: string
           venue?: string | null

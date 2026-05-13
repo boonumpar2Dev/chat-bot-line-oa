@@ -236,18 +236,37 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
-  // Phone detection — collect ALL candidates
+  // Tax ID detection (เลขประจำตัวผู้เสียภาษี 13 หลัก หรือมี keyword tag/ภาษี)
+  const allDigitRuns = (messageText.match(/\d+/g) || []);
+  const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(messageText);
+  let taxId: string | null = null;
+  for (const d of allDigitRuns) {
+    if (d.length === 13) { taxId = d; break; }
+    if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
+  }
+  if (taxId) {
+    const phoneMuteHours = cfg.phone_mute_hours ?? 1;
+    const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
+    await supabase.from("customers").update({
+      tax_id: taxId, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
+    }).eq("id", customer.id);
+    await sendAndSave(supabase, customer.id, lineUserId,
+      `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`);
+    return;
+  }
+
+  // Phone detection — collect ALL candidates (ข้าม run ที่ยาว 13 หลักเพื่อกัน Tax ID)
   const pureDigits = messageText.replace(/[\s\-().+]/g, "");
   const isPure = /^\d+$/.test(pureDigits);
   const phoneSeqs = messageText.match(/\d[\d\s\-().]{6,25}\d/g) || [];
 
   const candidates: string[] = [];
-  if (isPure && pureDigits.length >= 7 && pureDigits.length <= 15) {
+  if (isPure && pureDigits.length >= 7 && pureDigits.length <= 12) {
     candidates.push(pureDigits);
   } else {
     for (const s of phoneSeqs) {
       const d = s.replace(/[^0-9]/g, "");
-      if (d.length >= 7 && d.length <= 15) candidates.push(d);
+      if (d.length >= 7 && d.length <= 12) candidates.push(d);
     }
   }
   // Normalize +66/66 → 0
