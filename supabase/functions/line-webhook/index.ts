@@ -236,13 +236,26 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
-  // Tax ID detection (เลขประจำตัวผู้เสียภาษี 13 หลัก หรือมี keyword tag/ภาษี)
+  // เช็ค context: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า → ถ้าใช่ → treat reply ที่เป็นเลขเป็น Tax ID context
+  const { data: lastAiArr } = await supabase
+    .from("conversations")
+    .select("message")
+    .eq("customer_id", customer.id)
+    .eq("sender", "ai")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  const lastAiMsg = lastAiArr?.[0]?.message || "";
+  const aiAskedTax = /(tag\s*id|เลขผู้เสีย|เลขประจำตัวผู้เสียภาษี|นิติบุคคล|tax\s*id)/i.test(lastAiMsg);
+
+  // Tax ID detection (เลขประจำตัวผู้เสียภาษี 13 หลัก / มี keyword / หรือ AI เพิ่งถามมา)
   const allDigitRuns = (messageText.match(/\d+/g) || []);
   const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(messageText);
   let taxId: string | null = null;
+  let taxIdMaybe: string | null = null; // เลขที่น่าจะเป็น tax แต่ไม่ครบ 13 หลัก (ตอน AI ถามมา)
   for (const d of allDigitRuns) {
     if (d.length === 13) { taxId = d; break; }
     if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
+    if (aiAskedTax && d.length >= 9 && d.length <= 14 && !taxIdMaybe) taxIdMaybe = d;
   }
   if (taxId) {
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
@@ -252,6 +265,12 @@ async function processEvent(event: any, supabase: any) {
     }).eq("id", customer.id);
     await sendAndSave(supabase, customer.id, lineUserId,
       `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`);
+    return;
+  }
+  // AI เพิ่งถาม Tax ID + ลูกค้าตอบเลขมา แต่ไม่ครบ 13 หลัก → ขอใหม่ (ห้ามไปเข้า phone validation)
+  if (taxIdMaybe) {
+    await sendAndSave(supabase, customer.id, lineUserId,
+      `เลข "${taxIdMaybe}" ดูไม่ครบ 13 หลักนะคะ Tax ID ของบริษัทจะมี 13 หลักพอดีค่ะ รบกวนทวนใหม่อีกครั้งนะคะ 🙏`);
     return;
   }
 
