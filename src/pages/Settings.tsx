@@ -48,6 +48,7 @@ export default function Settings() {
       manual_chat_hours: s.manual_chat_hours, phone_mute_hours: s.phone_mute_hours, fallback_mute_hours: s.fallback_mute_hours,
       followup_hours: s.followup_hours, followup_enabled: s.followup_enabled, schedule_enabled: s.schedule_enabled,
       start_time: s.start_time, end_time: s.end_time, strict_rules: s.strict_rules, sla_hours: s.sla_hours, fallback_message: s.fallback_message,
+      debounce_seconds: s.debounce_seconds,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
