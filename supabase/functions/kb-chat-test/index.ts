@@ -108,9 +108,10 @@ Deno.serve(async (req) => {
         p.pricing_tiers.forEach((t: any) => {
           const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
           const label = t.tier_name ? `[${t.tier_name}] ` : "";
-          if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}`;
-          else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}`;
-          else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}`;
+          const imgFlag = t.image_url ? " 🖼️" : "";
+          if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}`;
+          else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}`;
+          else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}`;
         });
       }
       if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
@@ -132,12 +133,19 @@ Deno.serve(async (req) => {
       return s;
     }).join("\n\n") : "";
 
+    const tierImageRefs: { title: string; url: string }[] = [];
+    (pkgs || []).forEach((p: any) => {
+      (p.pricing_tiers || []).forEach((t: any) => {
+        if (t.image_url && t.tier_name) tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name}`, url: t.image_url });
+      });
+    });
     const imageSources = [
       ...(kb || []).filter((i: any) => getItemImages(i).length > 0).map((i: any) => `"${i.title}"`),
       ...(pkgs || []).filter((p: any) => p.image_urls?.length > 0).map((p: any) => `"แพ็กเกจ: ${p.name}"`),
+      ...tierImageRefs.map(r => `"${r.title}"`),
       ...(promos || []).filter((pr: any) => pr.image_urls?.length > 0).map((pr: any) => `"โปรโมชั่น: ${pr.name}"`),
     ];
-    const imageListStr = imageSources.length ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${imageSources.join(", ")}` : "";
+    const imageListStr = imageSources.length ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${imageSources.join(", ")}\n(ถ้าลูกค้าถามเจาะจง tier/จำนวนคน → ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" แทนชื่อแพ็กเกจรวม)` : "";
 
     const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
       ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
@@ -183,6 +191,7 @@ ${recentMsgs || "(ใหม่)"}
     (kb || []).forEach((i: any) => { lookup[`"${i.title}"`] = getItemImages(i); });
     (pkgs || []).forEach((p: any) => { lookup[`"แพ็กเกจ: ${p.name}"`] = p.image_urls || []; });
     (promos || []).forEach((pr: any) => { lookup[`"โปรโมชั่น: ${pr.name}"`] = pr.image_urls || []; });
+    tierImageRefs.forEach(r => { lookup[`"${r.title}"`] = [r.url]; });
     const imageUrls: string[] = [];
     for (const t of imageTitles) {
       const arr = lookup[t] || lookup[`"${t}"`] || [];
