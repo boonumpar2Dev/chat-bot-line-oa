@@ -57,7 +57,8 @@ Deno.serve(async (req) => {
     const history: Array<{ role: string; content: string }> = body.history || [];
     if (!text) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
-    // Phone validation (mirror line-webhook)
+    // Phone validation — strict Thai format
+    // Mobile: 10 digits, starts 06/08/09  | Landline: 9 digits, starts 02-07
     const pureDigits = text.replace(/[\s\-().+]/g, "");
     const isPureNumber = /^\d+$/.test(pureDigits);
     let phone: string | null = null;
@@ -75,20 +76,24 @@ Deno.serve(async (req) => {
       if (nonDigit.length > 15) phone = null;
     }
     if (phone) {
-      if (/^0\d{8,9}$/.test(phone)) {
-        const fmt = phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+      const isValidMobile = /^0[689]\d{8}$/.test(phone); // 10 digits, 06/08/09
+      const isValidLandline = /^0[2-7]\d{7}$/.test(phone); // 9 digits, 02-07
+      if (isValidMobile || isValidLandline) {
+        const fmt = isValidMobile
+          ? phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
+          : phone.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
         return Response.json({
-          answer: `ขอบคุณครับ บันทึกเบอร์ ${fmt} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะครับ 🙏`,
+          answer: `ขอบคุณค่ะ บันทึกเบอร์ ${fmt} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`,
           confidence: 100, image_titles: [],
         }, { headers: corsHeaders });
-      } else if (phone.length === 10 && !/^0/.test(phone)) {
+      } else if (!/^0/.test(phone) && phone.length >= 9) {
         return Response.json({
-          answer: `เบอร์ "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ครับ เบอร์ไทยต้องขึ้นต้นด้วย 0 รบกวนทวนใหม่นะครับ`,
+          answer: `เบอร์ "${phone}" ไม่ได้ขึ้นต้นด้วย 0 ค่ะ เบอร์ไทยต้องขึ้นต้นด้วย 0 รบกวนทวนใหม่นะคะ`,
           confidence: 100, image_titles: [],
         }, { headers: corsHeaders });
-      } else if (phone.length !== 10 && phone.length >= 7) {
+      } else if (/^0\d+$/.test(phone) && phone.length >= 7) {
         return Response.json({
-          answer: `เบอร์ "${phone}" มี ${phone.length} หลักครับ เบอร์ไทยต้อง 10 หลัก ขึ้นต้นด้วย 0`,
+          answer: `เบอร์ "${phone}" ดูไม่ตรงรูปแบบเบอร์ไทยค่ะ (มือถือ 10 หลัก ขึ้นต้น 06/08/09 หรือ เบอร์บ้าน 9 หลัก ขึ้นต้น 02-07) รบกวนทวนใหม่นะคะ`,
           confidence: 100, image_titles: [],
         }, { headers: corsHeaders });
       }
@@ -163,18 +168,45 @@ Deno.serve(async (req) => {
       `${h.role === "user" ? "ลูกค้า" : "AI"}: ${h.content}`
     ).join("\n");
 
+    // สแกน history หาข้อมูลที่ลูกค้าให้ไปแล้ว เพื่อให้ AI ไม่ถามซ้ำ
+    const allCustomerText = [text, ...history.filter(h => h.role === "user").map(h => h.content)].join(" ");
+    const knownFacts: string[] = [];
+    const guestM = allCustomerText.match(/(\d{1,4})\s*(ท่าน|คน|ที่)/);
+    if (guestM) knownFacts.push(`จำนวนแขก: ${guestM[1]} ${guestM[2]}`);
+    const provinces = ["กทม","กรุงเทพ","นนทบุรี","ปทุมธานี","สมุทรปราการ","สมุทรสาคร","นครปฐม","เชียงใหม่","ขอนแก่น","ชลบุรี","ระยอง","ภูเก็ต","อุดรธานี","นครราชสีมา","อยุธยา"];
+    const foundProv = provinces.find(p => allCustomerText.includes(p));
+    if (foundProv) knownFacts.push(`สถานที่: ${foundProv}`);
+    const dateM = allCustomerText.match(/(\d{1,2})\s*(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกรา|กุมภา|มีนา|เมษา|พฤษภา|มิถุนา|กรกฎา|สิงหา|กันยา|ตุลา|พฤศจิกา|ธันวา)/);
+    if (dateM) knownFacts.push(`วันจัดงาน: ${dateM[0]}`);
+    const eventTypes = ["บุญบ้าน","ทำบุญ","งานบุญ","งานแต่ง","งานบวช","งานศพ","ขึ้นบ้านใหม่","ครบรอบ"];
+    const foundEvent = eventTypes.find(e => allCustomerText.includes(e));
+    if (foundEvent) knownFacts.push(`ประเภทงาน: ${foundEvent}`);
+    const knownFactsStr = knownFacts.length
+      ? `\n\n📌 ข้อมูลที่ลูกค้าให้แล้ว (ห้ามถามซ้ำเด็ดขาด):\n- ${knownFacts.join("\n- ")}`
+      : "";
+
     const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย กระชับ เป็นกันเอง ห้ามเกิน 150 คำ
+
+🔴 กฎทองห้ามผิดเด็ดขาด (สำคัญที่สุด):
+1. คำขึ้นต้น **ห้ามใช้ "ยินดีด้วยค่ะ/ครับ"** เด็ดขาด ("ยินดีด้วย" = แสดงความยินดีในโอกาสพิเศษเช่นแต่งงาน/รับปริญญาเท่านั้น)
+   ใช้ "ยินดีค่ะ", "รับทราบค่ะ", "ได้เลยค่ะ", "สวัสดีค่ะ" แทน
+2. ใช้ **"ค่ะ/คะ"** เท่านั้นในทุกข้อความ ห้ามสลับ "ครับ" เด็ดขาด
+3. **ห้ามถามข้อมูลซ้ำ** ที่ลูกค้าเคยให้ไปแล้ว (ดูจาก "ข้อมูลที่ลูกค้าให้แล้ว" ด้านล่าง)
+4. กรณีจำนวนแขกเป็นเศษ → เสนอ **แค่ทางเดียว** ต่อรอบ:
+   - ค่าเริ่มต้น: เสนอ tier สูงกว่าให้พอดี
+   - เสนอแบบ "ใช้ tier ต่ำกว่า + จ่ายเพิ่มต่อหัว" **เฉพาะเมื่อลูกค้าขอแบบประหยัดเอง**เท่านั้น
+   - **ห้ามยัดทั้งสองทางในข้อความเดียว** และ **ห้ามแต่งราคาต่อหัว** — ถ้าลูกค้าถาม ตอบ "ทีมงานจะคำนวณให้ค่ะ"
 
 กฎหลัก:
 - ตอบจาก KB เท่านั้น ห้ามแต่งราคา/ตัวเลข
 - ตอบคำถามก่อน แล้วค่อยถามข้อมูลเพิ่ม (ทีละเรื่อง)
-- ลำดับเก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร
+- ลำดับเก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร (ข้ามข้อที่ลูกค้าให้แล้ว)
 - 🔴 ได้ข้อมูล 2+ → ขอเบอร์ทันที / สนทนาครบ 3 รอบ → ต้องขอเบอร์
 - ทักทายกว้างๆ → ต้อนรับแล้วถามสนใจงานแบบไหน
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
-- 🚫 ห้ามเสนอแพ็กเกจที่ไม่ตรงเงื่อนไขขั้นต่ำ (min_condition) เด็ดขาด เช่น ลูกค้า 40 ท่าน ห้ามเสนอแพ็กเกจที่ระบุขั้นต่ำ 50 ท่าน
+- 🚫 ห้ามเสนอแพ็กเกจที่ไม่ตรงเงื่อนไขขั้นต่ำ (min_condition) เด็ดขาด
 - 📸 ทุกครั้งที่พูดถึง/แนะนำแพ็กเกจใด ใส่ "แพ็กเกจ: <ชื่อ>" ลงใน image_titles เพื่อส่งรูปพื้นฐาน
-- ⚠️ รูป tier (ชื่อมี " — "): ส่งได้**เฉพาะเมื่อ tier นั้นตรงกับจำนวนท่านที่ลูกค้าระบุเท่านั้น** ห้ามส่งรูป tier ที่จำนวนท่านไม่ตรงกับลูกค้าเด็ดขาด (เช่น ลูกค้า 40 ท่าน ห้ามส่งรูป tier "20 ท่าน")${strictSection}
+- ⚠️ รูป tier (ชื่อมี " — "): ส่งได้**เฉพาะเมื่อ tier นั้นตรงกับจำนวนท่านที่ลูกค้าระบุเท่านั้น**${strictSection}${knownFactsStr}
 
 KB:
 ${kbContext || "(ว่าง)"}
@@ -186,6 +218,12 @@ ${imageListStr}
 ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${text}"
+
+⚠️ ก่อนตอบ ตรวจ 4 ข้อ:
+(1) ขึ้นต้นด้วย "ยินดีด้วย" หรือเปล่า? → ถ้าใช่ เปลี่ยน
+(2) มี "ครับ" ปนหรือเปล่า? → ถ้าใช่ เปลี่ยนเป็น "ค่ะ/คะ"
+(3) ถามข้อมูลที่อยู่ใน "ข้อมูลที่ลูกค้าให้แล้ว" หรือเปล่า? → ถ้าใช่ ลบทิ้ง
+(4) เสนอ 2 ทางเลือก (เสนอ tier สูงกว่า + เสนอจ่ายเพิ่มต่อหัว) ในข้อความเดียวหรือเปล่า? → ถ้าใช่ เก็บแค่ทางเดียว
 
 ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3)`;
 
