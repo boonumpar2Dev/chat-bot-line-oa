@@ -26,7 +26,15 @@ async function callAI(prompt: string, model: string) {
   if (!res.ok) throw new Error(`AI ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const txt = data.choices?.[0]?.message?.content || "{}";
-  try { return JSON.parse(txt); } catch { return { answer: txt, confidence: 80, image_titles: [] }; }
+  // Strip markdown code fence if present
+  const cleaned = txt.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+  try { return JSON.parse(cleaned); } catch {
+    // Try to extract first {...} block
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch {} }
+    console.warn("AI response not JSON-parseable:", txt.slice(0, 200));
+    return { answer: cleaned, confidence: 80, image_titles: [] };
+  }
 }
 
 Deno.serve(async (req) => {

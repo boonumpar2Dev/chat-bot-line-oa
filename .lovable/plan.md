@@ -1,11 +1,14 @@
 ## ปัญหา
-หน้าทดสอบ AI (`kb-chat-test`) ยังไม่รองรับรูปประจำ tier — มีแต่ `line-webhook` ที่อัปเดตไปแล้ว ทำให้ AI ในแชททดสอบไม่เห็น/ส่งรูป tier (เช่น "ครบวงจร 1 — 20 ท่าน") แม้ฐานข้อมูลจะมี `pricing_tiers[i].image_url` อยู่
+AI ตอบกลับเป็น JSON ห่อด้วย markdown code fence (` ```json ... ``` `) — `JSON.parse()` ใน `callAI` แตก เลย fallback เอาข้อความดิบทั้งก้อน (รวม fence + key) ใส่ฟิลด์ `answer` ไปแสดงในแชท
 
-## สิ่งที่จะแก้ (ไฟล์เดียว: `supabase/functions/kb-chat-test/index.ts`)
+## แก้ที่ไฟล์เดียว: `supabase/functions/kb-chat-test/index.ts`
 
-1. **Prompt context (รอบสร้าง pkgContext)** — ใส่ flag `🖼️` ต่อท้าย tier ที่มี `image_url` เพื่อให้ AI รู้ว่ามีรูปแยก
-2. **imageSources** — เพิ่ม `"แพ็กเกจ: <name> — <tier_name>"` สำหรับทุก tier ที่มี `image_url`
-3. **System prompt rule** — เพิ่มกฎเลือกรูป: ลูกค้าถามเจาะจง tier ใด → ใช้ชื่อ tier ใน `image_titles` แทนชื่อแพ็กเกจรวม
-4. **Lookup ตอน resolve image_titles → URLs** — เติม mapping `"แพ็กเกจ: <name> — <tier_name>"` → `[tier.image_url]`
+ปรับฟังก์ชัน `callAI` ให้:
 
-ไม่แตะ schema, ไม่แตะ UI, ไม่แตะ `line-webhook`
+1. **ตัด markdown fence ก่อน parse** — ลบ ` ```json ` / ` ``` ` ที่ห่ออยู่ทั้งหน้า/หลัง
+2. **ถ้ายัง parse ไม่ได้ ให้ดึงเฉพาะ JSON object ก้อนแรก** ด้วย regex `/\{[\s\S]*\}/`
+3. **ถ้ายังพังอีก** fallback เดิม (ใช้ txt เป็น answer) แต่ log warning ให้เห็นใน edge function logs
+
+ผลที่ได้: ลูกค้าจะเห็นเฉพาะข้อความใน `answer` ไม่เห็น JSON ดิบอีก ส่วน `image_titles` ก็ทำงานถูกต้อง รูปแนบไปด้วย
+
+ไม่แตะ prompt, schema, หรือ UI
