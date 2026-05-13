@@ -298,7 +298,6 @@ export type Database = {
           image_urls: string[]
           sort_order: number
           status: string
-          tags: string[]
           title: string
           updated_at: string
         }
@@ -310,7 +309,6 @@ export type Database = {
           image_urls?: string[]
           sort_order?: number
           status?: string
-          tags?: string[]
           title: string
           updated_at?: string
         }
@@ -322,9 +320,29 @@ export type Database = {
           image_urls?: string[]
           sort_order?: number
           status?: string
-          tags?: string[]
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      knowledge_categories: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
         }
         Relationships: []
       }
