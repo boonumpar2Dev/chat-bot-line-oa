@@ -26,6 +26,7 @@ type Settings = {
   strict_rules: string[];
   sla_hours: number;
   fallback_message: string;
+  debounce_seconds: number;
 };
 
 export default function Settings() {
