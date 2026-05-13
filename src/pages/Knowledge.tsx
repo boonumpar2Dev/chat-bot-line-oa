@@ -254,16 +254,23 @@ function KnowledgeBaseTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState<KB>(blankKB);
-  const [tagInput, setTagInput] = useState("");
+  const [filterCat, setFilterCat] = useState<string>("__all");
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
   const { data: items, isLoading } = useQuery({
     queryKey: ["kb"],
     queryFn: async () => (await supabase.from("knowledge_base").select("*").order("sort_order")).data ?? [],
   });
+  const { data: cats } = useQuery({
+    queryKey: ["kb-cats"],
+    queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order").order("name")).data ?? [],
+  });
 
   const openNew = () => { setEdit(blankKB); setOpen(true); };
-  const openEdit = (i: any) => { setEdit({ ...i, tags: i.tags || [], image_urls: i.image_urls || [] }); setOpen(true); };
+  const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [] }); setOpen(true); };
   const save = async () => {
-    const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
+    const payload: any = { ...edit };
+    delete payload.created_at; delete payload.updated_at; delete payload.tags;
     const res = edit.id
       ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
       : await supabase.from("knowledge_base").insert(payload);
@@ -276,19 +283,44 @@ function KnowledgeBaseTab() {
     toast.success("ลบแล้ว"); qc.invalidateQueries({ queryKey: ["kb"] });
   };
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (!t || edit.tags.includes(t)) return;
-    setEdit({ ...edit, tags: [...edit.tags, t] });
-    setTagInput("");
+  const addCategory = async () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    const exists = (cats || []).some((c: any) => c.name.toLowerCase() === name.toLowerCase());
+    if (exists) { toast.error("มีหมวดนี้อยู่แล้ว"); return; }
+    const { error } = await supabase.from("knowledge_categories").insert({ name });
+    if (error) return toast.error(error.message);
+    toast.success("เพิ่มหมวดแล้ว");
+    setEdit({ ...edit, category: name });
+    setNewCatName(""); setNewCatOpen(false);
+    qc.invalidateQueries({ queryKey: ["kb-cats"] });
   };
+
+  const filtered = (items || []).filter((i: any) =>
+    filterCat === "__all" ? true : filterCat === "__none" ? !i.category : i.category === filterCat
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={openNew}><Plus/>เพิ่มข้อมูล</Button></div>
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">หมวด:</Label>
+          <Select value={filterCat} onValueChange={setFilterCat}>
+            <SelectTrigger className="w-[200px]"><SelectValue/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all">ทั้งหมด ({items?.length || 0})</SelectItem>
+              <SelectItem value="__none">ไม่ระบุหมวด</SelectItem>
+              {(cats || []).map((c: any) => (
+                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button onClick={openNew}><Plus/>เพิ่มข้อมูล</Button>
+      </div>
       {isLoading && <Loader2 className="animate-spin mx-auto"/>}
       <div className="grid md:grid-cols-2 gap-4">
-        {items?.map((i: any) => (
+        {filtered.map((i: any) => (
           <Card key={i.id} className="p-5 shadow-soft border-border/60">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0 flex-1">
@@ -296,7 +328,6 @@ function KnowledgeBaseTab() {
                 <div className="flex flex-wrap gap-1 mt-1">
                   {i.category && <Badge variant="secondary">{i.category}</Badge>}
                   {i.status !== "active" && <Badge variant="outline">ปิดใช้งาน</Badge>}
-                  {(i.tags || []).map((t: string) => <Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>)}
                 </div>
               </div>
               <div className="flex gap-1">
@@ -314,10 +345,12 @@ function KnowledgeBaseTab() {
             )}
           </Card>
         ))}
-        {!isLoading && !items?.length && (
+        {!isLoading && !filtered.length && (
           <Card className="p-10 text-center md:col-span-2">
             <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-2"/>
-            <p className="text-sm text-muted-foreground">ยังไม่มีข้อมูล — เพิ่ม FAQ หรือข้อมูลทั่วไปสำหรับ AI</p>
+            <p className="text-sm text-muted-foreground">
+              {items?.length ? "ไม่มีข้อมูลในหมวดนี้" : "ยังไม่มีข้อมูล — เพิ่ม FAQ หรือข้อมูลทั่วไปสำหรับ AI"}
+            </p>
           </Card>
         )}
       </div>
@@ -330,29 +363,36 @@ function KnowledgeBaseTab() {
               <Input value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })}/>
             </div>
             <div className="space-y-1.5"><Label>หมวดหมู่</Label>
-              <Input value={edit.category || ""} onChange={e => setEdit({ ...edit, category: e.target.value })}
-                placeholder="เช่น พิธีสงฆ์, อุปกรณ์, FAQ"/>
+              {newCatOpen ? (
+                <div className="flex gap-2">
+                  <Input autoFocus value={newCatName} onChange={e => setNewCatName(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
+                    placeholder="ชื่อหมวดใหม่"/>
+                  <Button type="button" size="sm" onClick={addCategory}>เพิ่ม</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => { setNewCatOpen(false); setNewCatName(""); }}>
+                    <X className="w-4 h-4"/>
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Select value={edit.category || "__none"} onValueChange={v => setEdit({ ...edit, category: v === "__none" ? null : v })}>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกหมวด"/></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none">— ไม่ระบุ —</SelectItem>
+                      {(cats || []).map((c: any) => (
+                        <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button type="button" variant="outline" onClick={() => setNewCatOpen(true)}>
+                    <Plus className="w-4 h-4"/>เพิ่มหมวด
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="space-y-1.5"><Label>เนื้อหา</Label>
               <Textarea rows={6} value={edit.content} onChange={e => setEdit({ ...edit, content: e.target.value })}
                 placeholder="ใส่ข้อมูล/คำถาม/คำตอบที่ AI ต้องรู้"/>
-            </div>
-            <div className="space-y-1.5"><Label>แท็ก</Label>
-              <div className="flex gap-2">
-                <Input value={tagInput} onChange={e => setTagInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
-                  placeholder="เพิ่มแท็กแล้ว Enter"/>
-                <Button type="button" variant="outline" onClick={addTag}><Plus className="w-4 h-4"/></Button>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {edit.tags.map(t => (
-                  <Badge key={t} variant="secondary" className="gap-1 pr-1">
-                    {t}
-                    <button onClick={() => setEdit({ ...edit, tags: edit.tags.filter(x => x !== t) })}
-                      className="hover:bg-destructive/20 rounded-full p-0.5"><X className="w-3 h-3"/></button>
-                  </Badge>
-                ))}
-              </div>
             </div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ</Label>
               <ImageUrlsField urls={edit.image_urls} onChange={u => setEdit({ ...edit, image_urls: u })}/>
