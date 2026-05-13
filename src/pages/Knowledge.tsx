@@ -133,8 +133,8 @@ function PackagesTab() {
                 <Button type="button" size="sm" variant="outline" onClick={()=>setEdit({...edit,pricing_tiers:[...edit.pricing_tiers,{tier_name:"",total_pax:"",monk_pax:"",price:""}]})}><Plus className="w-3 h-3"/>เพิ่ม</Button>
               </div>
               {edit.pricing_tiers.length > 0 && (
-                <div className="grid grid-cols-[1.2fr_0.8fr_0.8fr_1fr_auto] gap-2 text-xs text-muted-foreground px-1">
-                  <span>ชื่อ tier</span><span>คนทั้งหมด</span><span>จำนวนพระ</span><span>ราคา (฿)</span><span/>
+                <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.9fr_56px_auto] gap-2 text-xs text-muted-foreground px-1">
+                  <span>ชื่อ tier</span><span>คนทั้งหมด</span><span>จำนวนพระ</span><span>ราคา (฿)</span><span>รูป</span><span/>
                 </div>
               )}
               {edit.pricing_tiers.map((t,i)=>{
@@ -142,11 +142,12 @@ function PackagesTab() {
                 const guest = total - monk;
                 return (
                   <div key={i} className="space-y-1">
-                    <div className="grid grid-cols-[1.2fr_0.8fr_0.8fr_1fr_auto] gap-2 items-center">
+                    <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.9fr_56px_auto] gap-2 items-center">
                       <Input placeholder="เช่น Standard, ยอดนิยม" value={t.tier_name||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],tier_name:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
                       <Input type="number" placeholder="40" value={t.total_pax||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],total_pax:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
                       <Input type="number" placeholder="9" value={t.monk_pax||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],monk_pax:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
                       <Input type="number" placeholder="30000" value={t.price||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],price:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
+                      <TierImageField url={t.image_url} onChange={(v)=>{const n=[...edit.pricing_tiers];n[i]={...n[i],image_url:v};setEdit({...edit,pricing_tiers:n});}}/>
                       <Button size="icon" variant="ghost" onClick={()=>setEdit({...edit,pricing_tiers:edit.pricing_tiers.filter((_,j)=>j!==i)})}><X className="w-4 h-4"/></Button>
                     </div>
                     {total > 0 && monk > 0 && (
