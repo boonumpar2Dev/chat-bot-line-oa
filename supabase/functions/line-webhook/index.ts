@@ -538,11 +538,12 @@ ${recentMsgs || "(ใหม่)"}
     return;
   }
 
-  // Image dedup
-  const kbImgs = kbWithImages.filter((i: any) => imageTitles.includes(i.title));
-  const pkgImgs = pkgsWithImages.filter((p: any) => imageTitles.includes(`แพ็กเกจ: ${p.name}`));
-  const promoImgs = promosWithImages.filter((pr: any) => imageTitles.includes(`โปรโมชั่น: ${pr.name}`));
-  const allImgs = [...kbImgs, ...pkgImgs, ...promoImgs].flatMap((x: any) => getItemImages(x)).slice(0, 3);
+  // Image dedup (KB + package-level + tier-level + promo)
+  const kbImgs = kbWithImages.filter((i: any) => imageTitles.includes(i.title)).flatMap((x: any) => getItemImages(x));
+  const pkgImgs = pkgsWithImages.filter((p: any) => imageTitles.includes(`แพ็กเกจ: ${p.name}`)).flatMap((x: any) => getItemImages(x));
+  const tierImgs = tierImageRefs.filter((t) => imageTitles.includes(t.title)).map((t) => t.url);
+  const promoImgs = promosWithImages.filter((pr: any) => imageTitles.includes(`โปรโมชั่น: ${pr.name}`)).flatMap((x: any) => getItemImages(x));
+  const allImgs = [...kbImgs, ...pkgImgs, ...tierImgs, ...promoImgs].slice(0, 3);
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const imagesToSend = sameTitles ? [] : allImgs;
