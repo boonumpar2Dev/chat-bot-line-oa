@@ -20,6 +20,7 @@ export type Database = {
           confidence_threshold: number
           cooldown_minutes: number
           created_at: string
+          debounce_seconds: number
           end_time: string
           fallback_message: string
           fallback_mute_hours: number
@@ -40,6 +41,7 @@ export type Database = {
           confidence_threshold?: number
           cooldown_minutes?: number
           created_at?: string
+          debounce_seconds?: number
           end_time?: string
           fallback_message?: string
           fallback_mute_hours?: number
@@ -60,6 +62,7 @@ export type Database = {
           confidence_threshold?: number
           cooldown_minutes?: number
           created_at?: string
+          debounce_seconds?: number
           end_time?: string
           fallback_message?: string
           fallback_mute_hours?: number
