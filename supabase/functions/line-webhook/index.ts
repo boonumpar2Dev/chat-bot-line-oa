@@ -625,23 +625,57 @@ ${recentMsgs || "(ใหม่)"}
     return;
   }
 
-  // Image dedup (KB + package-level + tier-level + promo)
-  const kbImgs = kbWithImages.filter((i: any) => imageTitles.includes(i.title)).flatMap((x: any) => getItemImages(x));
-  const pkgImgs = pkgsWithImages.filter((p: any) => imageTitles.includes(`แพ็กเกจ: ${p.name}`)).flatMap((x: any) => getItemImages(x));
-  const tierImgs = tierImageRefs.filter((t) => imageTitles.includes(t.title)).map((t) => t.url);
-  const promoImgs = promosWithImages.filter((pr: any) => imageTitles.includes(`โปรโมชั่น: ${pr.name}`)).flatMap((x: any) => getItemImages(x));
-  const allImgs = [...kbImgs, ...pkgImgs, ...tierImgs, ...promoImgs].slice(0, 3);
+  // Media dedup (KB + package-level + tier-level + promo + videos) — keep order from image_titles
+  type Media = { type: "image" | "video"; url: string; thumb?: string };
+  const mediaList: Media[] = [];
+  for (const title of imageTitles) {
+    // Videos (prefix "VDO: ", "VDO แพ็กเกจ: ", "VDO โปรโมชั่น: ")
+    if (title.startsWith("VDO โปรโมชั่น: ")) {
+      const name = title.replace("VDO โปรโมชั่น: ", "");
+      const pr = promosWithVideos.find((x: any) => x.name === name);
+      if (pr) for (const v of getItemVideos(pr)) mediaList.push({ type: "video", url: v.url, thumb: v.thumb_url });
+    } else if (title.startsWith("VDO แพ็กเกจ: ")) {
+      const name = title.replace("VDO แพ็กเกจ: ", "");
+      const p = pkgsWithVideos.find((x: any) => x.name === name);
+      if (p) for (const v of getItemVideos(p)) mediaList.push({ type: "video", url: v.url, thumb: v.thumb_url });
+    } else if (title.startsWith("VDO: ")) {
+      const t = title.replace("VDO: ", "");
+      const k = kbWithVideos.find((x: any) => x.title === t);
+      if (k) for (const v of getItemVideos(k)) mediaList.push({ type: "video", url: v.url, thumb: v.thumb_url });
+    } else if (title.startsWith("แพ็กเกจ: ") && title.includes(" — ")) {
+      const t = tierImageRefs.find((x) => x.title === title);
+      if (t) mediaList.push({ type: "image", url: t.url });
+    } else if (title.startsWith("แพ็กเกจ: ")) {
+      const name = title.replace("แพ็กเกจ: ", "");
+      const p = pkgsWithImages.find((x: any) => x.name === name);
+      if (p) for (const u of getItemImages(p)) mediaList.push({ type: "image", url: u });
+    } else if (title.startsWith("โปรโมชั่น: ")) {
+      const name = title.replace("โปรโมชั่น: ", "");
+      const pr = promosWithImages.find((x: any) => x.name === name);
+      if (pr) for (const u of getItemImages(pr)) mediaList.push({ type: "image", url: u });
+    } else {
+      const k = kbWithImages.find((x: any) => x.title === title);
+      if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
+    }
+  }
+  const allMedia = mediaList.slice(0, 3); // LINE: text + 3 media = 4 messages (limit 5)
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
-  const imagesToSend = sameTitles ? [] : allImgs;
+  const mediaToSend = sameTitles ? [] : allMedia;
 
   const lineMessages: any[] = [{ type: "text", text: answerText }];
-  for (const url of imagesToSend) {
-    lineMessages.push({ type: "image", originalContentUrl: url, previewImageUrl: url });
+  for (const m of mediaToSend) {
+    if (m.type === "video") {
+      lineMessages.push({ type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url });
+    } else {
+      lineMessages.push({ type: "image", originalContentUrl: m.url, previewImageUrl: m.url });
+    }
   }
   await pushLine(lineUserId, lineMessages);
 
-  const savedMsg = imagesToSend.length > 0 ? `${answerText}\n${imagesToSend.map(u => `📎 ${u}`).join("\n")}` : answerText;
+  const savedMsg = mediaToSend.length > 0
+    ? `${answerText}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
+    : answerText;
   const update: any = {
     last_message_at: new Date().toISOString(),
     last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
