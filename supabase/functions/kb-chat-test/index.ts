@@ -12,6 +12,9 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 function getItemImages(item: any) {
   return Array.isArray(item.image_urls) ? item.image_urls : [];
 }
+function getItemVideos(item: any): { url: string; thumb_url: string }[] {
+  return Array.isArray(item.video_urls) ? item.video_urls.filter((v: any) => v?.url && v?.thumb_url) : [];
+}
 
 async function callAI(prompt: string, model: string) {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -194,8 +197,11 @@ Deno.serve(async (req) => {
       ...(pkgs || []).filter((p: any) => p.image_urls?.length > 0).map((p: any) => `"แพ็กเกจ: ${p.name}"`),
       ...tierImageRefs.map(r => `"${r.title}"`),
       ...(promos || []).filter((pr: any) => pr.image_urls?.length > 0).map((pr: any) => `"โปรโมชั่น: ${pr.name}"`),
+      ...(kb || []).filter((i: any) => getItemVideos(i).length > 0).map((i: any) => `"VDO: ${i.title}"`),
+      ...(pkgs || []).filter((p: any) => getItemVideos(p).length > 0).map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
+      ...(promos || []).filter((pr: any) => getItemVideos(pr).length > 0).map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
     ];
-    const imageListStr = imageSources.length ? `\n\nรายชื่อข้อมูลที่มีรูปภาพ: ${imageSources.join(", ")}\n(ถ้าลูกค้าถามเจาะจง tier/จำนวนคน → ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" แทนชื่อแพ็กเกจรวม)` : "";
+    const imageListStr = imageSources.length ? `\n\nรายชื่อสื่อที่ส่งได้: ${imageSources.join(", ")}\n(ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" สำหรับรูป tier / "VDO: ..." สำหรับวิดีโอ — ส่งวิดีโอเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง)` : "";
 
     const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
       ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
@@ -271,12 +277,21 @@ ${recentMsgs || "(ใหม่)"}
       aiResp = await callAI(prompt, "google/gemini-2.5-flash");
     }
 
-    // Resolve image titles → URLs
+    // Resolve image/video titles → URLs
     const imageTitles: string[] = Array.isArray(aiResp.image_titles) ? aiResp.image_titles : [];
     const lookup: Record<string, string[]> = {};
-    (kb || []).forEach((i: any) => { lookup[`"${i.title}"`] = getItemImages(i); });
-    (pkgs || []).forEach((p: any) => { lookup[`"แพ็กเกจ: ${p.name}"`] = p.image_urls || []; });
-    (promos || []).forEach((pr: any) => { lookup[`"โปรโมชั่น: ${pr.name}"`] = pr.image_urls || []; });
+    (kb || []).forEach((i: any) => {
+      lookup[`"${i.title}"`] = getItemImages(i);
+      lookup[`"VDO: ${i.title}"`] = getItemVideos(i).map(v => v.thumb_url);
+    });
+    (pkgs || []).forEach((p: any) => {
+      lookup[`"แพ็กเกจ: ${p.name}"`] = p.image_urls || [];
+      lookup[`"VDO แพ็กเกจ: ${p.name}"`] = getItemVideos(p).map(v => v.thumb_url);
+    });
+    (promos || []).forEach((pr: any) => {
+      lookup[`"โปรโมชั่น: ${pr.name}"`] = pr.image_urls || [];
+      lookup[`"VDO โปรโมชั่น: ${pr.name}"`] = getItemVideos(pr).map(v => v.thumb_url);
+    });
     tierImageRefs.forEach(r => { lookup[`"${r.title}"`] = [r.url]; });
     const imageUrls: string[] = [];
     for (const t of imageTitles) {
