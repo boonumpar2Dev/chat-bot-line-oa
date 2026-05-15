@@ -23,6 +23,7 @@ export default function ImageUrlsField({ urls, onChange }: { urls: string[]; onC
   const [u, setU] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dragIdx = useRef<number | null>(null);
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -32,6 +33,14 @@ export default function ImageUrlsField({ urls, onChange }: { urls: string[]; onC
     onChange([...urls, ...newUrls]);
     setUploading(false);
     e.target.value = "";
+  };
+
+  const move = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= urls.length) return;
+    const next = [...urls];
+    const [m] = next.splice(from, 1);
+    next.splice(to, 0, m);
+    onChange(next);
   };
 
   return (
@@ -49,10 +58,19 @@ export default function ImageUrlsField({ urls, onChange }: { urls: string[]; onC
           {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
         </Button>
       </div>
+      {urls.length > 1 && <p className="text-[11px] text-muted-foreground">ลากเพื่อจัดลำดับ — AI จะส่งรูปตามลำดับนี้ให้ลูกค้า</p>}
       <div className="flex flex-wrap gap-2">
         {urls.map((url, i) => (
-          <div key={i} className="relative group w-20 h-20 rounded-lg overflow-hidden border bg-muted">
+          <div key={url + i}
+            draggable
+            onDragStart={() => { dragIdx.current = i; }}
+            onDragOver={e => e.preventDefault()}
+            onDrop={() => { if (dragIdx.current != null) move(dragIdx.current, i); dragIdx.current = null; }}
+            className="relative group w-20 h-20 rounded-lg overflow-hidden border bg-muted cursor-move">
             <img src={url} alt="" className="w-full h-full object-cover"/>
+            <div className="absolute top-1 left-1 px-1 rounded bg-black/60 text-white text-[9px] flex items-center gap-0.5">
+              <GripVertical className="w-2.5 h-2.5"/>{i + 1}
+            </div>
             <button type="button" onClick={() => onChange(urls.filter((_, j) => j !== i))}
               className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100">
               <X className="w-3 h-3"/>
