@@ -309,9 +309,37 @@ ${recentMsgs || "(ใหม่)"}
       lookup[`"VDO โปรโมชั่น: ${pr.name}"`] = getItemVideos(pr).map(v => v.thumb_url);
     });
     tierImageRefs.forEach(r => { lookup[`"${r.title}"`] = [r.url]; });
+    // Build keyword index for fuzzy matching (AI ชอบเขียนชื่อย่อ)
+    type Entry = { title: string; urls: string[] };
+    const allEntries: Entry[] = [];
+    (kb || []).forEach((i: any) => allEntries.push({ title: i.title, urls: getItemImages(i) }));
+    (pkgs || []).forEach((p: any) => allEntries.push({ title: `แพ็กเกจ: ${p.name}`, urls: p.image_urls || [] }));
+    (promos || []).forEach((pr: any) => allEntries.push({ title: `โปรโมชั่น: ${pr.name}`, urls: pr.image_urls || [] }));
+    tierImageRefs.forEach(r => allEntries.push({ title: r.title, urls: [r.url] }));
+
+    function fuzzyMatch(needle: string): string[] {
+      const n = needle.replace(/^["']|["']$/g, "").toLowerCase().trim();
+      // exact
+      const exact = allEntries.find(e => e.title.toLowerCase() === n);
+      if (exact) return exact.urls;
+      // contains either way
+      const candidates = allEntries.filter(e => {
+        const t = e.title.toLowerCase();
+        return t.includes(n) || n.includes(t);
+      });
+      if (candidates.length === 1) return candidates[0].urls;
+      // keyword-based: บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน/บ้าน/บริษัท/แนะนำ
+      if (candidates.length > 1) {
+        // pick first
+        return candidates[0].urls;
+      }
+      return [];
+    }
+
     const imageUrls: string[] = [];
     for (const t of imageTitles) {
-      const arr = lookup[t] || lookup[`"${t}"`] || [];
+      let arr = lookup[t] || lookup[`"${t}"`] || [];
+      if (!arr.length) arr = fuzzyMatch(t);
       arr.forEach((u: string) => { if (!imageUrls.includes(u)) imageUrls.push(u); });
     }
 
