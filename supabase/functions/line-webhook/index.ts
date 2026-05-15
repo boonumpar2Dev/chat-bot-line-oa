@@ -183,6 +183,14 @@ async function processEvent(event: any, supabase: any) {
     const label = msgType === "image" ? "รูปภาพ" : msgType === "video" ? "วิดีโอ" : msgType === "audio" ? "เสียง" : "ไฟล์";
     const fileUrl = await uploadLineMedia(event.message.id, msgType, supabase);
     messageText = fileUrl ? `[${label}]\n📎 ${fileUrl}` : `[${label}]`;
+    // 📄 OCR: อ่านข้อความในรูป (เช่น แคปแชทจากที่อื่น) แล้วใส่เป็น context ให้ AI ตอบต่อได้
+    if (msgType === "image" && fileUrl) {
+      const ocr = await ocrImage(fileUrl);
+      if (ocr) {
+        messageText = `[${label}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
+        isText = true;
+      }
+    }
   } else if (msgType === "sticker") {
     messageText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
   } else if (msgType === "location") {
