@@ -2,10 +2,16 @@ import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Plus, X, Upload } from "lucide-react";
+import { Loader2, Plus, X, Upload, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 
+const LINE_IMAGE_MAX = 10 * 1024 * 1024; // 10MB
+
 async function uploadImg(file: File): Promise<string | null> {
+  if (file.size > LINE_IMAGE_MAX) {
+    toast.error(`"${file.name}" ใหญ่เกิน 10MB ส่ง LINE ไม่ได้`);
+    return null;
+  }
   const ext = file.name.split(".").pop() || "jpg";
   const path = `knowledge/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from("line-media").upload(path, file, { upsert: false });
