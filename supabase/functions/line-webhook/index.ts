@@ -97,6 +97,32 @@ async function uploadLineMedia(messageId: string, msgType: string, supabase: any
   }
 }
 
+async function ocrImage(imageUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{
+          role: "user",
+          content: [
+            { type: "text", text: "อ่านข้อความทั้งหมดในรูปนี้ออกมาเป็น plain text\n- ถ้าเป็นแคปแชท: แยก 'ผู้พูด: ข้อความ' ตามลำดับ\n- ถ้าเป็นใบเสนอราคา/เมนู/ตาราง: สรุปรายการ + ราคา\n- ถ้าไม่มีข้อความที่อ่านได้: บรรยายสั้นๆ ว่ารูปคืออะไร (ไม่เกิน 1 ประโยค)\nตอบสั้นกระชับไม่เกิน 500 ตัวอักษร ไม่ต้องมีคำนำ" },
+            { type: "image_url", image_url: { url: imageUrl } },
+          ],
+        }],
+      }),
+    });
+    if (!res.ok) { console.error(`[OCR] gateway ${res.status}`); return null; }
+    const data = await res.json();
+    const text = (data.choices?.[0]?.message?.content || "").trim();
+    return text.length > 0 ? text.slice(0, 800) : null;
+  } catch (e) {
+    console.error("[OCR] failed", e);
+    return null;
+  }
+}
+
 async function sendAndSave(supabase: any, customerId: string, lineUserId: string, text: string, extra: Record<string, any> = {}) {
   await pushLine(lineUserId, [{ type: "text", text }]);
   await supabase.from("conversations").insert({ customer_id: customerId, message: text, sender: "ai", ...extra });
@@ -157,6 +183,14 @@ async function processEvent(event: any, supabase: any) {
     const label = msgType === "image" ? "รูปภาพ" : msgType === "video" ? "วิดีโอ" : msgType === "audio" ? "เสียง" : "ไฟล์";
     const fileUrl = await uploadLineMedia(event.message.id, msgType, supabase);
     messageText = fileUrl ? `[${label}]\n📎 ${fileUrl}` : `[${label}]`;
+    // 📄 OCR: อ่านข้อความในรูป (เช่น แคปแชทจากที่อื่น) แล้วใส่เป็น context ให้ AI ตอบต่อได้
+    if (msgType === "image" && fileUrl) {
+      const ocr = await ocrImage(fileUrl);
+      if (ocr) {
+        messageText = `[${label}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
+        isText = true;
+      }
+    }
   } else if (msgType === "sticker") {
     messageText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
   } else if (msgType === "location") {
@@ -531,6 +565,7 @@ async function processEvent(event: any, supabase: any) {
 - 🚫 ห้ามเสนอแพ็กเกจที่ไม่ตรงเงื่อนไขขั้นต่ำ (min_condition) เด็ดขาด เช่น ลูกค้า 40 ท่าน ห้ามเสนอแพ็กเกจที่ระบุขั้นต่ำ 50 ท่าน (ซุ้มอาหารเริ่ม 50 ท่าน)
 - 📸 ทุกครั้งที่พูดถึง/แนะนำแพ็กเกจใด ใส่ "แพ็กเกจ: <ชื่อ>" ลงใน image_titles เพื่อส่งรูปพื้นฐาน
 - ⚠️ รูป tier (ชื่อมี " — "): ส่งได้**เฉพาะเมื่อ tier นั้นตรงกับจำนวนท่านที่ลูกค้าระบุเท่านั้น** ห้ามส่งรูป tier ที่จำนวนท่านไม่ตรงกับลูกค้าเด็ดขาด
+- 📄 ถ้าข้อความลูกค้ามี "📄 เนื้อหาในรูป:" = ลูกค้าส่งแคปแชท/รูปเอกสาร/ใบเสนอราคามา ให้อ่านเนื้อหานั้นเหมือนลูกค้าพิมพ์เอง ตอบต่อบทสนทนาในรูป หรือเทียบราคา/รายการกับ KB ของเราได้ (แต่ห้ามแต่งข้อมูลที่ไม่มีใน KB)
 
 กฎจำนวนคน: ถ้าลูกค้าบอกจำนวนคน ต้องถามว่ารวมพระหรือยัง / เสนอแพ็กเกจต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กเกจที่ guest_pax น้อยกว่าที่ลูกค้าต้องการ
 
