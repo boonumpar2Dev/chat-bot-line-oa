@@ -35,6 +35,24 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newRule, setNewRule] = useState("");
+  const [clearing, setClearing] = useState(false);
+
+  const clearTestData = async (mode: "conversations" | "all") => {
+    setClearing(true);
+    try {
+      const { error: convErr } = await supabase.from("conversations").delete().not("id", "is", null);
+      if (convErr) throw convErr;
+      if (mode === "all") {
+        const { error: custErr } = await supabase.from("customers").delete().not("id", "is", null);
+        if (custErr) throw custErr;
+      }
+      toast.success(mode === "all" ? "ลบแชท + ลูกค้าทั้งหมดแล้ว" : "ลบประวัติแชทแล้ว");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
