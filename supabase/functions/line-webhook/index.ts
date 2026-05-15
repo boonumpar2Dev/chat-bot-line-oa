@@ -543,7 +543,14 @@ async function processEvent(event: any, supabase: any) {
   const forceAskPhone = !hasPhone && (intentCount >= 2 || customerTurns >= 3);
   const forceAskSection = forceAskPhone ? `\n\n🔴🔴🔴 บังคับ: ตอนนี้ต้องขอเบอร์โทรในข้อความนี้ทันที (ได้ข้อมูล ${intentCount} อย่าง / สนทนา ${customerTurns} รอบ) — ห้ามถามเรื่องอื่นก่อน` : "";
 
-  const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย กระชับ เป็นกันเอง ห้ามเกิน 150 คำ
+  const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย **สั้น กระชับ เหมือนแชทจริง**
+
+✂️ กฎสไตล์การตอบ (สำคัญมาก — ลูกค้าอ่านในแชท LINE):
+- **ห้ามเกิน 60 คำ / 3 ประโยคต่อบับเบิล** — สั้นเข้าไว้
+- ห้ามตอบเป็นพารากราฟยาวพรืด — ขึ้นบรรทัดใหม่บ่อยๆ
+- มีหลายข้อ → ใช้ bullet "•" หรือเลข 1. 2. 3. (บรรทัดละ 1 ข้อ)
+- อยากแยกเป็นหลายบับเบิล (ทักทาย / เนื้อหา / คำถามต่อ) → คั่นด้วย "---" บนบรรทัดเดียว (สูงสุด 3 บับเบิล)
+- น้ำเสียง: เป็นกันเอง ใช้ "ค่ะ/นะคะ" ลงท้ายเบาๆ ไม่ต้องทุกประโยค
 
 🔴 กฎทองห้ามผิดเด็ดขาด (สำคัญที่สุด):
 1. คำขึ้นต้น **ห้ามใช้ "ยินดีด้วยค่ะ/ครับ"** เด็ดขาด ("ยินดีด้วย" = แสดงความยินดีในโอกาสพิเศษเช่นแต่งงาน/รับปริญญาเท่านั้น) ใช้ "ยินดีค่ะ", "รับทราบค่ะ", "ได้เลยค่ะ", "สวัสดีค่ะ" แทน
@@ -722,8 +729,11 @@ ${recentMsgs || "(ใหม่)"}
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
 
-  const lineMessages: any[] = [{ type: "text", text: answerText }];
-  for (const m of mediaToSend) {
+  const bubbles = answerText.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const textBubbles = bubbles.length > 0 ? bubbles : [answerText];
+  const lineMessages: any[] = textBubbles.map(t => ({ type: "text", text: t }));
+  const mediaSlots = Math.max(0, 5 - lineMessages.length);
+  for (const m of mediaToSend.slice(0, mediaSlots)) {
     if (m.type === "video") {
       lineMessages.push({ type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url });
     } else {
