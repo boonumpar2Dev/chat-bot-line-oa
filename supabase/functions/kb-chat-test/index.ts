@@ -47,13 +47,18 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
 
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const isServiceRole = !!serviceKey && authHeader === `Bearer ${serviceKey}`;
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!,
+      serviceKey || Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     );
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+    if (!isServiceRole) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+    }
 
     const body = await req.json();
     const text: string = (body.message || "").trim();
