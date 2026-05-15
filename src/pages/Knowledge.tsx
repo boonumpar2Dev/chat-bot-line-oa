@@ -19,11 +19,11 @@ import TierImageField from "@/components/knowledge/TierImageField";
 import KBChatTest from "@/components/knowledge/KBChatTest";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; is_active: boolean; };
-type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; is_active: boolean; };
+type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; is_active: boolean; min_guests: number | null; };
 type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; status: string; sort_order: number; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], is_active: true };
-const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], is_active: true };
+const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], is_active: true, min_guests: null };
 const blankKB: KB = { title: "", content: "", category: "", image_urls: [], status: "active", sort_order: 0 };
 
 export default function Knowledge() {
@@ -233,7 +233,10 @@ function PromotionsTab() {
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1">
                 <h3 className="font-display font-semibold">{p.name}</h3>
-                <div className="flex flex-wrap gap-1 mt-2">{p.applicable_categories?.map((c:string)=>(<Badge key={c} variant="secondary">{c}</Badge>))}</div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {p.applicable_categories?.map((c:string)=>(<Badge key={c} variant="secondary">{c}</Badge>))}
+                  {p.min_guests != null && <Badge variant="outline">ขั้นต่ำ {p.min_guests} ท่าน</Badge>}
+                </div>
                 {p.description && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{p.description}</p>}
               </div>
               <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[]});setOpen(true);}}><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
@@ -256,6 +259,11 @@ function PromotionsTab() {
                   return <button key={c.id} type="button" onClick={()=>setEdit({...edit,applicable_categories: on ? edit.applicable_categories.filter(x=>x!==c.name) : [...edit.applicable_categories,c.name]})} className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${on?"bg-primary text-primary-foreground border-primary":"bg-background hover:bg-muted"}`}>{c.name}</button>;
                 })}
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>จำนวนท่านขั้นต่ำ (ถ้ามี)</Label>
+              <Input type="number" min={1} value={edit.min_guests ?? ""} onChange={e=>setEdit({...edit,min_guests: e.target.value === "" ? null : +e.target.value})} placeholder="เว้นว่าง = ใช้ได้ทุกขนาดงาน"/>
+              <p className="text-xs text-muted-foreground">ลูกค้าต้องมีจำนวนแขกอย่างน้อยเท่านี้ AI ถึงจะเสนอโปรนี้</p>
             </div>
             <div className="space-y-1.5"><Label>รูปภาพ</Label><ImageUrlsField urls={edit.image_urls} onChange={u=>setEdit({...edit,image_urls:u})}/></div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted"><Label>เปิดใช้งาน</Label><Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/></div>
