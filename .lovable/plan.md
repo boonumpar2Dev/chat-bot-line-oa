@@ -1,46 +1,46 @@
-## ปัญหา
-ตอนนี้ AI เสนอโปรได้โดยไม่เช็คจำนวนแขก ทำให้บางทีเสนอโปรที่ลูกค้าใช้ไม่ได้ และไม่ได้บอกชื่อโปร/เงื่อนไขให้ครบ
-
 ## เป้าหมาย
-- โปรโมชั่นมีฟิลด์ `min_guests` (จำนวนท่านขั้นต่ำที่ใช้โปรได้)
-- AI ต้องเช็ค `min_guests` กับจำนวนแขกที่ลูกค้าให้มา ก่อนตัดสินใจเสนอ
-- ถ้าลูกค้ายังไม่บอกจำนวน → ให้บอกเงื่อนไขควบคู่ไปด้วย ("โปร X สำหรับงาน 50 ท่านขึ้นไป")
-- ถ้าลูกค้าจำนวนน้อยกว่า → ห้ามเสนอ (หรือบอกตรงๆ ว่ายังไม่ถึงเกณฑ์)
-- ตอบลูกค้าต้อง **บอกชื่อโปรเสมอ** ห้ามพูดลอยๆ ว่า "มีโปรนะคะ"
+เมื่อลูกค้าส่งรูป (โดยเฉพาะแคปแชทจากที่อื่น เช่น แคปจาก Messenger/Line อื่น/ใบเสนอราคาคู่แข่ง) ให้ AI **อ่านข้อความในรูปด้วย OCR/Vision** แล้วใช้เป็น context ตอบต่อได้เหมือนลูกค้าพิมพ์เอง — ไม่ใช่แค่บันทึกว่า "[รูปภาพ]"
 
-## แผนงาน
+## ขอบเขต
+แก้เฉพาะ `supabase/functions/line-webhook/index.ts` (ฝั่งรับข้อความ LINE)
+ไม่แตะ UI / ไม่แตะ schema
 
-### 1. Migration — เพิ่ม column
-```sql
-ALTER TABLE public.promotions 
-ADD COLUMN min_guests integer;
+## วิธีทำ
+
+### 1. เพิ่มฟังก์ชัน `ocrImage(url)` 
+- เรียก Lovable AI Gateway ด้วย model `google/gemini-2.5-flash` (รองรับ vision + เร็ว + ถูก)
+- ส่ง `image_url` ของรูปที่อัปโหลดเข้า Supabase Storage แล้ว
+- prompt: "อ่านข้อความทั้งหมดในรูปนี้ ถ้าเป็นแคปแชท ให้แยก 'ผู้พูด: ข้อความ' ตามลำดับ ถ้าเป็นใบเสนอราคา/เมนู ให้สรุปรายการ+ราคา ถ้าไม่มีข้อความให้บรรยายสั้นๆ ว่ารูปคืออะไร"
+- ตอบเป็น plain text สั้นๆ (ไม่เกิน ~500 ตัวอักษร)
+- timeout/error → return null (ไม่ block flow)
+
+### 2. แก้ block `msgType === "image"` (บรรทัด ~156-159)
+เดิม:
 ```
-- nullable, ไม่มี default → `null` = ไม่มีเงื่อนไขจำนวนท่าน (ใช้กับงานทุกขนาด)
+messageText = `[รูปภาพ]\n📎 ${fileUrl}`
+```
+ใหม่:
+```
+const ocr = await ocrImage(fileUrl)
+messageText = ocr 
+  ? `[รูปภาพ]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}` 
+  : `[รูปภาพ]\n📎 ${fileUrl}`
+```
+ผลลัพธ์: ทั้งหน้าแชทแอดมินเห็น OCR และ AI prompt ได้ context นี้ไปด้วยอัตโนมัติ (เพราะ history ใช้ messageText)
 
-### 2. UI — `src/pages/Knowledge.tsx` (PromotionsTab)
-- อัปเดต `type Promo` เพิ่ม `min_guests: number | null`
-- `blankPromo` ใส่ `min_guests: null`
-- ใน Dialog เพิ่มช่อง "จำนวนท่านขั้นต่ำ (ถ้ามี)" — Input type=number, ว่าง = ไม่จำกัด
-- ใน Card แสดง badge "ขั้นต่ำ N ท่าน" ถ้ามีค่า
+### 3. ปรับ snippet ใน `last_message_snippet`
+ถ้ามี OCR → ใช้บรรทัดแรกของ OCR เป็น snippet แทน "[รูปภาพ]" เพื่อให้ list แชทอ่านง่าย
 
-### 3. Edge Functions — `kb-chat-test` + `line-webhook`
-ใน promoContext ของทั้ง 2 ไฟล์:
-- เพิ่มบรรทัด `เงื่อนไข: ใช้กับงานตั้งแต่ ${min_guests} ท่านขึ้นไป` ถ้ามีค่า
-- เพิ่มข้อความใน prompt section หลัง promoContext:
-  ```
-  ⚠️ กฎเสนอโปรโมชั่น:
-  1. ก่อนเสนอโปร เช็คจำนวนแขกของลูกค้า เทียบกับเงื่อนไขขั้นต่ำของโปรนั้นเสมอ
-  2. ถ้าลูกค้ายังไม่บอกจำนวน → เสนอได้แต่ต้องบอกเงื่อนไขควบคู่
-  3. ถ้าลูกค้าจำนวนน้อยกว่าเงื่อนไข → ห้ามเสนอโปรนั้น (เสนอตัวอื่นที่เข้าเกณฑ์ หรือไม่เสนอเลย)
-  4. เสนอโปรต้องบอกชื่อโปรเต็มเสมอ ห้ามพูดลอยๆ ว่า "มีโปร"
-  ```
+### 4. Prompt AI: เพิ่มกฎ
+ใน system prompt เพิ่ม 1 บรรทัด:
+> "ถ้า message ลูกค้ามี '📄 เนื้อหาในรูป:' = ลูกค้าส่งแคปแชท/รูปเอกสารมา ให้อ่านเนื้อหานั้นเหมือนลูกค้าพิมพ์เอง และตอบต่อบทสนทนาในรูปได้"
 
-## ไฟล์ที่แก้
-1. Migration ใหม่ — `promotions.min_guests`
-2. `src/pages/Knowledge.tsx` — Promo type + dialog field + card badge
-3. `supabase/functions/kb-chat-test/index.ts` — promoContext + prompt rules
-4. `supabase/functions/line-webhook/index.ts` — promoContext + prompt rules
+## ที่ไม่ทำ (เก็บไว้ทีหลังถ้าต้องการ)
+- ไม่ทำ OCR กับ video/file/sticker
+- ไม่เก็บ OCR result เป็น column แยกใน DB (อยู่ในตัว message พอ)
+- ไม่ทำ retry/queue — ถ้า OCR ล้มก็ปล่อยผ่าน
 
-## หมายเหตุ
-- ไม่แตะ `applicable_categories` (logic เดิมยังใช้ได้)
-- AI จะอ่านค่าจาก `knownFacts.จำนวนแขก` ที่มีอยู่แล้ว (จาก regex `\d+\s*(ท่าน|คน|ที่)`)
+## Technical
+- Model: `google/gemini-2.5-flash` (vision support, ใช้ LOVABLE_API_KEY เดิม)
+- เพิ่ม latency ~1-2s ต่อรูป — รับได้เพราะ debounce 8s อยู่แล้ว
+- ถ้ารูปหลายใบใน 1 batch (debounce รวม) → OCR ทุกใบขนานกันด้วย Promise.all
