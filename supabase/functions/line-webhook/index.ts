@@ -693,7 +693,7 @@ ${recentMsgs || "(ใหม่)"}
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }
-  const allMedia = mediaList.slice(0, 3); // LINE: text + 3 media = 4 messages (limit 5)
+  const allMedia = mediaList.slice(0, 4); // LINE: text + 4 media = 5 messages (max 5)
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
