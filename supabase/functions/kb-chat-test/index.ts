@@ -309,30 +309,36 @@ ${recentMsgs || "(ใหม่)"}
       lookup[`"VDO โปรโมชั่น: ${pr.name}"`] = getItemVideos(pr).map(v => v.thumb_url);
     });
     tierImageRefs.forEach(r => { lookup[`"${r.title}"`] = [r.url]; });
-    // Build keyword index for fuzzy matching (AI ชอบเขียนชื่อย่อ)
-    type Entry = { title: string; urls: string[] };
+    // Build entries with searchable keywords (title + category + name)
+    type Entry = { title: string; urls: string[]; haystack: string };
     const allEntries: Entry[] = [];
-    (kb || []).forEach((i: any) => allEntries.push({ title: i.title, urls: getItemImages(i) }));
-    (pkgs || []).forEach((p: any) => allEntries.push({ title: `แพ็กเกจ: ${p.name}`, urls: p.image_urls || [] }));
-    (promos || []).forEach((pr: any) => allEntries.push({ title: `โปรโมชั่น: ${pr.name}`, urls: pr.image_urls || [] }));
-    tierImageRefs.forEach(r => allEntries.push({ title: r.title, urls: [r.url] }));
+    (kb || []).forEach((i: any) => allEntries.push({
+      title: i.title, urls: getItemImages(i),
+      haystack: `${i.title} ${i.category || ""}`.toLowerCase()
+    }));
+    (pkgs || []).forEach((p: any) => allEntries.push({
+      title: `แพ็กเกจ: ${p.name}`, urls: p.image_urls || [],
+      haystack: `แพ็กเกจ ${p.name} ${p.category || ""}`.toLowerCase()
+    }));
+    (promos || []).forEach((pr: any) => allEntries.push({
+      title: `โปรโมชั่น: ${pr.name}`, urls: pr.image_urls || [],
+      haystack: `โปรโมชั่น ${pr.name}`.toLowerCase()
+    }));
+    tierImageRefs.forEach(r => allEntries.push({ title: r.title, urls: [r.url], haystack: r.title.toLowerCase() }));
 
     function fuzzyMatch(needle: string): string[] {
       const n = needle.replace(/^["']|["']$/g, "").toLowerCase().trim();
       // exact
       const exact = allEntries.find(e => e.title.toLowerCase() === n);
       if (exact) return exact.urls;
+      // keyword tokens (drop "แพ็กเกจ:", "โปรโมชั่น:")
+      const stripped = n.replace(/^(แพ็กเกจ|โปรโมชั่น|vdo)\s*[:：]?\s*/g, "").trim();
+      if (!stripped) return [];
       // contains either way
-      const candidates = allEntries.filter(e => {
-        const t = e.title.toLowerCase();
-        return t.includes(n) || n.includes(t);
-      });
-      if (candidates.length === 1) return candidates[0].urls;
-      // keyword-based: บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน/บ้าน/บริษัท/แนะนำ
-      if (candidates.length > 1) {
-        // pick first
-        return candidates[0].urls;
-      }
+      const matches = allEntries.filter(e => e.haystack.includes(stripped) || stripped.includes(e.title.toLowerCase().replace(/^(แพ็กเกจ|โปรโมชั่น)\s*[:：]?\s*/g, "")));
+      // For "เมนู ทุกแบบ" → no single match; pick KB items whose haystack contains key words
+      if (matches.length) return matches[0].urls;
+      // Last resort: if needle matches a clear category keyword, return all KB matching
       return [];
     }
 
