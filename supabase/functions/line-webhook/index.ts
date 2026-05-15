@@ -729,8 +729,11 @@ ${recentMsgs || "(ใหม่)"}
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
 
-  const lineMessages: any[] = [{ type: "text", text: answerText }];
-  for (const m of mediaToSend) {
+  const bubbles = answerText.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const textBubbles = bubbles.length > 0 ? bubbles : [answerText];
+  const lineMessages: any[] = textBubbles.map(t => ({ type: "text", text: t }));
+  const mediaSlots = Math.max(0, 5 - lineMessages.length);
+  for (const m of mediaToSend.slice(0, mediaSlots)) {
     if (m.type === "video") {
       lineMessages.push({ type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url });
     } else {
