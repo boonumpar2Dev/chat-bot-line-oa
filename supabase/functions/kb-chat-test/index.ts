@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
       ...(pkgs || []).filter((p: any) => getItemVideos(p).length > 0).map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
       ...(promos || []).filter((pr: any) => getItemVideos(pr).length > 0).map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
     ];
-    const imageListStr = imageSources.length ? `\n\nรายชื่อสื่อที่ส่งได้: ${imageSources.join(", ")}\n(ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" สำหรับรูป tier / "VDO: ..." สำหรับวิดีโอ — ส่งวิดีโอเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง)` : "";
+    const imageListStr = imageSources.length ? `\n\nรายชื่อสื่อที่ส่งได้: ${imageSources.join(", ")}\n(ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" สำหรับรูป tier / "VDO: ..." สำหรับวิดีโอ — ส่งวิดีโอเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง)\n\n💡 กฎเลือก image_titles (ทำผิดบ่อย):\nA) ขอ "แพ็กเกจ"/"ราคา" หรือบอก "ประเภทงาน+จำนวนคน" (เช่น ขึ้นบ้านใหม่ พระ5 แขก20) → ส่งเฉพาะ "แพ็กเกจ: X" ที่เข้าเงื่อนไข ห้ามแถม "เมนู..." หรือ "ตัวอย่าง..."\nB) ขอ "เมนูแนะนำ" → ส่งเฉพาะ "เซ็ตเมนูแนะนำ..." ตัวเดียว ห้ามแถมเมนูอื่น/ขนมหวาน\nC) ขอ "เมนู" เฉยๆ → ถามประเภทก่อน (บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน) ห้ามส่งหมด\nD) ขอ "เมนูทุกแบบ/ทั้งหมด" → ส่งทั้ง 3 (บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน)\nE) ขอ "ตัวอย่างจัดงาน บ้านและบริษัท" → ส่งทั้ง 2 KB (บ้าน + บริษัท)\nF) image_titles สูงสุด 4 — ตรวจทุก title ว่าตรงเจตนา A-F หรือไม่ ห้ามใส่เกิน` : "";
 
     const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
       ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
