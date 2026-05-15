@@ -275,7 +275,7 @@ ${recentMsgs || "(ใหม่)"}
 (3) ถามข้อมูลที่อยู่ใน "ข้อมูลที่ลูกค้าให้แล้ว" หรือเปล่า? → ถ้าใช่ ลบทิ้ง
 (4) เสนอ 2 ทางเลือก (เสนอ tier สูงกว่า + เสนอจ่ายเพิ่มต่อหัว) ในข้อความเดียวหรือเปล่า? → ถ้าใช่ เก็บแค่ทางเดียว
 
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3)`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎ A-F)`;
 
     let aiResp: any;
     try { aiResp = await callAI(prompt, "google/gemini-3-flash-preview"); }
