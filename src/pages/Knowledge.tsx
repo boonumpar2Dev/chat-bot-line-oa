@@ -11,20 +11,21 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
+import VideoUrlsField, { VideoItem } from "@/components/knowledge/VideoUrlsField";
 import TierImageField from "@/components/knowledge/TierImageField";
 import KBChatTest from "@/components/knowledge/KBChatTest";
 
-type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; is_active: boolean; };
-type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; is_active: boolean; min_guests: number | null; };
-type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; status: string; sort_order: number; };
+type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
+type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
+type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; status: string; sort_order: number; };
 
-const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], is_active: true };
-const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], is_active: true, min_guests: null };
-const blankKB: KB = { title: "", content: "", category: "", image_urls: [], status: "active", sort_order: 0 };
+const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], video_urls: [], is_active: true };
+const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
+const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], status: "active", sort_order: 0 };
 
 export default function Knowledge() {
   return (
@@ -72,7 +73,7 @@ function PackagesTab() {
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
 
   const openNew = () => { setEdit(blankPkg); setOpen(true); };
-  const openEdit = (p: any) => { setEdit({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [] }); setOpen(true); };
+  const openEdit = (p: any) => { setEdit({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }); setOpen(true); };
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
     const res = edit.id ? await supabase.from("catering_packages").update(payload).eq("id", edit.id) : await supabase.from("catering_packages").insert(payload);
@@ -174,6 +175,7 @@ function PackagesTab() {
             <div className="space-y-1.5"><Label>คำสั่งสำหรับ AI (AI Instruction)</Label><Textarea rows={3} value={edit.ai_instruction||""} onChange={e=>setEdit({...edit,ai_instruction:e.target.value})} placeholder="เช่น: ถ้าลูกค้าถามเรื่องโต๊ะจีน ให้แนะนำเกรด A ก่อน"/></div>
             <div className="space-y-1.5"><Label>หมายเหตุ</Label><Textarea rows={2} value={edit.notes||""} onChange={e=>setEdit({...edit,notes:e.target.value})}/></div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ (URL)</Label><ImageUrlsField urls={edit.image_urls} onChange={u=>setEdit({...edit,image_urls:u})}/></div>
+            <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label><VideoUrlsField videos={edit.video_urls} onChange={v=>setEdit({...edit,video_urls:v})}/></div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>
               <Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/>
@@ -239,7 +241,7 @@ function PromotionsTab() {
                 </div>
                 {p.description && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{p.description}</p>}
               </div>
-              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[]});setOpen(true);}}><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
+              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[],video_urls:p.video_urls||[]});setOpen(true);}}><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
             </div>
           </Card>
         ))}
@@ -266,6 +268,7 @@ function PromotionsTab() {
               <p className="text-xs text-muted-foreground">ลูกค้าต้องมีจำนวนแขกอย่างน้อยเท่านี้ AI ถึงจะเสนอโปรนี้</p>
             </div>
             <div className="space-y-1.5"><Label>รูปภาพ</Label><ImageUrlsField urls={edit.image_urls} onChange={u=>setEdit({...edit,image_urls:u})}/></div>
+            <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label><VideoUrlsField videos={edit.video_urls} onChange={v=>setEdit({...edit,video_urls:v})}/></div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted"><Label>เปิดใช้งาน</Label><Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button><Button onClick={save} disabled={!edit.name}>บันทึก</Button></DialogFooter>
@@ -292,7 +295,7 @@ function KnowledgeBaseTab() {
   });
 
   const openNew = () => { setEdit(blankKB); setOpen(true); };
-  const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [] }); setOpen(true); };
+  const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [] }); setOpen(true); };
   const save = async () => {
     const payload: any = { ...edit };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
@@ -421,6 +424,9 @@ function KnowledgeBaseTab() {
             </div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ</Label>
               <ImageUrlsField urls={edit.image_urls} onChange={u => setEdit({ ...edit, image_urls: u })}/>
+            </div>
+            <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label>
+              <VideoUrlsField videos={edit.video_urls} onChange={v => setEdit({ ...edit, video_urls: v })}/>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>

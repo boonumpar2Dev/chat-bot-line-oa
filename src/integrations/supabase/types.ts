@@ -131,6 +131,7 @@ export type Database = {
           notes: string | null
           pricing_tiers: Json
           updated_at: string
+          video_urls: Json
         }
         Insert: {
           ai_instruction?: string | null
@@ -146,6 +147,7 @@ export type Database = {
           notes?: string | null
           pricing_tiers?: Json
           updated_at?: string
+          video_urls?: Json
         }
         Update: {
           ai_instruction?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           notes?: string | null
           pricing_tiers?: Json
           updated_at?: string
+          video_urls?: Json
         }
         Relationships: []
       }
@@ -306,6 +309,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          video_urls: Json
         }
         Insert: {
           category?: string | null
@@ -317,6 +321,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          video_urls?: Json
         }
         Update: {
           category?: string | null
@@ -328,6 +333,7 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          video_urls?: Json
         }
         Relationships: []
       }
@@ -411,6 +417,7 @@ export type Database = {
           min_guests: number | null
           name: string
           updated_at: string
+          video_urls: Json
         }
         Insert: {
           applicable_categories?: string[]
@@ -422,6 +429,7 @@ export type Database = {
           min_guests?: number | null
           name: string
           updated_at?: string
+          video_urls?: Json
         }
         Update: {
           applicable_categories?: string[]
@@ -433,6 +441,7 @@ export type Database = {
           min_guests?: number | null
           name?: string
           updated_at?: string
+          video_urls?: Json
         }
         Relationships: []
       }
