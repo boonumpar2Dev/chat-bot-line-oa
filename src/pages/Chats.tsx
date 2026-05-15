@@ -310,21 +310,36 @@ function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) 
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []).slice(0, 5);
-  const cleaned = m.message.replace(/📎\s*https?:\/\/\S+/g, "").trim();
+  // แยกส่วน OCR ออกจากข้อความ
+  const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
+  const ocrText = ocrMatch?.[1]?.trim() || "";
+  let cleaned = m.message
+    .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
+    .replace(/📎\s*https?:\/\/\S+/g, "")
+    .replace(/^\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]\s*/g, "")
+    .trim();
   return (
     <div className={cn("flex flex-col gap-1", align)}>
       <span className="text-[10px] text-muted-foreground px-2">
         {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
       </span>
+      {imgUrls.map((u: string) => (
+        <img key={u} src={u} alt="" onClick={() => onImageClick(u)}
+          className="max-w-[280px] rounded-lg border cursor-pointer hover:opacity-90"/>
+      ))}
+      {ocrText && (
+        <div className="max-w-[80%] rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 px-3 py-2 text-xs whitespace-pre-wrap break-words text-muted-foreground">
+          <div className="flex items-center gap-1 mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
+            📄 เนื้อหาในรูป (OCR)
+          </div>
+          {ocrText}
+        </div>
+      )}
       {cleaned && (
         <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
           {cleaned}
         </div>
       )}
-      {imgUrls.map((u: string) => (
-        <img key={u} src={u} alt="" onClick={() => onImageClick(u)}
-          className="max-w-[280px] rounded-lg border cursor-pointer hover:opacity-90"/>
-      ))}
       <span className="text-[10px] text-muted-foreground px-2">{new Date(m.created_at).toLocaleString("th-TH")}</span>
     </div>
   );
