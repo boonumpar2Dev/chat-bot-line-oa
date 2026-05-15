@@ -671,8 +671,22 @@ ${recentMsgs || "(ใหม่)"}
   // Media dedup (KB + package-level + tier-level + promo + videos) — keep order from image_titles
   type Media = { type: "image" | "video"; url: string; thumb?: string };
   const mediaList: Media[] = [];
+
+  // Fuzzy match for AI hallucinated titles
+  function fuzzyKB(needle: string) {
+    const n = needle.toLowerCase().trim();
+    return kbWithImages.find((x: any) =>
+      x.title.toLowerCase() === n || x.title.toLowerCase().includes(n) || n.includes(x.title.toLowerCase())
+    );
+  }
+  function fuzzyPkg(needle: string) {
+    const n = needle.toLowerCase().trim();
+    return pkgsWithImages.find((x: any) =>
+      x.name.toLowerCase() === n || x.name.toLowerCase().includes(n) || n.includes(x.name.toLowerCase())
+    );
+  }
+
   for (const title of imageTitles) {
-    // Videos (prefix "VDO: ", "VDO แพ็กเกจ: ", "VDO โปรโมชั่น: ")
     if (title.startsWith("VDO โปรโมชั่น: ")) {
       const name = title.replace("VDO โปรโมชั่น: ", "");
       const pr = promosWithVideos.find((x: any) => x.name === name);
@@ -690,14 +704,16 @@ ${recentMsgs || "(ใหม่)"}
       if (t) mediaList.push({ type: "image", url: t.url });
     } else if (title.startsWith("แพ็กเกจ: ")) {
       const name = title.replace("แพ็กเกจ: ", "");
-      const p = pkgsWithImages.find((x: any) => x.name === name);
+      let p = pkgsWithImages.find((x: any) => x.name === name);
+      if (!p) p = fuzzyPkg(name); // fuzzy fallback
       if (p) for (const u of getItemImages(p)) mediaList.push({ type: "image", url: u });
     } else if (title.startsWith("โปรโมชั่น: ")) {
       const name = title.replace("โปรโมชั่น: ", "");
       const pr = promosWithImages.find((x: any) => x.name === name);
       if (pr) for (const u of getItemImages(pr)) mediaList.push({ type: "image", url: u });
     } else {
-      const k = kbWithImages.find((x: any) => x.title === title);
+      let k = kbWithImages.find((x: any) => x.title === title);
+      if (!k) k = fuzzyKB(title); // fuzzy fallback
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }
