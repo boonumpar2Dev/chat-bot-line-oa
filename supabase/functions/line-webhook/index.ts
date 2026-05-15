@@ -708,23 +708,36 @@ ${recentMsgs || "(ใหม่)"}
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }
-  const allMedia = mediaList.slice(0, 4); // LINE: text + 4 media = 5 messages (max 5)
+  // dedup URLs (กันรูปซ้ำ) + cap 20 รูป/วิดีโอ ต่อหนึ่งคำตอบ
+  const seenUrls = new Set<string>();
+  const allMedia = mediaList.filter(m => {
+    if (seenUrls.has(m.url)) return false;
+    seenUrls.add(m.url); return true;
+  }).slice(0, 20);
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
 
   const bubbles = answerText.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
   const textBubbles = bubbles.length > 0 ? bubbles : [answerText];
-  const lineMessages: any[] = textBubbles.map(t => ({ type: "text", text: t }));
-  const mediaSlots = Math.max(0, 5 - lineMessages.length);
-  for (const m of mediaToSend.slice(0, mediaSlots)) {
-    if (m.type === "video") {
-      lineMessages.push({ type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url });
-    } else {
-      lineMessages.push({ type: "image", originalContentUrl: m.url, previewImageUrl: m.url });
-    }
+  const toLineMsg = (m: { type: string; url: string; thumb?: string }) =>
+    m.type === "video"
+      ? { type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url }
+      : { type: "image", originalContentUrl: m.url, previewImageUrl: m.url };
+
+  // ส่งเป็น batch ละ 5 ข้อความ (LINE limit) — text bubbles อยู่ batch แรก แล้วทยอยส่งรูปที่เหลือเป็นชุดๆ จนครบ
+  const firstBatch: any[] = textBubbles.map(t => ({ type: "text", text: t }));
+  const firstSlots = Math.max(0, 5 - firstBatch.length);
+  let mediaIdx = 0;
+  for (; mediaIdx < Math.min(firstSlots, mediaToSend.length); mediaIdx++) {
+    firstBatch.push(toLineMsg(mediaToSend[mediaIdx]));
   }
-  await pushLine(lineUserId, lineMessages);
+  await pushLine(lineUserId, firstBatch);
+  while (mediaIdx < mediaToSend.length) {
+    const chunk = mediaToSend.slice(mediaIdx, mediaIdx + 5).map(toLineMsg);
+    mediaIdx += chunk.length;
+    await pushLine(lineUserId, chunk);
+  }
 
   const savedMsg = mediaToSend.length > 0
     ? `${answerText}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
