@@ -140,20 +140,54 @@ export default function Settings() {
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center gap-2 mb-5"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎเข้มงวดของ AI</h2></div>
-        <div className="flex gap-2 mb-3">
-          <Input value={newRule} onChange={e=>setNewRule(e.target.value)} placeholder="เพิ่มกฎ เช่น: ห้ามเสนอราคาส่วนลดเกิน 10%" onKeyDown={e=>{if(e.key==="Enter"&&newRule.trim()){upd("strict_rules",[...s.strict_rules,newRule.trim()]);setNewRule("");}}} />
-          <Button variant="outline" onClick={()=>{if(newRule.trim()){upd("strict_rules",[...s.strict_rules,newRule.trim()]);setNewRule("");}}}><Plus/></Button>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎเข้มงวดของ AI</h2></div>
+          <Badge variant="secondary">{s.strict_rules.length} ข้อ</Badge>
         </div>
-        <div className="space-y-2">
-          {s.strict_rules.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีกฎ</p>}
-          {s.strict_rules.map((r,i)=>(
-            <div key={i} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-              <span className="text-sm">{r}</span>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>upd("strict_rules",s.strict_rules.filter((_,j)=>j!==i))}><X className="w-4 h-4"/></Button>
+        <p className="text-xs text-muted-foreground mb-4">กฎเหล่านี้จะถูกฉีดเข้า prompt ของ AI ทุกครั้งที่ตอบลูกค้า — แก้ในช่องได้เลย กด "เพิ่มกฎใหม่" เพื่อเพิ่ม</p>
+
+        <div className="space-y-3">
+          {s.strict_rules.length === 0 && (
+            <div className="text-center py-8 rounded-lg border-2 border-dashed">
+              <p className="text-sm text-muted-foreground">ยังไม่มีกฎ — กดปุ่มด้านล่างเพื่อเพิ่ม</p>
+            </div>
+          )}
+          {s.strict_rules.map((r, i) => (
+            <div key={i} className="group relative rounded-lg border bg-card hover:border-primary/40 transition-colors">
+              <div className="flex items-start gap-2 p-3">
+                <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center mt-0.5">{i + 1}</div>
+                <Textarea
+                  value={r}
+                  onChange={e => {
+                    const next = [...s.strict_rules];
+                    next[i] = e.target.value;
+                    upd("strict_rules", next);
+                  }}
+                  rows={Math.max(2, Math.ceil(r.length / 70))}
+                  className="flex-1 resize-none border-0 bg-transparent p-0 focus-visible:ring-0 shadow-none text-sm leading-relaxed"
+                  placeholder="พิมพ์กฎที่นี่…"
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => upd("strict_rules", s.strict_rules.filter((_, j) => j !== i))}
+                  title="ลบกฎนี้"
+                >
+                  <X className="w-4 h-4"/>
+                </Button>
+              </div>
             </div>
           ))}
         </div>
+
+        <Button
+          variant="outline"
+          className="w-full mt-3 border-dashed"
+          onClick={() => upd("strict_rules", [...s.strict_rules, ""])}
+        >
+          <Plus className="w-4 h-4"/> เพิ่มกฎใหม่
+        </Button>
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
