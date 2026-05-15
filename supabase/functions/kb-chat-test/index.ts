@@ -310,7 +310,7 @@ ${recentMsgs || "(ใหม่)"}
       answer: aiResp.answer || "ขออภัย ไม่สามารถตอบได้ในขณะนี้",
       confidence: aiResp.confidence ?? 80,
       image_titles: imageTitles,
-      image_urls: imageUrls.slice(0, 5),
+      image_urls: imageUrls.slice(0, 12),
     }, { headers: corsHeaders });
   } catch (err: any) {
     console.error(err);
