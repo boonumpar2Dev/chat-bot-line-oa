@@ -1,0 +1,1 @@
+UPDATE public.app_settings SET debounce_seconds = 8 WHERE key = 'ai_config'; ALTER TABLE public.app_settings ALTER COLUMN debounce_seconds SET DEFAULT 8;
