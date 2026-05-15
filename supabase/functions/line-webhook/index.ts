@@ -503,7 +503,7 @@ async function processEvent(event: any, supabase: any) {
     ...pkgsWithVideos.map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
     ...promosWithVideos.map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
   ];
-  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง/อยากเห็นการจัด ไม่ส่งทุกครั้ง\n- รวมรูป+วิดีโอแล้วสูงสุด 3 ชิ้นต่อข้อความ` : "";
+  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ (สำคัญมาก — ทำผิดบ่อย):\n\n🎯 จับเจตนาลูกค้าก่อนเลือกรูป:\nA) ขอ "แพ็กเกจ"/"ราคา"/"ใบเสนอราคา" หรือบอก "ประเภทงาน+จำนวนคน" (เช่น ขึ้นบ้านใหม่ พระ5 แขก20) → **ส่งเฉพาะ "แพ็กเกจ: X" ที่เข้าเงื่อนไข** ห้ามแถม "เมนู..." หรือ "ตัวอย่าง..." เด็ดขาด\nB) ขอ "เมนูแนะนำ" → ส่งเฉพาะ "เซ็ตเมนูแนะนำสำหรับลูกค้าบุญ+บุฟเฟ่ต์" ตัวเดียว ห้ามแถม "เมนูบุญ+ซุ้ม/โต๊ะจีน/บุฟเฟ่ต์" หรือเมนูขนมหวาน\nC) ขอ "เมนู" เฉยๆ ไม่ระบุประเภท → ถามก่อนว่าสนใจประเภทไหน (บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน) ห้ามส่งรูปเมนูทุกแบบรวมกัน\nD) ขอ "เมนูทุกแบบ/ทั้งหมด/ครบ" → ส่ง "เมนูบุญ+บุฟเฟ่ต์" + "เมนูบุญ+ซุ้มอาหาร" + "เมนูบุญ+โต๊ะจีน" (3 อัน) ห้ามตัดเหลืออันเดียว\nE) ขอ "ตัวอย่างจัดงาน" + ระบุ "บ้านและบริษัท"/"ทั้งสองแบบ" → ส่งทั้ง "ตัวอย่างรูปแบบการจัดพิธีสงฆ์ แบบ บ้านหรือครบรอบ" + "...แบบ บริษัท/ออฟฟิศ" ห้ามส่งแค่อันเดียว\nF) ขอ "ตัวอย่างซุ้มอาหาร" → ส่ง "ตัวอย่างหน้าตาซุ้มอาหาร" เท่านั้น\n\n📐 กติกาเพิ่มเติม:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น (แทน "รูปรวม")\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศ/อยากเห็นการจัดจริง\n- image_titles **ใส่ได้สูงสุด 4 รายการ** ระบบจะดึงรูปของแต่ละ title มาเอง (1 KB อาจมีหลายรูป ระบบจัดการให้)\n- ห้ามใส่ title ที่ลูกค้าไม่ได้ขอ — ผิดบ่อยมาก ตรวจ image_titles ทุกอันว่าตรงเจตนาข้อ A-F หรือไม่` : "";
 
 
   const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
@@ -599,7 +599,7 @@ ${recentMsgs || "(ใหม่)"}
 (3) ถามเรื่องที่อยู่ใน "ข้อมูลลูกค้าที่เก็บไว้แล้ว"? → ลบทิ้ง ไปถามข้ออื่น
 (4) เสนอ 2 ทางเลือก (tier สูงกว่า + เพิ่มต่อหัว) ในข้อความเดียว? → เก็บแค่ทางเดียว
 
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone, intent`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎ A-F), confirm_existing_phone, intent`;
 
   let aiResp: any;
   try {
@@ -693,7 +693,7 @@ ${recentMsgs || "(ใหม่)"}
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }
-  const allMedia = mediaList.slice(0, 3); // LINE: text + 3 media = 4 messages (limit 5)
+  const allMedia = mediaList.slice(0, 4); // LINE: text + 4 media = 5 messages (max 5)
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
