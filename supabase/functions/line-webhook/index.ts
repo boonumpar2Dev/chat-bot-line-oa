@@ -599,7 +599,7 @@ ${recentMsgs || "(ใหม่)"}
 (3) ถามเรื่องที่อยู่ใน "ข้อมูลลูกค้าที่เก็บไว้แล้ว"? → ลบทิ้ง ไปถามข้ออื่น
 (4) เสนอ 2 ทางเลือก (tier สูงกว่า + เพิ่มต่อหัว) ในข้อความเดียว? → เก็บแค่ทางเดียว
 
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 3), confirm_existing_phone, intent`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎ A-F), confirm_existing_phone, intent`;
 
   let aiResp: any;
   try {
