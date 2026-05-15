@@ -734,6 +734,16 @@ ${recentMsgs || "(ใหม่)"}
     last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
   };
   if (imageTitles.length > 0) update.last_sent_image_titles = imageTitles;
+
+  // Auto-handover: ถ้า AI สัญญาว่าจะส่งต่อเจ้าหน้าที่ → หยุดบอท ปล่อยให้แอดมินมารับช่วง
+  const handoverPatterns = /(ประสาน|แจ้ง|ส่งต่อ|ส่งให้|ให้)(เจ้าหน้าที่|ทีมงาน|แอดมิน|ฝ่าย\S*)|เจ้าหน้าที่(จะ|รีบ|ติดต่อ|ตอบ|ดูแล|ช่วย|คำนวณ|แจ้ง)|แอดมิน(จะ|รีบ|ติดต่อ|ตอบ|ดูแล)|ทีมงาน(จะ|รีบ|ติดต่อ|ตอบ|ดูแล)|ติดต่อกลับ(โดยเร็ว|ภายใน|นะคะ|ค่ะ)/;
+  if (handoverPatterns.test(answerText)) {
+    const muteH = cfg.manual_chat_hours ?? 360;
+    update.ai_active = false;
+    update.manual_chat_until = new Date(Date.now() + muteH * 3600000).toISOString();
+    console.log(`[Handover] AI promised staff handover → ai_active=false`);
+  }
+
   await supabase.from("conversations").insert({ customer_id: customer.id, message: savedMsg, sender: "ai", confidence_score: confidence });
   await supabase.from("customers").update(update).eq("id", customer.id);
 }
