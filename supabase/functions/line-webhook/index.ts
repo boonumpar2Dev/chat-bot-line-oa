@@ -540,8 +540,8 @@ async function processEvent(event: any, supabase: any) {
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
-  const forceAskPhone = !hasPhone && (intentCount >= 2 || customerTurns >= 3);
-  const forceAskSection = forceAskPhone ? `\n\n🔴🔴🔴 บังคับ: ตอนนี้ต้องขอเบอร์โทรในข้อความนี้ทันที (ได้ข้อมูล ${intentCount} อย่าง / สนทนา ${customerTurns} รอบ) — ห้ามถามเรื่องอื่นก่อน` : "";
+  // หมายเหตุ: กฎเรื่องการขอเบอร์/ตอบสั้น/ไม่ถามซ้ำ ย้ายไป strict_rules (Settings UI) ทั้งหมด
+  // เพื่อให้แอดมินแก้ไขได้เองโดยไม่ต้องแก้โค้ด
 
   const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย **สั้น กระชับ เหมือนแชทจริง**
 
