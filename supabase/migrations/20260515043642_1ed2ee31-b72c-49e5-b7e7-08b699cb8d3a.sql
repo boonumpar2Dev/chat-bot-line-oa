@@ -1,0 +1,1 @@
+ALTER TABLE public.promotions ADD COLUMN min_guests integer;

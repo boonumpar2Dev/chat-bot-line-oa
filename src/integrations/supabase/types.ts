@@ -408,6 +408,7 @@ export type Database = {
           id: string
           image_urls: string[]
           is_active: boolean
+          min_guests: number | null
           name: string
           updated_at: string
         }
@@ -418,6 +419,7 @@ export type Database = {
           id?: string
           image_urls?: string[]
           is_active?: boolean
+          min_guests?: number | null
           name: string
           updated_at?: string
         }
@@ -428,6 +430,7 @@ export type Database = {
           id?: string
           image_urls?: string[]
           is_active?: boolean
+          min_guests?: number | null
           name?: string
           updated_at?: string
         }
