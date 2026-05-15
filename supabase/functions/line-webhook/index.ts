@@ -31,6 +31,9 @@ async function pushLine(to: string, messages: any[]) {
 function getItemImages(item: any): string[] {
   return Array.isArray(item.image_urls) ? [...item.image_urls] : [];
 }
+function getItemVideos(item: any): { url: string; thumb_url: string }[] {
+  return Array.isArray(item.video_urls) ? item.video_urls.filter((v: any) => v?.url && v?.thumb_url) : [];
+}
 
 async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null } }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -387,15 +390,21 @@ async function processEvent(event: any, supabase: any) {
   // KB context
   const kbItems = kb || [];
   const kbWithImages = kbItems.filter((i: any) => getItemImages(i).length > 0);
+  const kbWithVideos = kbItems.filter((i: any) => getItemVideos(i).length > 0);
   const kbContext = kbItems.map((k: any) => {
     const imgs = getItemImages(k);
+    const vids = getItemVideos(k);
     const content = (k.content || "").slice(0, 800);
     const cat = k.category ? `[${k.category}] ` : "";
-    return `## ${cat}${k.title}\n${content}${imgs.length > 0 ? `\n[มีรูป ${imgs.length} รูป]` : ""}`;
+    const tags: string[] = [];
+    if (imgs.length) tags.push(`มีรูป ${imgs.length} รูป`);
+    if (vids.length) tags.push(`มีวิดีโอ ${vids.length} คลิป`);
+    return `## ${cat}${k.title}\n${content}${tags.length ? `\n[${tags.join(" + ")}]` : ""}`;
   }).join("\n\n");
 
   // Package context (with custom_attributes + tier.guest_count fallback)
   const pkgsWithImages = (pkgs || []).filter((p: any) => p.image_urls?.length > 0);
+  const pkgsWithVideos = (pkgs || []).filter((p: any) => getItemVideos(p).length > 0);
   const pkgContext = (pkgs || []).length > 0 ? "\n\n--- แคตตาล็อกแพ็กเกจ ---\n" + (pkgs || []).map((p: any) => {
     let s = `## แพ็กเกจ: ${p.name}`;
     if (p.category) s += `\nประเภท: ${p.category}`;
@@ -419,16 +428,21 @@ async function processEvent(event: any, supabase: any) {
     if (p.notes) s += `\nหมายเหตุ: ${(p.notes || "").slice(0, 200)}`;
     if (p.ai_instruction) s += `\n🤖 คำสั่ง AI: ${p.ai_instruction}`;
     if (p.image_urls?.length > 0) s += `\n[รูปรวมแพ็ก ${p.image_urls.length} รูป]`;
+    const pVids = getItemVideos(p);
+    if (pVids.length > 0) s += `\n[วิดีโอ ${pVids.length} คลิป]`;
     return s;
   }).join("\n\n") : "";
 
   const promosWithImages = (promos || []).filter((pr: any) => pr.image_urls?.length > 0);
+  const promosWithVideos = (promos || []).filter((pr: any) => getItemVideos(pr).length > 0);
   const promoContext = (promos || []).length > 0 ? "\n\n--- โปรโมชั่น ---\n" + (promos || []).map((pr: any) => {
     let s = `## โปรโมชั่น: ${pr.name}`;
     if (pr.applicable_categories?.length > 0) s += `\nใช้กับ: ${pr.applicable_categories.join(", ")}`;
     if (pr.min_guests != null) s += `\nเงื่อนไข: ใช้กับงานตั้งแต่ ${pr.min_guests} ท่านขึ้นไป`;
     if (pr.description) s += `\n${pr.description}`;
     if (pr.image_urls?.length > 0) s += `\n[มีรูป ${pr.image_urls.length} รูป]`;
+    const prVids = getItemVideos(pr);
+    if (prVids.length > 0) s += `\n[วิดีโอ ${prVids.length} คลิป]`;
     return s;
   }).join("\n\n") + `\n\n⚠️ กฎเสนอโปรโมชั่น:
 1. ก่อนเสนอโปร เช็คจำนวนแขกของลูกค้า เทียบกับเงื่อนไขขั้นต่ำของโปรนั้นเสมอ
@@ -451,8 +465,11 @@ async function processEvent(event: any, supabase: any) {
     ...pkgsWithImages.map((p: any) => `"แพ็กเกจ: ${p.name}" (รูปรวม/เปรียบเทียบ)`),
     ...tierImageRefs.map((t) => `"${t.title}" (รูปเฉพาะ tier)`),
     ...promosWithImages.map((pr: any) => `"โปรโมชั่น: ${pr.name}"`),
+    ...kbWithVideos.map((i: any) => `"VDO: ${i.title}"`),
+    ...pkgsWithVideos.map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
+    ...promosWithVideos.map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
   ];
-  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูปที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกรูป:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- ตอบสั้นๆ ได้ใจความ + แนบรูปให้ลูกค้าเอาไปแชร์ต่อได้` : "";
+  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง/อยากเห็นการจัด ไม่ส่งทุกครั้ง\n- รวมรูป+วิดีโอแล้วสูงสุด 3 ชิ้นต่อข้อความ` : "";
 
 
   const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
