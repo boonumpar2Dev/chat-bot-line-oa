@@ -554,8 +554,14 @@ async function processEvent(event: any, supabase: any) {
    - เสนอ "ใช้ tier ต่ำกว่า + จ่ายเพิ่มต่อหัว" **เฉพาะเมื่อลูกค้าขอแบบประหยัดเอง**เท่านั้น
    - **ห้ามยัด 2 ทางในข้อความเดียว** และ **ห้ามแต่งราคาต่อหัว** — ตอบ "ทีมงานจะคำนวณให้ค่ะ"
 
+🚫 ANTI-HALLUCINATION (สำคัญมาก):
+- ตอบจาก KB เท่านั้น ห้ามแต่ง ห้ามเดา ห้ามจำจากความรู้ทั่วไป
+- รูปแบบอาหารที่เรามี = **บุฟเฟ่ต์, ซุ้มอาหาร, โต๊ะจีน เท่านั้น** (ดูจาก category ของแพ็กเกจ)
+- ❌ ห้ามพูดถึง "ค็อกเทล", "คอฟฟี่เบรก", "ค็อกเทลปาร์ตี้", "fine dining" หรืออาหารประเภทอื่นที่ไม่อยู่ใน KB เด็ดขาด
+- ห้ามแต่งชื่อเมนู ชื่อแพ็กเกจ ชื่อบริการที่ไม่มีใน KB/แคตตาล็อก
+- ถ้าไม่แน่ใจ → "ขอส่งต่อทีมงานนะคะ"
+
 กฎหลัก:
-- ตอบจาก KB เท่านั้น ห้ามแต่งราคา/ตัวเลข
 - ตอบคำถามก่อน แล้วค่อยถามข้อมูลเพิ่ม (ทีละเรื่อง)
 - ลำดับเก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร (ข้ามข้อที่ลูกค้าให้แล้ว)
 - 🔴 กฎเหล็กเบอร์โทร: ได้ข้อมูล 2+ → ขอเบอร์ทันที / สนทนาครบ 3 รอบ → ต้องขอเบอร์
@@ -593,11 +599,13 @@ ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${messageText}"
 
-⚠️ ก่อนตอบ ตรวจ 4 ข้อ:
+⚠️ ก่อนตอบ ตรวจ 6 ข้อ:
 (1) ขึ้นต้นด้วย "ยินดีด้วย"? → เปลี่ยนเป็น "ยินดีค่ะ/รับทราบค่ะ"
 (2) มี "ครับ" ปน? → เปลี่ยนเป็น "ค่ะ/คะ"
 (3) ถามเรื่องที่อยู่ใน "ข้อมูลลูกค้าที่เก็บไว้แล้ว"? → ลบทิ้ง ไปถามข้ออื่น
 (4) เสนอ 2 ทางเลือก (tier สูงกว่า + เพิ่มต่อหัว) ในข้อความเดียว? → เก็บแค่ทางเดียว
+(5) มี "ค็อกเทล/คอฟฟี่เบรก/fine dining" หรืออาหารที่ไม่ใช่บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน? → ลบทิ้ง
+(6) ลูกค้าขอ "เมนูแนะนำ" / "ขอแพ็กเกจ" / "ตัวอย่างจัดงาน" / "เมนูทุกแบบ"? → ต้องใส่ image_titles ให้ตรง (ห้ามปล่อยว่าง แม้จะถามต่อ)
 
 ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎ A-F), confirm_existing_phone, intent`;
 
@@ -663,8 +671,22 @@ ${recentMsgs || "(ใหม่)"}
   // Media dedup (KB + package-level + tier-level + promo + videos) — keep order from image_titles
   type Media = { type: "image" | "video"; url: string; thumb?: string };
   const mediaList: Media[] = [];
+
+  // Fuzzy match for AI hallucinated titles
+  function fuzzyKB(needle: string) {
+    const n = needle.toLowerCase().trim();
+    return kbWithImages.find((x: any) =>
+      x.title.toLowerCase() === n || x.title.toLowerCase().includes(n) || n.includes(x.title.toLowerCase())
+    );
+  }
+  function fuzzyPkg(needle: string) {
+    const n = needle.toLowerCase().trim();
+    return pkgsWithImages.find((x: any) =>
+      x.name.toLowerCase() === n || x.name.toLowerCase().includes(n) || n.includes(x.name.toLowerCase())
+    );
+  }
+
   for (const title of imageTitles) {
-    // Videos (prefix "VDO: ", "VDO แพ็กเกจ: ", "VDO โปรโมชั่น: ")
     if (title.startsWith("VDO โปรโมชั่น: ")) {
       const name = title.replace("VDO โปรโมชั่น: ", "");
       const pr = promosWithVideos.find((x: any) => x.name === name);
@@ -682,14 +704,16 @@ ${recentMsgs || "(ใหม่)"}
       if (t) mediaList.push({ type: "image", url: t.url });
     } else if (title.startsWith("แพ็กเกจ: ")) {
       const name = title.replace("แพ็กเกจ: ", "");
-      const p = pkgsWithImages.find((x: any) => x.name === name);
+      let p = pkgsWithImages.find((x: any) => x.name === name);
+      if (!p) p = fuzzyPkg(name); // fuzzy fallback
       if (p) for (const u of getItemImages(p)) mediaList.push({ type: "image", url: u });
     } else if (title.startsWith("โปรโมชั่น: ")) {
       const name = title.replace("โปรโมชั่น: ", "");
       const pr = promosWithImages.find((x: any) => x.name === name);
       if (pr) for (const u of getItemImages(pr)) mediaList.push({ type: "image", url: u });
     } else {
-      const k = kbWithImages.find((x: any) => x.title === title);
+      let k = kbWithImages.find((x: any) => x.title === title);
+      if (!k) k = fuzzyKB(title); // fuzzy fallback
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }

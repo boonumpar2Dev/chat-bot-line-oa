@@ -208,7 +208,7 @@ Deno.serve(async (req) => {
       ...(pkgs || []).filter((p: any) => getItemVideos(p).length > 0).map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
       ...(promos || []).filter((pr: any) => getItemVideos(pr).length > 0).map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
     ];
-    const imageListStr = imageSources.length ? `\n\nรายชื่อสื่อที่ส่งได้: ${imageSources.join(", ")}\n(ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" สำหรับรูป tier / "VDO: ..." สำหรับวิดีโอ — ส่งวิดีโอเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง)\n\n💡 กฎเลือก image_titles (ทำผิดบ่อย):\nA) ขอ "แพ็กเกจ"/"ราคา" หรือบอก "ประเภทงาน+จำนวนคน" (เช่น ขึ้นบ้านใหม่ พระ5 แขก20) → ส่งเฉพาะ "แพ็กเกจ: X" ที่เข้าเงื่อนไข ห้ามแถม "เมนู..." หรือ "ตัวอย่าง..."\nB) ขอ "เมนูแนะนำ" → ส่งเฉพาะ "เซ็ตเมนูแนะนำ..." ตัวเดียว ห้ามแถมเมนูอื่น/ขนมหวาน\nC) ขอ "เมนู" เฉยๆ → ถามประเภทก่อน (บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน) ห้ามส่งหมด\nD) ขอ "เมนูทุกแบบ/ทั้งหมด" → ส่งทั้ง 3 (บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน)\nE) ขอ "ตัวอย่างจัดงาน บ้านและบริษัท" → ส่งทั้ง 2 KB (บ้าน + บริษัท)\nF) image_titles สูงสุด 4 — ตรวจทุก title ว่าตรงเจตนา A-F หรือไม่ ห้ามใส่เกิน` : "";
+    const imageListStr = imageSources.length ? `\n\n📚 รายชื่อสื่อที่ส่งได้ (ต้อง copy ชื่อนี้เป๊ะตัวอักษร ห้ามย่อ ห้ามแต่งใหม่): ${imageSources.join(", ")}\n(ใช้ชื่อเต็ม "แพ็กเกจ: X — tier Y" สำหรับรูป tier / "VDO: ..." สำหรับวิดีโอ — ส่งวิดีโอเฉพาะเมื่อลูกค้าขอดูบรรยากาศจริง)\n\n🔴 image_titles ต้องตรงกับรายการด้านบนเป๊ะ — ใส่ "บุฟเฟ่ต์"/"ซุ้มอาหาร"/"โต๊ะจีน" เฉยๆ = ผิด ไม่ได้รูป (ต้องเป็น "เมนูบุญ+บุฟเฟ่ต์", "แพ็กเกจ: ...", ฯลฯ)\n\n💡 กฎเลือก image_titles (ทำผิดบ่อย):\nA) ขอ "แพ็กเกจ"/"ราคา" หรือบอก "ประเภทงาน+จำนวนคน" → ส่งเฉพาะ "แพ็กเกจ: X" ที่เข้าเงื่อนไข ห้ามแถมเมนู/ตัวอย่าง\nB) ขอ "เมนูแนะนำ" → ส่ง "เซ็ตเมนูแนะนำสำหรับลูกค้าบุญ+บุฟเฟ่ต์" ตัวเดียว\nC) ขอ "เมนู" เฉยๆ → ถามประเภทก่อน ห้ามส่งหมด\nD) ขอ "เมนูทุกแบบ/ทั้งหมด" → ส่ง "เมนูบุญ+บุฟเฟ่ต์" + "เมนูบุญ+ซุ้มอาหาร" + "เมนูบุญ+โต๊ะจีน"\nE) ขอ "ตัวอย่างจัดงาน บ้าน+บริษัท" → ส่ง "ตัวอย่างรูปแบบการจัดพิธีสงฆ์ แบบ บ้านหรือครบรอบ" + "ตัวอย่างรูปแบบการจัดพิธีสงฆ์ แบบ บริษัท/ออฟฟิศ"\nF) สูงสุด 4 ชื่อ — ทุกชื่อต้องอยู่ในรายการสื่อด้านบน` : "";
 
     const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
       ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
@@ -247,8 +247,15 @@ Deno.serve(async (req) => {
    - เสนอแบบ "ใช้ tier ต่ำกว่า + จ่ายเพิ่มต่อหัว" **เฉพาะเมื่อลูกค้าขอแบบประหยัดเอง**เท่านั้น
    - **ห้ามยัดทั้งสองทางในข้อความเดียว** และ **ห้ามแต่งราคาต่อหัว** — ถ้าลูกค้าถาม ตอบ "ทีมงานจะคำนวณให้ค่ะ"
 
+🚫 ANTI-HALLUCINATION (สำคัญมาก):
+- ตอบจาก KB เท่านั้น ห้ามแต่ง ห้ามเดา ห้ามจำจากความรู้ทั่วไป
+- รูปแบบอาหารที่เรามี = **บุฟเฟ่ต์, ซุ้มอาหาร, โต๊ะจีน เท่านั้น** (ดู category ของแพ็กเกจ)
+- ❌ ห้ามพูดถึง "ค็อกเทล", "คอฟฟี่เบรก", "ค็อกเทลปาร์ตี้", "fine dining" หรืออาหารประเภทอื่นที่ไม่อยู่ใน KB เด็ดขาด
+- ห้ามแต่งชื่อเมนู ชื่อแพ็กเกจ ชื่อบริการที่ไม่มีใน KB/แคตตาล็อก
+- ถ้าไม่แน่ใจ → "ขอส่งต่อทีมงานนะคะ"
+
 กฎหลัก:
-- ตอบจาก KB เท่านั้น ห้ามแต่งราคา/ตัวเลข
+- ห้ามแต่งราคา/ตัวเลข
 - ตอบคำถามก่อน แล้วค่อยถามข้อมูลเพิ่ม (ทีละเรื่อง)
 - ลำดับเก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร (ข้ามข้อที่ลูกค้าให้แล้ว)
 - 🔴 ได้ข้อมูล 2+ → ขอเบอร์ทันที / สนทนาครบ 3 รอบ → ต้องขอเบอร์
@@ -269,11 +276,13 @@ ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${text}"
 
-⚠️ ก่อนตอบ ตรวจ 4 ข้อ:
+⚠️ ก่อนตอบ ตรวจ 6 ข้อ:
 (1) ขึ้นต้นด้วย "ยินดีด้วย" หรือเปล่า? → ถ้าใช่ เปลี่ยน
 (2) มี "ครับ" ปนหรือเปล่า? → ถ้าใช่ เปลี่ยนเป็น "ค่ะ/คะ"
 (3) ถามข้อมูลที่อยู่ใน "ข้อมูลที่ลูกค้าให้แล้ว" หรือเปล่า? → ถ้าใช่ ลบทิ้ง
 (4) เสนอ 2 ทางเลือก (เสนอ tier สูงกว่า + เสนอจ่ายเพิ่มต่อหัว) ในข้อความเดียวหรือเปล่า? → ถ้าใช่ เก็บแค่ทางเดียว
+(5) มี "ค็อกเทล/คอฟฟี่เบรก/fine dining" หรืออาหารที่ไม่ใช่บุฟเฟ่ต์/ซุ้ม/โต๊ะจีนปนมา? → ลบทิ้ง
+(6) ลูกค้าขอ "เมนูแนะนำ" / "ขอแพ็กเกจ" / "ตัวอย่างจัดงาน" / "เมนูทุกแบบ"? → ต้องใส่ image_titles ให้ตรง (ห้ามปล่อยว่าง แม้จะถามต่อ)
 
 ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎ A-F)`;
 
@@ -300,9 +309,43 @@ ${recentMsgs || "(ใหม่)"}
       lookup[`"VDO โปรโมชั่น: ${pr.name}"`] = getItemVideos(pr).map(v => v.thumb_url);
     });
     tierImageRefs.forEach(r => { lookup[`"${r.title}"`] = [r.url]; });
+    // Build entries with searchable keywords (title + category + name)
+    type Entry = { title: string; urls: string[]; haystack: string };
+    const allEntries: Entry[] = [];
+    (kb || []).forEach((i: any) => allEntries.push({
+      title: i.title, urls: getItemImages(i),
+      haystack: `${i.title} ${i.category || ""}`.toLowerCase()
+    }));
+    (pkgs || []).forEach((p: any) => allEntries.push({
+      title: `แพ็กเกจ: ${p.name}`, urls: p.image_urls || [],
+      haystack: `แพ็กเกจ ${p.name} ${p.category || ""}`.toLowerCase()
+    }));
+    (promos || []).forEach((pr: any) => allEntries.push({
+      title: `โปรโมชั่น: ${pr.name}`, urls: pr.image_urls || [],
+      haystack: `โปรโมชั่น ${pr.name}`.toLowerCase()
+    }));
+    tierImageRefs.forEach(r => allEntries.push({ title: r.title, urls: [r.url], haystack: r.title.toLowerCase() }));
+
+    function fuzzyMatch(needle: string): string[] {
+      const n = needle.replace(/^["']|["']$/g, "").toLowerCase().trim();
+      // exact
+      const exact = allEntries.find(e => e.title.toLowerCase() === n);
+      if (exact) return exact.urls;
+      // keyword tokens (drop "แพ็กเกจ:", "โปรโมชั่น:")
+      const stripped = n.replace(/^(แพ็กเกจ|โปรโมชั่น|vdo)\s*[:：]?\s*/g, "").trim();
+      if (!stripped) return [];
+      // contains either way
+      const matches = allEntries.filter(e => e.haystack.includes(stripped) || stripped.includes(e.title.toLowerCase().replace(/^(แพ็กเกจ|โปรโมชั่น)\s*[:：]?\s*/g, "")));
+      // For "เมนู ทุกแบบ" → no single match; pick KB items whose haystack contains key words
+      if (matches.length) return matches[0].urls;
+      // Last resort: if needle matches a clear category keyword, return all KB matching
+      return [];
+    }
+
     const imageUrls: string[] = [];
     for (const t of imageTitles) {
-      const arr = lookup[t] || lookup[`"${t}"`] || [];
+      let arr = lookup[t] || lookup[`"${t}"`] || [];
+      if (!arr.length) arr = fuzzyMatch(t);
       arr.forEach((u: string) => { if (!imageUrls.includes(u)) imageUrls.push(u); });
     }
 
