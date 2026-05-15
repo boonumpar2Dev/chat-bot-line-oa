@@ -7,8 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X } from "lucide-react";
+import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 type Settings = {
   id?: string;
@@ -34,6 +35,24 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newRule, setNewRule] = useState("");
+  const [clearing, setClearing] = useState(false);
+
+  const clearTestData = async (mode: "conversations" | "all") => {
+    setClearing(true);
+    try {
+      const { error: convErr } = await supabase.from("conversations").delete().not("id", "is", null);
+      if (convErr) throw convErr;
+      if (mode === "all") {
+        const { error: custErr } = await supabase.from("customers").delete().not("id", "is", null);
+        if (custErr) throw custErr;
+      }
+      toast.success(mode === "all" ? "ลบแชท + ลูกค้าทั้งหมดแล้ว" : "ลบประวัติแชทแล้ว");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
@@ -141,6 +160,44 @@ export default function Settings() {
         <h2 className="font-display text-lg font-semibold mb-4">ข้อความ Fallback</h2>
         <Textarea value={s.fallback_message} onChange={e=>upd("fallback_message",e.target.value)} rows={4} />
         <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
+      </Card>
+
+      <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
+        <div className="flex items-center gap-2 mb-2"><AlertTriangle className="text-destructive"/><h2 className="font-display text-lg font-semibold">โซนทดสอบ (Danger Zone)</h2></div>
+        <p className="text-sm text-muted-foreground mb-4">ใช้ระหว่างเทสระบบ — ลบข้อมูลแล้วเรียกคืนไม่ได้</p>
+        <div className="flex flex-wrap gap-3">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={clearing}><Trash2 className="w-4 h-4"/> ล้างประวัติแชท</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>ล้างประวัติแชททั้งหมด?</AlertDialogTitle>
+                <AlertDialogDescription>ลบข้อความทุกบทสนทนา แต่ลูกค้ายังอยู่ (สถานะ/เบอร์โทรไม่ถูกลบ)</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                <AlertDialogAction onClick={() => clearTestData("conversations")}>ล้างแชท</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={clearing}><Trash2 className="w-4 h-4"/> ล้างทั้งหมด (แชท + ลูกค้า)</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>ล้างข้อมูลทดสอบทั้งหมด?</AlertDialogTitle>
+                <AlertDialogDescription>ลบลูกค้าทุกคน + ประวัติแชทเพื่อเริ่มเทสใหม่ ลูกค้าจะถูกสร้างใหม่อัตโนมัติเมื่อทักเข้ามา</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                <AlertDialogAction onClick={() => clearTestData("all")} className="bg-destructive hover:bg-destructive/90">ล้างทั้งหมด</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </Card>
     </div>
   );
