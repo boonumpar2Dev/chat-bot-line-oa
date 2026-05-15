@@ -394,7 +394,7 @@ async function processEvent(event: any, supabase: any) {
     const msgMs = typeof event.timestamp === "number" ? event.timestamp : 0;
     if (msgMs > 0 && msgMs < new Date(freshCustomer.ai_resumed_at).getTime()) return;
   }
-  if (AI_OFF_STATUSES.includes(freshCustomer.status)) return;
+  // status เป็นแค่ป้าย funnel — ai_active เป็น single source of truth (เช็คไปแล้วบรรทัด 391)
   if (cfg.ai_enabled === false) return;
 
 
