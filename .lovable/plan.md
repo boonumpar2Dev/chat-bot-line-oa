@@ -1,28 +1,32 @@
 ## เป้าหมาย
-ให้ AI ส่ง**รูปเปรียบเทียบ 3 tier ในแผ่นเดียว**เป็น phase แรกตอนลูกค้ายังไม่ระบุงบ/tier เพื่อให้ลูกค้าเลือกได้เอง พอเลือกแล้วค่อยส่งรูป/เมนูของ tier นั้นโดยเฉพาะ (กฎเดิม: ไม่ส่งรูปข้าม tier ยังคงอยู่)
-
-## แนวทาง
-ใช้ **Knowledge Base** เก็บรูปเปรียบเทียบ (ทางที่ 1 ที่คุยกัน) — ไม่ต้อง migrate schema, ไม่กระทบ `catering_packages`
+ทำให้กลยุทธ์ "ส่งรูปเปรียบเทียบก่อน แล้วค่อยส่งรายละเอียด tier" เป็น **setting ที่ตั้งค่าได้ใน UI** ไม่ฝังในข้อความ strict_rules เพื่อให้ reuse กับธุรกิจอื่นได้
 
 ## สิ่งที่จะทำ
 
-### 1. สร้าง category ใหม่ใน KB
-- เพิ่ม record ใน `knowledge_categories`: name = `"เปรียบเทียบแพ็กเกจ"`
-- คุณอัปโหลดรูปเปรียบเทียบในหน้า /knowledge เอง (1 entry ต่อ 1 ช่วงจำนวนคน เช่น 40 ท่าน, 55 ท่าน, 100 ท่าน) — ตั้งชื่อให้สื่อ เช่น "เปรียบเทียบโต๊ะจีน 40 ท่าน"
+### 1. Schema เพิ่ม 2 fields ใน `app_settings`
+- `comparison_phase_enabled` (boolean, default false) — เปิด/ปิดกลยุทธ์
+- `comparison_kb_category` (text, nullable) — ชื่อหมวด KB ที่จะใช้เป็นแหล่งรูปเปรียบเทียบ
 
-### 2. เพิ่มกฎใน `app_settings.strict_rules` (2 ข้อ)
-- **กฎ A — Phase 1 (ลูกค้ายังไม่ระบุ tier/งบ):** เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือก tier → ส่งรูป**เปรียบเทียบ 3 tier** จาก KB category "เปรียบเทียบแพ็กเกจ" ที่ตรงกับจำนวนคน + บอกสั้นๆ ว่า "เลือกได้ตามงบเลยค่ะ ต่างกันที่วัตถุดิบ"
-- **กฎ B — Phase 2 (ลูกค้าเลือก tier/งบแล้ว):** ส่งรูป/เมนูจาก `catering_packages` ของ tier นั้น**เท่านั้น** ห้ามแถมรูป tier อื่น (ตอกย้ำกฎเดิม)
+### 2. Settings UI (`src/pages/Settings.tsx` หรือไฟล์ที่เกี่ยว)
+เพิ่ม section ใหม่ "กลยุทธ์ส่งรูปเปรียบเทียบ":
+- Toggle เปิด/ปิด
+- Dropdown เลือกหมวด KB (load จาก `knowledge_categories`)
+- คำอธิบายสั้นๆ ว่ากลยุทธ์นี้ทำอะไร
 
-### 3. ปรับ system prompt ใน `line-webhook/index.ts`
-- เพิ่มคำอธิบาย logic 2 phase ใน prompt
-- ให้ AI เลือก KB entry "เปรียบเทียบ" ตามจำนวนคนที่ลูกค้าระบุ (ถ้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน แล้วค่อยส่ง)
+### 3. แก้ `line-webhook/index.ts`
+- อ่าน `comparison_phase_enabled` + `comparison_kb_category` จาก cfg
+- ถ้าเปิด → ฉีดกฎ 2-phase เข้า prompt แบบ dynamic โดยอ้างชื่อหมวดที่ตั้งไว้ (เช่น `เมื่อลูกค้ายังไม่ระบุ tier/งบ → ใส่ image_titles จาก KB หมวด "${comparison_kb_category}" ที่ตรงจำนวนคน...`)
+- ถ้าปิด → ไม่ฉีด, AI ทำงานแบบเดิม
+
+### 4. ลบกฎ 3 ข้อที่เพิ่งใส่ใน `strict_rules`
+เพื่อไม่ให้ซ้ำกับ logic ใหม่
+
+## ข้อดี
+- เปิด/ปิดได้จาก UI ไม่ต้องแก้โค้ด
+- ธุรกิจอื่นใช้ชื่อหมวดของตัวเองได้
+- strict_rules กลับมาสะอาด ไม่ผูกกับฟีเจอร์เฉพาะ
 
 ## ไฟล์ที่แก้
-- migration: เพิ่ม category ใน `knowledge_categories` + เพิ่ม 2 rules ใน `app_settings.strict_rules`
-- `supabase/functions/line-webhook/index.ts` — เพิ่ม instruction 2-phase ใน system prompt
-
-## หลัง deploy คุณต้องทำเอง
-1. เข้า /knowledge → เลือก category "เปรียบเทียบแพ็กเกจ"
-2. สร้าง entry ต่อช่วงจำนวนคน อัปโหลดรูปเปรียบเทียบ (เช่นรูป `40ท่านรวมพระโต๊ะจีน-3.jpg` ที่ส่งมา)
-3. ทดสอบในหน้า "ทดสอบ AI" → พิมพ์ "ขอราคาโต๊ะจีน 40 ท่าน" ดูว่าส่งรูปเปรียบเทียบมาไหม
+- migration: เพิ่ม 2 columns ใน `app_settings` + cleanup strict_rules
+- `src/pages/Settings.tsx` (หรือไฟล์ที่ render setting form)
+- `supabase/functions/line-webhook/index.ts`

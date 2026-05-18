@@ -510,6 +510,11 @@ async function processEvent(event: any, supabase: any) {
     ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
   const strictRulesSection = strictRules ? `\n\n⚠️ กฎเข้มงวด:\n${strictRules}` : "";
 
+  // กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1) — configurable via Settings UI
+  const comparisonSection = (cfg.comparison_phase_enabled && cfg.comparison_kb_category)
+    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน แล้วบอกสั้นๆ ว่า "ส่งรูปเปรียบเทียบให้ดูค่ะ เลือกตามงบได้เลย" ห้ามส่งรูปเฉพาะ tier ใดๆ ในจังหวะนี้\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบแล้ว): ส่งรูป/เมนูของระดับนั้นเท่านั้น ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำ\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูปเปรียบเทียบ`
+    : "";
+
   let history = [...(recentConvs || [])].reverse();
   const lastAdminIdx = history.map((m, i) => m.sender === "admin" ? i : -1).filter(i => i >= 0).pop();
   if (lastAdminIdx !== undefined) history = history.slice(lastAdminIdx);
@@ -576,7 +581,7 @@ async function processEvent(event: any, supabase: any) {
 - ตัวเลือกพิเศษใน notes/ai_instruction → เสนอเมื่อตรงเงื่อนไข
 
 📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
-- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${knownIntentStr}
+- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}
 
 KB:
 ${kbContext || "(ว่าง)"}
