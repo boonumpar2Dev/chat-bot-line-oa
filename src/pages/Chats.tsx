@@ -114,15 +114,40 @@ export default function Chats() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // Customers found by searching inside message content
+  const [msgMatchIds, setMsgMatchIds] = useState<Set<string>>(new Set());
+  const [msgSnippets, setMsgSnippets] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) { setMsgMatchIds(new Set()); setMsgSnippets({}); return; }
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from("conversations")
+        .select("customer_id, message")
+        .ilike("message", `%${q}%`)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      const ids = new Set<string>();
+      const snip: Record<string, string> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.customer_id) return;
+        ids.add(r.customer_id);
+        if (!snip[r.customer_id]) snip[r.customer_id] = (r.message || "").slice(0, 80);
+      });
+      setMsgMatchIds(ids); setMsgSnippets(snip);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter(c =>
       (c.display_name || "").toLowerCase().includes(q) ||
       (c.nickname || "").toLowerCase().includes(q) ||
-      (c.phone || "").includes(q)
+      (c.phone || "").includes(q) ||
+      msgMatchIds.has(c.id)
     );
-  }, [customers, search]);
+  }, [customers, search, msgMatchIds]);
 
   const updateLocalCustomer = (patch: any) => {
     setCustomers(prev => prev.map(c => c.id === selectedId ? { ...c, ...patch } : c));
@@ -196,7 +221,7 @@ export default function Chats() {
         <div className="p-3 border-b">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
-            <Input placeholder="ค้นหาชื่อ/เบอร์" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
+            <Input placeholder="ค้นหาชื่อ / เบอร์ / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
         </div>
         <ScrollArea className="flex-1">
@@ -218,7 +243,9 @@ export default function Chats() {
                     {formatDistanceToNow(new Date(c.last_message_at), { locale: th, addSuffix: false })}
                   </span>}
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{c.last_message_snippet || "—"}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : (c.last_message_snippet || "—")}
+                </p>
                 <div className="flex items-center gap-1 mt-1">
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
@@ -274,11 +301,11 @@ export default function Chats() {
             <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
 
             {/* Message search */}
-            <div className="border-b bg-muted/30 px-3 py-1.5 flex items-center gap-2">
-              <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
-              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท…" className="h-7 text-xs border-0 bg-transparent focus-visible:ring-0 px-1"/>
-              {msgSearch && <span className="text-[10px] text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
-              {msgSearch && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={()=>setMsgSearch("")}><X className="w-3 h-3"/></Button>}
+            <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-2">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0"/>
+              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท (ลูกค้า + AI)…" className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"/>
+              {msgSearch && <span className="text-xs text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
+              {msgSearch && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>setMsgSearch("")}><X className="w-4 h-4"/></Button>}
             </div>
 
             {/* Messages */}
