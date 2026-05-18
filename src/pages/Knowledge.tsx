@@ -321,6 +321,11 @@ function KnowledgeBaseTab() {
 
   const openNew = () => { setEdit(blankKB); setOpen(true); };
   const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] }); setOpen(true); };
+  const openDuplicate = (i: any) => {
+    const { id, created_at, updated_at, ...rest } = i;
+    setEdit({ ...rest, title: `${i.title} (สำเนา)`, image_urls: [...(i.image_urls || [])], video_urls: structuredClone(i.video_urls || []), bundle_image_titles: [...(i.bundle_image_titles || [])] });
+    setOpen(true);
+  };
   const save = async () => {
     const payload: any = { ...edit };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
