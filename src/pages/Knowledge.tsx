@@ -164,7 +164,7 @@ function PackagesTab() {
                 </select>
               </div>
             </div>
-            <div className="space-y-1.5"><Label>รายละเอียด</Label><Textarea rows={4} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>รายละเอียด</Label>{!edit.description && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,description:PKG_DESC_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={4} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
             <div className="space-y-1.5"><Label>เงื่อนไขขั้นต่ำ</Label><Input value={edit.min_condition||""} onChange={e=>setEdit({...edit,min_condition:e.target.value})}/></div>
 
             <div className="space-y-2">
