@@ -303,8 +303,11 @@ export default function Chats() {
                 <Button size="icon" variant="ghost" type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Paperclip className="w-4 h-4"/>}
                 </Button>
-                <Button size="icon" variant="ghost" type="button" onClick={() => setShowQuick(s => !s)}>
+                <Button size="icon" variant="ghost" type="button" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
                   <MessageSquareText className="w-4 h-4"/>
+                </Button>
+                <Button size="icon" variant="ghost" type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
+                  <FileText className="w-4 h-4"/>
                 </Button>
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
