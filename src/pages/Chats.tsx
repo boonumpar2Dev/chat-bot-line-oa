@@ -25,6 +25,16 @@ import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
 
+// เทมเพลตขอข้อมูลใบเสนอราคา
+const QUOTE_FORM_TEMPLATE = `เพื่อให้ทางเราจัดทำใบเสนอราคาได้รวดเร็วและตรงความต้องการ รบกวนแจ้งข้อมูลดังนี้นะคะ 🙏
+
+1. วัน เดือน ปี ที่จัดงาน : 
+2. สถานที่จัดงาน : 
+3. ชื่อ และเบอร์โทรที่ติดต่อได้ : 
+4. จำนวนพระสงฆ์ (รูป) และจำนวนแขกร่วมงาน (ท่าน) : 
+
+ได้รับข้อมูลแล้วจะรีบจัดทำใบเสนอราคาส่งให้นะคะ ✨`;
+
 type Customer = any;
 type Conversation = any;
 
