@@ -273,10 +273,18 @@ export default function Chats() {
             {/* Manual timer */}
             <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
 
+            {/* Message search */}
+            <div className="border-b bg-muted/30 px-3 py-1.5 flex items-center gap-2">
+              <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
+              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท…" className="h-7 text-xs border-0 bg-transparent focus-visible:ring-0 px-1"/>
+              {msgSearch && <span className="text-[10px] text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
+              {msgSearch && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={()=>setMsgSearch("")}><X className="w-3 h-3"/></Button>}
+            </div>
+
             {/* Messages */}
             <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
-                {messages.map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg}/>)}
+                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)}/>)}
               </div>
             </ScrollArea>
 
