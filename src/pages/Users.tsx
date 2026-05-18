@@ -154,7 +154,7 @@ function RolePermissionsCard() {
               <span className="text-xs text-muted-foreground">{local[role].length} เมนู</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {ALL_MENUS.filter(m => m.key !== "users").map(m => (
+              {ALL_MENUS.filter(m => m.key !== "users" && m.key !== "ai_tokens").map(m => (
                 <label key={m.key} className="flex items-center gap-2 text-sm cursor-pointer">
                   <Checkbox
                     checked={local[role].includes(m.key)}

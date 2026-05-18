@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type MenuKey = "dashboard" | "chats" | "knowledge" | "users" | "settings";
+export type MenuKey = "dashboard" | "chats" | "knowledge" | "users" | "ai_tokens" | "settings";
 export const ALL_MENUS: { key: MenuKey; label: string }[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "chats", label: "จัดการแชท" },
   { key: "knowledge", label: "สอน AI" },
   { key: "users", label: "จัดการผู้ใช้" },
+  { key: "ai_tokens", label: "AI Tokens" },
   { key: "settings", label: "ตั้งค่า" },
 ];
 
