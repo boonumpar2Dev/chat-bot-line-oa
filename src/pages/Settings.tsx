@@ -198,10 +198,35 @@ export default function Settings() {
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
+        <div className="flex items-center gap-2 mb-1"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1)</h2></div>
+        <p className="text-xs text-muted-foreground mb-4">
+          เมื่อลูกค้ายังไม่ระบุงบ/ระดับแพ็กเกจ AI จะส่ง "รูปเปรียบเทียบ" จาก KB หมวดที่เลือกก่อน เพื่อให้ลูกค้าเลือกตามงบเอง พอเลือกแล้วค่อยส่งรูปรายละเอียดของระดับนั้นโดยเฉพาะ
+        </p>
+        <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 mb-4">
+          <div><Label className="font-medium">เปิดใช้กลยุทธ์นี้</Label><p className="text-xs text-muted-foreground mt-1">ปิดไว้ถ้าธุรกิจไม่ได้แบ่งระดับราคาแบบหลาย tier</p></div>
+          <Switch checked={s.comparison_phase_enabled} onCheckedChange={v=>upd("comparison_phase_enabled",v)} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>หมวด Knowledge Base สำหรับรูปเปรียบเทียบ</Label>
+          <select
+            className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+            value={s.comparison_kb_category ?? ""}
+            onChange={e=>upd("comparison_kb_category", e.target.value || null)}
+            disabled={!s.comparison_phase_enabled}
+          >
+            <option value="">— เลือกหมวด —</option>
+            {kbCategories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <p className="text-xs text-muted-foreground">ตั้ง entry ใน KB หมวดนี้แยกตามช่วงจำนวนคน เช่น "เปรียบเทียบ 40 ท่าน", "เปรียบเทียบ 100 ท่าน"</p>
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-soft border-border/60">
         <h2 className="font-display text-lg font-semibold mb-4">ข้อความ Fallback</h2>
         <Textarea value={s.fallback_message} onChange={e=>upd("fallback_message",e.target.value)} rows={4} />
         <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
       </Card>
+
 
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
         <div className="flex items-center gap-2 mb-2"><AlertTriangle className="text-destructive"/><h2 className="font-display text-lg font-semibold">โซนทดสอบ (Danger Zone)</h2></div>
