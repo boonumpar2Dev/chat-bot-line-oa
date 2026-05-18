@@ -21,11 +21,11 @@ import KBChatTest from "@/components/knowledge/KBChatTest";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
-type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; status: string; sort_order: number; };
+type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; bundle_image_titles: string[]; status: string; sort_order: number; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], video_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
-const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], status: "active", sort_order: 0 };
+const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
 
 export default function Knowledge() {
   return (
@@ -295,7 +295,7 @@ function KnowledgeBaseTab() {
   });
 
   const openNew = () => { setEdit(blankKB); setOpen(true); };
-  const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [] }); setOpen(true); };
+  const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] }); setOpen(true); };
   const save = async () => {
     const payload: any = { ...edit };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
@@ -427,6 +427,31 @@ function KnowledgeBaseTab() {
             </div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label>
               <VideoUrlsField videos={edit.video_urls} onChange={v => setEdit({ ...edit, video_urls: v })}/>
+            </div>
+            <div className="space-y-1.5">
+              <Label>แนบรูปอื่นไปด้วยอัตโนมัติ (Bundle)</Label>
+              <p className="text-[11px] text-muted-foreground">เมื่อ AI เลือกหัวข้อนี้ ระบบจะแนบรูปจากหัวข้อต่อไปนี้ไปด้วย เหมาะกับ KB "เปรียบเทียบ" ที่อยากส่งเมนูทั้ง 3 tier พร้อมกัน</p>
+              <Select value="" onValueChange={v => {
+                if (v && !edit.bundle_image_titles.includes(v)) setEdit({ ...edit, bundle_image_titles: [...edit.bundle_image_titles, v] });
+              }}>
+                <SelectTrigger><SelectValue placeholder="+ เพิ่มหัวข้อที่จะแนบไปด้วย"/></SelectTrigger>
+                <SelectContent>
+                  {(items || []).filter((x: any) => x.id !== edit.id && x.title !== edit.title && !edit.bundle_image_titles.includes(x.title)).map((x: any) => (
+                    <SelectItem key={x.id} value={x.title}>{x.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {edit.bundle_image_titles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {edit.bundle_image_titles.map(t => (
+                    <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                      {t}
+                      <button type="button" onClick={() => setEdit({ ...edit, bundle_image_titles: edit.bundle_image_titles.filter(x => x !== t) })}
+                        className="hover:bg-destructive/20 rounded px-0.5"><X className="w-3 h-3"/></button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>

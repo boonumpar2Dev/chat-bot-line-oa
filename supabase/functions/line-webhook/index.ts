@@ -450,9 +450,10 @@ async function processEvent(event: any, supabase: any) {
         const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
         const label = t.tier_name ? `[${t.tier_name}] ` : "";
         const imgFlag = t.image_url ? " 🖼️" : "";
-        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}`;
-        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}`;
-        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}`;
+        const capFlag = guest > 0 ? ` 【รับแขกได้สูงสุด ${guest} คน】` : "";
+        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}${capFlag}`;
+        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}${capFlag}`;
+        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}${capFlag}`;
       });
     }
     if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
@@ -627,7 +628,18 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   const answerText = String(aiResp.answer || "ขออภัย ไม่สามารถตอบได้")
     .replace(/\\n/g, "\n").replace(/\\r/g, "")
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
-  const imageTitles: string[] = aiResp.image_titles || [];
+  let imageTitles: string[] = aiResp.image_titles || [];
+
+  // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
+  if (imageTitles.length > 0) {
+    const expanded = [...imageTitles];
+    for (const title of imageTitles) {
+      const k = kbItems.find((x: any) => x.title === title);
+      const bundle = Array.isArray(k?.bundle_image_titles) ? k.bundle_image_titles : [];
+      for (const b of bundle) if (b && !expanded.includes(b)) expanded.push(b);
+    }
+    imageTitles = expanded.slice(0, 8);
+  }
 
   // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
   const intent = aiResp.intent || {};
