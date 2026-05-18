@@ -389,8 +389,9 @@ function KnowledgeBaseTab() {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => openEdit(i)}><Edit2 className="w-4 h-4"/></Button>
-                <Button size="icon" variant="ghost" onClick={() => del(i.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => openEdit(i)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => openDuplicate(i)} title="คัดลอก"><Copy className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => del(i.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
             {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{i.content}</p>}
