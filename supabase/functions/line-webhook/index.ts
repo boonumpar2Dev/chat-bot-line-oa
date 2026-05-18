@@ -258,13 +258,12 @@ async function processEvent(event: any, supabase: any) {
   }
 
   const trimmed = messageText.trim().toLowerCase();
-  // Skip only pure acknowledgements (ไม่ใช่ทักทาย เพราะทักทายต้องตอบกลับ+ถาม)
-  const trivial = [
-    "👍", "👌", "🙏", "❤️", "ok", "oki", "okay",
-    "ได้เลย", "โอเค", "ขอบคุณ", "ขอบคุณค่ะ", "ขอบคุณครับ",
-    "ค่ะ", "คะ", "ครับ", "คับ", "ดีค่ะ", "ดีครับ"
+  // Skip only pure acknowledgements (อ่านจาก cfg.trivial_replies)
+  const { data: trivCfgArr } = await supabase.from("app_settings").select("trivial_replies").eq("key", "ai_config").limit(1);
+  const trivial: string[] = trivCfgArr?.[0]?.trivial_replies ?? [
+    "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
   ];
-  if (trivial.includes(trimmed)) return;
+  if (trivial.map(t=>t.toLowerCase()).includes(trimmed)) return;
 
   const [{ data: cfgArr }, { data: freshArr }] = await Promise.all([
     supabase.from("app_settings").select("*").eq("key", "ai_config").limit(1),
