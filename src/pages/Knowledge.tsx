@@ -309,7 +309,7 @@ function PromotionsTab() {
           <DialogHeader><DialogTitle>{edit.id?"แก้ไขโปรโมชั่น":"เพิ่มโปรโมชั่น"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5"><Label>ชื่อ *</Label><Input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></div>
-            <div className="space-y-1.5"><Label>รายละเอียด</Label><Textarea rows={3} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>รายละเอียด</Label>{!edit.description && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,description:PROMO_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={3} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
             <div className="space-y-1.5">
               <Label>ใช้กับประเภท</Label>
               <div className="flex flex-wrap gap-2">
