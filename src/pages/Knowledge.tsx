@@ -101,8 +101,9 @@ function PackagesTab() {
                 {!p.is_active && <Badge variant="outline" className="ml-1">ปิดใช้งาน</Badge>}
               </div>
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={()=>openEdit(p)}><Edit2 className="w-4 h-4"/></Button>
-                <Button size="icon" variant="ghost" onClick={()=>del(p.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                <Button size="icon" variant="ghost" onClick={()=>openEdit(p)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={()=>openDuplicate(p)} title="คัดลอกเป็นแพ็คเกจใหม่"><Copy className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
             {p.description && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{p.description}</p>}
