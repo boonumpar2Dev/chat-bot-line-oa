@@ -25,18 +25,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/liff" element={<LiffPanel />} />
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/chats" element={<Chats />} />
-              <Route path="/knowledge" element={<Knowledge />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <MenuPermissionsProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/liff" element={<LiffPanel />} />
+              <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+                <Route path="/" element={<ProtectedRoute menuKey="dashboard"><Dashboard /></ProtectedRoute>} />
+                <Route path="/chats" element={<ProtectedRoute menuKey="chats"><Chats /></ProtectedRoute>} />
+                <Route path="/knowledge" element={<ProtectedRoute menuKey="knowledge"><Knowledge /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
+                <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </MenuPermissionsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
