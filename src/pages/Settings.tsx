@@ -83,6 +83,14 @@ export default function Settings() {
       debounce_seconds: s.debounce_seconds,
       comparison_phase_enabled: s.comparison_phase_enabled,
       comparison_kb_category: s.comparison_kb_category,
+      ai_persona: s.ai_persona,
+      allowed_service_types: s.allowed_service_types,
+      forbidden_terms: s.forbidden_terms,
+      image_selection_rules: s.image_selection_rules,
+      intent_collection_order: s.intent_collection_order,
+      tier_special_rules: s.tier_special_rules,
+      trivial_replies: s.trivial_replies,
+      tax_id_keywords: s.tax_id_keywords,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
