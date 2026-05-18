@@ -293,6 +293,8 @@ export default function Settings() {
         <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
       </Card>
 
+      <AiCacheCard />
+
 
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
         <div className="flex items-center gap-2 mb-2"><AlertTriangle className="text-destructive"/><h2 className="font-display text-lg font-semibold">โซนทดสอบ (Danger Zone)</h2></div>
