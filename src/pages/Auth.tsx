@@ -26,15 +26,7 @@ export default function Auth() {
     if (error) toast.error(error.message); else toast.success("เข้าสู่ระบบสำเร็จ");
   };
 
-  const signUp = async (e: FormEvent) => {
-    e.preventDefault(); setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email, password: pw,
-      options: { emailRedirectTo: `${window.location.origin}/`, data: { display_name: name } }
-    });
-    setBusy(false);
-    if (error) toast.error(error.message); else toast.success("สมัครสำเร็จ! เข้าสู่ระบบได้เลย");
-  };
+
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
