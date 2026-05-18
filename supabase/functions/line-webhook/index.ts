@@ -258,12 +258,6 @@ async function processEvent(event: any, supabase: any) {
   }
 
   const trimmed = messageText.trim().toLowerCase();
-  // Skip only pure acknowledgements (อ่านจาก cfg.trivial_replies)
-  const { data: trivCfgArr } = await supabase.from("app_settings").select("trivial_replies").eq("key", "ai_config").limit(1);
-  const trivial: string[] = trivCfgArr?.[0]?.trivial_replies ?? [
-    "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
-  ];
-  if (trivial.map(t=>t.toLowerCase()).includes(trimmed)) return;
 
   const [{ data: cfgArr }, { data: freshArr }] = await Promise.all([
     supabase.from("app_settings").select("*").eq("key", "ai_config").limit(1),
@@ -271,6 +265,12 @@ async function processEvent(event: any, supabase: any) {
   ]);
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
+
+  // Skip pure acknowledgements (อ่านจาก cfg.trivial_replies)
+  const trivial: string[] = (cfg.trivial_replies && cfg.trivial_replies.length) ? cfg.trivial_replies : [
+    "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
+  ];
+  if (trivial.map((t: string)=>t.toLowerCase()).includes(trimmed)) return;
 
   // เช็ค context: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า → ถ้าใช่ → treat reply ที่เป็นเลขเป็น Tax ID context
   const { data: lastAiArr } = await supabase
