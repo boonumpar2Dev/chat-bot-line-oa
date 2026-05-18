@@ -1,45 +1,53 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useMenuPermissions, ALL_MENUS, MenuKey } from "@/hooks/useMenuPermissions";
+import { useMenuPermissions, ALL_MENUS, MenuKey, ROLE_DEFAULTS } from "@/hooks/useMenuPermissions";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Shield, Trash2, Lock, Save } from "lucide-react";
+import { Loader2, Shield, Trash2, Plus, Lock, Save } from "lucide-react";
 
 type AppRole = "admin" | "manager" | "staff";
 const ROLE_LABEL: Record<AppRole, string> = { admin: "Admin", manager: "Manager", staff: "Staff" };
+const ASSIGNABLE_MENUS = ALL_MENUS.filter(m => !m.adminOnly);
 
 export default function Users() {
   const { user: me } = useAuth();
+  const { reload: reloadMenus } = useMenuPermissions();
   const [users, setUsers] = useState<any[]>([]);
+  const [perms, setPerms] = useState<Record<string, MenuKey[]>>({});
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: profiles }, { data: roles }] = await Promise.all([
+    const [{ data: profiles }, { data: roles }, { data: ps }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("user_roles").select("*"),
+      supabase.from("user_menu_permissions").select("*"),
     ]);
     const merged = (profiles || []).map(p => ({
       ...p,
       role: (roles?.find(r => r.user_id === p.id)?.role || "staff") as AppRole,
     }));
+    const pmap: Record<string, MenuKey[]> = {};
+    (ps || []).forEach((r: any) => { pmap[r.user_id] = r.menu_keys as MenuKey[]; });
     setUsers(merged);
+    setPerms(pmap);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
   const changeRole = async (userId: string, newRole: AppRole) => {
-    // Replace any existing role
-    const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", userId);
-    if (delErr) { toast.error(delErr.message); return; }
+    await supabase.from("user_roles").delete().eq("user_id", userId);
     const { error } = await supabase.from("user_roles").insert({ user_id: userId, role: newRole });
     if (error) { toast.error(error.message); return; }
     toast.success("เปลี่ยนบทบาทแล้ว");
@@ -49,7 +57,7 @@ export default function Users() {
   const removeUserRole = async (userId: string) => {
     const { error } = await supabase.from("user_roles").delete().eq("user_id", userId);
     if (error) { toast.error(error.message); return; }
-    toast.success("ลบบทบาทแล้ว — ผู้ใช้ยังเข้าระบบได้แต่ไม่มีสิทธิ์");
+    toast.success("ลบบทบาทแล้ว");
     load();
   };
 
@@ -57,8 +65,14 @@ export default function Users() {
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
-      <h1 className="font-display text-3xl font-semibold mb-1">จัดการผู้ใช้</h1>
-      <p className="text-muted-foreground mb-6">รายชื่อผู้ใช้ระบบและบทบาท ({users.length} คน)</p>
+      <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
+        <div>
+          <h1 className="font-display text-3xl font-semibold mb-1">จัดการผู้ใช้</h1>
+          <p className="text-muted-foreground">รายชื่อผู้ใช้ระบบและบทบาท ({users.length} คน)</p>
+        </div>
+        <AddUserDialog onCreated={() => { load(); reloadMenus(); }} />
+      </div>
+
       <Card className="shadow-soft border-border/60 divide-y">
         {users.map(u => (
           <div key={u.id} className="flex items-center gap-3 p-4 flex-wrap">
@@ -76,6 +90,15 @@ export default function Users() {
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
             </Select>
+            {u.role !== "admin" && (
+              <EditMenuDialog
+                userId={u.id}
+                userLabel={u.display_name || u.email}
+                role={u.role}
+                current={perms[u.id] || ROLE_DEFAULTS[u.role]}
+                onSaved={() => { load(); reloadMenus(); }}
+              />
+            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบบทบาท">
@@ -85,9 +108,7 @@ export default function Users() {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>ลบบทบาทของ {u.email}?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    ผู้ใช้จะยังเข้าระบบได้ แต่ไม่มีสิทธิ์ใดๆ การลบบัญชีจริงต้องทำในหน้าตั้งค่าระบบ Backend
-                  </AlertDialogDescription>
+                  <AlertDialogDescription>ผู้ใช้จะยังเข้าระบบได้แต่ไม่มีสิทธิ์ใดๆ</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
@@ -99,78 +120,161 @@ export default function Users() {
         ))}
         {users.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">ยังไม่มีผู้ใช้</p>}
       </Card>
-      <Card className="mt-4 p-4 bg-muted/30 border-dashed">
-        <p className="text-xs text-muted-foreground">
-          💡 <strong>วิธีเพิ่มผู้ใช้</strong>: ให้คนใหม่สมัครผ่านหน้า <code className="text-xs">/auth</code> — จะได้บทบาท "Staff" อัตโนมัติ จากนั้นแอดมินมาเปลี่ยนบทบาทที่นี่
-        </p>
-      </Card>
 
-      <RolePermissionsCard />
+      <Card className="mt-6 p-5 bg-muted/30 border-dashed">
+        <div className="flex items-center gap-2 mb-2"><Lock className="w-4 h-4 text-primary"/><h3 className="font-semibold">บทบาทและสิทธิ์เริ่มต้น</h3></div>
+        <ul className="text-sm text-muted-foreground space-y-1 ml-6 list-disc">
+          <li><strong>Admin</strong> — เห็นและจัดการทุกเมนู (รวม "จัดการผู้ใช้" และ "AI Tokens")</li>
+          <li><strong>Manager</strong> — Dashboard, จัดการแชท, สอน AI, ตั้งค่า</li>
+          <li><strong>Staff</strong> — จัดการแชท เท่านั้น</li>
+        </ul>
+        <p className="text-xs text-muted-foreground mt-3">ค่าเริ่มต้นใช้เมื่อยังไม่กำหนดสิทธิ์เฉพาะคน — กดปุ่ม "สิทธิ์เมนู" หลังรายชื่อเพื่อปรับเฉพาะรายบุคคล</p>
+      </Card>
     </div>
   );
 }
 
-function RolePermissionsCard() {
-  const { perms, reload } = useMenuPermissions();
-  const [local, setLocal] = useState<Record<"manager" | "staff", MenuKey[]>>({ manager: [], staff: [] });
-  const [saving, setSaving] = useState(false);
+function AddUserDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [role, setRole] = useState<AppRole>("staff");
+  const [menus, setMenus] = useState<MenuKey[]>(ROLE_DEFAULTS.staff);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    setLocal({
-      manager: (perms.manager || []) as MenuKey[],
-      staff: (perms.staff || []) as MenuKey[],
-    });
-  }, [perms]);
+  // Reset menus when role changes
+  useEffect(() => { setMenus(ROLE_DEFAULTS[role]); }, [role]);
 
-  const toggle = (role: "manager" | "staff", key: MenuKey) => {
-    setLocal(prev => {
-      const has = prev[role].includes(key);
-      return { ...prev, [role]: has ? prev[role].filter(k => k !== key) : [...prev[role], key] };
-    });
+  const reset = () => {
+    setEmail(""); setPassword(""); setDisplayName("");
+    setRole("staff"); setMenus(ROLE_DEFAULTS.staff);
   };
 
-  const save = async () => {
-    setSaving(true);
-    const rows = (["manager", "staff"] as const).map(role => ({ role, menu_keys: local[role] }));
-    const { error } = await supabase.from("role_menu_permissions").upsert(rows, { onConflict: "role" });
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("บันทึกสิทธิ์เมนูแล้ว");
-    reload();
+  const toggle = (k: MenuKey) => setMenus(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
+
+  const submit = async () => {
+    if (!email || !password) { toast.error("กรอก email และ password"); return; }
+    if (password.length < 6) { toast.error("password อย่างน้อย 6 ตัวอักษร"); return; }
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { email, password, display_name: displayName, role, menu_keys: menus },
+    });
+    setBusy(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "สร้างไม่สำเร็จ");
+      return;
+    }
+    toast.success("เพิ่มผู้ใช้สำเร็จ");
+    setOpen(false); reset(); onCreated();
   };
 
   return (
-    <Card className="mt-6 p-6 shadow-soft border-border/60">
-      <div className="flex items-center gap-2 mb-1">
-        <Lock className="text-primary w-5 h-5"/>
-        <h2 className="font-display text-lg font-semibold">สิทธิ์เมนูตามบทบาท</h2>
-      </div>
-      <p className="text-xs text-muted-foreground mb-4">เลือกว่าผู้ใช้ระดับ Manager / Staff เห็นเมนูใดได้บ้าง (Admin เห็นทุกเมนูเสมอ — เมนู "จัดการผู้ใช้" เฉพาะ Admin)</p>
-      <div className="space-y-4">
-        {(["manager", "staff"] as const).map(role => (
-          <div key={role} className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Badge variant="secondary" className="capitalize">{role}</Badge>
-              <span className="text-xs text-muted-foreground">{local[role].length} เมนู</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {ALL_MENUS.filter(m => m.key !== "users" && m.key !== "ai_tokens").map(m => (
-                <label key={m.key} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <Checkbox
-                    checked={local[role].includes(m.key)}
-                    onCheckedChange={() => toggle(role, m.key)}
-                  />
-                  <span>{m.label}</span>
-                </label>
-              ))}
-            </div>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
+      <DialogTrigger asChild>
+        <Button><Plus className="w-4 h-4 mr-1"/>เพิ่มผู้ใช้</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>เพิ่มผู้ใช้ใหม่</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Email *</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="user@example.com" />
           </div>
-        ))}
-      </div>
-      <Button onClick={save} disabled={saving} className="mt-4">
-        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Save className="w-4 h-4 mr-1"/>}
-        บันทึก
-      </Button>
-    </Card>
+          <div>
+            <Label>Password * (อย่างน้อย 6 ตัว)</Label>
+            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="กำหนด password เริ่มต้น" />
+          </div>
+          <div>
+            <Label>ชื่อแสดง</Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="ชื่อที่จะแสดง" />
+          </div>
+          <div>
+            <Label>บทบาท</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+              <SelectTrigger><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">Admin (เห็นทุกเมนู)</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="staff">Staff</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {role !== "admin" && (
+            <div>
+              <Label className="mb-2 block">สิทธิ์เมนู</Label>
+              <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">
+                {ASSIGNABLE_MENUS.map(m => (
+                  <label key={m.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox checked={menus.includes(m.key)} onCheckedChange={() => toggle(m.key)} />
+                    <span>{m.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Save className="w-4 h-4 mr-1"/>}
+            สร้างผู้ใช้
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditMenuDialog({
+  userId, userLabel, role, current, onSaved,
+}: { userId: string; userLabel: string; role: AppRole; current: MenuKey[]; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [menus, setMenus] = useState<MenuKey[]>(current);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (open) setMenus(current); }, [open, current]);
+
+  const toggle = (k: MenuKey) => setMenus(prev => prev.includes(k) ? prev.filter(x => x !== k) : [...prev, k]);
+
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase
+      .from("user_menu_permissions")
+      .upsert({ user_id: userId, menu_keys: menus }, { onConflict: "user_id" });
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกสิทธิ์เมนูแล้ว");
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline"><Lock className="w-3.5 h-3.5 mr-1"/>สิทธิ์เมนู</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>สิทธิ์เมนูของ {userLabel}</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground -mt-2">บทบาท: {ROLE_LABEL[role]} · เลือกเมนูที่ผู้ใช้นี้เห็นได้</p>
+        <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">
+          {ASSIGNABLE_MENUS.map(m => (
+            <label key={m.key} className="flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={menus.includes(m.key)} onCheckedChange={() => toggle(m.key)} />
+              <span>{m.label}</span>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={save} disabled={busy}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Save className="w-4 h-4 mr-1"/>}
+            บันทึก
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

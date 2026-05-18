@@ -1,41 +1,60 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 export type MenuKey = "dashboard" | "chats" | "knowledge" | "users" | "ai_tokens" | "settings";
-export const ALL_MENUS: { key: MenuKey; label: string }[] = [
+
+export const ALL_MENUS: { key: MenuKey; label: string; adminOnly?: boolean }[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "chats", label: "จัดการแชท" },
   { key: "knowledge", label: "สอน AI" },
-  { key: "users", label: "จัดการผู้ใช้" },
-  { key: "ai_tokens", label: "AI Tokens" },
   { key: "settings", label: "ตั้งค่า" },
+  { key: "users", label: "จัดการผู้ใช้", adminOnly: true },
+  { key: "ai_tokens", label: "AI Tokens", adminOnly: true },
 ];
 
-type PermMap = Partial<Record<"manager" | "staff", MenuKey[]>>;
+export const ROLE_DEFAULTS: Record<"admin" | "manager" | "staff", MenuKey[]> = {
+  admin: ["dashboard", "chats", "knowledge", "settings", "users", "ai_tokens"],
+  manager: ["dashboard", "chats", "knowledge", "settings"],
+  staff: ["chats"],
+};
 
 interface Ctx {
-  perms: PermMap;
+  menus: MenuKey[];
   loading: boolean;
   reload: () => Promise<void>;
 }
 
-const C = createContext<Ctx>({ perms: {}, loading: true, reload: async () => {} });
+const C = createContext<Ctx>({ menus: [], loading: true, reload: async () => {} });
 
 export const MenuPermissionsProvider = ({ children }: { children: ReactNode }) => {
-  const [perms, setPerms] = useState<PermMap>({});
+  const { user, role } = useAuth();
+  const [menus, setMenus] = useState<MenuKey[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    const { data } = await supabase.from("role_menu_permissions").select("role, menu_keys");
-    const m: PermMap = {};
-    (data || []).forEach((r: any) => { m[r.role as "manager" | "staff"] = r.menu_keys as MenuKey[]; });
-    setPerms(m);
+    if (!user || !role) { setMenus([]); setLoading(false); return; }
+    if (role === "admin") {
+      setMenus(ROLE_DEFAULTS.admin);
+      setLoading(false);
+      return;
+    }
+    const { data } = await supabase
+      .from("user_menu_permissions")
+      .select("menu_keys")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (data?.menu_keys) {
+      setMenus(data.menu_keys as MenuKey[]);
+    } else {
+      setMenus(ROLE_DEFAULTS[role] || []);
+    }
     setLoading(false);
-  }, []);
+  }, [user, role]);
 
   useEffect(() => { reload(); }, [reload]);
 
-  return <C.Provider value={{ perms, loading, reload }}>{children}</C.Provider>;
+  return <C.Provider value={{ menus, loading, reload }}>{children}</C.Provider>;
 };
 
 export const useMenuPermissions = () => useContext(C);

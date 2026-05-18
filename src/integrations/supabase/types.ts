@@ -526,6 +526,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_menu_permissions: {
+        Row: {
+          menu_keys: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          menu_keys?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          menu_keys?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

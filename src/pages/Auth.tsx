@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ChefHat, Loader2 } from "lucide-react";
 
@@ -27,15 +26,7 @@ export default function Auth() {
     if (error) toast.error(error.message); else toast.success("เข้าสู่ระบบสำเร็จ");
   };
 
-  const signUp = async (e: FormEvent) => {
-    e.preventDefault(); setBusy(true);
-    const { error } = await supabase.auth.signUp({
-      email, password: pw,
-      options: { emailRedirectTo: `${window.location.origin}/`, data: { display_name: name } }
-    });
-    setBusy(false);
-    if (error) toast.error(error.message); else toast.success("สมัครสำเร็จ! เข้าสู่ระบบได้เลย");
-  };
+
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -69,28 +60,14 @@ export default function Auth() {
           <h2 className="font-display text-2xl font-semibold mb-1">ยินดีต้อนรับ</h2>
           <p className="text-sm text-muted-foreground mb-6">เข้าสู่ระบบเพื่อจัดการแชทบอท</p>
 
-          <Tabs defaultValue="signin">
-            <TabsList className="grid grid-cols-2 mb-6">
-              <TabsTrigger value="signin">เข้าสู่ระบบ</TabsTrigger>
-              <TabsTrigger value="signup">สมัครใช้งาน</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <form onSubmit={signIn} className="space-y-4">
-                <div className="space-y-1.5"><Label>อีเมล</Label><Input type="email" required value={email} onChange={e=>setEmail(e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>รหัสผ่าน</Label><Input type="password" required value={pw} onChange={e=>setPw(e.target.value)} /></div>
-                <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin"/>}เข้าสู่ระบบ</Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={signUp} className="space-y-4">
-                <div className="space-y-1.5"><Label>ชื่อ</Label><Input required value={name} onChange={e=>setName(e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>อีเมล</Label><Input type="email" required value={email} onChange={e=>setEmail(e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>รหัสผ่าน</Label><Input type="password" minLength={6} required value={pw} onChange={e=>setPw(e.target.value)} /></div>
-                <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin"/>}สมัครใช้งาน</Button>
-                <p className="text-xs text-muted-foreground text-center">ผู้สมัครคนแรกจะได้สิทธิ์ Admin โดยอัตโนมัติ</p>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <form onSubmit={signIn} className="space-y-4">
+            <div className="space-y-1.5"><Label>อีเมล</Label><Input type="email" required value={email} onChange={e=>setEmail(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>รหัสผ่าน</Label><Input type="password" required value={pw} onChange={e=>setPw(e.target.value)} /></div>
+            <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin"/>}เข้าสู่ระบบ</Button>
+          </form>
+          <p className="text-xs text-muted-foreground text-center mt-6">
+            การเพิ่มผู้ใช้ใหม่ทำได้โดยแอดมินเท่านั้น
+          </p>
         </Card>
       </div>
     </div>

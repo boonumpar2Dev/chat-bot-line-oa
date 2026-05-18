@@ -19,15 +19,12 @@ const nav: { to: string; label: string; icon: any; exact?: boolean; key: MenuKey
 
 function NavItems({ collapsed, onNav }: { collapsed: boolean; onNav?: () => void }) {
   const { role } = useAuth();
-  const { perms } = useMenuPermissions();
-  const allowed = role === "admin"
-    ? nav.map(n => n.key)
-    : (perms[role as "manager" | "staff"] || []);
+  const { menus } = useMenuPermissions();
   return (
     <nav className="flex-1 px-3 py-2 space-y-1">
       {nav.filter(i => {
         if (i.adminOnly) return role === "admin";
-        return allowed.includes(i.key);
+        return menus.includes(i.key);
       }).map(item => (
         <NavLink key={item.to} to={item.to} end={item.exact} onClick={onNav}
           className={({ isActive }) => cn(
