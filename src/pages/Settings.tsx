@@ -44,6 +44,8 @@ type Settings = {
 };
 
 export default function Settings() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [s, setS] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
