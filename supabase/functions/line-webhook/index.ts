@@ -628,7 +628,18 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   const answerText = String(aiResp.answer || "ขออภัย ไม่สามารถตอบได้")
     .replace(/\\n/g, "\n").replace(/\\r/g, "")
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
-  const imageTitles: string[] = aiResp.image_titles || [];
+  let imageTitles: string[] = aiResp.image_titles || [];
+
+  // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
+  if (imageTitles.length > 0) {
+    const expanded = [...imageTitles];
+    for (const title of imageTitles) {
+      const k = kbItems.find((x: any) => x.title === title);
+      const bundle = Array.isArray(k?.bundle_image_titles) ? k.bundle_image_titles : [];
+      for (const b of bundle) if (b && !expanded.includes(b)) expanded.push(b);
+    }
+    imageTitles = expanded.slice(0, 8);
+  }
 
   // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
   const intent = aiResp.intent || {};
