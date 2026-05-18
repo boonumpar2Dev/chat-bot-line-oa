@@ -60,6 +60,8 @@ export default function Settings() {
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
       .then(({ data }) => { setS(data as any); setLoading(false); });
+    supabase.from("knowledge_categories").select("name").order("sort_order")
+      .then(({ data }) => setKbCategories((data ?? []).map((c: any) => c.name)));
   }, []);
 
   const save = async () => {
@@ -71,6 +73,8 @@ export default function Settings() {
       followup_hours: s.followup_hours, followup_enabled: s.followup_enabled, schedule_enabled: s.schedule_enabled,
       start_time: s.start_time, end_time: s.end_time, strict_rules: s.strict_rules, sla_hours: s.sla_hours, fallback_message: s.fallback_message,
       debounce_seconds: s.debounce_seconds,
+      comparison_phase_enabled: s.comparison_phase_enabled,
+      comparison_kb_category: s.comparison_kb_category,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
