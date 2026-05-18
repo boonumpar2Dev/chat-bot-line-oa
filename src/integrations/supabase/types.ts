@@ -17,6 +17,8 @@ export type Database = {
       app_settings: {
         Row: {
           ai_enabled: boolean
+          comparison_kb_category: string | null
+          comparison_phase_enabled: boolean
           confidence_threshold: number
           cooldown_minutes: number
           created_at: string
@@ -38,6 +40,8 @@ export type Database = {
         }
         Insert: {
           ai_enabled?: boolean
+          comparison_kb_category?: string | null
+          comparison_phase_enabled?: boolean
           confidence_threshold?: number
           cooldown_minutes?: number
           created_at?: string
@@ -59,6 +63,8 @@ export type Database = {
         }
         Update: {
           ai_enabled?: boolean
+          comparison_kb_category?: string | null
+          comparison_phase_enabled?: boolean
           confidence_threshold?: number
           cooldown_minutes?: number
           created_at?: string
