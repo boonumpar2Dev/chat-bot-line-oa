@@ -141,19 +141,38 @@ function PackagesTab() {
               {edit.pricing_tiers.map((t,i)=>{
                 const total = Number(t.total_pax)||0, monk = Number(t.monk_pax)||0;
                 const guest = total - monk;
+                const qLevels: any[] = Array.isArray(t.quality_levels) ? t.quality_levels : [];
+                const updateTier = (patch:any) => { const n=[...edit.pricing_tiers]; n[i]={...n[i],...patch}; setEdit({...edit,pricing_tiers:n}); };
+                const updateQL = (qi:number, patch:any) => { const nq=[...qLevels]; nq[qi]={...nq[qi],...patch}; updateTier({quality_levels:nq}); };
                 return (
-                  <div key={i} className="space-y-1">
+                  <div key={i} className="space-y-1 border border-border/40 rounded-lg p-2">
                     <div className="grid grid-cols-[1.2fr_0.7fr_0.7fr_0.9fr_56px_auto] gap-2 items-center">
-                      <Input placeholder="เช่น Standard, ยอดนิยม" value={t.tier_name||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],tier_name:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
-                      <Input type="number" placeholder="40" value={t.total_pax||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],total_pax:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
-                      <Input type="number" placeholder="9" value={t.monk_pax||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],monk_pax:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
-                      <Input type="number" placeholder="30000" value={t.price||""} onChange={e=>{const n=[...edit.pricing_tiers];n[i]={...n[i],price:e.target.value};setEdit({...edit,pricing_tiers:n});}}/>
-                      <TierImageField url={t.image_url} onChange={(v)=>{const n=[...edit.pricing_tiers];n[i]={...n[i],image_url:v};setEdit({...edit,pricing_tiers:n});}}/>
+                      <Input placeholder="เช่น Standard, ยอดนิยม" value={t.tier_name||""} onChange={e=>updateTier({tier_name:e.target.value})}/>
+                      <Input type="number" placeholder="40" value={t.total_pax||""} onChange={e=>updateTier({total_pax:e.target.value})}/>
+                      <Input type="number" placeholder="9" value={t.monk_pax||""} onChange={e=>updateTier({monk_pax:e.target.value})}/>
+                      <Input type="number" placeholder="30000" value={t.price||""} onChange={e=>updateTier({price:e.target.value})} disabled={qLevels.length>0}/>
+                      <TierImageField url={t.image_url} onChange={(v)=>updateTier({image_url:v})}/>
                       <Button size="icon" variant="ghost" onClick={()=>setEdit({...edit,pricing_tiers:edit.pricing_tiers.filter((_,j)=>j!==i)})}><X className="w-4 h-4"/></Button>
                     </div>
                     {total > 0 && monk > 0 && (
-                      <p className="text-xs text-muted-foreground px-1">→ พระ {monk} + แขก {guest} = {total} ท่าน</p>
+                      <p className="text-xs text-muted-foreground px-1">→ พระ {monk} + แขก {guest} = {total} ท่าน{qLevels.length>0 && " · ใช้ราคาจากระดับคุณภาพด้านล่าง"}</p>
                     )}
+
+                    <div className="pl-3 pt-1 space-y-1.5 border-l-2 border-primary/30 ml-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">ระดับคุณภาพ (เช่น Standard / Premium / Elite)</span>
+                        <Button type="button" size="sm" variant="ghost" className="h-6 text-xs" onClick={()=>updateTier({quality_levels:[...qLevels,{name:"",price:"",image_url:"",highlights:""}]})}><Plus className="w-3 h-3"/>เพิ่มระดับ</Button>
+                      </div>
+                      {qLevels.map((q,qi)=>(
+                        <div key={qi} className="grid grid-cols-[1fr_0.8fr_1.5fr_56px_auto] gap-2 items-start">
+                          <Input placeholder="Standard" value={q.name||""} onChange={e=>updateQL(qi,{name:e.target.value})}/>
+                          <Input type="number" placeholder="30000" value={q.price||""} onChange={e=>updateQL(qi,{price:e.target.value})}/>
+                          <Input placeholder="จุดเด่น เช่น เนื้อปู หูฉลาม" value={q.highlights||""} onChange={e=>updateQL(qi,{highlights:e.target.value})}/>
+                          <TierImageField url={q.image_url} onChange={(v)=>updateQL(qi,{image_url:v})}/>
+                          <Button size="icon" variant="ghost" onClick={()=>updateTier({quality_levels:qLevels.filter((_,j)=>j!==qi)})}><X className="w-4 h-4"/></Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })}
