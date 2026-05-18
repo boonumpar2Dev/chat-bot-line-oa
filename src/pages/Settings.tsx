@@ -280,6 +280,11 @@ export default function Settings() {
           </select>
           <p className="text-xs text-muted-foreground">ตั้ง entry ใน KB หมวดนี้แยกตามช่วงจำนวนคน เช่น "เปรียบเทียบ 40 ท่าน", "เปรียบเทียบ 100 ท่าน"</p>
         </div>
+        <div className="space-y-1.5 mt-5">
+          <Label>กฎเลือกรูป/วิดีโอ (Image selection rules)</Label>
+          <Textarea rows={10} value={s.image_selection_rules} onChange={e=>upd("image_selection_rules", e.target.value)} className="font-mono text-xs" />
+          <p className="text-xs text-muted-foreground">ฉีดเข้า prompt ทุกครั้งที่เลือกรูป — แก้ A-F ให้ตรงกับธุรกิจของคุณ</p>
+        </div>
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
