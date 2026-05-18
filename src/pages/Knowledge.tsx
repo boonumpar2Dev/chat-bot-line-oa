@@ -81,17 +81,17 @@ export default function Knowledge() {
           </SheetContent>
         </Sheet>
       </div>
-      <Tabs defaultValue="packages">
+      <Tabs defaultValue="kb">
         <TabsList>
-          <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
-          <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
-          <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
           <TabsTrigger value="kb"><BookOpen className="w-4 h-4 mr-1.5"/>ข้อมูลทั่วไป</TabsTrigger>
+          <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
+          <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
+          <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
         </TabsList>
-        <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
-        <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
-        <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
         <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
+        <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
+        <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
+        <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
       </Tabs>
     </div>
   );
