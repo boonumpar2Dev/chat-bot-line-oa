@@ -301,11 +301,11 @@ export default function Chats() {
             <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
 
             {/* Message search */}
-            <div className="border-b bg-muted/30 px-3 py-1.5 flex items-center gap-2">
-              <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
-              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท…" className="h-7 text-xs border-0 bg-transparent focus-visible:ring-0 px-1"/>
-              {msgSearch && <span className="text-[10px] text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
-              {msgSearch && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={()=>setMsgSearch("")}><X className="w-3 h-3"/></Button>}
+            <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-2">
+              <Search className="w-4 h-4 text-muted-foreground shrink-0"/>
+              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท (ลูกค้า + AI)…" className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"/>
+              {msgSearch && <span className="text-xs text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
+              {msgSearch && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>setMsgSearch("")}><X className="w-4 h-4"/></Button>}
             </div>
 
             {/* Messages */}
