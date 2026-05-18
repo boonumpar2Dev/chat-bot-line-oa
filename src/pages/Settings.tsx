@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle, Zap, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
