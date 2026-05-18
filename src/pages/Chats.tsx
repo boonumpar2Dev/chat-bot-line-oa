@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,16 @@ import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
+
+// เทมเพลตขอข้อมูลใบเสนอราคา
+const QUOTE_FORM_TEMPLATE = `เพื่อให้ทางเราจัดทำใบเสนอราคาได้รวดเร็วและตรงความต้องการ รบกวนแจ้งข้อมูลดังนี้นะคะ 🙏
+
+1. วัน เดือน ปี ที่จัดงาน : 
+2. สถานที่จัดงาน : 
+3. ชื่อ และเบอร์โทรที่ติดต่อได้ : 
+4. จำนวนพระสงฆ์ (รูป) และจำนวนแขกร่วมงาน (ท่าน) : 
+
+ได้รับข้อมูลแล้วจะรีบจัดทำใบเสนอราคาส่งให้นะคะ ✨`;
 
 type Customer = any;
 type Conversation = any;
@@ -59,6 +70,8 @@ export default function Chats() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [msgSearch, setMsgSearch] = useState("");
+  const [trainText, setTrainText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -260,10 +273,18 @@ export default function Chats() {
             {/* Manual timer */}
             <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
 
+            {/* Message search */}
+            <div className="border-b bg-muted/30 px-3 py-1.5 flex items-center gap-2">
+              <Search className="w-3 h-3 text-muted-foreground shrink-0"/>
+              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท…" className="h-7 text-xs border-0 bg-transparent focus-visible:ring-0 px-1"/>
+              {msgSearch && <span className="text-[10px] text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
+              {msgSearch && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={()=>setMsgSearch("")}><X className="w-3 h-3"/></Button>}
+            </div>
+
             {/* Messages */}
             <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
-                {messages.map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg}/>)}
+                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)}/>)}
               </div>
             </ScrollArea>
 
@@ -282,8 +303,11 @@ export default function Chats() {
                 <Button size="icon" variant="ghost" type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Paperclip className="w-4 h-4"/>}
                 </Button>
-                <Button size="icon" variant="ghost" type="button" onClick={() => setShowQuick(s => !s)}>
+                <Button size="icon" variant="ghost" type="button" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
                   <MessageSquareText className="w-4 h-4"/>
+                </Button>
+                <Button size="icon" variant="ghost" type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
+                  <FileText className="w-4 h-4"/>
                 </Button>
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
@@ -299,18 +323,58 @@ export default function Chats() {
       </main>
 
       <ImagePreviewModal url={previewImg} onClose={() => setPreviewImg(null)}/>
+      <TrainAIDialog text={trainText} onClose={()=>setTrainText(null)}/>
     </div>
   );
 }
 
-function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) => void }) {
+function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (text) {
+      const snippet = text.slice(0, 60);
+      setTitle(`คำถามลูกค้า: ${snippet}${text.length>60?"…":""}`);
+      setContent(`**คำถามจากลูกค้า:**\n${text}\n\n**คำตอบที่ AI ควรตอบ:**\n(พิมพ์คำตอบที่ถูกต้องที่นี่ — AI จะเรียนรู้จากข้อมูลนี้)`);
+    }
+  }, [text]);
+  const save = async () => {
+    if (!title.trim() || !content.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from("knowledge_base").insert({ title: title.trim(), content: content.trim(), status: "active" });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกเข้าคลังความรู้แล้ว ✨ AI จะใช้ตอบครั้งต่อไป");
+    onClose();
+  };
+  return (
+    <Dialog open={!!text} onOpenChange={(o)=>!o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary"/>สอน AI จากข้อความนี้</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label className="text-xs">หัวข้อ</Label>
+            <Input value={title} onChange={e=>setTitle(e.target.value)}/></div>
+          <div className="space-y-1.5"><Label className="text-xs">เนื้อหา (คำถาม + คำตอบ)</Label>
+            <Textarea rows={8} value={content} onChange={e=>setContent(e.target.value)}/></div>
+          <p className="text-[11px] text-muted-foreground">บันทึกแล้วจะไปอยู่ใน "สอน AI" → ข้อมูลทั่วไป สามารถแก้ไขเพิ่มเติมได้ภายหลัง</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+          <Button onClick={save} disabled={saving || !title.trim() || !content.trim()}>{saving && <Loader2 className="w-4 h-4 animate-spin"/>}บันทึก</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []).slice(0, 5);
-  // แยกส่วน OCR ออกจากข้อความ
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
   let cleaned = m.message
@@ -318,10 +382,22 @@ function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) 
     .replace(/📎\s*https?:\/\/\S+/g, "")
     .replace(/^\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]\s*/g, "")
     .trim();
+  // highlight matching text
+  const renderText = (txt: string) => {
+    if (!highlight) return txt;
+    const idx = txt.toLowerCase().indexOf(highlight.toLowerCase());
+    if (idx < 0) return txt;
+    return <>{txt.slice(0, idx)}<mark className="bg-yellow-300/70 rounded px-0.5">{txt.slice(idx, idx + highlight.length)}</mark>{txt.slice(idx + highlight.length)}</>;
+  };
   return (
-    <div className={cn("flex flex-col gap-1", align)}>
-      <span className="text-[10px] text-muted-foreground px-2">
+    <div className={cn("flex flex-col gap-1 group", align)}>
+      <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
         {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
+        {isCustomer && cleaned && onTrainAI && (
+          <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="สร้างข้อมูลสอน AI จากข้อความนี้">
+            <Brain className="w-3 h-3"/>สอน AI
+          </button>
+        )}
       </span>
       {imgUrls.map((u: string) => (
         <img key={u} src={u} alt="" onClick={() => onImageClick(u)}
@@ -332,12 +408,12 @@ function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) 
           <div className="flex items-center gap-1 mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
             📄 เนื้อหาในรูป (OCR)
           </div>
-          {ocrText}
+          {renderText(ocrText)}
         </div>
       )}
       {cleaned && (
         <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
-          {cleaned}
+          {renderText(cleaned)}
         </div>
       )}
       <span className="text-[10px] text-muted-foreground px-2">{new Date(m.created_at).toLocaleString("th-TH")}</span>

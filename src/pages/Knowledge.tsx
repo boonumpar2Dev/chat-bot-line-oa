@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
@@ -26,6 +26,38 @@ type KB = { id?: string; title: string; content: string; category: string | null
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], video_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
 const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
+
+// เทมเพลตตัวอย่างให้ user แก้ไขแทนการเริ่มจากช่องว่าง
+const KB_TEMPLATE = `**คำถามที่ลูกค้ามักถาม:**
+(เช่น "มีบริการ XXX ไหม?", "ราคาเท่าไหร่?")
+
+**คำตอบ:**
+(ตอบสั้น กระชับ ระบุเงื่อนไข/ราคา/วิธีติดต่อให้ชัด)
+
+**เงื่อนไข/หมายเหตุ:**
+- 
+- 
+
+📌 คำแนะนำสำหรับ AI: ตอบโดยใช้คำว่า ... และอย่าลืม ...`;
+
+const PKG_DESC_TEMPLATE = `เหมาะสำหรับ: งานบุญ + แขก (เช่น พระ 9 รูป + แขก 30 ท่าน)
+สิ่งที่รวมในแพ็ก:
+- เมนูอาหาร: ...
+- อุปกรณ์: โต๊ะ/เก้าอี้/ผ้าปู/จาน-ชาม
+- พนักงานเสิร์ฟ: ... ท่าน
+- เวลา: ... ชั่วโมง
+จุดเด่น: ...`;
+
+const PKG_AI_INSTRUCTION_TEMPLATE = `- ถ้าลูกค้าถามถึงแพ็กนี้ ให้บอกราคาต่อท่านก่อน แล้วถามจำนวนคนเพื่อสรุปยอด
+- ถ้าจำนวนแขกน้อยกว่าขั้นต่ำ ให้แนะนำแพ็กอื่นแทน
+- ห้าม...`;
+
+const PROMO_TEMPLATE = `เงื่อนไขโปรโมชั่น:
+- ใช้ได้กับ: ...
+- ระยะเวลา: ...
+- ขั้นต่ำ: ... ท่าน
+- ส่วนลด/ของแถม: ...
+- หมายเหตุ: ไม่สามารถใช้ร่วมกับโปรอื่น`;
 
 export default function Knowledge() {
   return (
@@ -49,17 +81,17 @@ export default function Knowledge() {
           </SheetContent>
         </Sheet>
       </div>
-      <Tabs defaultValue="packages">
+      <Tabs defaultValue="kb">
         <TabsList>
-          <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
-          <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
-          <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
           <TabsTrigger value="kb"><BookOpen className="w-4 h-4 mr-1.5"/>ข้อมูลทั่วไป</TabsTrigger>
+          <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
+          <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
+          <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
         </TabsList>
-        <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
-        <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
-        <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
         <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
+        <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
+        <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
+        <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
       </Tabs>
     </div>
   );
@@ -132,7 +164,7 @@ function PackagesTab() {
                 </select>
               </div>
             </div>
-            <div className="space-y-1.5"><Label>รายละเอียด</Label><Textarea rows={4} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>รายละเอียด</Label>{!edit.description && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,description:PKG_DESC_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={4} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
             <div className="space-y-1.5"><Label>เงื่อนไขขั้นต่ำ</Label><Input value={edit.min_condition||""} onChange={e=>setEdit({...edit,min_condition:e.target.value})}/></div>
 
             <div className="space-y-2">
@@ -197,7 +229,7 @@ function PackagesTab() {
               ))}
             </div>
 
-            <div className="space-y-1.5"><Label>คำสั่งสำหรับ AI (AI Instruction)</Label><Textarea rows={3} value={edit.ai_instruction||""} onChange={e=>setEdit({...edit,ai_instruction:e.target.value})} placeholder="เช่น: ถ้าลูกค้าถามเรื่องโต๊ะจีน ให้แนะนำเกรด A ก่อน"/></div>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>คำสั่งสำหรับ AI (AI Instruction)</Label>{!edit.ai_instruction && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,ai_instruction:PKG_AI_INSTRUCTION_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={3} value={edit.ai_instruction||""} onChange={e=>setEdit({...edit,ai_instruction:e.target.value})} placeholder="เช่น: ถ้าลูกค้าถามเรื่องโต๊ะจีน ให้แนะนำเกรด A ก่อน"/></div>
             <div className="space-y-1.5"><Label>หมายเหตุ</Label><Textarea rows={2} value={edit.notes||""} onChange={e=>setEdit({...edit,notes:e.target.value})}/></div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ (URL)</Label><ImageUrlsField urls={edit.image_urls} onChange={u=>setEdit({...edit,image_urls:u})}/></div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label><VideoUrlsField videos={edit.video_urls} onChange={v=>setEdit({...edit,video_urls:v})}/></div>
@@ -277,7 +309,7 @@ function PromotionsTab() {
           <DialogHeader><DialogTitle>{edit.id?"แก้ไขโปรโมชั่น":"เพิ่มโปรโมชั่น"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5"><Label>ชื่อ *</Label><Input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></div>
-            <div className="space-y-1.5"><Label>รายละเอียด</Label><Textarea rows={3} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>รายละเอียด</Label>{!edit.description && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,description:PROMO_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={3} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
             <div className="space-y-1.5">
               <Label>ใช้กับประเภท</Label>
               <div className="flex flex-wrap gap-2">
@@ -449,7 +481,7 @@ function KnowledgeBaseTab() {
                 </div>
               )}
             </div>
-            <div className="space-y-1.5"><Label>เนื้อหา</Label>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>เนื้อหา</Label>{!edit.content && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,content:KB_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div>
               <Textarea rows={6} value={edit.content} onChange={e => setEdit({ ...edit, content: e.target.value })}
                 placeholder="ใส่ข้อมูล/คำถาม/คำตอบที่ AI ต้องรู้"/>
             </div>
