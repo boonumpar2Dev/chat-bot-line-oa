@@ -581,7 +581,7 @@ async function processEvent(event: any, supabase: any) {
 - ตัวเลือกพิเศษใน notes/ai_instruction → เสนอเมื่อตรงเงื่อนไข
 
 📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
-- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${knownIntentStr}
+- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}
 
 KB:
 ${kbContext || "(ว่าง)"}
