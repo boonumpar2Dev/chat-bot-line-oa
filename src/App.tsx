@@ -36,6 +36,7 @@ const App = () => (
                 <Route path="/knowledge" element={<ProtectedRoute menuKey="knowledge"><Knowledge /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
+                <Route path="/ai-tokens" element={<ProtectedRoute adminOnly><AiTokens /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
