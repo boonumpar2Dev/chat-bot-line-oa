@@ -285,7 +285,9 @@ async function processEvent(event: any, supabase: any) {
 
   // Tax ID detection (เลขประจำตัวผู้เสียภาษี 13 หลัก / มี keyword / หรือ AI เพิ่งถามมา)
   const allDigitRuns = (messageText.match(/\d+/g) || []);
-  const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(messageText);
+  const taxKwArr: string[] = (cfg.tax_id_keywords && cfg.tax_id_keywords.length) ? cfg.tax_id_keywords : ["tag","แท็ก","tax","ภาษี","เลขผู้เสีย","นิติบุคคล","จดทะเบียน"];
+  const taxKwRe = new RegExp(taxKwArr.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"), "i");
+  const taxKeyword = taxKwRe.test(messageText);
   let taxId: string | null = null;
   let taxIdMaybe: string | null = null; // เลขที่น่าจะเป็น tax แต่ไม่ครบ 13 หลัก (ตอน AI ถามมา)
   for (const d of allDigitRuns) {
