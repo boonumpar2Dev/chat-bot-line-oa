@@ -2,24 +2,32 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/chats", label: "จัดการแชท", icon: MessageSquare },
-  { to: "/knowledge", label: "สอน AI", icon: BookOpen },
-  { to: "/users", label: "จัดการผู้ใช้", icon: Users, adminOnly: true },
-  { to: "/settings", label: "ตั้งค่า", icon: Settings },
+const nav: { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean }[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
+  { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
+  { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
+  { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
+  { to: "/settings", label: "ตั้งค่า", icon: Settings, key: "settings" },
 ];
 
 function NavItems({ collapsed, onNav }: { collapsed: boolean; onNav?: () => void }) {
   const { role } = useAuth();
+  const { perms } = useMenuPermissions();
+  const allowed = role === "admin"
+    ? nav.map(n => n.key)
+    : (perms[role as "manager" | "staff"] || []);
   return (
     <nav className="flex-1 px-3 py-2 space-y-1">
-      {nav.filter(i => !i.adminOnly || role === "admin").map(item => (
+      {nav.filter(i => {
+        if (i.adminOnly) return role === "admin";
+        return allowed.includes(i.key);
+      }).map(item => (
         <NavLink key={item.to} to={item.to} end={item.exact} onClick={onNav}
           className={({ isActive }) => cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
