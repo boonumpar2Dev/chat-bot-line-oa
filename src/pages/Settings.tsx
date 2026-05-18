@@ -293,7 +293,8 @@ export default function Settings() {
         <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
       </Card>
 
-      <AiCacheCard />
+      {isAdmin && <AiCacheCard />}
+      {isAdmin && <RolePermissionsCard />}
 
 
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
