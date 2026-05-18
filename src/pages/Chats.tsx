@@ -70,6 +70,8 @@ export default function Chats() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
+  const [msgSearch, setMsgSearch] = useState("");
+  const [trainText, setTrainText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
