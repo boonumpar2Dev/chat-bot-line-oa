@@ -258,13 +258,6 @@ async function processEvent(event: any, supabase: any) {
   }
 
   const trimmed = messageText.trim().toLowerCase();
-  // Skip only pure acknowledgements (ไม่ใช่ทักทาย เพราะทักทายต้องตอบกลับ+ถาม)
-  const trivial = [
-    "👍", "👌", "🙏", "❤️", "ok", "oki", "okay",
-    "ได้เลย", "โอเค", "ขอบคุณ", "ขอบคุณค่ะ", "ขอบคุณครับ",
-    "ค่ะ", "คะ", "ครับ", "คับ", "ดีค่ะ", "ดีครับ"
-  ];
-  if (trivial.includes(trimmed)) return;
 
   const [{ data: cfgArr }, { data: freshArr }] = await Promise.all([
     supabase.from("app_settings").select("*").eq("key", "ai_config").limit(1),
@@ -272,6 +265,12 @@ async function processEvent(event: any, supabase: any) {
   ]);
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
+
+  // Skip pure acknowledgements (อ่านจาก cfg.trivial_replies)
+  const trivial: string[] = (cfg.trivial_replies && cfg.trivial_replies.length) ? cfg.trivial_replies : [
+    "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
+  ];
+  if (trivial.map((t: string)=>t.toLowerCase()).includes(trimmed)) return;
 
   // เช็ค context: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า → ถ้าใช่ → treat reply ที่เป็นเลขเป็น Tax ID context
   const { data: lastAiArr } = await supabase
@@ -286,7 +285,9 @@ async function processEvent(event: any, supabase: any) {
 
   // Tax ID detection (เลขประจำตัวผู้เสียภาษี 13 หลัก / มี keyword / หรือ AI เพิ่งถามมา)
   const allDigitRuns = (messageText.match(/\d+/g) || []);
-  const taxKeyword = /(tag|แท็ก|tax|ภาษี|เลขผู้เสีย|นิติบุคคล|จดทะเบียน)/i.test(messageText);
+  const taxKwArr: string[] = (cfg.tax_id_keywords && cfg.tax_id_keywords.length) ? cfg.tax_id_keywords : ["tag","แท็ก","tax","ภาษี","เลขผู้เสีย","นิติบุคคล","จดทะเบียน"];
+  const taxKwRe = new RegExp(taxKwArr.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"), "i");
+  const taxKeyword = taxKwRe.test(messageText);
   let taxId: string | null = null;
   let taxIdMaybe: string | null = null; // เลขที่น่าจะเป็น tax แต่ไม่ครบ 13 หลัก (ตอน AI ถามมา)
   for (const d of allDigitRuns) {
@@ -478,11 +479,7 @@ async function processEvent(event: any, supabase: any) {
     const prVids = getItemVideos(pr);
     if (prVids.length > 0) s += `\n[วิดีโอ ${prVids.length} คลิป]`;
     return s;
-  }).join("\n\n") + `\n\n⚠️ กฎเสนอโปรโมชั่น:
-1. ก่อนเสนอโปร เช็คจำนวนแขกของลูกค้า เทียบกับเงื่อนไขขั้นต่ำของโปรนั้นเสมอ
-2. ถ้าลูกค้ายังไม่บอกจำนวนแขก → เสนอได้แต่ต้องบอกเงื่อนไขควบคู่ (เช่น "โปร X สำหรับงาน 50 ท่านขึ้นไป")
-3. ถ้าลูกค้าจำนวนน้อยกว่าเงื่อนไข → ห้ามเสนอโปรนั้นเด็ดขาด (เสนอตัวอื่นที่เข้าเกณฑ์ หรือไม่เสนอเลย)
-4. เสนอโปรต้องบอกชื่อโปรเต็มทุกครั้ง ห้ามพูดลอยๆ ว่า "มีโปรนะคะ"` : "";
+  }).join("\n\n") : "";
 
   // Tier-level images: title format "แพ็กเกจ: <name> — <tier_name>"
   const tierImageRefs: { title: string; url: string }[] = [];
@@ -503,7 +500,8 @@ async function processEvent(event: any, supabase: any) {
     ...pkgsWithVideos.map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
     ...promosWithVideos.map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
   ];
-  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ (สำคัญมาก — ทำผิดบ่อย):\n\n🎯 จับเจตนาลูกค้าก่อนเลือกรูป:\nA) ขอ "แพ็กเกจ"/"ราคา"/"ใบเสนอราคา" หรือบอก "ประเภทงาน+จำนวนคน" (เช่น ขึ้นบ้านใหม่ พระ5 แขก20) → **ส่งเฉพาะ "แพ็กเกจ: X" ที่เข้าเงื่อนไข** ห้ามแถม "เมนู..." หรือ "ตัวอย่าง..." เด็ดขาด\nB) ขอ "เมนูแนะนำ" → ส่งเฉพาะ "เซ็ตเมนูแนะนำสำหรับลูกค้าบุญ+บุฟเฟ่ต์" ตัวเดียว ห้ามแถม "เมนูบุญ+ซุ้ม/โต๊ะจีน/บุฟเฟ่ต์" หรือเมนูขนมหวาน\nC) ขอ "เมนู" เฉยๆ ไม่ระบุประเภท → ถามก่อนว่าสนใจประเภทไหน (บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน) ห้ามส่งรูปเมนูทุกแบบรวมกัน\nD) ขอ "เมนูทุกแบบ/ทั้งหมด/ครบ" → ส่ง "เมนูบุญ+บุฟเฟ่ต์" + "เมนูบุญ+ซุ้มอาหาร" + "เมนูบุญ+โต๊ะจีน" (3 อัน) ห้ามตัดเหลืออันเดียว\nE) ขอ "ตัวอย่างจัดงาน" + ระบุ "บ้านและบริษัท"/"ทั้งสองแบบ" → ส่งทั้ง "ตัวอย่างรูปแบบการจัดพิธีสงฆ์ แบบ บ้านหรือครบรอบ" + "...แบบ บริษัท/ออฟฟิศ" ห้ามส่งแค่อันเดียว\nF) ขอ "ตัวอย่างซุ้มอาหาร" → ส่ง "ตัวอย่างหน้าตาซุ้มอาหาร" เท่านั้น\n\n📐 กติกาเพิ่มเติม:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น (แทน "รูปรวม")\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศ/อยากเห็นการจัดจริง\n- image_titles **ใส่ได้สูงสุด 4 รายการ** ระบบจะดึงรูปของแต่ละ title มาเอง (1 KB อาจมีหลายรูป ระบบจัดการให้)\n- ห้ามใส่ title ที่ลูกค้าไม่ได้ขอ — ผิดบ่อยมาก ตรวจ image_titles ทุกอันว่าตรงเจตนาข้อ A-F หรือไม่` : "";
+  const imgRules = (cfg.image_selection_rules || "").trim();
+  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ (สำคัญมาก — ทำผิดบ่อย):\n${imgRules}\n\n📐 กติกาเพิ่มเติม:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น (แทน "รูปรวม")\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศ/อยากเห็นการจัดจริง\n- image_titles **ใส่ได้สูงสุด 4 รายการ** ระบบจะดึงรูปของแต่ละ title มาเอง\n- ห้ามใส่ title ที่ลูกค้าไม่ได้ขอ — ตรวจ image_titles ทุกอันว่าตรงเจตนาหรือไม่` : "";
 
 
   const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
@@ -548,38 +546,37 @@ async function processEvent(event: any, supabase: any) {
   // หมายเหตุ: กฎเรื่องการขอเบอร์/ตอบสั้น/ไม่ถามซ้ำ ย้ายไป strict_rules (Settings UI) ทั้งหมด
   // เพื่อให้แอดมินแก้ไขได้เองโดยไม่ต้องแก้โค้ด
 
-  const prompt = `คุณคือ AI ผู้ช่วยธุรกิจจัดเลี้ยง ตอบภาษาไทย เป็นกันเอง ใช้ "ค่ะ/นะคะ" ลงท้ายเบาๆ
+  const persona = (cfg.ai_persona || 'คุณคือ AI ผู้ช่วย ตอบภาษาไทย เป็นกันเอง ใช้ "ค่ะ/นะคะ" ลงท้ายเบาๆ').trim();
+  const allowedTypes: string[] = Array.isArray(cfg.allowed_service_types) ? cfg.allowed_service_types : [];
+  const forbiddenTerms: string[] = Array.isArray(cfg.forbidden_terms) ? cfg.forbidden_terms : [];
+  const allowedLine = allowedTypes.length ? `\n- รูปแบบบริการที่อนุญาต = **${allowedTypes.join(", ")} เท่านั้น**` : "";
+  const forbiddenLine = forbiddenTerms.length ? ` ❌ ห้ามพูด "${forbiddenTerms.join("/")}"` : "";
+  const intentOrder = (cfg.intent_collection_order || "ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร (ข้ามข้อที่ลูกค้าให้แล้ว)").trim();
+  const tierSpecial = (cfg.tier_special_rules || "").trim();
+  const tierSpecialLine = tierSpecial ? `\n${tierSpecial}\n` : "";
+  const forbiddenCheckLine = forbiddenTerms.length
+    ? `(5) มีคำต้องห้าม "${forbiddenTerms.join("/")}" หรืออาหาร/บริการนอก [${allowedTypes.join("/")}]? → ลบทิ้ง\n`
+    : "";
+
+  const prompt = `${persona}
 
 🔴 กฎทองห้ามผิดเด็ดขาด:
-1. คำขึ้นต้น **ห้ามใช้ "ยินดีด้วยค่ะ/ครับ"** ("ยินดีด้วย" = แสดงความยินดีในโอกาสพิเศษเท่านั้น) ใช้ "ยินดีค่ะ", "รับทราบค่ะ", "ได้เลยค่ะ", "สวัสดีค่ะ" แทน
-2. ใช้ **"ค่ะ/คะ"** เท่านั้น ห้ามสลับ "ครับ" เด็ดขาด
-3. **ห้ามถามข้อมูลซ้ำ** ที่ลูกค้าเคยให้แล้ว (ดู "ข้อมูลลูกค้าที่เก็บไว้แล้ว")
-4. กรณีจำนวนแขกเป็นเศษ → เสนอ **แค่ทางเดียว** ต่อรอบ (ค่าเริ่มต้น: tier สูงกว่า / "tier ต่ำกว่า + เพิ่มต่อหัว" เฉพาะเมื่อลูกค้าขอประหยัด) ห้ามยัด 2 ทาง ห้ามแต่งราคาต่อหัว
+1. **ห้ามถามข้อมูลซ้ำ** ที่ลูกค้าเคยให้แล้ว (ดู "ข้อมูลลูกค้าที่เก็บไว้แล้ว")
 
 🚫 ANTI-HALLUCINATION:
-- ตอบจาก KB เท่านั้น ห้ามแต่ง ห้ามเดา
-- รูปแบบอาหาร = **บุฟเฟ่ต์, ซุ้มอาหาร, โต๊ะจีน เท่านั้น** ❌ ห้ามพูด "ค็อกเทล/คอฟฟี่เบรก/fine dining"
+- ตอบจาก KB เท่านั้น ห้ามแต่ง ห้ามเดา${allowedLine}${forbiddenLine}
 - ห้ามแต่งชื่อเมนู/แพ็กเกจ/บริการ ไม่แน่ใจ → "ขอส่งต่อทีมงานนะคะ"
 
 กฎหลัก:
 - ตอบคำถามก่อน แล้วค่อยถามข้อมูลเพิ่ม (ทีละเรื่อง)
-- ลำดับเก็บข้อมูล: ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร (ข้ามข้อที่ลูกค้าให้แล้ว)
+- ลำดับเก็บข้อมูล: ${intentOrder}
 - ทักทาย → ทักทายกลับสั้นๆ + ถามกลับ "สนใจสอบถามเรื่องไหนเป็นพิเศษไหมคะ?"
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
 - 🚫 ห้ามเสนอแพ็กเกจที่ไม่ตรงเงื่อนไขขั้นต่ำ (min_condition)
 - 📸 ทุกครั้งที่แนะนำแพ็กเกจ ใส่ "แพ็กเกจ: <ชื่อ>" ลง image_titles
 - ⚠️ รูป tier (มี " — "): ส่งเฉพาะเมื่อ tier ตรงกับจำนวนท่านที่ลูกค้าระบุเท่านั้น
 - 📄 ถ้าข้อความมี "📄 เนื้อหาในรูป:" = ลูกค้าส่งแคปแชท/ใบเสนอราคามา ให้อ่านเหมือนลูกค้าพิมพ์เอง
-
-กฎจำนวนคน: บอกจำนวน → ถามรวมพระหรือยัง / เสนอแพ็กต้องอธิบายสัดส่วน (พระ+แขก) / ห้ามเสนอแพ็กที่ guest_pax น้อยกว่าที่ต้องการ
-
-💰 กฎราคาตาม pricing_tiers:
-- จำนวนตรง tier → บอกราคา tier นั้น
-- อยู่ระหว่าง tier → ปัดขึ้น tier ถัดไป บอกชัด เช่น "75 ท่านแนะนำเป็นแพ็ก 80 ท่าน 34,000 ค่ะ"
-- เกิน tier สูงสุด → ห้ามเดา ตอบ "ขอส่งต่อทีมงานนะคะ"
-- หลายระดับคุณภาพ (โต๊ะจีน 1/2/3) → เสนอครบพร้อมจุดต่าง ห้ามเลือกให้เอง
-- ตัวเลือกพิเศษใน notes/ai_instruction → เสนอเมื่อตรงเงื่อนไข
-
+${tierSpecialLine}
 📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
 - event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}
 
@@ -594,16 +591,13 @@ ${recentMsgs || "(ใหม่)"}
 
 ลูกค้า: "${messageText}"
 
-⚠️ ก่อนตอบ ตรวจ 6 ข้อ:
-(1) ขึ้นต้นด้วย "ยินดีด้วย"? → เปลี่ยนเป็น "ยินดีค่ะ/รับทราบค่ะ"
-(2) มี "ครับ" ปน? → เปลี่ยนเป็น "ค่ะ/คะ"
-(3) ถามเรื่องที่อยู่ใน "ข้อมูลลูกค้าที่เก็บไว้แล้ว"? → ลบทิ้ง ไปถามข้ออื่น
-(4) เสนอ 2 ทางเลือก (tier สูงกว่า + เพิ่มต่อหัว) ในข้อความเดียว? → เก็บแค่ทางเดียว
-(5) มี "ค็อกเทล/คอฟฟี่เบรก/fine dining" หรืออาหารที่ไม่ใช่บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน? → ลบทิ้ง
-(6) ลูกค้าขอ "เมนูแนะนำ" / "ขอแพ็กเกจ" / "ตัวอย่างจัดงาน" / "เมนูทุกแบบ"? → ต้องใส่ image_titles ให้ตรง (ห้ามปล่อยว่าง แม้จะถามต่อ)
-(7) คำถามที่จะถามนี้ AI เคยถามใน 1 รอบล่าสุดแล้วลูกค้าไม่ตอบ? → **ห้ามถามซ้ำ** เปลี่ยนไปตอบ/ถามเรื่องอื่นแทน (รออีก 2-3 รอบค่อยถามใหม่)
+⚠️ ก่อนตอบ ตรวจ:
+(1) ถามเรื่องที่อยู่ใน "ข้อมูลลูกค้าที่เก็บไว้แล้ว"? → ลบทิ้ง ไปถามข้ออื่น
+(2) ทำตามกฎเข้มงวด (strict_rules) ครบทุกข้อหรือยัง?
+${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าขอรูป/เมนู/ตัวอย่าง? → ใส่ image_titles ให้ตรงตามกฎเลือกสื่อ (ห้ามปล่อยว่าง แม้จะถามต่อ)
+(${forbiddenCheckLine ? "7" : "6"}) คำถามที่จะถามนี้ AI เคยถามใน 1 รอบล่าสุดแล้วลูกค้าไม่ตอบ? → **ห้ามถามซ้ำ** เปลี่ยนไปตอบ/ถามเรื่องอื่นแทน (รออีก 2-3 รอบค่อยถามใหม่)
 
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎ A-F), confirm_existing_phone, intent`;
+ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent`;
 
   let aiResp: any;
   try {
