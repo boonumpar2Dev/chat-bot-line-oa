@@ -14,6 +14,7 @@ import Knowledge from "./pages/Knowledge";
 import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
+import AiTokens from "./pages/AiTokens";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
