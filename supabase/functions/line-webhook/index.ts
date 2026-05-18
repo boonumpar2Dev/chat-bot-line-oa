@@ -451,9 +451,19 @@ async function processEvent(event: any, supabase: any) {
         const label = t.tier_name ? `[${t.tier_name}] ` : "";
         const imgFlag = t.image_url ? " 🖼️" : "";
         const capFlag = guest > 0 ? ` 【รับแขกได้สูงสุด ${guest} คน】` : "";
-        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}${capFlag}`;
-        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}${capFlag}`;
-        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}${capFlag}`;
+        const qLevels = Array.isArray(t.quality_levels) ? t.quality_levels.filter((q: any) => q?.name) : [];
+        const hasQL = qLevels.length > 0;
+        const priceShown = hasQL ? "(ดูระดับคุณภาพด้านล่าง)" : t.price;
+        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${priceShown}${imgFlag}${capFlag}`;
+        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${priceShown}${imgFlag}${capFlag}`;
+        else s += `\n  - ${label}${total || "?"} ท่าน: ${priceShown}${imgFlag}${capFlag}`;
+        if (hasQL) {
+          qLevels.forEach((q: any) => {
+            const qImg = q.image_url ? " 🖼️" : "";
+            const hl = q.highlights ? ` — ${q.highlights}` : "";
+            s += `\n      • ${q.name}: ${q.price}${qImg}${hl}`;
+          });
+        }
       });
     }
     if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
