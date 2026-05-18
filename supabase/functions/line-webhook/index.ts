@@ -450,9 +450,10 @@ async function processEvent(event: any, supabase: any) {
         const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
         const label = t.tier_name ? `[${t.tier_name}] ` : "";
         const imgFlag = t.image_url ? " 🖼️" : "";
-        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}`;
-        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}`;
-        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}`;
+        const capFlag = guest > 0 ? ` 【รับแขกได้สูงสุด ${guest} คน】` : "";
+        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}${capFlag}`;
+        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}${capFlag}`;
+        else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}${capFlag}`;
       });
     }
     if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
