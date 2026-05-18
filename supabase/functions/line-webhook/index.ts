@@ -514,22 +514,7 @@ async function processEvent(event: any, supabase: any) {
     }
   }
 
-  // Tier-level images: title format "แพ็กเกจ: <name> — <tier_name>" และ quality level "— <quality>"
-  const tierImageRefs: { title: string; url: string }[] = [];
-  for (const p of (pkgs || [])) {
-    for (const t of (p.pricing_tiers || [])) {
-      if (t.image_url && t.tier_name) {
-        tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name}`, url: t.image_url });
-      }
-      if (Array.isArray(t.quality_levels)) {
-        for (const q of t.quality_levels) {
-          if (q?.image_url && q?.name && t.tier_name) {
-            tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name} — ${q.name}`, url: q.image_url });
-          }
-        }
-      }
-    }
-  }
+
 
   const allImageSources = [
     ...kbWithImages.map((i: any) => `"${i.title}"`),
