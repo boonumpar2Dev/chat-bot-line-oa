@@ -1,39 +1,28 @@
 ## เป้าหมาย
-ทำให้ `ai_active` เป็น **single source of truth** สำหรับการเปิด/ปิด AI — เมื่อ admin กด "ปลุกบอท" แล้ว AI ต้องตอบได้จริง โดยไม่ต้องไปยุ่งกับ `status` ของลูกค้า
+ให้ AI ส่ง**รูปเปรียบเทียบ 3 tier ในแผ่นเดียว**เป็น phase แรกตอนลูกค้ายังไม่ระบุงบ/tier เพื่อให้ลูกค้าเลือกได้เอง พอเลือกแล้วค่อยส่งรูป/เมนูของ tier นั้นโดยเฉพาะ (กฎเดิม: ไม่ส่งรูปข้าม tier ยังคงอยู่)
 
-## ปัญหาปัจจุบัน
-`line-webhook/index.ts` มี safety gate ที่เช็คทั้ง `ai_active` **และ** `status in AI_OFF_STATUSES`  
-→ พอลูกค้าให้เบอร์ ระบบตั้ง `status='pending_quote'` + `ai_active=false`  
-→ admin กดปลุกบอท เปลี่ยนแค่ `ai_active=true` แต่ `status` ยังเป็น `pending_quote`  
-→ AI ยังถูกบล็อกอยู่
+## แนวทาง
+ใช้ **Knowledge Base** เก็บรูปเปรียบเทียบ (ทางที่ 1 ที่คุยกัน) — ไม่ต้อง migrate schema, ไม่กระทบ `catering_packages`
 
-## สิ่งที่จะแก้
+## สิ่งที่จะทำ
 
-**1. `supabase/functions/line-webhook/index.ts`**
-- แก้ safety gate: ถ้า `ai_active === true` → ให้ผ่าน ไม่ต้องเช็ค `AI_OFF_STATUSES` อีก
-- เงื่อนไขใหม่ (pseudo): `if (!customer.ai_active || (customer.manual_chat_until && new Date(customer.manual_chat_until) > now)) return;`
-- ลบ/ข้าม การเช็ค `AI_OFF_STATUSES` ใน gate (status เป็นแค่ป้าย funnel ไม่ใช่ตัวควบคุม AI)
+### 1. สร้าง category ใหม่ใน KB
+- เพิ่ม record ใน `knowledge_categories`: name = `"เปรียบเทียบแพ็กเกจ"`
+- คุณอัปโหลดรูปเปรียบเทียบในหน้า /knowledge เอง (1 entry ต่อ 1 ช่วงจำนวนคน เช่น 40 ท่าน, 55 ท่าน, 100 ท่าน) — ตั้งชื่อให้สื่อ เช่น "เปรียบเทียบโต๊ะจีน 40 ท่าน"
 
-**2. คงพฤติกรรมเดิมของ `StatusSelector.tsx` ไว้**
-- เลือก status ที่อยู่ใน `AI_OFF_STATUSES` → auto set `ai_active=false` (ทางลัดให้ staff ปิดบอทพร้อมเปลี่ยน status ในคลิกเดียว)
-- ไม่ต้องแก้ไฟล์นี้
+### 2. เพิ่มกฎใน `app_settings.strict_rules` (2 ข้อ)
+- **กฎ A — Phase 1 (ลูกค้ายังไม่ระบุ tier/งบ):** เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือก tier → ส่งรูป**เปรียบเทียบ 3 tier** จาก KB category "เปรียบเทียบแพ็กเกจ" ที่ตรงกับจำนวนคน + บอกสั้นๆ ว่า "เลือกได้ตามงบเลยค่ะ ต่างกันที่วัตถุดิบ"
+- **กฎ B — Phase 2 (ลูกค้าเลือก tier/งบแล้ว):** ส่งรูป/เมนูจาก `catering_packages` ของ tier นั้น**เท่านั้น** ห้ามแถมรูป tier อื่น (ตอกย้ำกฎเดิม)
 
-**3. คงพฤติกรรมเดิมของ `ManualTimerBanner.tsx` + `Chats.toggleAi` + `liff-admin-panel` ไว้**
-- "ปลุกบอท" ตั้ง `ai_active=true`, `manual_chat_until=null`, `ai_resumed_at=now` ตามเดิม
-- ไม่ต้อง reset `status` (ตามที่คุยกัน)
-
-## วงจรหลังแก้
-
-1. ลูกค้าให้เบอร์ → `status='pending_quote'`, `ai_active=false`, `manual_chat_until=+1h` (เหมือนเดิม)
-2. Admin กด "ปลุกบอท" → `ai_active=true` → **AI ตอบได้ทันที** (status คง `pending_quote` เพื่อ track funnel)
-3. อยากปิดบอทอีก:
-   - กดปุ่ม "ปิด AI" / toggle ในหน้า Chats → `ai_active=false`
-   - หรือเลือก status ใหม่ใน StatusSelector (pending_quote/pending_confirm/confirmed) → auto `ai_active=false`
+### 3. ปรับ system prompt ใน `line-webhook/index.ts`
+- เพิ่มคำอธิบาย logic 2 phase ใน prompt
+- ให้ AI เลือก KB entry "เปรียบเทียบ" ตามจำนวนคนที่ลูกค้าระบุ (ถ้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน แล้วค่อยส่ง)
 
 ## ไฟล์ที่แก้
-- `supabase/functions/line-webhook/index.ts` (gate logic เท่านั้น ~3 บรรทัด)
+- migration: เพิ่ม category ใน `knowledge_categories` + เพิ่ม 2 rules ใน `app_settings.strict_rules`
+- `supabase/functions/line-webhook/index.ts` — เพิ่ม instruction 2-phase ใน system prompt
 
-## ทดสอบหลัง deploy
-- ส่งข้อความ → ลูกค้าให้เบอร์ → ยืนยันว่า AI หยุด
-- กดปลุกบอทในหน้า /chats → ส่งข้อความใหม่ → ยืนยันว่า AI ตอบ
-- เช็ค edge logs ไม่มี early return จาก gate
+## หลัง deploy คุณต้องทำเอง
+1. เข้า /knowledge → เลือก category "เปรียบเทียบแพ็กเกจ"
+2. สร้าง entry ต่อช่วงจำนวนคน อัปโหลดรูปเปรียบเทียบ (เช่นรูป `40ท่านรวมพระโต๊ะจีน-3.jpg` ที่ส่งมา)
+3. ทดสอบในหน้า "ทดสอบ AI" → พิมพ์ "ขอราคาโต๊ะจีน 40 ท่าน" ดูว่าส่งรูปเปรียบเทียบมาไหม
