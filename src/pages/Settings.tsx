@@ -393,3 +393,68 @@ function AiCacheCard() {
     </Card>
   );
 }
+
+function RolePermissionsCard() {
+  const { perms, reload } = useMenuPermissions();
+  const [local, setLocal] = useState<Record<"manager" | "staff", MenuKey[]>>({ manager: [], staff: [] });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setLocal({
+      manager: (perms.manager || []) as MenuKey[],
+      staff: (perms.staff || []) as MenuKey[],
+    });
+  }, [perms]);
+
+  const toggle = (role: "manager" | "staff", key: MenuKey) => {
+    setLocal(prev => {
+      const has = prev[role].includes(key);
+      return { ...prev, [role]: has ? prev[role].filter(k => k !== key) : [...prev[role], key] };
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    const rows = (["manager", "staff"] as const).map(role => ({ role, menu_keys: local[role] }));
+    const { error } = await supabase.from("role_menu_permissions").upsert(rows, { onConflict: "role" });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกสิทธิ์เมนูแล้ว");
+    reload();
+  };
+
+  return (
+    <Card className="p-6 shadow-soft border-border/60">
+      <div className="flex items-center gap-2 mb-1">
+        <Lock className="text-primary w-5 h-5"/>
+        <h2 className="font-display text-lg font-semibold">สิทธิ์เมนูตามบทบาท</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">เลือกว่าผู้ใช้ระดับ Manager / Staff เห็นเมนูใดได้บ้าง (Admin เห็นทุกเมนูเสมอ — เมนู "จัดการผู้ใช้" เฉพาะ Admin)</p>
+      <div className="space-y-4">
+        {(["manager", "staff"] as const).map(role => (
+          <div key={role} className="border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Badge variant="secondary" className="capitalize">{role}</Badge>
+              <span className="text-xs text-muted-foreground">{local[role].length} เมนู</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {ALL_MENUS.filter(m => m.key !== "users").map(m => (
+                <label key={m.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={local[role].includes(m.key)}
+                    onCheckedChange={() => toggle(role, m.key)}
+                  />
+                  <span>{m.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button onClick={save} disabled={saving} className="mt-4">
+        {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Save className="w-4 h-4 mr-1"/>}
+        บันทึก
+      </Button>
+    </Card>
+  );
+}
