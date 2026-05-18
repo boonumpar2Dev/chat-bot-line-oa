@@ -542,10 +542,15 @@ async function processEvent(event: any, supabase: any) {
   const lastAdminIdx = history.map((m, i) => m.sender === "admin" ? i : -1).filter(i => i >= 0).pop();
   if (lastAdminIdx !== undefined) history = history.slice(lastAdminIdx);
   else history = history.slice(-6);
-  const recentMsgs = history.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
+  let recentMsgs = history.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
+  recentMsgs = truncateToTokens(recentMsgs, BUDGET_HISTORY);
 
   // นับรอบสนทนา = จำนวนข้อความลูกค้าใน history (รวมข้อความปัจจุบัน)
   const customerTurns = history.filter((m: any) => m.sender === "customer").length;
+
+  // Conversation summary (ถ้ามี) — สรุปข้อความก่อนหน้าที่ตัดออกจาก history
+  const convSummary = (freshCustomer.conversation_summary || "").trim();
+  const summarySection = convSummary ? `\n\n📋 สรุปบทสนทนาก่อนหน้า:\n${convSummary}` : "";
 
   // ข้อมูล intent ที่มีอยู่แล้ว
   const knownIntent: string[] = [];
