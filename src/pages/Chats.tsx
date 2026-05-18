@@ -368,14 +368,13 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
   );
 }
 
-function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) => void }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []).slice(0, 5);
-  // แยกส่วน OCR ออกจากข้อความ
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
   let cleaned = m.message
@@ -383,10 +382,22 @@ function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) 
     .replace(/📎\s*https?:\/\/\S+/g, "")
     .replace(/^\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]\s*/g, "")
     .trim();
+  // highlight matching text
+  const renderText = (txt: string) => {
+    if (!highlight) return txt;
+    const idx = txt.toLowerCase().indexOf(highlight.toLowerCase());
+    if (idx < 0) return txt;
+    return <>{txt.slice(0, idx)}<mark className="bg-yellow-300/70 rounded px-0.5">{txt.slice(idx, idx + highlight.length)}</mark>{txt.slice(idx + highlight.length)}</>;
+  };
   return (
-    <div className={cn("flex flex-col gap-1", align)}>
-      <span className="text-[10px] text-muted-foreground px-2">
+    <div className={cn("flex flex-col gap-1 group", align)}>
+      <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
         {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
+        {isCustomer && cleaned && onTrainAI && (
+          <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="สร้างข้อมูลสอน AI จากข้อความนี้">
+            <Brain className="w-3 h-3"/>สอน AI
+          </button>
+        )}
       </span>
       {imgUrls.map((u: string) => (
         <img key={u} src={u} alt="" onClick={() => onImageClick(u)}
@@ -397,12 +408,12 @@ function MessageBubble({ m, onImageClick }: { m: any; onImageClick: (u: string) 
           <div className="flex items-center gap-1 mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
             📄 เนื้อหาในรูป (OCR)
           </div>
-          {ocrText}
+          {renderText(ocrText)}
         </div>
       )}
       {cleaned && (
         <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
-          {cleaned}
+          {renderText(cleaned)}
         </div>
       )}
       <span className="text-[10px] text-muted-foreground px-2">{new Date(m.created_at).toLocaleString("th-TH")}</span>
