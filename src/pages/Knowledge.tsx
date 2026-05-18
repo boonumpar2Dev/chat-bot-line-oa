@@ -481,7 +481,7 @@ function KnowledgeBaseTab() {
                 </div>
               )}
             </div>
-            <div className="space-y-1.5"><Label>เนื้อหา</Label>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>เนื้อหา</Label>{!edit.content && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,content:KB_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div>
               <Textarea rows={6} value={edit.content} onChange={e => setEdit({ ...edit, content: e.target.value })}
                 placeholder="ใส่ข้อมูล/คำถาม/คำตอบที่ AI ต้องรู้"/>
             </div>
