@@ -28,6 +28,8 @@ type Settings = {
   sla_hours: number;
   fallback_message: string;
   debounce_seconds: number;
+  comparison_phase_enabled: boolean;
+  comparison_kb_category: string | null;
 };
 
 export default function Settings() {
@@ -36,6 +38,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [newRule, setNewRule] = useState("");
   const [clearing, setClearing] = useState(false);
+  const [kbCategories, setKbCategories] = useState<string[]>([]);
 
   const clearTestData = async (mode: "conversations" | "all") => {
     setClearing(true);
