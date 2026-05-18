@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
@@ -74,6 +74,11 @@ function PackagesTab() {
 
   const openNew = () => { setEdit(blankPkg); setOpen(true); };
   const openEdit = (p: any) => { setEdit({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }); setOpen(true); };
+  const openDuplicate = (p: any) => {
+    const { id, created_at, updated_at, ...rest } = p;
+    setEdit({ ...rest, name: `${p.name} (สำเนา)`, pricing_tiers: structuredClone(p.pricing_tiers || []), custom_attributes: structuredClone(p.custom_attributes || []), image_urls: [...(p.image_urls || [])], video_urls: structuredClone(p.video_urls || []) });
+    setOpen(true);
+  };
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
     const res = edit.id ? await supabase.from("catering_packages").update(payload).eq("id", edit.id) : await supabase.from("catering_packages").insert(payload);
@@ -96,8 +101,9 @@ function PackagesTab() {
                 {!p.is_active && <Badge variant="outline" className="ml-1">ปิดใช้งาน</Badge>}
               </div>
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={()=>openEdit(p)}><Edit2 className="w-4 h-4"/></Button>
-                <Button size="icon" variant="ghost" onClick={()=>del(p.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                <Button size="icon" variant="ghost" onClick={()=>openEdit(p)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={()=>openDuplicate(p)} title="คัดลอกเป็นแพ็คเกจใหม่"><Copy className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
             {p.description && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{p.description}</p>}
@@ -260,7 +266,7 @@ function PromotionsTab() {
                 </div>
                 {p.description && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{p.description}</p>}
               </div>
-              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[],video_urls:p.video_urls||[]});setOpen(true);}}><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
+              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[],video_urls:p.video_urls||[]});setOpen(true);}} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>{const {id,created_at,updated_at,...rest}=p;setEdit({...rest,name:`${p.name} (สำเนา)`,applicable_categories:[...(p.applicable_categories||[])],image_urls:[...(p.image_urls||[])],video_urls:structuredClone(p.video_urls||[])});setOpen(true);}} title="คัดลอก"><Copy className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
             </div>
           </Card>
         ))}
@@ -315,6 +321,11 @@ function KnowledgeBaseTab() {
 
   const openNew = () => { setEdit(blankKB); setOpen(true); };
   const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] }); setOpen(true); };
+  const openDuplicate = (i: any) => {
+    const { id, created_at, updated_at, ...rest } = i;
+    setEdit({ ...rest, title: `${i.title} (สำเนา)`, image_urls: [...(i.image_urls || [])], video_urls: structuredClone(i.video_urls || []), bundle_image_titles: [...(i.bundle_image_titles || [])] });
+    setOpen(true);
+  };
   const save = async () => {
     const payload: any = { ...edit };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
@@ -378,8 +389,9 @@ function KnowledgeBaseTab() {
                 </div>
               </div>
               <div className="flex gap-1">
-                <Button size="icon" variant="ghost" onClick={() => openEdit(i)}><Edit2 className="w-4 h-4"/></Button>
-                <Button size="icon" variant="ghost" onClick={() => del(i.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => openEdit(i)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => openDuplicate(i)} title="คัดลอก"><Copy className="w-4 h-4"/></Button>
+                <Button size="icon" variant="ghost" onClick={() => del(i.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
             {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{i.content}</p>}
