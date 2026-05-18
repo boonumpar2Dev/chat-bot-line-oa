@@ -114,15 +114,40 @@ export default function Chats() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // Customers found by searching inside message content
+  const [msgMatchIds, setMsgMatchIds] = useState<Set<string>>(new Set());
+  const [msgSnippets, setMsgSnippets] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2) { setMsgMatchIds(new Set()); setMsgSnippets({}); return; }
+    const t = setTimeout(async () => {
+      const { data } = await supabase.from("conversations")
+        .select("customer_id, message")
+        .ilike("message", `%${q}%`)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      const ids = new Set<string>();
+      const snip: Record<string, string> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.customer_id) return;
+        ids.add(r.customer_id);
+        if (!snip[r.customer_id]) snip[r.customer_id] = (r.message || "").slice(0, 80);
+      });
+      setMsgMatchIds(ids); setMsgSnippets(snip);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter(c =>
       (c.display_name || "").toLowerCase().includes(q) ||
       (c.nickname || "").toLowerCase().includes(q) ||
-      (c.phone || "").includes(q)
+      (c.phone || "").includes(q) ||
+      msgMatchIds.has(c.id)
     );
-  }, [customers, search]);
+  }, [customers, search, msgMatchIds]);
 
   const updateLocalCustomer = (patch: any) => {
     setCustomers(prev => prev.map(c => c.id === selectedId ? { ...c, ...patch } : c));
