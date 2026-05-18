@@ -30,6 +30,14 @@ type Settings = {
   debounce_seconds: number;
   comparison_phase_enabled: boolean;
   comparison_kb_category: string | null;
+  ai_persona: string;
+  allowed_service_types: string[];
+  forbidden_terms: string[];
+  image_selection_rules: string;
+  intent_collection_order: string;
+  tier_special_rules: string;
+  trivial_replies: string[];
+  tax_id_keywords: string[];
 };
 
 export default function Settings() {
