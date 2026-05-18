@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens } from "../_shared/ai-context.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,23 @@ const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed"];
 const LINE_TOKEN = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")!;
 const LINE_SECRET = Deno.env.get("LINE_CHANNEL_SECRET")!;
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+// Token budgets (ภาษาไทย char ≠ token, ใช้ token-based ดีกว่า char-based)
+const BUDGET_KB = 3000;
+const BUDGET_PACKAGES = 2000;
+const BUDGET_PROMOS = 800;
+const BUDGET_HISTORY = 2000;
+
+// เรียก summarize-conversation แบบไม่รอผล
+function triggerSummarize(customerId: string) {
+  fetch(`${SUPABASE_URL}/functions/v1/summarize-conversation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+    body: JSON.stringify({ customer_id: customerId }),
+  }).catch(e => console.error("[summarize trigger] failed:", e?.message));
+}
 
 async function verifySignature(body: string, signature: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
