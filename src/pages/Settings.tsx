@@ -132,6 +132,51 @@ export default function Settings() {
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
+        <div className="flex items-center gap-2 mb-5"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">บทบาท AI & กฎเฉพาะธุรกิจ</h2></div>
+        <div className="space-y-5">
+          <div className="space-y-1.5">
+            <Label>บทบาท AI (Persona)</Label>
+            <Textarea rows={3} value={s.ai_persona} onChange={e=>upd("ai_persona", e.target.value)} placeholder='เช่น "คุณคือ AI ผู้ช่วยร้านสปา..."' />
+            <p className="text-xs text-muted-foreground">บรรทัดแรกของ prompt — กำหนดน้ำเสียง/อาชีพของ AI</p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>รูปแบบบริการที่อนุญาต (คั่นด้วย ,)</Label>
+              <Input value={s.allowed_service_types.join(", ")} onChange={e=>upd("allowed_service_types", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
+              <p className="text-xs text-muted-foreground">เช่น บุฟเฟ่ต์, ซุ้มอาหาร, โต๊ะจีน</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>คำต้องห้าม (AI ห้ามพูด)</Label>
+              <Input value={s.forbidden_terms.join(", ")} onChange={e=>upd("forbidden_terms", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
+              <p className="text-xs text-muted-foreground">เช่น ค็อกเทล, fine dining</p>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>ลำดับเก็บข้อมูลลูกค้า</Label>
+            <Input value={s.intent_collection_order} onChange={e=>upd("intent_collection_order", e.target.value)} />
+            <p className="text-xs text-muted-foreground">ลำดับที่ AI จะถามเก็บข้อมูล (ทีละเรื่อง)</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>กฎพิเศษเรื่องจำนวนคน/สัดส่วน</Label>
+            <Textarea rows={3} value={s.tier_special_rules} onChange={e=>upd("tier_special_rules", e.target.value)} placeholder="ใส่ว่างได้ ถ้าธุรกิจไม่มีกฎพิเศษ" />
+            <p className="text-xs text-muted-foreground">เช่น "ถามรวมพระหรือยัง / สัดส่วนพระ+แขก" — ปล่อยว่างถ้าไม่ต้องการ</p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>คำที่ไม่ต้องตอบ (Trivial replies)</Label>
+              <Input value={s.trivial_replies.join(", ")} onChange={e=>upd("trivial_replies", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
+              <p className="text-xs text-muted-foreground">เช่น ok, ขอบคุณ, 👍</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>คีย์เวิร์ด Tax ID</Label>
+              <Input value={s.tax_id_keywords.join(", ")} onChange={e=>upd("tax_id_keywords", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
+              <p className="text-xs text-muted-foreground">คำที่บ่งบอกว่าเป็นเลขผู้เสียภาษี</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-soft border-border/60">
         <div className="flex items-center gap-2 mb-5"><Clock className="text-primary"/><h2 className="font-display text-lg font-semibold">Manual Chat & Mute Timer</h2></div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5"><Label>Manual Chat (ชม.)</Label><Input type="number" value={s.manual_chat_hours} onChange={e=>upd("manual_chat_hours",+e.target.value)} /><p className="text-xs text-muted-foreground">หยุด AI เมื่อแอดมินตอบ</p></div>
