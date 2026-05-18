@@ -74,6 +74,11 @@ function PackagesTab() {
 
   const openNew = () => { setEdit(blankPkg); setOpen(true); };
   const openEdit = (p: any) => { setEdit({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }); setOpen(true); };
+  const openDuplicate = (p: any) => {
+    const { id, created_at, updated_at, ...rest } = p;
+    setEdit({ ...rest, name: `${p.name} (สำเนา)`, pricing_tiers: structuredClone(p.pricing_tiers || []), custom_attributes: structuredClone(p.custom_attributes || []), image_urls: [...(p.image_urls || [])], video_urls: structuredClone(p.video_urls || []) });
+    setOpen(true);
+  };
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
     const res = edit.id ? await supabase.from("catering_packages").update(payload).eq("id", edit.id) : await supabase.from("catering_packages").insert(payload);
