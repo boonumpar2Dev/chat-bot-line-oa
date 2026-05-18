@@ -428,87 +428,91 @@ async function processEvent(event: any, supabase: any) {
     if (!inWindow) return;
   }
 
-  // Fetch AI context (KB + packages + promos + history)
-  const [{ data: recentConvs }, { data: kb }, { data: pkgs }, { data: promos }] = await Promise.all([
+  // Fetch AI context + cache + total message count
+  const [
+    { data: recentConvs },
+    { data: kb },
+    { data: pkgs },
+    { data: promos },
+    { data: cacheRows },
+    { count: totalMsgCount },
+  ] = await Promise.all([
     supabase.from("conversations").select("*").eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(12),
     supabase.from("knowledge_base").select("*").eq("status", "active").order("sort_order", { ascending: true }),
     supabase.from("catering_packages").select("*").eq("is_active", true),
     supabase.from("promotions").select("*").eq("is_active", true),
+    supabase.from("ai_context_cache").select("key, content"),
+    supabase.from("conversations").select("id", { count: "exact", head: true }).eq("customer_id", customer.id),
   ]);
 
   const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
   const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
   if (lastAdmin && Date.now() - new Date(lastAdmin.created_at).getTime() < cooldownMs) return;
 
-  // KB context
+  // Trigger summarization (async, ไม่บล็อก) ถ้าข้อความเกิน 20
+  if ((totalMsgCount || 0) >= 20) {
+    triggerSummarize(customer.id);
+  }
+
+  // === Hybrid filter: ถ้ารู้ event_type → กรอง pkg/promo ที่ตรง category, ไม่งั้นส่งทั้งหมด ===
+  const evType = (freshCustomer.event_type || "").trim().toLowerCase();
+  const filterMatch = (cat: string | null | undefined) => {
+    if (!evType) return true;
+    if (!cat) return false;
+    const c = String(cat).toLowerCase();
+    return c.includes(evType) || evType.includes(c);
+  };
+  const filteredPkgs = evType
+    ? (pkgs || []).filter((p: any) => filterMatch(p.category))
+    : (pkgs || []);
+  // ถ้ากรองแล้วเหลือ 0 → fallback ส่งทั้งหมด (กันพลาด)
+  const usePkgs = filteredPkgs.length > 0 ? filteredPkgs : (pkgs || []);
+  const filteredPromos = evType
+    ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
+    : (promos || []);
+  const usePromos = filteredPromos;
+
+  // === KB / Package / Promo context: ใช้ cache ถ้าไม่มี filter, ไม่งั้น build ใหม่ ===
+  const cacheMap = new Map<string, string>((cacheRows || []).map((r: any) => [r.key, r.content]));
   const kbItems = kb || [];
   const kbWithImages = kbItems.filter((i: any) => getItemImages(i).length > 0);
   const kbWithVideos = kbItems.filter((i: any) => getItemVideos(i).length > 0);
-  const kbContext = kbItems.map((k: any) => {
-    const imgs = getItemImages(k);
-    const vids = getItemVideos(k);
-    const content = (k.content || "").slice(0, 800);
-    const cat = k.category ? `[${k.category}] ` : "";
-    const tags: string[] = [];
-    if (imgs.length) tags.push(`มีรูป ${imgs.length} รูป`);
-    if (vids.length) tags.push(`มีวิดีโอ ${vids.length} คลิป`);
-    return `## ${cat}${k.title}\n${content}${tags.length ? `\n[${tags.join(" + ")}]` : ""}`;
-  }).join("\n\n");
 
-  // Package context (with custom_attributes + tier.guest_count fallback)
-  const pkgsWithImages = (pkgs || []).filter((p: any) => p.image_urls?.length > 0);
-  const pkgsWithVideos = (pkgs || []).filter((p: any) => getItemVideos(p).length > 0);
-  const pkgContext = (pkgs || []).length > 0 ? "\n\n--- แคตตาล็อกแพ็กเกจ ---\n" + (pkgs || []).map((p: any) => {
-    let s = `## แพ็กเกจ: ${p.name}`;
-    if (p.category) s += `\nประเภท: ${p.category}`;
-    if (p.min_condition) s += `\nเงื่อนไขขั้นต่ำ: ${p.min_condition}`;
-    if (p.pricing_tiers?.length > 0) {
-      s += "\nราคา:";
-      p.pricing_tiers.forEach((t: any) => {
-        const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
-        const label = t.tier_name ? `[${t.tier_name}] ` : "";
-        const imgFlag = t.image_url ? " 🖼️" : "";
-        const capFlag = guest > 0 ? ` 【รับแขกได้สูงสุด ${guest} คน】` : "";
-        const qLevels = Array.isArray(t.quality_levels) ? t.quality_levels.filter((q: any) => q?.name) : [];
-        const hasQL = qLevels.length > 0;
-        const priceShown = hasQL ? "(ดูระดับคุณภาพด้านล่าง)" : t.price;
-        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${priceShown}${imgFlag}${capFlag}`;
-        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${priceShown}${imgFlag}${capFlag}`;
-        else s += `\n  - ${label}${total || "?"} ท่าน: ${priceShown}${imgFlag}${capFlag}`;
-        if (hasQL) {
-          qLevels.forEach((q: any) => {
-            const qImg = q.image_url ? " 🖼️" : "";
-            const hl = q.highlights ? ` — ${q.highlights}` : "";
-            s += `\n      • ${q.name}: ${q.price}${qImg}${hl}`;
-          });
+  // KB ไม่มี filter → ใช้ cache ได้เลย
+  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(kbItems);
+  kbContext = truncateToTokens(kbContext, BUDGET_KB);
+
+  // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
+  const pkgsWithImages = usePkgs.filter((p: any) => p.image_urls?.length > 0);
+  const pkgsWithVideos = usePkgs.filter((p: any) => getItemVideos(p).length > 0);
+  let pkgContext = (evType && filteredPkgs.length > 0)
+    ? buildPackageBlock(usePkgs)
+    : (cacheMap.get("packages_summary") || buildPackageBlock(usePkgs));
+  pkgContext = truncateToTokens(pkgContext, BUDGET_PACKAGES);
+
+  const promosWithImages = usePromos.filter((pr: any) => pr.image_urls?.length > 0);
+  const promosWithVideos = usePromos.filter((pr: any) => getItemVideos(pr).length > 0);
+  let promoContext = evType
+    ? buildPromoBlock(usePromos)
+    : (cacheMap.get("promotions_summary") || buildPromoBlock(usePromos));
+  promoContext = truncateToTokens(promoContext, BUDGET_PROMOS);
+
+  // Tier-level images (ใช้ usePkgs ที่ filter แล้ว)
+  const tierImageRefs: { title: string; url: string }[] = [];
+  for (const p of usePkgs) {
+    for (const t of (p.pricing_tiers || [])) {
+      if (t.image_url && t.tier_name) {
+        tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name}`, url: t.image_url });
+      }
+      if (Array.isArray(t.quality_levels)) {
+        for (const q of t.quality_levels) {
+          if (q?.image_url && q?.name && t.tier_name) {
+            tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name} — ${q.name}`, url: q.image_url });
+          }
         }
-      });
+      }
     }
-    if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
-      s += "\nข้อมูลเพิ่มเติม:";
-      p.custom_attributes.forEach((a: any) => { if (a.label && a.value) s += `\n  - ${a.label}: ${a.value}`; });
-    }
-    if (p.description) s += `\nอาหาร: ${(p.description || "").slice(0, 300)}`;
-    if (p.notes) s += `\nหมายเหตุ: ${(p.notes || "").slice(0, 200)}`;
-    if (p.ai_instruction) s += `\n🤖 คำสั่ง AI: ${p.ai_instruction}`;
-    if (p.image_urls?.length > 0) s += `\n[รูปรวมแพ็ก ${p.image_urls.length} รูป]`;
-    const pVids = getItemVideos(p);
-    if (pVids.length > 0) s += `\n[วิดีโอ ${pVids.length} คลิป]`;
-    return s;
-  }).join("\n\n") : "";
-
-  const promosWithImages = (promos || []).filter((pr: any) => pr.image_urls?.length > 0);
-  const promosWithVideos = (promos || []).filter((pr: any) => getItemVideos(pr).length > 0);
-  const promoContext = (promos || []).length > 0 ? "\n\n--- โปรโมชั่น ---\n" + (promos || []).map((pr: any) => {
-    let s = `## โปรโมชั่น: ${pr.name}`;
-    if (pr.applicable_categories?.length > 0) s += `\nใช้กับ: ${pr.applicable_categories.join(", ")}`;
-    if (pr.min_guests != null) s += `\nเงื่อนไข: ใช้กับงานตั้งแต่ ${pr.min_guests} ท่านขึ้นไป`;
-    if (pr.description) s += `\n${pr.description}`;
-    if (pr.image_urls?.length > 0) s += `\n[มีรูป ${pr.image_urls.length} รูป]`;
-    const prVids = getItemVideos(pr);
-    if (prVids.length > 0) s += `\n[วิดีโอ ${prVids.length} คลิป]`;
-    return s;
-  }).join("\n\n") : "";
+  }
 
   // Tier-level images: title format "แพ็กเกจ: <name> — <tier_name>" และ quality level "— <quality>"
   const tierImageRefs: { title: string; url: string }[] = [];
