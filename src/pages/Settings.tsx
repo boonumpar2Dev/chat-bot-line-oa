@@ -299,7 +299,6 @@ export default function Settings() {
       </Card>
 
       {isAdmin && <AiCacheCard />}
-      {isAdmin && <RolePermissionsCard />}
 
 
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
