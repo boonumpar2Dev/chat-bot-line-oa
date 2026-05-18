@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
+import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle, Zap, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -293,6 +293,8 @@ export default function Settings() {
         <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
       </Card>
 
+      <AiCacheCard />
+
 
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
         <div className="flex items-center gap-2 mb-2"><AlertTriangle className="text-destructive"/><h2 className="font-display text-lg font-semibold">โซนทดสอบ (Danger Zone)</h2></div>
@@ -332,5 +334,56 @@ export default function Settings() {
         </div>
       </Card>
     </div>
+  );
+}
+
+function AiCacheCard() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const load = async () => {
+    const { data } = await supabase.from("ai_context_cache").select("*").order("key");
+    setRows(data || []);
+  };
+  useEffect(() => { load(); }, []);
+  const rebuild = async () => {
+    setBusy(true);
+    const { data, error } = await supabase.functions.invoke("rebuild-ai-cache");
+    setBusy(false);
+    if (error) toast.error(error.message); else toast.success("Rebuild สำเร็จ");
+    load();
+  };
+  const total = rows.reduce((a, r) => a + (r.token_count || 0), 0);
+  const labels: Record<string, string> = {
+    kb_summary: "ความรู้ (KB)",
+    packages_summary: "แพ็กเกจ",
+    promotions_summary: "โปรโมชั่น",
+  };
+  return (
+    <Card className="p-6 shadow-soft border-border/60">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <Zap className="text-primary w-5 h-5"/>
+          <h2 className="font-display text-lg font-semibold">AI Context Cache</h2>
+          <Badge variant="secondary">~{total.toLocaleString()} tokens</Badge>
+        </div>
+        <Button size="sm" variant="outline" onClick={rebuild} disabled={busy}>
+          {busy ? <Loader2 className="w-4 h-4 animate-spin"/> : <RefreshCw className="w-4 h-4"/>} Rebuild
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">Cache จะ rebuild อัตโนมัติเมื่อแก้ไข KB/แพ็กเกจ/โปรโมชั่น — กดปุ่มนี้เพื่อ force update</p>
+      <div className="space-y-1.5 text-sm">
+        {rows.length === 0 && <p className="text-muted-foreground">ยังไม่มี cache — กด Rebuild เพื่อสร้างครั้งแรก</p>}
+        {rows.map(r => (
+          <div key={r.key} className="flex items-center justify-between border-b pb-1.5 last:border-0">
+            <span>{labels[r.key] || r.key}</span>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span>{r.meta?.item_count || 0} รายการ</span>
+              <Badge variant="outline">{(r.token_count || 0).toLocaleString()} tokens</Badge>
+              <span>{new Date(r.updated_at).toLocaleString("th-TH", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short" })}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }

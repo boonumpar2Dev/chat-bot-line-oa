@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens } from "../_shared/ai-context.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,23 @@ const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed"];
 const LINE_TOKEN = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")!;
 const LINE_SECRET = Deno.env.get("LINE_CHANNEL_SECRET")!;
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+// Token budgets (ภาษาไทย char ≠ token, ใช้ token-based ดีกว่า char-based)
+const BUDGET_KB = 3000;
+const BUDGET_PACKAGES = 2000;
+const BUDGET_PROMOS = 800;
+const BUDGET_HISTORY = 2000;
+
+// เรียก summarize-conversation แบบไม่รอผล
+function triggerSummarize(customerId: string) {
+  fetch(`${SUPABASE_URL}/functions/v1/summarize-conversation`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+    body: JSON.stringify({ customer_id: customerId }),
+  }).catch(e => console.error("[summarize trigger] failed:", e?.message));
+}
 
 async function verifySignature(body: string, signature: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
@@ -410,91 +428,78 @@ async function processEvent(event: any, supabase: any) {
     if (!inWindow) return;
   }
 
-  // Fetch AI context (KB + packages + promos + history)
-  const [{ data: recentConvs }, { data: kb }, { data: pkgs }, { data: promos }] = await Promise.all([
+  // Fetch AI context + cache + total message count
+  const [
+    { data: recentConvs },
+    { data: kb },
+    { data: pkgs },
+    { data: promos },
+    { data: cacheRows },
+    { count: totalMsgCount },
+  ] = await Promise.all([
     supabase.from("conversations").select("*").eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(12),
     supabase.from("knowledge_base").select("*").eq("status", "active").order("sort_order", { ascending: true }),
     supabase.from("catering_packages").select("*").eq("is_active", true),
     supabase.from("promotions").select("*").eq("is_active", true),
+    supabase.from("ai_context_cache").select("key, content"),
+    supabase.from("conversations").select("id", { count: "exact", head: true }).eq("customer_id", customer.id),
   ]);
 
   const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
   const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
   if (lastAdmin && Date.now() - new Date(lastAdmin.created_at).getTime() < cooldownMs) return;
 
-  // KB context
+  // Trigger summarization (async, ไม่บล็อก) ถ้าข้อความเกิน 20
+  if ((totalMsgCount || 0) >= 20) {
+    triggerSummarize(customer.id);
+  }
+
+  // === Hybrid filter: ถ้ารู้ event_type → กรอง pkg/promo ที่ตรง category, ไม่งั้นส่งทั้งหมด ===
+  const evType = (freshCustomer.event_type || "").trim().toLowerCase();
+  const filterMatch = (cat: string | null | undefined) => {
+    if (!evType) return true;
+    if (!cat) return false;
+    const c = String(cat).toLowerCase();
+    return c.includes(evType) || evType.includes(c);
+  };
+  const filteredPkgs = evType
+    ? (pkgs || []).filter((p: any) => filterMatch(p.category))
+    : (pkgs || []);
+  // ถ้ากรองแล้วเหลือ 0 → fallback ส่งทั้งหมด (กันพลาด)
+  const usePkgs = filteredPkgs.length > 0 ? filteredPkgs : (pkgs || []);
+  const filteredPromos = evType
+    ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
+    : (promos || []);
+  const usePromos = filteredPromos;
+
+  // === KB / Package / Promo context: ใช้ cache ถ้าไม่มี filter, ไม่งั้น build ใหม่ ===
+  const cacheMap = new Map<string, string>((cacheRows || []).map((r: any) => [r.key, r.content]));
   const kbItems = kb || [];
   const kbWithImages = kbItems.filter((i: any) => getItemImages(i).length > 0);
   const kbWithVideos = kbItems.filter((i: any) => getItemVideos(i).length > 0);
-  const kbContext = kbItems.map((k: any) => {
-    const imgs = getItemImages(k);
-    const vids = getItemVideos(k);
-    const content = (k.content || "").slice(0, 800);
-    const cat = k.category ? `[${k.category}] ` : "";
-    const tags: string[] = [];
-    if (imgs.length) tags.push(`มีรูป ${imgs.length} รูป`);
-    if (vids.length) tags.push(`มีวิดีโอ ${vids.length} คลิป`);
-    return `## ${cat}${k.title}\n${content}${tags.length ? `\n[${tags.join(" + ")}]` : ""}`;
-  }).join("\n\n");
 
-  // Package context (with custom_attributes + tier.guest_count fallback)
-  const pkgsWithImages = (pkgs || []).filter((p: any) => p.image_urls?.length > 0);
-  const pkgsWithVideos = (pkgs || []).filter((p: any) => getItemVideos(p).length > 0);
-  const pkgContext = (pkgs || []).length > 0 ? "\n\n--- แคตตาล็อกแพ็กเกจ ---\n" + (pkgs || []).map((p: any) => {
-    let s = `## แพ็กเกจ: ${p.name}`;
-    if (p.category) s += `\nประเภท: ${p.category}`;
-    if (p.min_condition) s += `\nเงื่อนไขขั้นต่ำ: ${p.min_condition}`;
-    if (p.pricing_tiers?.length > 0) {
-      s += "\nราคา:";
-      p.pricing_tiers.forEach((t: any) => {
-        const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
-        const label = t.tier_name ? `[${t.tier_name}] ` : "";
-        const imgFlag = t.image_url ? " 🖼️" : "";
-        const capFlag = guest > 0 ? ` 【รับแขกได้สูงสุด ${guest} คน】` : "";
-        const qLevels = Array.isArray(t.quality_levels) ? t.quality_levels.filter((q: any) => q?.name) : [];
-        const hasQL = qLevels.length > 0;
-        const priceShown = hasQL ? "(ดูระดับคุณภาพด้านล่าง)" : t.price;
-        if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${priceShown}${imgFlag}${capFlag}`;
-        else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${priceShown}${imgFlag}${capFlag}`;
-        else s += `\n  - ${label}${total || "?"} ท่าน: ${priceShown}${imgFlag}${capFlag}`;
-        if (hasQL) {
-          qLevels.forEach((q: any) => {
-            const qImg = q.image_url ? " 🖼️" : "";
-            const hl = q.highlights ? ` — ${q.highlights}` : "";
-            s += `\n      • ${q.name}: ${q.price}${qImg}${hl}`;
-          });
-        }
-      });
-    }
-    if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
-      s += "\nข้อมูลเพิ่มเติม:";
-      p.custom_attributes.forEach((a: any) => { if (a.label && a.value) s += `\n  - ${a.label}: ${a.value}`; });
-    }
-    if (p.description) s += `\nอาหาร: ${(p.description || "").slice(0, 300)}`;
-    if (p.notes) s += `\nหมายเหตุ: ${(p.notes || "").slice(0, 200)}`;
-    if (p.ai_instruction) s += `\n🤖 คำสั่ง AI: ${p.ai_instruction}`;
-    if (p.image_urls?.length > 0) s += `\n[รูปรวมแพ็ก ${p.image_urls.length} รูป]`;
-    const pVids = getItemVideos(p);
-    if (pVids.length > 0) s += `\n[วิดีโอ ${pVids.length} คลิป]`;
-    return s;
-  }).join("\n\n") : "";
+  // KB ไม่มี filter → ใช้ cache ได้เลย
+  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(kbItems);
+  kbContext = truncateToTokens(kbContext, BUDGET_KB);
 
-  const promosWithImages = (promos || []).filter((pr: any) => pr.image_urls?.length > 0);
-  const promosWithVideos = (promos || []).filter((pr: any) => getItemVideos(pr).length > 0);
-  const promoContext = (promos || []).length > 0 ? "\n\n--- โปรโมชั่น ---\n" + (promos || []).map((pr: any) => {
-    let s = `## โปรโมชั่น: ${pr.name}`;
-    if (pr.applicable_categories?.length > 0) s += `\nใช้กับ: ${pr.applicable_categories.join(", ")}`;
-    if (pr.min_guests != null) s += `\nเงื่อนไข: ใช้กับงานตั้งแต่ ${pr.min_guests} ท่านขึ้นไป`;
-    if (pr.description) s += `\n${pr.description}`;
-    if (pr.image_urls?.length > 0) s += `\n[มีรูป ${pr.image_urls.length} รูป]`;
-    const prVids = getItemVideos(pr);
-    if (prVids.length > 0) s += `\n[วิดีโอ ${prVids.length} คลิป]`;
-    return s;
-  }).join("\n\n") : "";
+  // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
+  const pkgsWithImages = usePkgs.filter((p: any) => p.image_urls?.length > 0);
+  const pkgsWithVideos = usePkgs.filter((p: any) => getItemVideos(p).length > 0);
+  let pkgContext = (evType && filteredPkgs.length > 0)
+    ? buildPackageBlock(usePkgs)
+    : (cacheMap.get("packages_summary") || buildPackageBlock(usePkgs));
+  pkgContext = truncateToTokens(pkgContext, BUDGET_PACKAGES);
 
-  // Tier-level images: title format "แพ็กเกจ: <name> — <tier_name>" และ quality level "— <quality>"
+  const promosWithImages = usePromos.filter((pr: any) => pr.image_urls?.length > 0);
+  const promosWithVideos = usePromos.filter((pr: any) => getItemVideos(pr).length > 0);
+  let promoContext = evType
+    ? buildPromoBlock(usePromos)
+    : (cacheMap.get("promotions_summary") || buildPromoBlock(usePromos));
+  promoContext = truncateToTokens(promoContext, BUDGET_PROMOS);
+
+  // Tier-level images (ใช้ usePkgs ที่ filter แล้ว)
   const tierImageRefs: { title: string; url: string }[] = [];
-  for (const p of (pkgs || [])) {
+  for (const p of usePkgs) {
     for (const t of (p.pricing_tiers || [])) {
       if (t.image_url && t.tier_name) {
         tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name}`, url: t.image_url });
@@ -508,6 +513,8 @@ async function processEvent(event: any, supabase: any) {
       }
     }
   }
+
+
 
   const allImageSources = [
     ...kbWithImages.map((i: any) => `"${i.title}"`),
@@ -535,10 +542,15 @@ async function processEvent(event: any, supabase: any) {
   const lastAdminIdx = history.map((m, i) => m.sender === "admin" ? i : -1).filter(i => i >= 0).pop();
   if (lastAdminIdx !== undefined) history = history.slice(lastAdminIdx);
   else history = history.slice(-6);
-  const recentMsgs = history.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
+  let recentMsgs = history.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
+  recentMsgs = truncateToTokens(recentMsgs, BUDGET_HISTORY);
 
   // นับรอบสนทนา = จำนวนข้อความลูกค้าใน history (รวมข้อความปัจจุบัน)
   const customerTurns = history.filter((m: any) => m.sender === "customer").length;
+
+  // Conversation summary (ถ้ามี) — สรุปข้อความก่อนหน้าที่ตัดออกจาก history
+  const convSummary = (freshCustomer.conversation_summary || "").trim();
+  const summarySection = convSummary ? `\n\n📋 สรุปบทสนทนาก่อนหน้า:\n${convSummary}` : "";
 
   // ข้อมูล intent ที่มีอยู่แล้ว
   const knownIntent: string[] = [];
@@ -601,7 +613,7 @@ async function processEvent(event: any, supabase: any) {
 - 📄 ถ้าข้อความมี "📄 เนื้อหาในรูป:" = ลูกค้าส่งแคปแชท/ใบเสนอราคามา ให้อ่านเหมือนลูกค้าพิมพ์เอง
 ${tierSpecialLine}
 📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
-- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}
+- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}${summarySection}
 
 KB:
 ${kbContext || "(ว่าง)"}
@@ -621,6 +633,9 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
 (${forbiddenCheckLine ? "7" : "6"}) คำถามที่จะถามนี้ AI เคยถามใน 1 รอบล่าสุดแล้วลูกค้าไม่ตอบ? → **ห้ามถามซ้ำ** เปลี่ยนไปตอบ/ถามเรื่องอื่นแทน (รออีก 2-3 รอบค่อยถามใหม่)
 
 ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent`;
+
+  // Log token usage (เพื่อ monitor การประหยัด)
+  console.log(`[Tokens] prompt≈${countTokens(prompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
 
   let aiResp: any;
   try {

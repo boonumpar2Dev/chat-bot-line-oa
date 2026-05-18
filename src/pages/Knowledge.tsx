@@ -27,6 +27,11 @@ const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: 
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
 const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
 
+// Auto rebuild AI cache หลัง CRUD — fire-and-forget ไม่บล็อก UI
+export const triggerRebuildAiCache = () => {
+  supabase.functions.invoke("rebuild-ai-cache").catch((e) => console.warn("[ai-cache rebuild]", e));
+};
+
 // เทมเพลตตัวอย่างให้ user แก้ไขแทนการเริ่มจากช่องว่าง
 const KB_TEMPLATE = `**คำถามที่ลูกค้ามักถาม:**
 (เช่น "มีบริการ XXX ไหม?", "ราคาเท่าไหร่?")
@@ -115,9 +120,9 @@ function PackagesTab() {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
     const res = edit.id ? await supabase.from("catering_packages").update(payload).eq("id", edit.id) : await supabase.from("catering_packages").insert(payload);
     if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["packages"]});
+    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
   };
-  const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); };
+  const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
 
   return (
     <div className="space-y-4">
@@ -280,9 +285,9 @@ function PromotionsTab() {
     const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
     const res = edit.id ? await supabase.from("promotions").update(payload).eq("id",edit.id) : await supabase.from("promotions").insert(payload);
     if(res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["promos"]});
+    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
   };
-  const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); };
+  const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache(); };
   return (
     <div className="space-y-4">
       <div className="flex justify-end"><Button onClick={()=>{setEdit(blankPromo);setOpen(true);}}><Plus/>เพิ่มโปรโมชั่น</Button></div>
@@ -365,12 +370,12 @@ function KnowledgeBaseTab() {
       ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
       : await supabase.from("knowledge_base").insert(payload);
     if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({ queryKey: ["kb"] });
+    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
   };
   const del = async (id: string) => {
     if (!confirm("ลบรายการนี้?")) return;
     await supabase.from("knowledge_base").delete().eq("id", id);
-    toast.success("ลบแล้ว"); qc.invalidateQueries({ queryKey: ["kb"] });
+    toast.success("ลบแล้ว"); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
   };
 
   const addCategory = async () => {

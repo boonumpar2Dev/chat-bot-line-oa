@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_context_cache: {
+        Row: {
+          content: string
+          key: string
+          meta: Json
+          token_count: number
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          key: string
+          meta?: Json
+          token_count?: number
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          key?: string
+          meta?: Json
+          token_count?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           ai_enabled: boolean
@@ -245,6 +269,7 @@ export type Database = {
           ai_resumed_at: string | null
           clv_amount: number
           contact_year: number | null
+          conversation_summary: string | null
           created_at: string
           display_name: string | null
           event_date: string | null
@@ -262,6 +287,7 @@ export type Database = {
           picture_url: string | null
           sla_deadline: string | null
           status: Database["public"]["Enums"]["customer_status"]
+          summary_until_message_id: string | null
           tags: string[]
           tax_id: string | null
           unread_count: number
@@ -274,6 +300,7 @@ export type Database = {
           ai_resumed_at?: string | null
           clv_amount?: number
           contact_year?: number | null
+          conversation_summary?: string | null
           created_at?: string
           display_name?: string | null
           event_date?: string | null
@@ -291,6 +318,7 @@ export type Database = {
           picture_url?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
+          summary_until_message_id?: string | null
           tags?: string[]
           tax_id?: string | null
           unread_count?: number
@@ -303,6 +331,7 @@ export type Database = {
           ai_resumed_at?: string | null
           clv_amount?: number
           contact_year?: number | null
+          conversation_summary?: string | null
           created_at?: string
           display_name?: string | null
           event_date?: string | null
@@ -320,6 +349,7 @@ export type Database = {
           picture_url?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
+          summary_until_message_id?: string | null
           tags?: string[]
           tax_id?: string | null
           unread_count?: number
