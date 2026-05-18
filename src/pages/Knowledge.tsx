@@ -428,6 +428,31 @@ function KnowledgeBaseTab() {
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label>
               <VideoUrlsField videos={edit.video_urls} onChange={v => setEdit({ ...edit, video_urls: v })}/>
             </div>
+            <div className="space-y-1.5">
+              <Label>แนบรูปอื่นไปด้วยอัตโนมัติ (Bundle)</Label>
+              <p className="text-[11px] text-muted-foreground">เมื่อ AI เลือกหัวข้อนี้ ระบบจะแนบรูปจากหัวข้อต่อไปนี้ไปด้วย เหมาะกับ KB "เปรียบเทียบ" ที่อยากส่งเมนูทั้ง 3 tier พร้อมกัน</p>
+              <Select value="" onValueChange={v => {
+                if (v && !edit.bundle_image_titles.includes(v)) setEdit({ ...edit, bundle_image_titles: [...edit.bundle_image_titles, v] });
+              }}>
+                <SelectTrigger><SelectValue placeholder="+ เพิ่มหัวข้อที่จะแนบไปด้วย"/></SelectTrigger>
+                <SelectContent>
+                  {(items || []).filter((x: any) => x.id !== edit.id && x.title !== edit.title && !edit.bundle_image_titles.includes(x.title)).map((x: any) => (
+                    <SelectItem key={x.id} value={x.title}>{x.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {edit.bundle_image_titles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {edit.bundle_image_titles.map(t => (
+                    <Badge key={t} variant="secondary" className="gap-1 pr-1">
+                      {t}
+                      <button type="button" onClick={() => setEdit({ ...edit, bundle_image_titles: edit.bundle_image_titles.filter(x => x !== t) })}
+                        className="hover:bg-destructive/20 rounded px-0.5"><X className="w-3 h-3"/></button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>
               <Switch checked={edit.status === "active"}
