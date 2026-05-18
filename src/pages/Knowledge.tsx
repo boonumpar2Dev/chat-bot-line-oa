@@ -27,6 +27,38 @@ const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: 
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
 const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
 
+// เทมเพลตตัวอย่างให้ user แก้ไขแทนการเริ่มจากช่องว่าง
+const KB_TEMPLATE = `**คำถามที่ลูกค้ามักถาม:**
+(เช่น "มีบริการ XXX ไหม?", "ราคาเท่าไหร่?")
+
+**คำตอบ:**
+(ตอบสั้น กระชับ ระบุเงื่อนไข/ราคา/วิธีติดต่อให้ชัด)
+
+**เงื่อนไข/หมายเหตุ:**
+- 
+- 
+
+📌 คำแนะนำสำหรับ AI: ตอบโดยใช้คำว่า ... และอย่าลืม ...`;
+
+const PKG_DESC_TEMPLATE = `เหมาะสำหรับ: งานบุญ + แขก (เช่น พระ 9 รูป + แขก 30 ท่าน)
+สิ่งที่รวมในแพ็ก:
+- เมนูอาหาร: ...
+- อุปกรณ์: โต๊ะ/เก้าอี้/ผ้าปู/จาน-ชาม
+- พนักงานเสิร์ฟ: ... ท่าน
+- เวลา: ... ชั่วโมง
+จุดเด่น: ...`;
+
+const PKG_AI_INSTRUCTION_TEMPLATE = `- ถ้าลูกค้าถามถึงแพ็กนี้ ให้บอกราคาต่อท่านก่อน แล้วถามจำนวนคนเพื่อสรุปยอด
+- ถ้าจำนวนแขกน้อยกว่าขั้นต่ำ ให้แนะนำแพ็กอื่นแทน
+- ห้าม...`;
+
+const PROMO_TEMPLATE = `เงื่อนไขโปรโมชั่น:
+- ใช้ได้กับ: ...
+- ระยะเวลา: ...
+- ขั้นต่ำ: ... ท่าน
+- ส่วนลด/ของแถม: ...
+- หมายเหตุ: ไม่สามารถใช้ร่วมกับโปรอื่น`;
+
 export default function Knowledge() {
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
