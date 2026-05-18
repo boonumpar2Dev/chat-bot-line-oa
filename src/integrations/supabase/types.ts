@@ -330,6 +330,7 @@ export type Database = {
       }
       knowledge_base: {
         Row: {
+          bundle_image_titles: string[]
           category: string | null
           content: string
           created_at: string
@@ -342,6 +343,7 @@ export type Database = {
           video_urls: Json
         }
         Insert: {
+          bundle_image_titles?: string[]
           category?: string | null
           content?: string
           created_at?: string
@@ -354,6 +356,7 @@ export type Database = {
           video_urls?: Json
         }
         Update: {
+          bundle_image_titles?: string[]
           category?: string | null
           content?: string
           created_at?: string
