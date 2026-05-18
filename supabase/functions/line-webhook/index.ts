@@ -613,7 +613,7 @@ async function processEvent(event: any, supabase: any) {
 - 📄 ถ้าข้อความมี "📄 เนื้อหาในรูป:" = ลูกค้าส่งแคปแชท/ใบเสนอราคามา ให้อ่านเหมือนลูกค้าพิมพ์เอง
 ${tierSpecialLine}
 📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
-- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}
+- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}${summarySection}
 
 KB:
 ${kbContext || "(ว่าง)"}
@@ -633,6 +633,9 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
 (${forbiddenCheckLine ? "7" : "6"}) คำถามที่จะถามนี้ AI เคยถามใน 1 รอบล่าสุดแล้วลูกค้าไม่ตอบ? → **ห้ามถามซ้ำ** เปลี่ยนไปตอบ/ถามเรื่องอื่นแทน (รออีก 2-3 รอบค่อยถามใหม่)
 
 ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent`;
+
+  // Log token usage (เพื่อ monitor การประหยัด)
+  console.log(`[Tokens] prompt≈${countTokens(prompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
 
   let aiResp: any;
   try {
