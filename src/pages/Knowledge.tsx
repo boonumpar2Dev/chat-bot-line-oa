@@ -27,6 +27,11 @@ const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: 
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
 const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
 
+// Auto rebuild AI cache หลัง CRUD — fire-and-forget ไม่บล็อก UI
+export const triggerRebuildAiCache = () => {
+  supabase.functions.invoke("rebuild-ai-cache").catch((e) => console.warn("[ai-cache rebuild]", e));
+};
+
 // เทมเพลตตัวอย่างให้ user แก้ไขแทนการเริ่มจากช่องว่าง
 const KB_TEMPLATE = `**คำถามที่ลูกค้ามักถาม:**
 (เช่น "มีบริการ XXX ไหม?", "ราคาเท่าไหร่?")
