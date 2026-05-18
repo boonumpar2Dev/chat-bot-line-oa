@@ -229,7 +229,7 @@ function PackagesTab() {
               ))}
             </div>
 
-            <div className="space-y-1.5"><Label>คำสั่งสำหรับ AI (AI Instruction)</Label><Textarea rows={3} value={edit.ai_instruction||""} onChange={e=>setEdit({...edit,ai_instruction:e.target.value})} placeholder="เช่น: ถ้าลูกค้าถามเรื่องโต๊ะจีน ให้แนะนำเกรด A ก่อน"/></div>
+            <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>คำสั่งสำหรับ AI (AI Instruction)</Label>{!edit.ai_instruction && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,ai_instruction:PKG_AI_INSTRUCTION_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={3} value={edit.ai_instruction||""} onChange={e=>setEdit({...edit,ai_instruction:e.target.value})} placeholder="เช่น: ถ้าลูกค้าถามเรื่องโต๊ะจีน ให้แนะนำเกรด A ก่อน"/></div>
             <div className="space-y-1.5"><Label>หมายเหตุ</Label><Textarea rows={2} value={edit.notes||""} onChange={e=>setEdit({...edit,notes:e.target.value})}/></div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><ImageIcon className="w-4 h-4"/>รูปภาพ (URL)</Label><ImageUrlsField urls={edit.image_urls} onChange={u=>setEdit({...edit,image_urls:u})}/></div>
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label><VideoUrlsField videos={edit.video_urls} onChange={v=>setEdit({...edit,video_urls:v})}/></div>
