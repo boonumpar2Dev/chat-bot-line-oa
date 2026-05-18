@@ -323,7 +323,48 @@ export default function Chats() {
       </main>
 
       <ImagePreviewModal url={previewImg} onClose={() => setPreviewImg(null)}/>
+      <TrainAIDialog text={trainText} onClose={()=>setTrainText(null)}/>
     </div>
+  );
+}
+
+function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (text) {
+      const snippet = text.slice(0, 60);
+      setTitle(`คำถามลูกค้า: ${snippet}${text.length>60?"…":""}`);
+      setContent(`**คำถามจากลูกค้า:**\n${text}\n\n**คำตอบที่ AI ควรตอบ:**\n(พิมพ์คำตอบที่ถูกต้องที่นี่ — AI จะเรียนรู้จากข้อมูลนี้)`);
+    }
+  }, [text]);
+  const save = async () => {
+    if (!title.trim() || !content.trim()) return;
+    setSaving(true);
+    const { error } = await supabase.from("knowledge_base").insert({ title: title.trim(), content: content.trim(), status: "active" });
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกเข้าคลังความรู้แล้ว ✨ AI จะใช้ตอบครั้งต่อไป");
+    onClose();
+  };
+  return (
+    <Dialog open={!!text} onOpenChange={(o)=>!o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary"/>สอน AI จากข้อความนี้</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5"><Label className="text-xs">หัวข้อ</Label>
+            <Input value={title} onChange={e=>setTitle(e.target.value)}/></div>
+          <div className="space-y-1.5"><Label className="text-xs">เนื้อหา (คำถาม + คำตอบ)</Label>
+            <Textarea rows={8} value={content} onChange={e=>setContent(e.target.value)}/></div>
+          <p className="text-[11px] text-muted-foreground">บันทึกแล้วจะไปอยู่ใน "สอน AI" → ข้อมูลทั่วไป สามารถแก้ไขเพิ่มเติมได้ภายหลัง</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+          <Button onClick={save} disabled={saving || !title.trim() || !content.trim()}>{saving && <Loader2 className="w-4 h-4 animate-spin"/>}บันทึก</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
