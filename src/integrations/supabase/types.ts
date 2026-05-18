@@ -17,6 +17,8 @@ export type Database = {
       app_settings: {
         Row: {
           ai_enabled: boolean
+          ai_persona: string
+          allowed_service_types: string[]
           comparison_kb_category: string | null
           comparison_phase_enabled: boolean
           confidence_threshold: number
@@ -28,7 +30,10 @@ export type Database = {
           fallback_mute_hours: number
           followup_enabled: boolean
           followup_hours: number
+          forbidden_terms: string[]
           id: string
+          image_selection_rules: string
+          intent_collection_order: string
           key: string
           manual_chat_hours: number
           phone_mute_hours: number
@@ -36,10 +41,15 @@ export type Database = {
           sla_hours: number
           start_time: string
           strict_rules: string[]
+          tax_id_keywords: string[]
+          tier_special_rules: string
+          trivial_replies: string[]
           updated_at: string
         }
         Insert: {
           ai_enabled?: boolean
+          ai_persona?: string
+          allowed_service_types?: string[]
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
           confidence_threshold?: number
@@ -51,7 +61,10 @@ export type Database = {
           fallback_mute_hours?: number
           followup_enabled?: boolean
           followup_hours?: number
+          forbidden_terms?: string[]
           id?: string
+          image_selection_rules?: string
+          intent_collection_order?: string
           key: string
           manual_chat_hours?: number
           phone_mute_hours?: number
@@ -59,10 +72,15 @@ export type Database = {
           sla_hours?: number
           start_time?: string
           strict_rules?: string[]
+          tax_id_keywords?: string[]
+          tier_special_rules?: string
+          trivial_replies?: string[]
           updated_at?: string
         }
         Update: {
           ai_enabled?: boolean
+          ai_persona?: string
+          allowed_service_types?: string[]
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
           confidence_threshold?: number
@@ -74,7 +92,10 @@ export type Database = {
           fallback_mute_hours?: number
           followup_enabled?: boolean
           followup_hours?: number
+          forbidden_terms?: string[]
           id?: string
+          image_selection_rules?: string
+          intent_collection_order?: string
           key?: string
           manual_chat_hours?: number
           phone_mute_hours?: number
@@ -82,6 +103,9 @@ export type Database = {
           sla_hours?: number
           start_time?: string
           strict_rules?: string[]
+          tax_id_keywords?: string[]
+          tier_special_rules?: string
+          trivial_replies?: string[]
           updated_at?: string
         }
         Relationships: []
