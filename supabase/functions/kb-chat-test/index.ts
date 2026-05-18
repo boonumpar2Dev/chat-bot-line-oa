@@ -164,9 +164,20 @@ Deno.serve(async (req) => {
           const total = t.total_pax || 0, monk = t.monk_pax || 0, guest = t.guest_pax || (total - monk);
           const label = t.tier_name ? `[${t.tier_name}] ` : "";
           const imgFlag = t.image_url ? " 🖼️" : "";
-          if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${t.price}${imgFlag}`;
-          else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${t.price}${imgFlag}`;
-          else s += `\n  - ${label}${total || "?"} ท่าน: ${t.price}${imgFlag}`;
+          const capFlag = guest > 0 ? ` 【รับแขกได้สูงสุด ${guest} คน】` : "";
+          const qLevels = Array.isArray(t.quality_levels) ? t.quality_levels.filter((q: any) => q?.name) : [];
+          const hasQL = qLevels.length > 0;
+          const priceShown = hasQL ? "(ดูระดับคุณภาพด้านล่าง)" : t.price;
+          if (total > 0 && monk > 0) s += `\n  - ${label}${total} ท่าน (พระ ${monk} + แขก ${guest}): ${priceShown}${imgFlag}${capFlag}`;
+          else if (t.guest_count) s += `\n  - ${label}${t.guest_count}: ${priceShown}${imgFlag}${capFlag}`;
+          else s += `\n  - ${label}${total || "?"} ท่าน: ${priceShown}${imgFlag}${capFlag}`;
+          if (hasQL) {
+            qLevels.forEach((q: any) => {
+              const qImg = q.image_url ? " 🖼️" : "";
+              const hl = q.highlights ? ` — ${q.highlights}` : "";
+              s += `\n      • ${q.name}: ${q.price}${qImg}${hl}`;
+            });
+          }
         });
       }
       if (Array.isArray(p.custom_attributes) && p.custom_attributes.length > 0) {
@@ -197,6 +208,13 @@ Deno.serve(async (req) => {
     (pkgs || []).forEach((p: any) => {
       (p.pricing_tiers || []).forEach((t: any) => {
         if (t.image_url && t.tier_name) tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name}`, url: t.image_url });
+        if (Array.isArray(t.quality_levels)) {
+          t.quality_levels.forEach((q: any) => {
+            if (q?.image_url && q?.name && t.tier_name) {
+              tierImageRefs.push({ title: `แพ็กเกจ: ${p.name} — ${t.tier_name} — ${q.name}`, url: q.image_url });
+            }
+          });
+        }
       });
     });
     const imageSources = [
