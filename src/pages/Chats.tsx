@@ -243,7 +243,9 @@ export default function Chats() {
                     {formatDistanceToNow(new Date(c.last_message_at), { locale: th, addSuffix: false })}
                   </span>}
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{c.last_message_snippet || "—"}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                  {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : (c.last_message_snippet || "—")}
+                </p>
                 <div className="flex items-center gap-1 mt-1">
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
