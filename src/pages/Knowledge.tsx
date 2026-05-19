@@ -364,6 +364,19 @@ function KnowledgeBaseTab() {
     setOpen(true);
   };
   const save = async () => {
+    // Phase 2 guard: ถ้าเนื้อหาดูเป็น "กฎ" ไม่ใช่ข้อมูลตอบลูกค้า → เตือนก่อนบันทึก
+    const c = (edit.content || "").trim();
+    const ruleHints = /(^|\n)\s*(ห้าม|ต้อง|อย่า|ใช้คำว่า|ใช้คำ|ไม่ควร|ควรใช้|ต้องตอบ|ห้ามตอบ|ห้ามพูด|ห้ามใช้)/;
+    const looksLikeRule = c.length < 400 && ruleHints.test(c);
+    if (looksLikeRule && !(window as any).__kbRuleAck) {
+      const ok = window.confirm(
+        "ดูเหมือนคุณกำลังใส่ 'กฎการตอบ' (ห้าม/ต้อง/ใช้คำว่า…) ไม่ใช่ข้อมูลตอบลูกค้า\n\n" +
+        "กฎควรใส่ที่: ตั้งค่าระบบ → กฎ AI (จะถูกใช้ทุกครั้ง สม่ำเสมอกว่า)\n" +
+        "ฐานความรู้ออกแบบเพื่อ 'ข้อมูลที่ลูกค้าถาม' (เมนู ราคา รีวิว FAQ)\n\n" +
+        "กด OK = บันทึกใส่ KB ต่อ / Cancel = ยกเลิก เพื่อไปใส่ที่ 'กฎ AI' แทน"
+      );
+      if (!ok) return;
+    }
     const payload: any = { ...edit };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
     const res = edit.id
