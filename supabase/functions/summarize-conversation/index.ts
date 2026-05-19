@@ -10,12 +10,13 @@ const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const KEEP_RECENT = 10;
 const TRIGGER_THRESHOLD = 20;
 
-async function summarize(text: string): Promise<string> {
+async function summarize(text: string, supabase: any, customerId?: string): Promise<string> {
+  const model = "google/gemini-2.5-flash-lite";
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
+      model,
       messages: [{
         role: "user",
         content: `สรุปบทสนทนาด้านล่างเป็นภาษาไทย ให้สั้น กระชับ เก็บเฉพาะข้อมูลสำคัญ:
@@ -32,6 +33,7 @@ ${text}`
   });
   if (!res.ok) throw new Error(`summarize gateway ${res.status}: ${await res.text()}`);
   const data = await res.json();
+  logTokenUsage(supabase, { model, source: "summarize", apiResponse: data, customerId });
   return (data.choices?.[0]?.message?.content || "").trim().slice(0, 500);
 }
 
