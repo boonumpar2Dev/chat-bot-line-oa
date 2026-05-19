@@ -406,8 +406,8 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
   useEffect(() => {
     if (text) {
       const snippet = text.slice(0, 60);
-      setTitle(`คำถามลูกค้า: ${snippet}${text.length>60?"…":""}`);
-      setContent(`**คำถามจากลูกค้า:**\n${text}\n\n**คำตอบที่ AI ควรตอบ:**\n(พิมพ์คำตอบที่ถูกต้องที่นี่ — AI จะเรียนรู้จากข้อมูลนี้)`);
+      setTitle(`ปรับปรุงคำตอบ: ${snippet}${text.length>60?"…":""}`);
+      setContent(`**คำตอบเดิมของ AI (ที่อยากปรับปรุง):**\n${text}\n\n**คำตอบที่ถูกต้อง / ที่ควรตอบแทน:**\n(พิมพ์คำตอบที่ดีกว่าตรงนี้ — AI จะใช้เป็นแนวทางตอบครั้งต่อไป)`);
     }
   }, [text]);
   const save = async () => {
@@ -422,11 +422,11 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
   return (
     <Dialog open={!!text} onOpenChange={(o)=>!o && onClose()}>
       <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary"/>สอน AI จากข้อความนี้</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary"/>ปรับปรุงคำตอบของ AI</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5"><Label className="text-xs">หัวข้อ</Label>
             <Input value={title} onChange={e=>setTitle(e.target.value)}/></div>
-          <div className="space-y-1.5"><Label className="text-xs">เนื้อหา (คำถาม + คำตอบ)</Label>
+          <div className="space-y-1.5"><Label className="text-xs">เนื้อหา (คำตอบเดิม + คำตอบที่ถูกต้อง)</Label>
             <Textarea rows={8} value={content} onChange={e=>setContent(e.target.value)}/></div>
           <p className="text-[11px] text-muted-foreground">บันทึกแล้วจะไปอยู่ใน "สอน AI" → ข้อมูลทั่วไป สามารถแก้ไขเพิ่มเติมได้ภายหลัง</p>
         </div>
