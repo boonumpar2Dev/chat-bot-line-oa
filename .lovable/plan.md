@@ -1,54 +1,103 @@
-## ปัญหาที่พบ
 
-ตอนนี้มี **2 ที่ที่สร้าง prompt ให้ AI** แต่ไม่ได้อ่านจาก Settings เหมือนกัน:
+## วิเคราะห์ปัญหาที่เจออยู่ตอนนี้
 
-| ที่ | อ่านจาก Settings? |
-|---|---|
-| `line-webhook` (LINE จริง) | ✅ อ่าน `ai_persona`, `strict_rules`, `image_selection_rules`, `tier_special_rules`, `forbidden_terms`, `allowed_service_types`, `intent_collection_order` |
-| `kb-chat-test` (หน้าทดสอบ/Chats) | ❌ **hardcode กฎทองทั้งหมดในโค้ด** อ่านแค่ `strict_rules` ผ่านๆ |
+ระบบมี **3 ที่เก็บความรู้ AI** ปนกันอยู่ ทำให้ User งง ไม่รู้จะใส่ตรงไหน:
 
-แปลว่า:
-1. แก้กฎใน Settings → เฉพาะ LINE จริงเห็น หน้าทดสอบไม่เห็น → ทดสอบไม่ตรงกับของจริง
-2. เราเพิ่งเพิ่ม "กฎชิมอาหาร" เข้า `strict_rules` ใน Settings → kb-chat-test มองข้าม กฎทองที่ hardcode ทับ
-3. เลย hardcode `tasteGuard` เป็นแพตช์ 2 ไฟล์ — ผิดทาง เพราะกฎอยู่ใน Settings แล้ว ไม่ควรต้องแก้โค้ดอีก
+| ที่เก็บ | ใช้เมื่อไหร่ | ปัญหา |
+|---|---|---|
+| `app_settings.ai_persona` | ใส่ใน prompt **ทุกครั้ง** | OK |
+| `app_settings.strict_rules` (array) | ใส่ใน prompt **ทุกครั้ง** | ✅ ใช้ตลอด แต่ UI เป็น list สั้นๆ ใส่กฎยาวๆ ลำบาก |
+| `app_settings.image_selection_rules` / `tier_special_rules` / `intent_collection_order` / `forbidden_terms` / `allowed_service_types` | ใส่ใน prompt **ทุกครั้ง** | ✅ ใช้ตลอด แต่กระจาย field เยอะ |
+| `knowledge_base` (KB) | **ค้นแล้วหยิบเฉพาะที่เกี่ยว** (top-K โดย AI) | ❌ ถ้า User เอา "กฎ" มาใส่ KB → AI หยิบมาบ้างไม่หยิบบ้าง → ตอบไม่สม่ำเสมอ |
 
-## เป้าหมาย
+→ ปัญหาจริงของ User: **"ถ้าใส่กฎใน KB มันควรใช้ตลอด ไม่ใช่หยิบเลือก"** — ถูกต้อง เพราะ KB ออกแบบมาเพื่อ "ข้อมูลตอบลูกค้า" (เมนู ราคา รีวิว) ไม่ใช่ "วิธีคุย"
 
-ทำให้ **Settings = ความจริงเดียว (single source of truth)** ทุก prompt ทั้ง LINE จริงและหน้าทดสอบสร้างจาก Settings ตัวเดียวกัน 100% — แก้ Settings แล้วเห็นผลทั้งสองที่ทันทีไม่ต้องแก้โค้ด
+## หลักคิด: แยกประเภทความรู้ให้ชัด
 
-## แผนปรับ
+```text
+┌─────────────────────────────────────────────────────────┐
+│  ALWAYS (ใส่ prompt ทุกครั้ง — แพง token แต่จำเป็น)        │
+│  ├─ บุคลิก (persona)                                      │
+│  └─ กฎการคุย (rules) ← User จัดการที่เดียว                 │
+├─────────────────────────────────────────────────────────┤
+│  ON-DEMAND (ค้นแล้วหยิบเฉพาะที่เกี่ยว — ประหยัด token)      │
+│  └─ ข้อมูลธุรกิจ (KB: เมนู ราคา รีวิว FAQ ตัวอย่าง)         │
+└─────────────────────────────────────────────────────────┘
+```
 
-### 1. สร้าง `_shared/prompt-builder.ts`
-ย้าย logic ประกอบ prompt (persona + strict_rules + image rules + tier rules + KB + history) มาไว้ที่เดียว รับ input เป็น `{ cfg, kb, pkgs, promos, customer, history, message }` คืน prompt string
+**กฎข้อหนึ่ง:** "วิธีคุย/ห้าม/ต้อง" → ALWAYS. "ข้อมูลที่ลูกค้าถาม" → ON-DEMAND.
 
-### 2. `line-webhook` และ `kb-chat-test` เรียกใช้ `prompt-builder` ตัวเดียวกัน
-ลบกฎทอง/ANTI-HALLUCINATION/ตรวจ 6 ข้อ ที่ hardcode ใน kb-chat-test ออกทั้งหมด ให้อ่านจาก Settings เท่านั้น
+## เรื่อง Token แพงไหม?
 
-### 3. ลบ `tasteGuard` hardcode ออกจากทั้ง 2 ไฟล์
-เพราะกฎชิมอาหารอยู่ใน `strict_rules` แล้ว (เคยใส่รอบก่อน) — ถ้า strict_rules ถูกวางในตำแหน่งสูง ก็ไม่ต้อง guard เพิ่ม
+ปัจจุบัน prompt builder ส่งทุก field ทุกครั้งอยู่แล้ว (`strict_rules` + `image_rules` + `tier_rules` + `forbidden` + `persona` ~600-900 token) — **ไม่ได้แพงขึ้น** ถ้ารวมเข้าหน้าเดียว เพราะของเดิมก็ใส่อยู่แล้ว ที่ User คิดว่า "เปลือง" คือเห็น field เยอะแยกกัน รู้สึกว่าเยอะ จริงๆ token เท่าเดิม
 
-### 4. ย้าย `strictRulesSection` ขึ้น top ของ prompt
-วางก่อน "กฎหลัก" และก่อน KB เพื่อให้ AI ให้น้ำหนักสูงสุด (ตอนนี้อยู่ท้าย ⇒ น้ำหนักต่ำ)
+ค่าเฉลี่ยลูกค้า 1 รอบ ~3,000-5,000 token (รวม KB+pkg+history) → rules ~15-20% เป็นต้นทุนคงที่ที่จำเป็น **เพื่อให้ AI ตอบสม่ำเสมอ**
 
-### 5. เพิ่มกฎทองที่ยัง hardcode อยู่ → ย้ายเป็น default `strict_rules`
-ตัวอย่างกฎที่ kb-chat-test hardcode แต่ควรเป็น strict_rules (แก้ได้จาก UI):
-- ห้าม "ยินดีด้วยค่ะ"
-- ใช้ "ค่ะ/คะ" เท่านั้น ห้ามสลับ "ครับ"
-- ห้ามถามซ้ำข้อมูลที่ลูกค้าให้แล้ว
-- กรณีจำนวนแขกเศษ เสนอทางเดียวต่อรอบ
+## แผนปรับ UX
 
-จะ migrate เข้า `app_settings.strict_rules` ตอน deploy (insert ถ้ายังไม่มี)
+### A. ยุบ Settings AI tab ให้เหลือ 2 กล่องใหญ่
 
-### 6. Verify
-- ส่งข้อความ "ชิมอาหารฟรีได้ไหมคะ" ใน Chats (หน้าทดสอบ) → ต้องตอบกฎเดียวกับ LINE จริง
-- แก้ strict_rules ใน Settings → ทั้ง 2 ที่ต้องเปลี่ยนพร้อมกัน
+```text
+หน้า Settings > แท็บ "สอน AI"
+
+┌─ 🎭 บุคลิก AI (ใครคุณ พูดยังไง) ──────────────────┐
+│ [textarea — 1 ช่อง]                              │
+│ "คุณคือ AI ผู้ช่วย ... ใช้ ค่ะ/นะคะ"               │
+└──────────────────────────────────────────────────┘
+
+┌─ 📋 กฎ AI (ห้าม/ต้อง/วิธีตอบ) ─────────────────────┐
+│ [+ เพิ่มกฎ]                          [12 ข้อ]      │
+│ ┌────────────────────────────────────────────┐  │
+│ │ #1  ห้ามชวนลูกค้าต่างจังหวัดมาชิม           [✏️🗑] │
+│ │ #2  ใช้ "ค่ะ/คะ" เท่านั้น ห้ามใช้ "ครับ"     [✏️🗑] │
+│ │ #3  จำนวน "แขก N" = N คน ไม่รวมพระ          [✏️🗑] │
+│ │ ...                                          │  │
+│ └────────────────────────────────────────────┘  │
+│                                                   │
+│ 💡 กฎจะถูกส่งให้ AI ทุกครั้งที่ตอบ → ใช้ได้สม่ำเสมอ  │
+│    ถ้าเป็นข้อมูลตอบลูกค้า (เมนู ราคา) → ใส่ที่         │
+│    "ฐานความรู้" แทน                              │
+└──────────────────────────────────────────────────┘
+```
+
+ทั้ง `image_selection_rules`, `tier_special_rules`, `forbidden_terms`, `intent_collection_order`, `allowed_service_types` → **ยุบรวมเป็น `strict_rules` ข้อๆ** ที่ User เพิ่ม/ลบ/แก้ได้เหมือนกัน
+
+### B. ที่ Knowledge Base เพิ่ม guard
+
+ตอน save KB ถ้า content มีคำเช่น "ห้าม/ต้อง/อย่า/ใช้คำว่า" → แสดง toast:
+> 💡 ดูเหมือนคุณกำลังใส่ **กฎการตอบ** — ควรใส่ที่ Settings > สอน AI > กฎ AI แทน เพื่อให้ AI ใช้ทุกครั้ง (KB จะหยิบมาเฉพาะเมื่อเกี่ยวข้อง)
+> [ไปหน้ากฎ AI] [ใส่ใน KB ต่อ]
+
+### C. (ทางเลือก) Migration อัตโนมัติ
+
+ปุ่ม "ดึงกฎจาก KB" — สแกน KB หา item ที่เป็น "กฎ" (heuristic: ขึ้นต้น "ห้าม/ต้อง/อย่า" + ความยาวสั้น) → preview ให้ User กดย้ายเข้า `strict_rules`
+
+### D. (ทางเลือก ขั้นถัดไป) ลด token ด้วย rule grouping
+
+ถ้ากฎเกิน 30 ข้อ → ให้ tag กฎเป็นหมวด (`always`, `เมื่อขอรูป`, `เมื่อพูดราคา`) แล้ว prompt-builder ใส่เฉพาะหมวดที่เกี่ยวกับ intent ลูกค้ารอบนั้น — **ยังไม่ทำตอนนี้** จนกว่ากฎจะเยอะจริง
+
+## สรุปการเปลี่ยนแปลง
+
+### Phase 1 — รวม UI (เน้นที่นี่ก่อน)
+1. Settings tab "สอน AI" → เหลือ 2 กล่อง: บุคลิก + กฎ (list)
+2. ลบ field แยก (`image_selection_rules`, `tier_special_rules`, `forbidden_terms`, `intent_collection_order`, `allowed_service_types`) ออกจาก UI — **แต่คงคอลัมน์ DB ไว้** (backward compat)
+3. Migration ครั้งเดียว: ค่าเดิมใน field พวกนั้น → append เข้า `strict_rules` array
+4. `prompt-builder.ts` → อ่านแค่ `persona` + `strict_rules` (ลบ logic ประกอบ field อื่น)
+
+### Phase 2 — กัน User ใส่ผิดที่
+5. Knowledge form: detect "rule-like content" → toast แนะนำให้ใส่ที่ Settings
+
+### Phase 3 — (ถ้าต้องการ)
+6. ปุ่ม migrate KB→rules
+7. Rule grouping เมื่อกฎเยอะ
 
 ## รายละเอียดทางเทคนิค
 
-- ไฟล์ใหม่: `supabase/functions/_shared/prompt-builder.ts` export `buildPrompt(input): string`
-- `line-webhook/index.ts` ราว line 520-680 → แทนด้วย `buildPrompt({...})`
-- `kb-chat-test/index.ts` ราว line 225-325 → แทนด้วย `buildPrompt({...})` แบบเดียวกัน (history map ให้ตรง format)
-- ลบ `tasteGuard`, `tasteGuardKC`, post-check ที่ override คำตอบ
-- Deploy ทั้ง `line-webhook` + `kb-chat-test`
+- ไฟล์แก้: `src/pages/Settings.tsx` (ลบ field, เหลือ persona + rules editor), `supabase/functions/_shared/prompt-builder.ts` (ลบส่วนประกอบ field ย่อย)
+- Migration data (ใช้ insert tool): UPDATE app_settings SET strict_rules = strict_rules || ARRAY[...เดิมจาก image_selection_rules แตกตามบรรทัด..., tier_special_rules, "ห้ามพูด: " || forbidden_terms, "ลำดับเก็บข้อมูล: " || intent_collection_order, "บริการที่อนุญาต: " || allowed_service_types]
+- ไม่ drop columns เผื่อ rollback — แค่ซ่อนจาก UI
+- Token impact: 0 (ส่งเท่าเดิม แค่รวม section)
 
-ผลลัพธ์: หลังจากนี้ **ทุกการเปลี่ยน prompt = แก้ที่ Settings UI อย่างเดียว** ไม่ต้องแตะโค้ดอีก
+## ขออนุมัติ
+
+ทำ Phase 1+2 เลย หรือเอาแค่ Phase 1 ก่อน? และอยากให้ migrate ค่าเดิมเข้า strict_rules อัตโนมัติเลย หรือให้ User copy เองทีละข้อ?
