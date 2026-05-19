@@ -526,8 +526,7 @@ async function processEvent(event: any, supabase: any) {
     ...pkgsWithVideos.map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
     ...promosWithVideos.map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
   ];
-  const imgRules = (cfg.image_selection_rules || "").trim();
-  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ (สำคัญมาก — ทำผิดบ่อย):\n${imgRules}\n\n📐 กติกาเพิ่มเติม:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น (แทน "รูปรวม")\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศ/อยากเห็นการจัดจริง\n- image_titles **ใส่ได้สูงสุด 4 รายการ** ระบบจะดึงรูปของแต่ละ title มาเอง\n- ห้ามใส่ title ที่ลูกค้าไม่ได้ขอ — ตรวจ image_titles ทุกอันว่าตรงเจตนาหรือไม่` : "";
+  const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้สูงสุด 4 รายการ ตรงตามกฎเลือกสื่อใน strict_rules):\n${allImageSources.join("\n")}` : "";
 
 
   // กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1) — configurable via Settings UI
