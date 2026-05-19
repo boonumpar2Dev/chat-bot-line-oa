@@ -62,6 +62,7 @@ export type Database = {
           key: string
           manual_chat_hours: number
           phone_mute_hours: number
+          post_phone_max_replies: number
           schedule_enabled: boolean
           sla_hours: number
           start_time: string
@@ -94,6 +95,7 @@ export type Database = {
           key: string
           manual_chat_hours?: number
           phone_mute_hours?: number
+          post_phone_max_replies?: number
           schedule_enabled?: boolean
           sla_hours?: number
           start_time?: string
@@ -126,6 +128,7 @@ export type Database = {
           key?: string
           manual_chat_hours?: number
           phone_mute_hours?: number
+          post_phone_max_replies?: number
           schedule_enabled?: boolean
           sla_hours?: number
           start_time?: string
@@ -287,6 +290,7 @@ export type Database = {
           manual_chat_until: string | null
           nickname: string | null
           phone: string | null
+          phone_saved_at: string | null
           picture_url: string | null
           sla_deadline: string | null
           status: Database["public"]["Enums"]["customer_status"]
@@ -318,6 +322,7 @@ export type Database = {
           manual_chat_until?: string | null
           nickname?: string | null
           phone?: string | null
+          phone_saved_at?: string | null
           picture_url?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
@@ -349,6 +354,7 @@ export type Database = {
           manual_chat_until?: string | null
           nickname?: string | null
           phone?: string | null
+          phone_saved_at?: string | null
           picture_url?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]

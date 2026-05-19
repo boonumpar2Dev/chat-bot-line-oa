@@ -21,6 +21,7 @@ type Settings = {
   cooldown_minutes: number;
   manual_chat_hours: number;
   phone_mute_hours: number;
+  post_phone_max_replies: number;
   fallback_mute_hours: number;
   followup_hours: number;
   followup_enabled: boolean;
@@ -91,7 +92,7 @@ export default function Settings() {
     setSaving(true);
     const { error } = await supabase.from("app_settings").update({
       ai_enabled: s.ai_enabled, confidence_threshold: s.confidence_threshold, cooldown_minutes: s.cooldown_minutes,
-      manual_chat_hours: s.manual_chat_hours, phone_mute_hours: s.phone_mute_hours, fallback_mute_hours: s.fallback_mute_hours,
+      manual_chat_hours: s.manual_chat_hours, phone_mute_hours: s.phone_mute_hours, post_phone_max_replies: s.post_phone_max_replies, fallback_mute_hours: s.fallback_mute_hours,
       followup_hours: s.followup_hours, followup_enabled: s.followup_enabled, schedule_enabled: s.schedule_enabled,
       start_time: s.start_time, end_time: s.end_time, strict_rules: s.strict_rules, sla_hours: s.sla_hours, fallback_message: s.fallback_message,
       debounce_seconds: s.debounce_seconds,
@@ -167,6 +168,7 @@ export default function Settings() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5"><Label>Manual Chat (ชม.)</Label><Input type="number" value={s.manual_chat_hours} onChange={e=>upd("manual_chat_hours",+e.target.value)} /><p className="text-xs text-muted-foreground">หยุด AI เมื่อแอดมินตอบ</p></div>
           <div className="space-y-1.5"><Label>หยุด AI หลังได้เบอร์ (ชม.)</Label><Input type="number" value={s.phone_mute_hours} onChange={e=>upd("phone_mute_hours",+e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>AI ตอบได้กี่รอบหลังลูกค้ามีเบอร์แล้ว</Label><Input type="number" min={0} value={s.post_phone_max_replies} onChange={e=>upd("post_phone_max_replies",+e.target.value)} /><p className="text-[11px] text-muted-foreground">0 = ปิดทันทีเมื่อมีเบอร์ • สูง = ไม่จำกัด (default 3)</p></div>
           <div className="space-y-1.5"><Label>หยุด AI หลัง Fallback (ชม.)</Label><Input type="number" value={s.fallback_mute_hours} onChange={e=>upd("fallback_mute_hours",+e.target.value)} /></div>
           <div className="space-y-1.5"><Label>SLA (ชม.)</Label><Input type="number" value={s.sla_hours} onChange={e=>upd("sla_hours",+e.target.value)} /></div>
         </div>
