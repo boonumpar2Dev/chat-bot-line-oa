@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens } from "../_shared/ai-context.ts";
+import { buildPrompt } from "../_shared/prompt-builder.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -529,10 +530,6 @@ async function processEvent(event: any, supabase: any) {
   const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${allImageSources.join("\n")}\n\n💡 กฎเลือกสื่อ (สำคัญมาก — ทำผิดบ่อย):\n${imgRules}\n\n📐 กติกาเพิ่มเติม:\n- ลูกค้าระบุจำนวนคน/ระดับชัดเจน → ส่ง "รูปเฉพาะ tier" ของ tier นั้น (แทน "รูปรวม")\n- ลูกค้าขอเปรียบเทียบหลายระดับ → ส่ง "รูปรวม" ของแพ็ก\n- วิดีโอ (ขึ้นต้น "VDO:") → ส่งเฉพาะเมื่อลูกค้าขอดูบรรยากาศ/อยากเห็นการจัดจริง\n- image_titles **ใส่ได้สูงสุด 4 รายการ** ระบบจะดึงรูปของแต่ละ title มาเอง\n- ห้ามใส่ title ที่ลูกค้าไม่ได้ขอ — ตรวจ image_titles ทุกอันว่าตรงเจตนาหรือไม่` : "";
 
 
-  const strictRules = Array.isArray(cfg.strict_rules) && cfg.strict_rules.length > 0
-    ? cfg.strict_rules.filter((r: string) => r?.trim()).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") : "";
-  const strictRulesSection = strictRules ? `\n\n⚠️ กฎเข้มงวด:\n${strictRules}` : "";
-
   // กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1) — configurable via Settings UI
   const comparisonSection = (cfg.comparison_phase_enabled && cfg.comparison_kb_category)
     ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน แล้วบอกสั้นๆ ว่า "ส่งรูปเปรียบเทียบให้ดูค่ะ เลือกตามงบได้เลย" ห้ามส่งรูปเฉพาะ tier ใดๆ ในจังหวะนี้\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบแล้ว): ส่งรูป/เมนูของระดับนั้นเท่านั้น ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำ\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูปเปรียบเทียบ`
@@ -559,7 +556,6 @@ async function processEvent(event: any, supabase: any) {
   if (freshCustomer.guest_count) knownIntent.push(`จำนวนคน: ${freshCustomer.guest_count}`);
   if (freshCustomer.event_date) knownIntent.push(`วันจัดงาน: ${freshCustomer.event_date}`);
   const knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
-  const intentCount = knownIntent.length;
 
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
@@ -573,83 +569,22 @@ async function processEvent(event: any, supabase: any) {
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
-  // หมายเหตุ: กฎเรื่องการขอเบอร์/ตอบสั้น/ไม่ถามซ้ำ ย้ายไป strict_rules (Settings UI) ทั้งหมด
-  // เพื่อให้แอดมินแก้ไขได้เองโดยไม่ต้องแก้โค้ด
+  const prompt = buildPrompt({
+    cfg,
+    kbContext,
+    pkgContext,
+    promoContext,
+    imageListStr,
+    recentMsgs,
+    messageText,
+    customerTurns,
+    knownIntentStr,
+    summarySection,
+    returningPrompt,
+    comparisonSection,
+  });
 
-  const persona = (cfg.ai_persona || 'คุณคือ AI ผู้ช่วย ตอบภาษาไทย เป็นกันเอง ใช้ "ค่ะ/นะคะ" ลงท้ายเบาๆ').trim();
-  const allowedTypes: string[] = Array.isArray(cfg.allowed_service_types) ? cfg.allowed_service_types : [];
-  const forbiddenTerms: string[] = Array.isArray(cfg.forbidden_terms) ? cfg.forbidden_terms : [];
-  const allowedLine = allowedTypes.length ? `\n- รูปแบบบริการที่อนุญาต = **${allowedTypes.join(", ")} เท่านั้น**` : "";
-  const forbiddenLine = forbiddenTerms.length ? ` ❌ ห้ามพูด "${forbiddenTerms.join("/")}"` : "";
-  const intentOrder = (cfg.intent_collection_order || "ประเภทงาน → สถานที่ → จำนวนคน → วันจัด → ขอเบอร์โทร (ข้ามข้อที่ลูกค้าให้แล้ว)").trim();
-  const tierSpecial = (cfg.tier_special_rules || "").trim();
-  const tierSpecialLine = tierSpecial ? `\n${tierSpecial}\n` : "";
-  const forbiddenCheckLine = forbiddenTerms.length
-    ? `(5) มีคำต้องห้าม "${forbiddenTerms.join("/")}" หรืออาหาร/บริการนอก [${allowedTypes.join("/")}]? → ลบทิ้ง\n`
-    : "";
 
-  // 🍽️ Taste-guard: ตรวจจับเจตนาถามเรื่องชิมอาหาร → เตือนกฎแรงๆ เป็น top-priority
-  const allCustomerTextLW = [messageText, ...history.filter((m: any) => m.sender === "customer").map((m: any) => m.message)].join(" ");
-  const isTasteIntent = /ชิม|ลองอาหาร|ทดลองทาน|ทดลองชิม|ทดลองอาหาร/i.test(messageText);
-  const offBkkProvinces = ["ขอนแก่น","เชียงใหม่","ภูเก็ต","ชลบุรี","ระยอง","อุดรธานี","นครราชสีมา","อยุธยา","หาดใหญ่","สงขลา","สุราษฎร์","เชียงราย","พิษณุโลก","อุบล","ลำปาง","นครศรี"];
-  const foundOffBkk = offBkkProvinces.find(p => allCustomerTextLW.includes(p));
-  const offBkkLine = foundOffBkk
-    ? '\n- ⚠️ ลูกค้าอยู่ "' + foundOffBkk + '" (นอกเขต กทม+ปริมณฑล) → **ห้ามชวนมาบริษัท ห้ามชวนเดินทางมาชิม** ต้องตอบว่า "ชิมฟรีให้บริการเฉพาะ กทม+ปริมณฑลค่ะ" แล้วเสนอทางเลือก (ส่งเมนู/รูปอาหาร/รีวิวให้ดูแทน) เท่านั้น'
-    : "";
-  const tasteGuard = isTasteIntent ? ('\n\n🍽️ 🔴 กฎชิมอาหาร (สำคัญสุด ห้ามผิด — ลูกค้ากำลังถามเรื่องชิม):\n'
-    + '- ชิมฟรีเฉพาะ "กทม + ปริมณฑล" เท่านั้น ห้ามบอกว่าไปชิมที่ขอนแก่น/ต่างจังหวัดได้เด็ดขาด\n'
-    + '- งานบุญ+บุฟเฟ่ต์ = ชิมฟรี 2 แบบ (มาที่บริษัทรามอินทรา กทม หรือ ส่งเดลิเวอรี่ลูกค้าจ่ายค่าส่ง)\n'
-    + '- งานบุญ+โต๊ะจีน = ชิมที่บริษัทเท่านั้น มีค่าใช้จ่ายเต็มจำนวน/โต๊ะ (นำมาเป็นส่วนลดได้ถ้าจองงาน)\n'
-    + '- งานบุญ+ซุ้มอาหาร = ไม่มีบริการชิมฟรี\n'
-    + '- เงื่อนไข: แจ้งล่วงหน้า 2-3 วัน + ติดต่อแอดมินนัดวันเวลา\n'
-    + '- ห้ามใช้คำว่า "นิมนต์มาชิม" (คุยกับลูกค้า ไม่ใช่พระ) ใช้ "เชิญมาชิม/ทดลองชิม"'
-    + offBkkLine) : "";
-
-  const prompt = `${persona}${tasteGuard}
-
-🔴 กฎทองห้ามผิดเด็ดขาด:
-1. **ห้ามถามข้อมูลซ้ำ** ที่ลูกค้าเคยให้แล้ว (ดู "ข้อมูลลูกค้าที่เก็บไว้แล้ว")
-
-🚫 ANTI-HALLUCINATION:
-- ตอบจาก KB เท่านั้น ห้ามแต่ง ห้ามเดา${allowedLine}${forbiddenLine}
-- ห้ามแต่งชื่อเมนู/แพ็กเกจ/บริการ ไม่แน่ใจ → "ขอส่งต่อทีมงานนะคะ"
-
-กฎหลัก:
-- ตอบคำถามก่อน แล้วค่อยถามข้อมูลเพิ่ม (ทีละเรื่อง)
-- ถ้าลูกค้าระบุรูปแบบบริการชัดเจน (เช่น โต๊ะจีน/บุฟเฟ่ต์/ซุ้มอาหาร) → เลือกเฉพาะแพ็กเกจ category นั้นก่อน ห้ามย้อนเลือกแพ็กคนละประเภท
-- 🔴 "แขก N" = แขก N คน **ไม่รวมพระ** → ต้องเลือก tier ที่ค่าใน 【รับแขกได้สูงสุด X คน】 X ≥ N เท่านั้น ห้ามใช้ตัวเลขใน tier_name ตัดสิน ห้ามถามซ้ำว่า "รวมพระหรือยัง"
-  ตัวอย่าง: ลูกค้า "แขก 40" + tier "[40 ท่าน รวมพระ]【รับแขกได้สูงสุด 31 คน】" และ "[50 ท่าน รวมพระ]【รับแขกได้สูงสุด 41 คน】" → ต้องเลือก **50 ท่าน รวมพระ** ❌ ห้ามเลือก 40 ท่าน (31<40 ไม่พอ)
-- เมื่อ tier ที่รองรับมีระดับคุณภาพ Standard/Premium/Elite → เสนอครบทุกระดับพร้อมราคา ห้ามเลือกให้เอง ห้ามใช้ราคา tier รวมแทนราคา quality_levels
-- ห้ามพูด "แขก N ท่าน (รวมพระ M รูป)" — ต้องพูด "แขก N + พระ M รวม N+M ท่าน" ให้ตรง tier ที่เลือก
-- ลำดับเก็บข้อมูล: ${intentOrder}
-- ทักทาย → ทักทายกลับสั้นๆ + ถามกลับ "สนใจสอบถามเรื่องไหนเป็นพิเศษไหมคะ?"
-- ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
-- 🚫 ห้ามเสนอแพ็กเกจที่ไม่ตรงเงื่อนไขขั้นต่ำ (min_condition)
-- 📸 ทุกครั้งที่แนะนำแพ็กเกจ ใส่ "แพ็กเกจ: <ชื่อ>" ลง image_titles
-- ⚠️ รูป tier (มี " — "): ส่งเฉพาะเมื่อ tier ตรงกับจำนวนท่านที่ลูกค้าระบุเท่านั้น
-- 📄 ถ้าข้อความมี "📄 เนื้อหาในรูป:" = ลูกค้าส่งแคปแชท/ใบเสนอราคามา ให้อ่านเหมือนลูกค้าพิมพ์เอง
-${tierSpecialLine}
-📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
-- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${returningPrompt}${strictRulesSection}${comparisonSection}${knownIntentStr}${summarySection}
-
-KB:
-${kbContext || "(ว่าง)"}
-${pkgContext}
-${promoContext}
-${imageListStr}
-
-สนทนา (ลูกค้าพูดมาแล้ว ${customerTurns} รอบ):
-${recentMsgs || "(ใหม่)"}
-
-ลูกค้า: "${messageText}"
-
-⚠️ ก่อนตอบ ตรวจ:
-(1) ถามเรื่องที่อยู่ใน "ข้อมูลลูกค้าที่เก็บไว้แล้ว"? → ลบทิ้ง ไปถามข้ออื่น
-(2) ทำตามกฎเข้มงวด (strict_rules) ครบทุกข้อหรือยัง?
-${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าขอรูป/เมนู/ตัวอย่าง? → ใส่ image_titles ให้ตรงตามกฎเลือกสื่อ (ห้ามปล่อยว่าง แม้จะถามต่อ)
-(${forbiddenCheckLine ? "7" : "6"}) คำถามที่จะถามนี้ AI เคยถามใน 1 รอบล่าสุดแล้วลูกค้าไม่ตอบ? → **ห้ามถามซ้ำ** เปลี่ยนไปตอบ/ถามเรื่องอื่นแทน (รออีก 2-3 รอบค่อยถามใหม่)
-
-ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent`;
 
   // Log token usage (เพื่อ monitor การประหยัด)
   console.log(`[Tokens] prompt≈${countTokens(prompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
@@ -684,19 +619,9 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   let imageTitles: string[] = aiResp.image_titles || [];
 
-  // 🍽️ Taste post-check: ถ้า AI หลุดบอกชิมต่างจังหวัด/นิมนต์มาชิม → override
-  let finalAnswer = answerText;
-  if (isTasteIntent) {
-    const violatesProvince = foundOffBkk && /(ขอนแก่น|เชียงใหม่|ภูเก็ต|ชลบุรี|ระยอง|อุดรธานี|นครราชสีมา|อยุธยา|หาดใหญ่|สงขลา|สุราษฎร์|ต่างจังหวัด)/.test(answerText) && /(ชิม|ทดลอง|ลอง)/.test(answerText);
-    const violatesMonk = /นิมนต์.*(ชิม|มา|ทาน)/.test(answerText);
-    if (violatesProvince) {
-      finalAnswer = `บริการชิมฟรีของเรามีเฉพาะพื้นที่ กทม. และปริมณฑลค่ะ 🙏 (ที่บริษัทรามอินทรา หรือส่งเดลิเวอรี่ โดยลูกค้ารับผิดชอบค่าจัดส่ง)\n\nเนื่องจากคุณลูกค้าอยู่${foundOffBkk} ทางเราขอเสนอเป็นการส่งรูปเมนู / ตัวอย่างจัดงาน / รีวิวลูกค้าเก่าให้ดูแทนได้ไหมคะ? หรือสนใจประเภทงานแบบไหน เดี๋ยวแอดมินช่วยแนะนำให้ค่ะ ✨`;
-      console.log(`[TasteGuard] override (off-bkk province=${foundOffBkk})`);
-    } else if (violatesMonk) {
-      finalAnswer = finalAnswer.replace(/นิมนต์/g, "เชิญ");
-      console.log(`[TasteGuard] replaced "นิมนต์" → "เชิญ"`);
-    }
-  }
+  // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
+  const finalAnswer = answerText;
+
 
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
   if (imageTitles.length > 0) {
