@@ -38,6 +38,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_token_usage: {
+        Row: {
+          completion_tokens: number
+          cost_usd: number
+          created_at: string
+          customer_id: string | null
+          id: string
+          meta: Json
+          model: string
+          prompt_tokens: number
+          source: string
+          total_tokens: number | null
+        }
+        Insert: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          meta?: Json
+          model: string
+          prompt_tokens?: number
+          source: string
+          total_tokens?: number | null
+        }
+        Update: {
+          completion_tokens?: number
+          cost_usd?: number
+          created_at?: string
+          customer_id?: string | null
+          id?: string
+          meta?: Json
+          model?: string
+          prompt_tokens?: number
+          source?: string
+          total_tokens?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_token_usage_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           ai_enabled: boolean
