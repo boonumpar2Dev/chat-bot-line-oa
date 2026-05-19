@@ -185,10 +185,13 @@ export default function Settings() {
 
       <Card className="p-6 shadow-soft border-border/60">
         <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎเข้มงวดของ AI</h2></div>
+          <div className="flex items-center gap-2"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎ AI (วิธีคุย/ห้าม/ต้อง)</h2></div>
           <Badge variant="secondary">{s.strict_rules.length} ข้อ</Badge>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">กฎเหล่านี้จะถูกฉีดเข้า prompt ของ AI ทุกครั้งที่ตอบลูกค้า — แก้ในช่องได้เลย กด "เพิ่มกฎใหม่" เพื่อเพิ่ม</p>
+        <p className="text-xs text-muted-foreground mb-4">
+          📌 ที่เดียวจบ — กฎทุกข้อจะถูกส่งให้ AI <b>ทุกครั้ง</b> ที่ตอบลูกค้า (ใช้สม่ำเสมอ)<br/>
+          💡 ถ้าเป็น <b>ข้อมูลตอบลูกค้า</b> (เมนู/ราคา/รีวิว/FAQ) → ใส่ที่ <b>หน้าสอน AI</b> แทน (จะหยิบมาเฉพาะเมื่อเกี่ยวข้อง ประหยัด token)
+        </p>
 
         <div className="space-y-3">
           {s.strict_rules.length === 0 && (
@@ -255,11 +258,6 @@ export default function Settings() {
             {kbCategories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <p className="text-xs text-muted-foreground">ตั้ง entry ใน KB หมวดนี้แยกตามช่วงจำนวนคน เช่น "เปรียบเทียบ 40 ท่าน", "เปรียบเทียบ 100 ท่าน"</p>
-        </div>
-        <div className="space-y-1.5 mt-5">
-          <Label>กฎเลือกรูป/วิดีโอ (Image selection rules)</Label>
-          <Textarea rows={10} value={s.image_selection_rules} onChange={e=>upd("image_selection_rules", e.target.value)} className="font-mono text-xs" />
-          <p className="text-xs text-muted-foreground">ฉีดเข้า prompt ทุกครั้งที่เลือกรูป — แก้ A-F ให้ตรงกับธุรกิจของคุณ</p>
         </div>
       </Card>
 
