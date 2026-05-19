@@ -118,13 +118,14 @@ async function uploadLineMedia(messageId: string, msgType: string, supabase: any
   }
 }
 
-async function ocrImage(imageUrl: string): Promise<string | null> {
+async function ocrImage(imageUrl: string, supabase: any, customerId?: string): Promise<string | null> {
   try {
+    const model = "google/gemini-2.5-flash";
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [{
           role: "user",
           content: [
@@ -136,6 +137,7 @@ async function ocrImage(imageUrl: string): Promise<string | null> {
     });
     if (!res.ok) { console.error(`[OCR] gateway ${res.status}`); return null; }
     const data = await res.json();
+    logTokenUsage(supabase, { model, source: "ocr", apiResponse: data, customerId });
     const text = (data.choices?.[0]?.message?.content || "").trim();
     return text.length > 0 ? text.slice(0, 800) : null;
   } catch (e) {
