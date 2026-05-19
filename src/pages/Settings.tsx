@@ -168,6 +168,7 @@ export default function Settings() {
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5"><Label>Manual Chat (ชม.)</Label><Input type="number" value={s.manual_chat_hours} onChange={e=>upd("manual_chat_hours",+e.target.value)} /><p className="text-xs text-muted-foreground">หยุด AI เมื่อแอดมินตอบ</p></div>
           <div className="space-y-1.5"><Label>หยุด AI หลังได้เบอร์ (ชม.)</Label><Input type="number" value={s.phone_mute_hours} onChange={e=>upd("phone_mute_hours",+e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>AI ตอบได้กี่รอบหลังลูกค้ามีเบอร์แล้ว</Label><Input type="number" min={0} value={s.post_phone_max_replies} onChange={e=>upd("post_phone_max_replies",+e.target.value)} /><p className="text-[11px] text-muted-foreground">0 = ปิดทันทีเมื่อมีเบอร์ • สูง = ไม่จำกัด (default 3)</p></div>
           <div className="space-y-1.5"><Label>หยุด AI หลัง Fallback (ชม.)</Label><Input type="number" value={s.fallback_mute_hours} onChange={e=>upd("fallback_mute_hours",+e.target.value)} /></div>
           <div className="space-y-1.5"><Label>SLA (ชม.)</Label><Input type="number" value={s.sla_hours} onChange={e=>upd("sla_hours",+e.target.value)} /></div>
         </div>
