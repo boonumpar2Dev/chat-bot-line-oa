@@ -596,7 +596,16 @@ async function processEvent(event: any, supabase: any) {
   if (freshCustomer.venue) knownIntent.push(`สถานที่: ${freshCustomer.venue}`);
   if (freshCustomer.guest_count) knownIntent.push(`จำนวนคน: ${freshCustomer.guest_count}`);
   if (freshCustomer.event_date) knownIntent.push(`วันจัดงาน: ${freshCustomer.event_date}`);
-  const knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+  let knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+
+  // 🔢 ตรวจจำนวนแขกจากข้อความ + ที่เก็บไว้ — ถ้า max <40 → เพิ่ม alert กฎห้ามเสนอโต๊ะจีน/ซุ้ม/ภาพรวม
+  const guestNumsInText = Array.from(String(messageText).matchAll(/(\d{1,4})\s*(?:ท่าน|คน|พระ|แขก)/g)).map(m => parseInt(m[1], 10)).filter(n => n > 0 && n < 1000);
+  const allGuestNums = [...guestNumsInText, freshCustomer.guest_count].filter((n): n is number => typeof n === "number" && n > 0);
+  const maxGuest = allGuestNums.length ? Math.max(...allGuestNums) : 0;
+  const isSmallGroup = maxGuest > 0 && maxGuest < 40;
+  if (isSmallGroup) {
+    knownIntentStr += `\n\n🚨🚨 ALERT: ลูกค้าจำนวน ${maxGuest} ท่าน (<40) — ห้ามเสนอ/พูดถึง "โต๊ะจีน" "ซุ้มอาหาร" "ภาพรวม" เด็ดขาด | เสนอเฉพาะบุฟเฟ่ต์ | image_titles ห้ามมีคำว่า ภาพรวม/โต๊ะจีน/ซุ้ม/เปรียบเทียบ`;
+  }
 
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
@@ -659,6 +668,14 @@ async function processEvent(event: any, supabase: any) {
     .replace(/\\n/g, "\n").replace(/\\r/g, "")
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   let imageTitles: string[] = aiResp.image_titles || [];
+
+  // 🛡️ Hardcode guard: ลูกค้า <40 ท่าน → กรองรูปที่มีคำต้องห้ามออกเสมอ (AI อาจหลุดกฎ)
+  if (isSmallGroup && imageTitles.length > 0) {
+    const FORBIDDEN = /ภาพรวม|โต๊ะจีน|ซุ้ม|เปรียบเทียบ/;
+    const before = imageTitles.length;
+    imageTitles = imageTitles.filter(t => !FORBIDDEN.test(String(t)));
+    if (imageTitles.length !== before) console.log(`[SmallGroup ${maxGuest}] filtered ${before - imageTitles.length} forbidden image_titles`);
+  }
 
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   const finalAnswer = answerText;
