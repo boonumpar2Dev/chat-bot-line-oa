@@ -273,6 +273,10 @@ Deno.serve(async (req) => {
       console.warn(`gemini-3-flash failed: ${e.message}, trying gemini-2.5-flash`);
       aiResp = await callAI(prompt, "google/gemini-2.5-flash");
     }
+    if (aiResp?._usage) {
+      logTokenUsage(supabase, { model: aiResp._model, source: "kb_test", apiResponse: { usage: aiResp._usage } });
+    }
+
 
     // Resolve image/video titles → URLs
     const imageTitles: string[] = Array.isArray(aiResp.image_titles) ? aiResp.image_titles : [];
