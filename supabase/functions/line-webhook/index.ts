@@ -682,7 +682,7 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   let imageTitles: string[] = aiResp.image_titles || [];
 
   // 🍽️ Taste post-check: ถ้า AI หลุดบอกชิมต่างจังหวัด/นิมนต์มาชิม → override
-  let finalAnswer = answerText;
+  let finalAnswer = finalAnswer;
   if (isTasteIntent) {
     const violatesProvince = foundOffBkk && /(ขอนแก่น|เชียงใหม่|ภูเก็ต|ชลบุรี|ระยอง|อุดรธานี|นครราชสีมา|อยุธยา|หาดใหญ่|สงขลา|สุราษฎร์|ต่างจังหวัด)/.test(answerText) && /(ชิม|ทดลอง|ลอง)/.test(answerText);
     const violatesMonk = /นิมนต์.*(ชิม|มา|ทาน)/.test(answerText);
@@ -690,7 +690,7 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
       finalAnswer = `บริการชิมฟรีของเรามีเฉพาะพื้นที่ กทม. และปริมณฑลค่ะ 🙏 (ที่บริษัทรามอินทรา หรือส่งเดลิเวอรี่ โดยลูกค้ารับผิดชอบค่าจัดส่ง)\n\nเนื่องจากคุณลูกค้าอยู่${foundOffBkk} ทางเราขอเสนอเป็นการส่งรูปเมนู / ตัวอย่างจัดงาน / รีวิวลูกค้าเก่าให้ดูแทนได้ไหมคะ? หรือสนใจประเภทงานแบบไหน เดี๋ยวแอดมินช่วยแนะนำให้ค่ะ ✨`;
       console.log(`[TasteGuard] override (off-bkk province=${foundOffBkk})`);
     } else if (violatesMonk) {
-      finalAnswer = answerText.replace(/นิมนต์/g, "เชิญ");
+      finalAnswer = finalAnswer.replace(/นิมนต์/g, "เชิญ");
       console.log(`[TasteGuard] replaced "นิมนต์" → "เชิญ"`);
     }
   }
@@ -730,11 +730,11 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await pushLine(lineUserId, [{ type: "text", text: answerText }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: answerText, sender: "ai", confidence_score: confidence });
+    await pushLine(lineUserId, [{ type: "text", text: finalAnswer }]);
+    await supabase.from("conversations").insert({ customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
     await supabase.from("customers").update({
       ai_active: false, manual_chat_until: muteUntil,
-      last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
+      last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
     }).eq("id", customer.id);
     return;
   }
@@ -798,8 +798,8 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
 
-  const bubbles = answerText.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
-  const textBubbles = bubbles.length > 0 ? bubbles : [answerText];
+  const bubbles = finalAnswer.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const textBubbles = bubbles.length > 0 ? bubbles : [finalAnswer];
   const toLineMsg = (m: { type: string; url: string; thumb?: string }) =>
     m.type === "video"
       ? { type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url }
@@ -820,19 +820,19 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   }
 
   const savedMsg = mediaToSend.length > 0
-    ? `${answerText}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
-    : answerText;
+    ? `${finalAnswer}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
+    : finalAnswer;
   const update: any = {
     last_message_at: new Date().toISOString(),
-    last_message_snippet: `🤖 ${answerText.slice(0, 60)}`,
+    last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
   };
   if (imageTitles.length > 0) update.last_sent_image_titles = imageTitles;
 
   // Auto-handover: ตรวจจับเฉพาะตอน AI พูดชัดว่า "ขอส่งต่อ/ขอประสาน" — ไม่จับประโยคสุภาพทั่วไปอย่าง "เจ้าหน้าที่จะติดต่อกลับ"
   const handoverPatterns = /ขอ(ส่งต่อ|ประสาน(งาน)?|โอน|ฝาก)(ให้|เรื่อง|ข้อมูล)?(ทีมงาน|เจ้าหน้าที่|แอดมิน|ฝ่าย\S*)|(ส่งต่อ|ประสาน)(ให้|เรื่อง)(ทีมงาน|เจ้าหน้าที่|แอดมิน|ฝ่าย\S*)(ดูแล|รับช่วง|ช่วย|พิจารณา)|(แจ้ง|บอก)(ทีมงาน|เจ้าหน้าที่|แอดมิน)ให้(ติดต่อ|รับช่วง|ดูแล)/;
   // ไม่ตรวจจับถ้า AI กำลังขอเบอร์/ยืนยันเบอร์ (เพราะมักพูดว่า "เจ้าหน้าที่จะติดต่อกลับที่เบอร์...")
-  const isAskingPhone = /เบอร์|โทร|ติดต่อกลับที่/.test(answerText);
-  if (handoverPatterns.test(answerText) && !isAskingPhone) {
+  const isAskingPhone = /เบอร์|โทร|ติดต่อกลับที่/.test(finalAnswer);
+  if (handoverPatterns.test(finalAnswer) && !isAskingPhone) {
     const muteH = cfg.manual_chat_hours ?? 360;
     update.ai_active = false;
     update.manual_chat_until = new Date(Date.now() + muteH * 3600000).toISOString();
