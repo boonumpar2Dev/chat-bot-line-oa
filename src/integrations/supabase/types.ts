@@ -43,6 +43,7 @@ export type Database = {
           ai_enabled: boolean
           ai_persona: string
           allowed_service_types: string[]
+          comparison_instruction: string
           comparison_kb_category: string | null
           comparison_phase_enabled: boolean
           confidence_threshold: number
@@ -74,6 +75,7 @@ export type Database = {
           ai_enabled?: boolean
           ai_persona?: string
           allowed_service_types?: string[]
+          comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
           confidence_threshold?: number
@@ -105,6 +107,7 @@ export type Database = {
           ai_enabled?: boolean
           ai_persona?: string
           allowed_service_types?: string[]
+          comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
           confidence_threshold?: number
