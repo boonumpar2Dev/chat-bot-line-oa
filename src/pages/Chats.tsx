@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -153,6 +154,30 @@ export default function Chats() {
     setCustomers(prev => prev.map(c => c.id === selectedId ? { ...c, ...patch } : c));
   };
 
+  const [clearingChat, setClearingChat] = useState(false);
+  const clearThisChat = async () => {
+    if (!selectedId) return;
+    setClearingChat(true);
+    try {
+      const { error: delErr } = await supabase.from("conversations").delete().eq("customer_id", selectedId);
+      if (delErr) throw delErr;
+      const resetPatch = {
+        event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
+        last_sent_image_titles: [], conversation_summary: null, summary_until_message_id: null,
+        last_message_snippet: null, last_message_at: null, unread_count: 0,
+      };
+      const { error: updErr } = await supabase.from("customers").update(resetPatch).eq("id", selectedId);
+      if (updErr) throw updErr;
+      setMessages([]);
+      updateLocalCustomer(resetPatch);
+      toast.success("ล้างประวัติแชท + context AI ของลูกค้านี้แล้ว");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setClearingChat(false);
+    }
+  };
+
   const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -287,6 +312,25 @@ export default function Chats() {
                 <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
                 <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
               </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="icon" variant="ghost" title="ล้างประวัติแชทของลูกค้านี้" disabled={clearingChat}>
+                    {clearingChat ? <Loader2 className="w-4 h-4 animate-spin"/> : <Eraser className="w-4 h-4"/>}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ล้างประวัติแชทของลูกค้านี้?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      จะลบข้อความทั้งหมดของ <b>{selected.nickname || selected.display_name}</b> และรีเซ็ต context ที่ AI จำไว้ (ประเภทงาน, จำนวนคน, สถานที่, วันจัด, สรุปสนทนา) — ใช้สำหรับเทสต์ใหม่ ลูกค้ารายอื่นจะไม่ถูกกระทบ
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearThisChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">ล้างเลย</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
                 <SheetTrigger asChild>
                   <Button size="icon" variant="ghost"><Info className="w-4 h-4"/></Button>
