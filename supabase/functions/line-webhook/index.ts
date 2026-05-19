@@ -17,7 +17,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Token budgets (ภาษาไทย char ≠ token, ใช้ token-based ดีกว่า char-based)
 const BUDGET_KB = 3000;
-const BUDGET_PACKAGES = 2000;
+const BUDGET_PACKAGES = 4500;
 const BUDGET_PROMOS = 800;
 const BUDGET_HISTORY = 2000;
 
