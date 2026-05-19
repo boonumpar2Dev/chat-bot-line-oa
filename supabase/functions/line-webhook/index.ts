@@ -681,6 +681,24 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   let imageTitles: string[] = aiResp.image_titles || [];
 
+  // 🍽️ Taste post-check: ถ้า AI หลุดบอกชิมต่างจังหวัด/นิมนต์มาชิม → override
+  let finalAnswer = answerText;
+  if (isTasteIntent) {
+    const violatesProvince = foundOffBkk && /(ขอนแก่น|เชียงใหม่|ภูเก็ต|ชลบุรี|ระยอง|อุดรธานี|นครราชสีมา|อยุธยา|หาดใหญ่|สงขลา|สุราษฎร์|ต่างจังหวัด)/.test(answerText) && /(ชิม|ทดลอง|ลอง)/.test(answerText);
+    const violatesMonk = /นิมนต์.*(ชิม|มา|ทาน)/.test(answerText);
+    if (violatesProvince) {
+      finalAnswer = `บริการชิมฟรีของเรามีเฉพาะพื้นที่ กทม. และปริมณฑลค่ะ 🙏 (ที่บริษัทรามอินทรา หรือส่งเดลิเวอรี่ โดยลูกค้ารับผิดชอบค่าจัดส่ง)\n\nเนื่องจากคุณลูกค้าอยู่${foundOffBkk} ทางเราขอเสนอเป็นการส่งรูปเมนู / ตัวอย่างจัดงาน / รีวิวลูกค้าเก่าให้ดูแทนได้ไหมคะ? หรือสนใจประเภทงานแบบไหน เดี๋ยวแอดมินช่วยแนะนำให้ค่ะ ✨`;
+      console.log(`[TasteGuard] override (off-bkk province=${foundOffBkk})`);
+    } else if (violatesMonk) {
+      finalAnswer = answerText.replace(/นิมนต์/g, "เชิญ");
+      console.log(`[TasteGuard] replaced "นิมนต์" → "เชิญ"`);
+    }
+  }
+
+  // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
+  if (imageTitles.length > 0) {
+    const expanded = [...imageTitles];
+
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
   if (imageTitles.length > 0) {
     const expanded = [...imageTitles];
