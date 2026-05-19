@@ -100,6 +100,7 @@ existing_categories: ${(cats || []).map((c: any) => c.name).join(", ") || "(เนเ
     }
 
     const aiData = await aiRes.json();
+    logTokenUsage(supabase, { model: "google/gemini-2.5-flash", source: "classify", apiResponse: aiData });
     const content = aiData?.choices?.[0]?.message?.content || "{}";
     let parsed: any;
     try { parsed = JSON.parse(content); } catch { parsed = { items: [] }; }
