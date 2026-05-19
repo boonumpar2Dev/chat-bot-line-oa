@@ -529,9 +529,10 @@ async function processEvent(event: any, supabase: any) {
   const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้สูงสุด 4 รายการ ตรงตามกฎเลือกสื่อใน strict_rules):\n${allImageSources.join("\n")}` : "";
 
 
-  // กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1) — configurable via Settings UI
+  // กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1) — น้ำเสียงตั้งค่าได้ใน Settings (comparison_instruction)
+  const comparisonInstruction = (cfg.comparison_instruction || "").trim();
   const comparisonSection = (cfg.comparison_phase_enabled && cfg.comparison_kb_category)
-    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน แล้วบอกสั้นๆ ว่า "ส่งรูปเปรียบเทียบให้ดูค่ะ เลือกตามงบได้เลย" ห้ามส่งรูปเฉพาะ tier ใดๆ ในจังหวะนี้\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบแล้ว): ส่งรูป/เมนูของระดับนั้นเท่านั้น ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำ\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูปเปรียบเทียบ`
+    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน ห้ามส่งรูปเฉพาะ tier ใดๆ ในจังหวะนี้\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบแล้ว): ส่งรูป/เมนูของระดับนั้นเท่านั้น ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำ\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูปเปรียบเทียบ${comparisonInstruction ? `\n\n📣 น้ำเสียงตอนส่งรูปเปรียบเทียบ (จาก Settings):\n${comparisonInstruction}` : ""}`
     : "";
 
   let history = [...(recentConvs || [])].reverse();
