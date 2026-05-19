@@ -701,10 +701,6 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
   if (imageTitles.length > 0) {
     const expanded = [...imageTitles];
-
-  // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
-  if (imageTitles.length > 0) {
-    const expanded = [...imageTitles];
     for (const title of imageTitles) {
       const k = kbItems.find((x: any) => x.title === title);
       const bundle = Array.isArray(k?.bundle_image_titles) ? k.bundle_image_titles : [];
