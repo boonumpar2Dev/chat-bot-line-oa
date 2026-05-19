@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     }
 
     const text = toSummarize.map(m => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
-    let newSummary = await summarize(text);
+    let newSummary = await summarize(text, supabase, customer_id);
 
     // Merge with previous summary if exists
     if (customer?.conversation_summary) {
