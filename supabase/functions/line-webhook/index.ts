@@ -669,6 +669,14 @@ async function processEvent(event: any, supabase: any) {
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
   let imageTitles: string[] = aiResp.image_titles || [];
 
+  // 🛡️ Hardcode guard: ลูกค้า <40 ท่าน → กรองรูปที่มีคำต้องห้ามออกเสมอ (AI อาจหลุดกฎ)
+  if (isSmallGroup && imageTitles.length > 0) {
+    const FORBIDDEN = /ภาพรวม|โต๊ะจีน|ซุ้ม|เปรียบเทียบ/;
+    const before = imageTitles.length;
+    imageTitles = imageTitles.filter(t => !FORBIDDEN.test(String(t)));
+    if (imageTitles.length !== before) console.log(`[SmallGroup ${maxGuest}] filtered ${before - imageTitles.length} forbidden image_titles`);
+  }
+
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   const finalAnswer = answerText;
 
