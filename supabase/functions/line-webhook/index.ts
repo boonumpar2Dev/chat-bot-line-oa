@@ -531,9 +531,11 @@ async function processEvent(event: any, supabase: any) {
 
   // กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1) — น้ำเสียงตั้งค่าได้ใน Settings (comparison_instruction)
   const comparisonInstruction = (cfg.comparison_instruction || "").trim();
+  const prevSentTitles = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
+  const prevSentStr = prevSentTitles.length ? `\n\n🚫 รูปที่เคยส่งให้ลูกค้าคนนี้ไปแล้วในรอบก่อนหน้า (ห้ามส่งซ้ำ เว้นแต่ลูกค้าขอใหม่ชัดเจน):\n${prevSentTitles.map((t: string) => `- ${t}`).join("\n")}` : "";
   const comparisonSection = (cfg.comparison_phase_enabled && cfg.comparison_kb_category)
-    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน ห้ามส่งรูปเฉพาะ tier ใดๆ ในจังหวะนี้\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบแล้ว): ส่งรูป/เมนูของระดับนั้นเท่านั้น ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำ\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูปเปรียบเทียบ${comparisonInstruction ? `\n\n📣 น้ำเสียงตอนส่งรูปเปรียบเทียบ (จาก Settings):\n${comparisonInstruction}` : ""}`
-    : "";
+    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน ห้ามส่งรูปเฉพาะ tier ใดๆ ในจังหวะนี้\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบ/เลือกประเภทแพ็กแล้ว): ส่งรูป/เมนูของระดับนั้นเท่านั้น ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำเด็ดขาด — ถ้าเคยส่งรูปเปรียบเทียบไปแล้วในประวัติ ห้ามส่งอีกในรอบนี้ ให้ตอบเป็นข้อความล้วน\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูปเปรียบเทียบ${comparisonInstruction ? `\n\n📣 น้ำเสียงตอนส่งรูปเปรียบเทียบ (จาก Settings):\n${comparisonInstruction}` : ""}${prevSentStr}`
+    : prevSentStr;
 
   let history = [...(recentConvs || [])].reverse();
   const lastAdminIdx = history.map((m, i) => m.sender === "admin" ? i : -1).filter(i => i >= 0).pop();
