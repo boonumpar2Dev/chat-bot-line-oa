@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens } from "../_shared/ai-context.ts";
 import { buildPrompt } from "../_shared/prompt-builder.ts";
+import { logTokenUsage } from "../_shared/log-token-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,7 +55,7 @@ function getItemVideos(item: any): { url: string; thumb_url: string }[] {
   return Array.isArray(item.video_urls) ? item.video_urls.filter((v: any) => v?.url && v?.thumb_url) : [];
 }
 
-async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null } }> {
+async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -94,7 +95,8 @@ async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): 
   });
   if (!res.ok) throw new Error(`AI gateway ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  return JSON.parse(data.choices[0].message.content);
+  const parsed = JSON.parse(data.choices[0].message.content);
+  return { ...parsed, _usage: data.usage, _model: model };
 }
 
 async function uploadLineMedia(messageId: string, msgType: string, supabase: any): Promise<string | null> {
@@ -116,13 +118,14 @@ async function uploadLineMedia(messageId: string, msgType: string, supabase: any
   }
 }
 
-async function ocrImage(imageUrl: string): Promise<string | null> {
+async function ocrImage(imageUrl: string, supabase: any, customerId?: string): Promise<string | null> {
   try {
+    const model = "google/gemini-2.5-flash";
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model,
         messages: [{
           role: "user",
           content: [
@@ -134,6 +137,7 @@ async function ocrImage(imageUrl: string): Promise<string | null> {
     });
     if (!res.ok) { console.error(`[OCR] gateway ${res.status}`); return null; }
     const data = await res.json();
+    logTokenUsage(supabase, { model, source: "ocr", apiResponse: data, customerId });
     const text = (data.choices?.[0]?.message?.content || "").trim();
     return text.length > 0 ? text.slice(0, 800) : null;
   } catch (e) {
@@ -646,6 +650,9 @@ async function processEvent(event: any, supabase: any) {
     console.warn(`[LLM] gemini-3-flash failed: ${e.message} — fallback to gemini-2.5-flash`);
     try { aiResp = await callAI(prompt, "google/gemini-2.5-flash"); }
     catch (e2: any) { console.error("AI failed:", e2.message); return; }
+  }
+  if (aiResp?._usage) {
+    logTokenUsage(supabase, { model: aiResp._model, source: "webhook", apiResponse: { usage: aiResp._usage }, customerId: customer.id });
   }
 
   const confidence = typeof aiResp.confidence === "number" ? aiResp.confidence : 85;

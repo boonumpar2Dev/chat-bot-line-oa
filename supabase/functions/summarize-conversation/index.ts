@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { logTokenUsage } from "../_shared/log-token-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,12 +10,13 @@ const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const KEEP_RECENT = 10;
 const TRIGGER_THRESHOLD = 20;
 
-async function summarize(text: string): Promise<string> {
+async function summarize(text: string, supabase: any, customerId?: string): Promise<string> {
+  const model = "google/gemini-2.5-flash-lite";
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
+      model,
       messages: [{
         role: "user",
         content: `สรุปบทสนทนาด้านล่างเป็นภาษาไทย ให้สั้น กระชับ เก็บเฉพาะข้อมูลสำคัญ:
@@ -31,6 +33,7 @@ ${text}`
   });
   if (!res.ok) throw new Error(`summarize gateway ${res.status}: ${await res.text()}`);
   const data = await res.json();
+  logTokenUsage(supabase, { model, source: "summarize", apiResponse: data, customerId });
   return (data.choices?.[0]?.message?.content || "").trim().slice(0, 500);
 }
 
@@ -76,13 +79,13 @@ Deno.serve(async (req) => {
     }
 
     const text = toSummarize.map(m => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
-    let newSummary = await summarize(text);
+    let newSummary = await summarize(text, supabase, customer_id);
 
     // Merge with previous summary if exists
     if (customer?.conversation_summary) {
       const combined = `${customer.conversation_summary}\n${newSummary}`;
       if (combined.length > 500) {
-        newSummary = await summarize(`สรุปก่อนหน้า: ${customer.conversation_summary}\n\nสรุปใหม่: ${newSummary}`);
+        newSummary = await summarize(`สรุปก่อนหน้า: ${customer.conversation_summary}\n\nสรุปใหม่: ${newSummary}`, supabase, customer_id);
       } else {
         newSummary = combined;
       }

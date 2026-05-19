@@ -2,6 +2,7 @@
 // Uses Lovable AI Gateway (no API key needed). Mirrors the prompt logic of line-webhook.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildPrompt } from "../_shared/prompt-builder.ts";
+import { logTokenUsage } from "../_shared/log-token-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,15 +31,17 @@ async function callAI(prompt: string, model: string) {
   if (!res.ok) throw new Error(`AI ${res.status}: ${await res.text()}`);
   const data = await res.json();
   const txt = data.choices?.[0]?.message?.content || "{}";
-  // Strip markdown code fence if present
   const cleaned = txt.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
-  try { return JSON.parse(cleaned); } catch {
-    // Try to extract first {...} block
+  let parsed: any;
+  try { parsed = JSON.parse(cleaned); } catch {
     const m = cleaned.match(/\{[\s\S]*\}/);
-    if (m) { try { return JSON.parse(m[0]); } catch {} }
-    console.warn("AI response not JSON-parseable:", txt.slice(0, 200));
-    return { answer: cleaned, confidence: 80, image_titles: [] };
+    if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
+    if (!parsed) {
+      console.warn("AI response not JSON-parseable:", txt.slice(0, 200));
+      parsed = { answer: cleaned, confidence: 80, image_titles: [] };
+    }
   }
+  return { ...parsed, _usage: data.usage, _model: model };
 }
 
 Deno.serve(async (req) => {
@@ -270,6 +273,10 @@ Deno.serve(async (req) => {
       console.warn(`gemini-3-flash failed: ${e.message}, trying gemini-2.5-flash`);
       aiResp = await callAI(prompt, "google/gemini-2.5-flash");
     }
+    if (aiResp?._usage) {
+      logTokenUsage(supabase, { model: aiResp._model, source: "kb_test", apiResponse: { usage: aiResp._usage } });
+    }
+
 
     // Resolve image/video titles → URLs
     const imageTitles: string[] = Array.isArray(aiResp.image_titles) ? aiResp.image_titles : [];

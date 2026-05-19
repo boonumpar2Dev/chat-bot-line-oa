@@ -1,5 +1,6 @@
 // Smart teach box: AI classifies user input → rule vs KB → returns refined items
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logTokenUsage } from "../_shared/log-token-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -99,6 +100,7 @@ existing_categories: ${(cats || []).map((c: any) => c.name).join(", ") || "(ไ�
     }
 
     const aiData = await aiRes.json();
+    logTokenUsage(sb, { model: "google/gemini-2.5-flash", source: "classify", apiResponse: aiData });
     const content = aiData?.choices?.[0]?.message?.content || "{}";
     let parsed: any;
     try { parsed = JSON.parse(content); } catch { parsed = { items: [] }; }
