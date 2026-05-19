@@ -154,6 +154,30 @@ export default function Chats() {
     setCustomers(prev => prev.map(c => c.id === selectedId ? { ...c, ...patch } : c));
   };
 
+  const [clearingChat, setClearingChat] = useState(false);
+  const clearThisChat = async () => {
+    if (!selectedId) return;
+    setClearingChat(true);
+    try {
+      const { error: delErr } = await supabase.from("conversations").delete().eq("customer_id", selectedId);
+      if (delErr) throw delErr;
+      const resetPatch = {
+        event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
+        last_sent_image_titles: [], conversation_summary: null, summary_until_message_id: null,
+        last_message_snippet: null, last_message_at: null, unread_count: 0,
+      };
+      const { error: updErr } = await supabase.from("customers").update(resetPatch).eq("id", selectedId);
+      if (updErr) throw updErr;
+      setMessages([]);
+      updateLocalCustomer(resetPatch);
+      toast.success("ล้างประวัติแชท + context AI ของลูกค้านี้แล้ว");
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setClearingChat(false);
+    }
+  };
+
   const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
