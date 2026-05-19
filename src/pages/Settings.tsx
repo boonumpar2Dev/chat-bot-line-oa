@@ -223,6 +223,17 @@ export default function Settings() {
           </select>
           <p className="text-xs text-muted-foreground">ตั้ง entry ใน KB หมวดนี้แยกตามช่วงจำนวนคน เช่น "เปรียบเทียบ 40 ท่าน", "เปรียบเทียบ 100 ท่าน"</p>
         </div>
+        <div className="space-y-1.5 mt-5">
+          <Label>น้ำเสียง AI ตอนส่งรูปเปรียบเทียบ</Label>
+          <Textarea
+            rows={4}
+            value={s.comparison_instruction ?? ""}
+            onChange={e=>upd("comparison_instruction", e.target.value)}
+            disabled={!s.comparison_phase_enabled}
+            placeholder='เช่น "พูดแบบที่ปรึกษา ไม่ใช่สคริปต์ — สรุปสั้นๆ ว่าลูกค้าจะได้เห็นอะไร แล้วชวนคุยต่อ ห้ามใช้ประโยคซ้ำๆ เช่น..."'
+          />
+          <p className="text-xs text-muted-foreground">กำหนดว่า AI ควรพูดยังไงตอนแนบรูปเปรียบเทียบ — แก้ตรงนี้ได้เลยโดยไม่ต้องแก้โค้ด</p>
+        </div>
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
