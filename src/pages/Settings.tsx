@@ -183,61 +183,12 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎ AI (วิธีคุย/ห้าม/ต้อง)</h2></div>
-          <Badge variant="secondary">{s.strict_rules.length} ข้อ</Badge>
-        </div>
-        <div className="text-xs text-muted-foreground mb-4 space-y-1">
-          <p>📌 ที่เดียวจบ — กฎทุกข้อจะถูกส่งให้ AI <b>ทุกครั้ง</b> ที่ตอบลูกค้า (ใช้สม่ำเสมอ)</p>
-          <p>💡 ถ้าเป็น <b>ข้อมูลตอบลูกค้า</b> (เมนู/ราคา/รีวิว/FAQ/เงื่อนไขค่าส่ง/การชิม) → ใส่ที่ <b>หน้าสอน AI</b> แทน — จะหยิบมาเฉพาะเมื่อเกี่ยวข้อง <b>ประหยัด token</b></p>
-          <a href="/knowledge" className="inline-flex items-center gap-1 mt-1 text-primary hover:underline font-medium">
-            ✨ ลอง Smart Teach Box — พิมพ์อะไรก็ได้ AI ช่วยจัดให้ →
-          </a>
-        </div>
-
-        <div className="space-y-3">
-          {s.strict_rules.length === 0 && (
-            <div className="text-center py-8 rounded-lg border-2 border-dashed">
-              <p className="text-sm text-muted-foreground">ยังไม่มีกฎ — กดปุ่มด้านล่างเพื่อเพิ่ม</p>
-            </div>
-          )}
-          {s.strict_rules.map((r, i) => (
-            <div key={i} className="group relative rounded-lg border bg-card hover:border-primary/40 transition-colors">
-              <div className="flex items-start gap-2 p-3">
-                <div className="shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center mt-0.5">{i + 1}</div>
-                <Textarea
-                  value={r}
-                  onChange={e => {
-                    const next = [...s.strict_rules];
-                    next[i] = e.target.value;
-                    upd("strict_rules", next);
-                  }}
-                  rows={Math.max(2, Math.ceil(r.length / 70))}
-                  className="flex-1 resize-none border-0 bg-transparent p-0 focus-visible:ring-0 shadow-none text-sm leading-relaxed"
-                  placeholder="พิมพ์กฎที่นี่…"
-                />
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => upd("strict_rules", s.strict_rules.filter((_, j) => j !== i))}
-                  title="ลบกฎนี้"
-                >
-                  <X className="w-4 h-4"/>
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <Button
-          variant="outline"
-          className="w-full mt-3 border-dashed"
-          onClick={() => upd("strict_rules", [...s.strict_rules, ""])}
-        >
-          <Plus className="w-4 h-4"/> เพิ่มกฎใหม่
-        </Button>
+      <Card className="p-6 shadow-soft border-border/60 bg-primary/5">
+        <div className="flex items-center gap-2 mb-2"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎ AI ย้ายไปอยู่ใน "สอน AI" แล้ว</h2></div>
+        <p className="text-xs text-muted-foreground mb-3">เพื่อรวมที่สอน AI ไว้ที่เดียว กฎ AI (วิธีคุย/ห้าม/ต้อง) ถูกย้ายไปอยู่ในแท็บ <b>กฎ AI</b> ของหน้าสอน AI</p>
+        <a href="/knowledge" className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-sm">
+          ไปหน้าสอน AI → แท็บ "กฎ AI" →
+        </a>
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
