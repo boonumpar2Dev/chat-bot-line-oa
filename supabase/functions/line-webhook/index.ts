@@ -377,7 +377,7 @@ async function processEvent(event: any, supabase: any) {
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
     await supabase.from("customers").update({
-      phone: phoneStr, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
+      phone: phoneStr, phone_saved_at: new Date().toISOString(), ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
     }).eq("id", customer.id);
     const fmtList = validPhones.map(fmtOne);
     const fmtStr = fmtList.length === 1 ? fmtList[0] : fmtList.join(", ");
