@@ -227,9 +227,7 @@ Deno.serve(async (req) => {
       ...(pkgs || []).filter((p: any) => getItemVideos(p).length > 0).map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
       ...(promos || []).filter((pr: any) => getItemVideos(pr).length > 0).map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
     ];
-    // ใช้ image_selection_rules จาก Settings (เหมือน line-webhook)
-    const imgRules = (cfg.image_selection_rules || "").trim();
-    const imageListStr = imageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้):\n${imageSources.join("\n")}\n\n💡 กฎเลือกสื่อ (สำคัญมาก — ทำผิดบ่อย):\n${imgRules}\n\n📐 กติกาเพิ่มเติม:\n- image_titles **ใส่ได้สูงสุด 4 รายการ** ระบบจะดึงรูปของแต่ละ title มาเอง\n- ห้ามใส่ title ที่ลูกค้าไม่ได้ขอ — ตรวจ image_titles ทุกอันว่าตรงเจตนาหรือไม่` : "";
+    const imageListStr = imageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้สูงสุด 4 รายการ ตรงตามกฎเลือกสื่อใน strict_rules):\n${imageSources.join("\n")}` : "";
 
     const recentMsgs = history.slice(-8).map(h =>
       `${h.role === "user" ? "ลูกค้า" : "AI"}: ${h.content}`
