@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
     if (customer?.conversation_summary) {
       const combined = `${customer.conversation_summary}\n${newSummary}`;
       if (combined.length > 500) {
-        newSummary = await summarize(`สรุปก่อนหน้า: ${customer.conversation_summary}\n\nสรุปใหม่: ${newSummary}`);
+        newSummary = await summarize(`สรุปก่อนหน้า: ${customer.conversation_summary}\n\nสรุปใหม่: ${newSummary}`, supabase, customer_id);
       } else {
         newSummary = combined;
       }
