@@ -417,6 +417,32 @@ async function processEvent(event: any, supabase: any) {
   // status เป็นแค่ป้าย funnel — ai_active เป็น single source of truth (เช็คไปแล้วบรรทัด 391)
   if (cfg.ai_enabled === false) return;
 
+  // 📞 Post-phone reply cap: ถ้าลูกค้ามีเบอร์ในระบบแล้ว → AI ตอบได้แค่ N รอบ (default 3) แล้วปิด handover ให้แอดมิน
+  const maxPostPhone = cfg.post_phone_max_replies ?? 3;
+  if (freshCustomer.phone && freshCustomer.phone.trim() && maxPostPhone > 0) {
+    const sinceTs = freshCustomer.phone_saved_at || freshCustomer.updated_at;
+    if (sinceTs) {
+      const { count } = await supabase
+        .from("conversations")
+        .select("id", { count: "exact", head: true })
+        .eq("customer_id", customer.id)
+        .eq("sender", "ai")
+        .gt("created_at", sinceTs);
+      const aiReplies = count ?? 0;
+      if (aiReplies >= maxPostPhone) {
+        const muteH = cfg.phone_mute_hours ?? 1;
+        const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+        await supabase.from("customers").update({
+          ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
+        }).eq("id", customer.id);
+        await sendAndSave(supabase, customer.id, lineUserId,
+          "ขอบคุณที่สอบถามนะคะ 🙏 เดี๋ยวเจ้าหน้าที่ติดต่อกลับไปสรุปรายละเอียดให้ค่ะ");
+        console.log(`[PostPhoneCap] AI replied ${aiReplies}/${maxPostPhone} after phone saved → handover`);
+        return;
+      }
+    }
+  }
+
 
   // Schedule
   if (cfg.schedule_enabled) {
