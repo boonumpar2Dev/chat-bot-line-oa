@@ -1,6 +1,7 @@
 // kb-chat-test: stateless AI chat for testing knowledge base / packages / promotions
 // Uses Lovable AI Gateway (no API key needed). Mirrors the prompt logic of line-webhook.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildPrompt } from "../_shared/prompt-builder.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
