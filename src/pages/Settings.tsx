@@ -188,10 +188,13 @@ export default function Settings() {
           <div className="flex items-center gap-2"><Shield className="text-primary"/><h2 className="font-display text-lg font-semibold">กฎ AI (วิธีคุย/ห้าม/ต้อง)</h2></div>
           <Badge variant="secondary">{s.strict_rules.length} ข้อ</Badge>
         </div>
-        <p className="text-xs text-muted-foreground mb-4">
-          📌 ที่เดียวจบ — กฎทุกข้อจะถูกส่งให้ AI <b>ทุกครั้ง</b> ที่ตอบลูกค้า (ใช้สม่ำเสมอ)<br/>
-          💡 ถ้าเป็น <b>ข้อมูลตอบลูกค้า</b> (เมนู/ราคา/รีวิว/FAQ) → ใส่ที่ <b>หน้าสอน AI</b> แทน (จะหยิบมาเฉพาะเมื่อเกี่ยวข้อง ประหยัด token)
-        </p>
+        <div className="text-xs text-muted-foreground mb-4 space-y-1">
+          <p>📌 ที่เดียวจบ — กฎทุกข้อจะถูกส่งให้ AI <b>ทุกครั้ง</b> ที่ตอบลูกค้า (ใช้สม่ำเสมอ)</p>
+          <p>💡 ถ้าเป็น <b>ข้อมูลตอบลูกค้า</b> (เมนู/ราคา/รีวิว/FAQ/เงื่อนไขค่าส่ง/การชิม) → ใส่ที่ <b>หน้าสอน AI</b> แทน — จะหยิบมาเฉพาะเมื่อเกี่ยวข้อง <b>ประหยัด token</b></p>
+          <a href="/knowledge" className="inline-flex items-center gap-1 mt-1 text-primary hover:underline font-medium">
+            ✨ ลอง Smart Teach Box — พิมพ์อะไรก็ได้ AI ช่วยจัดให้ →
+          </a>
+        </div>
 
         <div className="space-y-3">
           {s.strict_rules.length === 0 && (
