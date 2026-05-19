@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { logTokenUsage } from "../_shared/log-token-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
