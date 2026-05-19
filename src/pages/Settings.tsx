@@ -21,6 +21,7 @@ type Settings = {
   cooldown_minutes: number;
   manual_chat_hours: number;
   phone_mute_hours: number;
+  post_phone_max_replies: number;
   fallback_mute_hours: number;
   followup_hours: number;
   followup_enabled: boolean;
