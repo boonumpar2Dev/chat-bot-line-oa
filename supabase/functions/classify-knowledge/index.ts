@@ -1,5 +1,6 @@
 // Smart teach box: AI classifies user input → rule vs KB → returns refined items
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { logTokenUsage } from "../_shared/log-token-usage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
