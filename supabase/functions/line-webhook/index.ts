@@ -682,7 +682,7 @@ ${forbiddenCheckLine}(${forbiddenCheckLine ? "6" : "5"}) ลูกค้าข�
   let imageTitles: string[] = aiResp.image_titles || [];
 
   // 🍽️ Taste post-check: ถ้า AI หลุดบอกชิมต่างจังหวัด/นิมนต์มาชิม → override
-  let finalAnswer = finalAnswer;
+  let finalAnswer = answerText;
   if (isTasteIntent) {
     const violatesProvince = foundOffBkk && /(ขอนแก่น|เชียงใหม่|ภูเก็ต|ชลบุรี|ระยอง|อุดรธานี|นครราชสีมา|อยุธยา|หาดใหญ่|สงขลา|สุราษฎร์|ต่างจังหวัด)/.test(answerText) && /(ชิม|ทดลอง|ลอง)/.test(answerText);
     const violatesMonk = /นิมนต์.*(ชิม|มา|ทาน)/.test(answerText);
