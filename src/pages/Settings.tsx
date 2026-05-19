@@ -97,6 +97,7 @@ export default function Settings() {
       debounce_seconds: s.debounce_seconds,
       comparison_phase_enabled: s.comparison_phase_enabled,
       comparison_kb_category: s.comparison_kb_category,
+      comparison_instruction: s.comparison_instruction,
       ai_persona: s.ai_persona,
       trivial_replies: s.trivial_replies,
       tax_id_keywords: s.tax_id_keywords,
