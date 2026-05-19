@@ -386,8 +386,19 @@ ${recentMsgs || "(ใหม่)"}
       arr.forEach((u: string) => { if (!imageUrls.includes(u)) imageUrls.push(u); });
     }
 
+    // 🍽️ Taste post-check
+    let finalAns: string = aiResp.answer || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
+    if (isTasteIntentKC) {
+      const violatesProv = offBkkKC && /(ขอนแก่น|เชียงใหม่|ภูเก็ต|ชลบุรี|ระยอง|อุดรธานี|นครราชสีมา|อยุธยา|หาดใหญ่|สงขลา|สุราษฎร์|ต่างจังหวัด)/.test(finalAns) && /(ชิม|ทดลอง|ลอง)/.test(finalAns);
+      if (violatesProv) {
+        finalAns = `บริการชิมฟรีของเรามีเฉพาะพื้นที่ กทม. และปริมณฑลค่ะ 🙏 (ที่บริษัทรามอินทรา หรือส่งเดลิเวอรี่ โดยลูกค้ารับผิดชอบค่าจัดส่ง)\n\nเนื่องจากคุณลูกค้าอยู่${offBkkKC} ทางเราขอเสนอเป็นการส่งรูปเมนู / ตัวอย่างจัดงาน / รีวิวลูกค้าเก่าให้ดูแทนได้ไหมคะ? หรือสนใจประเภทงานแบบไหน เดี๋ยวแอดมินช่วยแนะนำให้ค่ะ ✨`;
+      } else if (/นิมนต์.*(ชิม|มา|ทาน)/.test(finalAns)) {
+        finalAns = finalAns.replace(/นิมนต์/g, "เชิญ");
+      }
+    }
+
     return Response.json({
-      answer: aiResp.answer || "ขออภัย ไม่สามารถตอบได้ในขณะนี้",
+      answer: finalAns,
       confidence: aiResp.confidence ?? 80,
       image_titles: imageTitles,
       image_urls: imageUrls.slice(0, 12),
