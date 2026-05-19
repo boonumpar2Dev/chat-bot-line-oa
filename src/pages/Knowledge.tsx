@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText, Shield } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
@@ -19,6 +19,7 @@ import VideoUrlsField, { VideoItem } from "@/components/knowledge/VideoUrlsField
 import TierImageField from "@/components/knowledge/TierImageField";
 import KBChatTest from "@/components/knowledge/KBChatTest";
 import SmartTeachBox from "@/components/knowledge/SmartTeachBox";
+import AiRulesTab from "@/components/knowledge/AiRulesTab";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
@@ -97,11 +98,13 @@ export default function Knowledge() {
           <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
           <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
           <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
+          <TabsTrigger value="rules"><Shield className="w-4 h-4 mr-1.5"/>กฎ AI</TabsTrigger>
         </TabsList>
         <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
         <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
         <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
         <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
+        <TabsContent value="rules" className="mt-4"><AiRulesTab/></TabsContent>
       </Tabs>
     </div>
   );
