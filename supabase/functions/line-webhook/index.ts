@@ -651,6 +651,9 @@ async function processEvent(event: any, supabase: any) {
     try { aiResp = await callAI(prompt, "google/gemini-2.5-flash"); }
     catch (e2: any) { console.error("AI failed:", e2.message); return; }
   }
+  if (aiResp?._usage) {
+    logTokenUsage(supabase, { model: aiResp._model, source: "webhook", apiResponse: { usage: aiResp._usage }, customerId: customer.id });
+  }
 
   const confidence = typeof aiResp.confidence === "number" ? aiResp.confidence : 85;
   const threshold = cfg.confidence_threshold || 75;
