@@ -301,20 +301,26 @@ async function processEvent(event: any, supabase: any) {
     .limit(1);
   const lastAiMsg = lastAiArr?.[0]?.message || "";
   const aiAskedTax = /(tag\s*id|เลขผู้เสีย|เลขประจำตัวผู้เสียภาษี|นิติบุคคล|tax\s*id)/i.test(lastAiMsg);
+  const aiAskedPhone = /(ขอเบอร์|เบอร์โทร|เบอร์ติดต่อ|หมายเลขโทร|เบอร์ที่ติดต่อ|เบอร์มือถือ)/i.test(lastAiMsg);
 
-  // Tax ID detection (เลขประจำตัวผู้เสียภาษี 13 หลัก / มี keyword / หรือ AI เพิ่งถามมา)
+  // Tax ID detection — ต้องมี context (keyword ในข้อความ หรือ AI เพิ่งถาม tax) ไม่งั้น 13 หลักอาจเป็น "เบอร์พิมพ์ผิด"
   const allDigitRuns = (messageText.match(/\d+/g) || []);
   const taxKwArr: string[] = (cfg.tax_id_keywords && cfg.tax_id_keywords.length) ? cfg.tax_id_keywords : ["tag","แท็ก","tax","ภาษี","เลขผู้เสีย","นิติบุคคล","จดทะเบียน"];
   const taxKwRe = new RegExp(taxKwArr.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"), "i");
   const taxKeyword = taxKwRe.test(messageText);
+  const taxContext = taxKeyword || aiAskedTax;
   let taxId: string | null = null;
-  let taxIdMaybe: string | null = null; // เลขที่น่าจะเป็น tax แต่ไม่ครบ 13 หลัก (ตอน AI ถามมา)
+  let taxIdMaybe: string | null = null;
+  let phoneTypo: string | null = null; // เลขที่น่าจะเป็นเบอร์แต่ความยาวผิด (เฉพาะตอน AI ถามเบอร์)
   for (const d of allDigitRuns) {
-    if (d.length === 13) { taxId = d; break; }
+    // ถ้า AI กำลังถามเบอร์ + ไม่มี tax context → 11-13 หลัก = เบอร์พิมพ์ผิด ไม่ใช่ tax
+    if (aiAskedPhone && !taxContext && d.length >= 11 && d.length <= 13) {
+      if (!phoneTypo) phoneTypo = d;
+      continue;
+    }
+    if (d.length === 13 && taxContext) { taxId = d; break; }
     if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
-    // เลข 11-12 หลัก ไม่ใช่เบอร์ไทย → ถือเป็น tax พิมพ์ผิด
-    // เลข 9-10 หลัก = tax พิมพ์ผิด เฉพาะกรณี AI เพิ่งถามมา
-    if (!taxIdMaybe) {
+    if (!taxIdMaybe && taxContext) {
       if (d.length === 11 || d.length === 12) taxIdMaybe = d;
       else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
     }
@@ -329,12 +335,19 @@ async function processEvent(event: any, supabase: any) {
       `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`);
     return;
   }
-  // AI เพิ่งถาม Tax ID + ลูกค้าตอบเลขมา แต่ไม่ครบ 13 หลัก → ขอใหม่ (ห้ามไปเข้า phone validation)
+  // AI ถามเบอร์อยู่ แต่ลูกค้าตอบเลขยาวเกินไป → ขอเบอร์ใหม่ (ห้ามตกไปเป็น tax)
+  if (phoneTypo) {
+    await sendAndSave(supabase, customer.id, lineUserId,
+      `เลข "${phoneTypo}" ดูยาวเกินไปนะคะ มือถือไทย 10 หลัก ขึ้นต้น 06/08/09 (เช่น 081-234-5678) รบกวนทวนเบอร์ใหม่อีกครั้งค่ะ 🙏`);
+    return;
+  }
+  // AI เพิ่งถาม Tax ID + ลูกค้าตอบเลขมา แต่ไม่ครบ 13 หลัก → ขอใหม่
   if (taxIdMaybe) {
     await sendAndSave(supabase, customer.id, lineUserId,
       `เลข "${taxIdMaybe}" ดูไม่ครบ 13 หลักนะคะ Tax ID ของบริษัทจะมี 13 หลักพอดีค่ะ รบกวนทวนใหม่อีกครั้งนะคะ 🙏`);
     return;
   }
+
 
   // Phone detection — collect ALL candidates (ข้าม run ที่ยาว 13 หลักเพื่อกัน Tax ID)
   const pureDigits = messageText.replace(/[\s\-().+]/g, "");
