@@ -61,8 +61,16 @@ export default function Settings() {
       if (mode === "all") {
         const { error: custErr } = await supabase.from("customers").delete().not("id", "is", null);
         if (custErr) throw custErr;
+      } else {
+        // Reset AI context fields on customers so AI doesn't "remember" deleted chats
+        const { error: resetErr } = await supabase.from("customers").update({
+          event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
+          last_sent_image_titles: [], conversation_summary: null, summary_until_message_id: null,
+          last_message_snippet: null, last_message_at: null, unread_count: 0,
+        }).not("id", "is", null);
+        if (resetErr) throw resetErr;
       }
-      toast.success(mode === "all" ? "ลบแชท + ลูกค้าทั้งหมดแล้ว" : "ลบประวัติแชทแล้ว");
+      toast.success(mode === "all" ? "ลบแชท + ลูกค้าทั้งหมดแล้ว" : "ลบประวัติแชท + ล้าง context AI แล้ว");
     } catch (e: any) {
       toast.error(e.message);
     } finally {
