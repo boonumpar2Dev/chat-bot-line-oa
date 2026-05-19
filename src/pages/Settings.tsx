@@ -33,6 +33,7 @@ type Settings = {
   debounce_seconds: number;
   comparison_phase_enabled: boolean;
   comparison_kb_category: string | null;
+  comparison_instruction: string;
   ai_persona: string;
   allowed_service_types: string[];
   forbidden_terms: string[];
