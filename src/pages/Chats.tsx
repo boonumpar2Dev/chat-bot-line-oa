@@ -464,9 +464,9 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
     <div className={cn("flex flex-col gap-1 group", align)}>
       <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
         {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
-        {isCustomer && cleaned && onTrainAI && (
-          <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="สร้างข้อมูลสอน AI จากข้อความนี้">
-            <Brain className="w-3 h-3"/>สอน AI
+        {m.sender === "ai" && cleaned && onTrainAI && (
+          <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
+            <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
           </button>
         )}
       </span>
