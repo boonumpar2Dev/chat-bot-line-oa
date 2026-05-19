@@ -18,6 +18,7 @@ import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
 import VideoUrlsField, { VideoItem } from "@/components/knowledge/VideoUrlsField";
 import TierImageField from "@/components/knowledge/TierImageField";
 import KBChatTest from "@/components/knowledge/KBChatTest";
+import SmartTeachBox from "@/components/knowledge/SmartTeachBox";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
@@ -65,12 +66,14 @@ const PROMO_TEMPLATE = `เงื่อนไขโปรโมชั่น:
 - หมายเหตุ: ไม่สามารถใช้ร่วมกับโปรอื่น`;
 
 export default function Knowledge() {
+  const { data: cats } = useQuery({ queryKey: ["kb-cats"], queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order")).data ?? [] });
+  const catNames = (cats || []).map((c: any) => c.name);
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
-          <p className="text-muted-foreground mt-1">จัดการข้อมูลที่ AI ใช้ตอบลูกค้า + ทดสอบได้ทันที</p>
+          <p className="text-muted-foreground mt-1">พิมพ์อะไรก็ได้ — AI ช่วยจัดเข้าที่ถูกให้</p>
         </div>
         <Sheet>
           <SheetTrigger asChild>
@@ -86,6 +89,8 @@ export default function Knowledge() {
           </SheetContent>
         </Sheet>
       </div>
+
+      <SmartTeachBox categories={catNames} />
       <Tabs defaultValue="kb">
         <TabsList>
           <TabsTrigger value="kb"><BookOpen className="w-4 h-4 mr-1.5"/>ข้อมูลทั่วไป</TabsTrigger>
