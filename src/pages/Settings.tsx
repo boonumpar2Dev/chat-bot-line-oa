@@ -35,6 +35,8 @@ type Settings = {
   comparison_phase_enabled: boolean;
   comparison_kb_category: string | null;
   comparison_instruction: string;
+  phase2_instruction: string;
+  max_images_per_reply: number;
   ai_persona: string;
   allowed_service_types: string[];
   forbidden_terms: string[];
