@@ -106,13 +106,17 @@ export type Database = {
           id: string
           image_selection_rules: string
           intent_collection_order: string
+          kb_menu_title_keywords: string[]
           key: string
+          location_keywords: string[]
           manual_chat_hours: number
           max_images_per_reply: number
+          menu_request_keywords: string[]
           phase2_instruction: string
           phone_mute_hours: number
           post_phone_max_replies: number
           schedule_enabled: boolean
+          service_area_kb_title: string
           sla_hours: number
           start_time: string
           strict_rules: string[]
@@ -141,13 +145,17 @@ export type Database = {
           id?: string
           image_selection_rules?: string
           intent_collection_order?: string
+          kb_menu_title_keywords?: string[]
           key: string
+          location_keywords?: string[]
           manual_chat_hours?: number
           max_images_per_reply?: number
+          menu_request_keywords?: string[]
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
           schedule_enabled?: boolean
+          service_area_kb_title?: string
           sla_hours?: number
           start_time?: string
           strict_rules?: string[]
@@ -176,13 +184,17 @@ export type Database = {
           id?: string
           image_selection_rules?: string
           intent_collection_order?: string
+          kb_menu_title_keywords?: string[]
           key?: string
+          location_keywords?: string[]
           manual_chat_hours?: number
           max_images_per_reply?: number
+          menu_request_keywords?: string[]
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
           schedule_enabled?: boolean
+          service_area_kb_title?: string
           sla_hours?: number
           start_time?: string
           strict_rules?: string[]
