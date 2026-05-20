@@ -37,6 +37,10 @@ type Settings = {
   comparison_instruction: string;
   phase2_instruction: string;
   max_images_per_reply: number;
+  menu_request_keywords: string[];
+  kb_menu_title_keywords: string[];
+  service_area_kb_title: string;
+  location_keywords: string[];
   ai_persona: string;
   allowed_service_types: string[];
   forbidden_terms: string[];
