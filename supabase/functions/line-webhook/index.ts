@@ -779,12 +779,13 @@ async function processEvent(event: any, supabase: any) {
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }
-  // dedup URLs (กันรูปซ้ำ) + cap 20 รูป/วิดีโอ ต่อหนึ่งคำตอบ
+  // dedup URLs (กันรูปซ้ำ) + cap จาก Settings (max_images_per_reply, default 5)
+  const maxMedia = Math.max(1, Math.min(20, Number(cfg.max_images_per_reply) || 5));
   const seenUrls = new Set<string>();
   const allMedia = mediaList.filter(m => {
     if (seenUrls.has(m.url)) return false;
     seenUrls.add(m.url); return true;
-  }).slice(0, 20);
+  }).slice(0, maxMedia);
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
