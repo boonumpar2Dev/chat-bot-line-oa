@@ -31,6 +31,14 @@ export function buildPrompt(i: BuildPromptInput): string {
     ? `\n\n🔴 กฎ AI (สำคัญสุด ห้ามผิดเด็ดขาด — เหนือกฎอื่นทั้งหมด):\n${rules.map((r, idx) => `${idx + 1}. ${r}`).join("\n")}`
     : "";
 
+  // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
+  const _now = new Date();
+  const _bkk = new Date(_now.getTime() + 7 * 3600000);
+  const _todayStr = _bkk.toISOString().slice(0, 10);
+  const _thMonths = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  const _todayHuman = `${_bkk.getUTCDate()} ${_thMonths[_bkk.getUTCMonth()]} ${_bkk.getUTCFullYear()}`;
+  const dateBlock = `\n\n📅 วันนี้: ${_todayHuman} (${_todayStr}) — ถ้าลูกค้าบอกแค่ "วัน X เดือน Y" ไม่ระบุปี ให้ใช้ปีปัจจุบัน; ถ้าเดือนนั้นผ่านไปแล้วในปีนี้ ให้ใช้ปีถัดไป ห้ามใช้ปีในอดีตเด็ดขาด`;
+
   const turnLine = typeof i.customerTurns === "number" ? ` (ลูกค้าพูดมาแล้ว ${i.customerTurns} รอบ)` : "";
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
