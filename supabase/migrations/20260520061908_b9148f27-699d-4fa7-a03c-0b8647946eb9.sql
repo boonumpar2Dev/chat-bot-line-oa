@@ -1,0 +1,3 @@
+ALTER TABLE public.app_settings
+  ADD COLUMN IF NOT EXISTS phase2_instruction text NOT NULL DEFAULT 'ลูกค้าระบุแพ็ก/ระดับ/งบแล้ว → ส่งเฉพาะรูป tier ที่แนะนำเท่านั้น (ใส่ image_titles เป็น "แพ็กเกจ: ชื่อ — tier") ห้ามแนบ KB เมนูหรือรูปอื่นใด เว้นแต่ลูกค้าจะ "ขอดูเมนู/ตัวอย่าง" ชัดเจนในข้อความล่าสุด ห้ามแถมรูประดับอื่น ห้ามส่งรูปเปรียบเทียบซ้ำถ้าเคยส่งไปแล้ว',
+  ADD COLUMN IF NOT EXISTS max_images_per_reply integer NOT NULL DEFAULT 5;
