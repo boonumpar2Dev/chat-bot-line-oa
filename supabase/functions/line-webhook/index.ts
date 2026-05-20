@@ -696,17 +696,17 @@ async function processEvent(event: any, supabase: any) {
     if (imageTitles.length !== before) console.log(`[SmallGroup ${maxGuest}] filtered ${before - imageTitles.length} forbidden image_titles`);
   }
 
-  // 🛡️ Anti-spam guard: ถ้าลูกค้าไม่ได้ขอ "เมนู/ตัวอย่าง/ดูรูป" ใน message ล่าสุด → drop image_titles ที่เป็น KB เมนู/ตัวอย่าง/ซุ้ม (ป้องกันเคส Ae Ka — AI หยิบรูป KB เมนูมาแถมเอง)
-  const askedForMenu = /เมนู|ตัวอย่าง|ดูรูป|ขอรูป|รูปอาหาร|รูปจัด|หน้าตา|ภาพ/.test(String(messageText));
-  if (!askedForMenu && imageTitles.length > 0) {
-    const KB_MENU_LIKE = /^(เมนู|ตัวอย่าง|ซุ้ม)|เมนู|ตัวอย่าง/;
+  // 🛡️ Anti-spam guard: ถ้าลูกค้าไม่ได้ขอ "เมนู/ตัวอย่าง/ดูรูป" → drop image_titles ที่เป็น KB เมนู/ตัวอย่าง (กันเคส Ae Ka)
+  // คีย์เวิร์ดอ่านจาก app_settings เพื่อให้แอดมินแก้ได้
+  const menuReqKeywords: string[] = Array.isArray(cfg.menu_request_keywords) ? cfg.menu_request_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
+  const kbMenuKeywords: string[] = Array.isArray(cfg.kb_menu_title_keywords) ? cfg.kb_menu_title_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
+  const askedForMenu = menuReqKeywords.some(kw => String(messageText).includes(kw));
+  if (!askedForMenu && imageTitles.length > 0 && kbMenuKeywords.length > 0) {
     const before = imageTitles.length;
     imageTitles = imageTitles.filter(t => {
       const s = String(t);
-      // อนุญาตเสมอถ้าเป็น tier image, แพ็กเกจ, โปร, VDO
-      if (/^(แพ็กเกจ:|โปรโมชั่น:|VDO)/.test(s)) return true;
-      // drop ถ้าชื่อ KB ดูเหมือนเมนู/ตัวอย่าง
-      return !KB_MENU_LIKE.test(s);
+      if (/^(แพ็กเกจ:|โปรโมชั่น:|VDO)/.test(s)) return true; // tier/pkg/promo/video — ผ่านเสมอ
+      return !kbMenuKeywords.some(kw => s.includes(kw));
     });
     if (imageTitles.length !== before) console.log(`[AntiSpam] dropped ${before - imageTitles.length} unsolicited menu/example images`);
   }
