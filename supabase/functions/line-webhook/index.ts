@@ -614,8 +614,11 @@ async function processEvent(event: any, supabase: any) {
   }
 
   // 🗺️ Service area guard — บังคับ inject KB whitelist จังหวัด ถ้าลูกค้าพูดถึงสถานที่/จังหวัด
-  const serviceAreaKb = kbItems.find((k: any) => /พื้นที่.*บริการ|จังหวัด.*บริการ|บริการ.*พื้นที่/.test(String(k.title || "")));
-  const mentionsLocation = /จังหวัด|จัดที่|อยู่ที่|จัดงานที่|อ\.|อำเภอ|เชียงใหม่|เชียงราย|ภูเก็ต|สงขลา|หาดใหญ่|ตรัง|กระบี่|พังงา|สุราษ|นครศรี|ระนอง|ชุมพร|ประจวบ|เพชรบุรี|ราชบุรี|ตาก|พิษณุโลก|สุโขทัย|กำแพง|พิจิตร|เพชรบูรณ์|น่าน|พะเยา|แพร่|ลำปาง|ลำพูน|แม่ฮ่องสอน|อุตรดิตถ์|พัทลุง|ยะลา|ปัตตานี|นราธิวาส|สตูล|ตราด/.test(String(messageText));
+  // ใช้ค่าจาก app_settings (service_area_kb_title + location_keywords) เพื่อให้แอดมินแก้ได้
+  const serviceAreaTitle = String(cfg.service_area_kb_title || "").trim();
+  const locKeywords: string[] = Array.isArray(cfg.location_keywords) ? cfg.location_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
+  const serviceAreaKb = serviceAreaTitle ? kbItems.find((k: any) => String(k.title || "").trim() === serviceAreaTitle) : null;
+  const mentionsLocation = locKeywords.some(kw => String(messageText).includes(kw));
   if (serviceAreaKb && (mentionsLocation || freshCustomer.venue)) {
     knownIntentStr += `\n\n🗺️ พื้นที่ให้บริการ (whitelist — ต้องเช็กก่อนตอบเรื่องค่าเดินทาง/ระยะทาง):\n${serviceAreaKb.content}\n\n⚠️ ถ้าจังหวัดที่ลูกค้าพูดไม่อยู่ใน whitelist ด้านบน → ตอบว่า "พื้นที่นี้ยังไม่ได้ให้บริการประจำค่ะ เดี๋ยวให้ทีมงานเช็กความเป็นไปได้และค่าใช้จ่ายเพิ่มเติมแล้วแจ้งกลับนะคะ" — **ห้ามแต่งราคาค่าเดินทาง/ระยะทาง/ค่าขนส่งใดๆ ห้ามรับปากว่าไปได้** ห้ามขอโลเคชั่นเพื่อเช็กราคาเอง`;
   }
@@ -693,17 +696,17 @@ async function processEvent(event: any, supabase: any) {
     if (imageTitles.length !== before) console.log(`[SmallGroup ${maxGuest}] filtered ${before - imageTitles.length} forbidden image_titles`);
   }
 
-  // 🛡️ Anti-spam guard: ถ้าลูกค้าไม่ได้ขอ "เมนู/ตัวอย่าง/ดูรูป" ใน message ล่าสุด → drop image_titles ที่เป็น KB เมนู/ตัวอย่าง/ซุ้ม (ป้องกันเคส Ae Ka — AI หยิบรูป KB เมนูมาแถมเอง)
-  const askedForMenu = /เมนู|ตัวอย่าง|ดูรูป|ขอรูป|รูปอาหาร|รูปจัด|หน้าตา|ภาพ/.test(String(messageText));
-  if (!askedForMenu && imageTitles.length > 0) {
-    const KB_MENU_LIKE = /^(เมนู|ตัวอย่าง|ซุ้ม)|เมนู|ตัวอย่าง/;
+  // 🛡️ Anti-spam guard: ถ้าลูกค้าไม่ได้ขอ "เมนู/ตัวอย่าง/ดูรูป" → drop image_titles ที่เป็น KB เมนู/ตัวอย่าง (กันเคส Ae Ka)
+  // คีย์เวิร์ดอ่านจาก app_settings เพื่อให้แอดมินแก้ได้
+  const menuReqKeywords: string[] = Array.isArray(cfg.menu_request_keywords) ? cfg.menu_request_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
+  const kbMenuKeywords: string[] = Array.isArray(cfg.kb_menu_title_keywords) ? cfg.kb_menu_title_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
+  const askedForMenu = menuReqKeywords.some(kw => String(messageText).includes(kw));
+  if (!askedForMenu && imageTitles.length > 0 && kbMenuKeywords.length > 0) {
     const before = imageTitles.length;
     imageTitles = imageTitles.filter(t => {
       const s = String(t);
-      // อนุญาตเสมอถ้าเป็น tier image, แพ็กเกจ, โปร, VDO
-      if (/^(แพ็กเกจ:|โปรโมชั่น:|VDO)/.test(s)) return true;
-      // drop ถ้าชื่อ KB ดูเหมือนเมนู/ตัวอย่าง
-      return !KB_MENU_LIKE.test(s);
+      if (/^(แพ็กเกจ:|โปรโมชั่น:|VDO)/.test(s)) return true; // tier/pkg/promo/video — ผ่านเสมอ
+      return !kbMenuKeywords.some(kw => s.includes(kw));
     });
     if (imageTitles.length !== before) console.log(`[AntiSpam] dropped ${before - imageTitles.length} unsolicited menu/example images`);
   }
