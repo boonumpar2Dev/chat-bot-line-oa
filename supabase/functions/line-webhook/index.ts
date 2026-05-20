@@ -613,6 +613,13 @@ async function processEvent(event: any, supabase: any) {
     knownIntentStr += `\n\n🚨🚨 ALERT: ลูกค้าจำนวน ${maxGuest} ท่าน (<40) — ห้ามเสนอ/พูดถึง "โต๊ะจีน" "ซุ้มอาหาร" "ภาพรวม" เด็ดขาด | เสนอเฉพาะบุฟเฟ่ต์ | image_titles ห้ามมีคำว่า ภาพรวม/โต๊ะจีน/ซุ้ม/เปรียบเทียบ`;
   }
 
+  // 🗺️ Service area guard — บังคับ inject KB whitelist จังหวัด ถ้าลูกค้าพูดถึงสถานที่/จังหวัด
+  const serviceAreaKb = kbItems.find((k: any) => /พื้นที่.*บริการ|จังหวัด.*บริการ|บริการ.*พื้นที่/.test(String(k.title || "")));
+  const mentionsLocation = /จังหวัด|จัดที่|อยู่ที่|จัดงานที่|อ\.|อำเภอ|เชียงใหม่|เชียงราย|ภูเก็ต|สงขลา|หาดใหญ่|ตรัง|กระบี่|พังงา|สุราษ|นครศรี|ระนอง|ชุมพร|ประจวบ|เพชรบุรี|ราชบุรี|ตาก|พิษณุโลก|สุโขทัย|กำแพง|พิจิตร|เพชรบูรณ์|น่าน|พะเยา|แพร่|ลำปาง|ลำพูน|แม่ฮ่องสอน|อุตรดิตถ์|พัทลุง|ยะลา|ปัตตานี|นราธิวาส|สตูล|ตราด/.test(String(messageText));
+  if (serviceAreaKb && (mentionsLocation || freshCustomer.venue)) {
+    knownIntentStr += `\n\n🗺️ พื้นที่ให้บริการ (whitelist — ต้องเช็กก่อนตอบเรื่องค่าเดินทาง/ระยะทาง):\n${serviceAreaKb.content}\n\n⚠️ ถ้าจังหวัดที่ลูกค้าพูดไม่อยู่ใน whitelist ด้านบน → ตอบว่า "พื้นที่นี้ยังไม่ได้ให้บริการประจำค่ะ เดี๋ยวให้ทีมงานเช็กความเป็นไปได้และค่าใช้จ่ายเพิ่มเติมแล้วแจ้งกลับนะคะ" — **ห้ามแต่งราคาค่าเดินทาง/ระยะทาง/ค่าขนส่งใดๆ ห้ามรับปากว่าไปได้** ห้ามขอโลเคชั่นเพื่อเช็กราคาเอง`;
+  }
+
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
   const returningPrompt = hasPhone ? `
