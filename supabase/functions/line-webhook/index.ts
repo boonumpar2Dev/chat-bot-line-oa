@@ -734,10 +734,26 @@ async function processEvent(event: any, supabase: any) {
   if (typeof intent.guest_count === "number" && intent.guest_count > 0 && !freshCustomer.guest_count) {
     intentUpdate.guest_count = Math.floor(intent.guest_count);
   }
-  if (intent.event_date && !freshCustomer.event_date) {
-    const d = String(intent.event_date);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) intentUpdate.event_date = d;
+  if (!freshCustomer.event_date) {
+    // Layer 1: parse Thai date จากข้อความลูกค้าเอง (กันพลาดมากกว่าเชื่อ AI)
+    const parsed = parseThaiEventDate(messageText);
+    if (parsed) {
+      intentUpdate.event_date = parsed;
+      console.log(`[Intent] event_date parsed from text: ${parsed}`);
+    } else if (intent.event_date) {
+      // Layer 2: ใช้ที่ AI ส่ง แต่ตรวจว่าไม่ใช่ปีในอดีต
+      const d = String(intent.event_date);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+        if (d >= today.slice(0, 4) + "-01-01") {
+          intentUpdate.event_date = d;
+        } else {
+          console.warn(`[Intent] AI returned past event_date ${d} — ignored`);
+        }
+      }
+    }
   }
+
   if (Object.keys(intentUpdate).length > 0) {
     await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
     console.log(`[Intent] saved`, intentUpdate);
