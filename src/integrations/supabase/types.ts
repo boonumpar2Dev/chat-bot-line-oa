@@ -108,6 +108,8 @@ export type Database = {
           intent_collection_order: string
           key: string
           manual_chat_hours: number
+          max_images_per_reply: number
+          phase2_instruction: string
           phone_mute_hours: number
           post_phone_max_replies: number
           schedule_enabled: boolean
@@ -141,6 +143,8 @@ export type Database = {
           intent_collection_order?: string
           key: string
           manual_chat_hours?: number
+          max_images_per_reply?: number
+          phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
           schedule_enabled?: boolean
@@ -174,6 +178,8 @@ export type Database = {
           intent_collection_order?: string
           key?: string
           manual_chat_hours?: number
+          max_images_per_reply?: number
+          phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
           schedule_enabled?: boolean

@@ -35,6 +35,8 @@ type Settings = {
   comparison_phase_enabled: boolean;
   comparison_kb_category: string | null;
   comparison_instruction: string;
+  phase2_instruction: string;
+  max_images_per_reply: number;
   ai_persona: string;
   allowed_service_types: string[];
   forbidden_terms: string[];
@@ -99,6 +101,8 @@ export default function Settings() {
       comparison_phase_enabled: s.comparison_phase_enabled,
       comparison_kb_category: s.comparison_kb_category,
       comparison_instruction: s.comparison_instruction,
+      phase2_instruction: s.phase2_instruction,
+      max_images_per_reply: s.max_images_per_reply,
       ai_persona: s.ai_persona,
       trivial_replies: s.trivial_replies,
       tax_id_keywords: s.tax_id_keywords,
@@ -226,7 +230,7 @@ export default function Settings() {
           <p className="text-xs text-muted-foreground">ตั้ง entry ใน KB หมวดนี้แยกตามช่วงจำนวนคน เช่น "เปรียบเทียบ 40 ท่าน", "เปรียบเทียบ 100 ท่าน"</p>
         </div>
         <div className="space-y-1.5 mt-5">
-          <Label>น้ำเสียง AI ตอนส่งรูปเปรียบเทียบ</Label>
+          <Label>น้ำเสียง AI ตอนส่งรูปเปรียบเทียบ (Phase 1)</Label>
           <Textarea
             rows={4}
             value={s.comparison_instruction ?? ""}
@@ -235,6 +239,25 @@ export default function Settings() {
             placeholder='เช่น "พูดแบบที่ปรึกษา ไม่ใช่สคริปต์ — สรุปสั้นๆ ว่าลูกค้าจะได้เห็นอะไร แล้วชวนคุยต่อ ห้ามใช้ประโยคซ้ำๆ เช่น..."'
           />
           <p className="text-xs text-muted-foreground">กำหนดว่า AI ควรพูดยังไงตอนแนบรูปเปรียบเทียบ — แก้ตรงนี้ได้เลยโดยไม่ต้องแก้โค้ด</p>
+        </div>
+        <div className="space-y-1.5 mt-5">
+          <Label>กฎเลือกรูปตอนลูกค้าเลือกแพ็ก/ระดับแล้ว (Phase 2)</Label>
+          <Textarea
+            rows={5}
+            value={s.phase2_instruction ?? ""}
+            onChange={e=>upd("phase2_instruction", e.target.value)}
+            placeholder='เช่น "ส่งเฉพาะรูป tier ที่แนะนำเท่านั้น ห้ามแนบ KB เมนู/รูปอื่น เว้นแต่ลูกค้าจะขอดูเมนูชัดเจน"'
+          />
+          <p className="text-xs text-muted-foreground">ใช้ทั้งเมื่อเปิด/ปิดกลยุทธ์ Phase 1 — กันไม่ให้ AI แถมรูปเมนู/รูปอื่นเวลาลูกค้าถามแค่แพ็กเกจ/ราคา</p>
+        </div>
+        <div className="space-y-1.5 mt-5">
+          <Label>จำนวนรูปสูงสุดต่อข้อความ (1-20)</Label>
+          <Input
+            type="number" min={1} max={20}
+            value={s.max_images_per_reply ?? 5}
+            onChange={e=>upd("max_images_per_reply", Math.max(1, Math.min(20, parseInt(e.target.value) || 5)))}
+          />
+          <p className="text-xs text-muted-foreground">จำกัดจำนวนรูป/วิดีโอที่ AI ส่งในรอบเดียว (กัน KB ตัวเดียวระเบิดเป็น 9-10 รูป) — แนะนำ 4-6</p>
         </div>
       </Card>
 
