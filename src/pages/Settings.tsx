@@ -267,6 +267,49 @@ export default function Settings() {
           />
           <p className="text-xs text-muted-foreground">จำกัดจำนวนรูป/วิดีโอที่ AI ส่งในรอบเดียว (กัน KB ตัวเดียวระเบิดเป็น 9-10 รูป) — แนะนำ 4-6</p>
         </div>
+
+        <div className="space-y-1.5 mt-5">
+          <Label>คำที่ลูกค้าใช้ขอดูรูปเมนู/ตัวอย่าง (1 คำต่อบรรทัด)</Label>
+          <Textarea
+            rows={4}
+            value={(s.menu_request_keywords ?? []).join("\n")}
+            onChange={e=>upd("menu_request_keywords", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
+            placeholder={"เมนู\nตัวอย่าง\nดูรูป\nรูปอาหาร"}
+          />
+          <p className="text-xs text-muted-foreground">ถ้าลูกค้าพิมพ์คำใดคำหนึ่ง → AI ได้รับอนุญาตให้แนบรูป KB เมนู/ตัวอย่าง — ไม่งั้นจะถูก drop อัตโนมัติ</p>
+        </div>
+
+        <div className="space-y-1.5 mt-5">
+          <Label>คำในชื่อ KB ที่ถือว่าเป็นรูปเมนู/ตัวอย่าง (1 คำต่อบรรทัด)</Label>
+          <Textarea
+            rows={3}
+            value={(s.kb_menu_title_keywords ?? []).join("\n")}
+            onChange={e=>upd("kb_menu_title_keywords", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
+            placeholder={"เมนู\nตัวอย่าง\nซุ้ม"}
+          />
+          <p className="text-xs text-muted-foreground">ชื่อ KB ที่มีคำเหล่านี้ จะถูก drop เมื่อลูกค้าไม่ได้ขอดูเมนู (ใช้คู่กับช่องด้านบน) — รูป tier/แพ็กเกจ/โปรไม่โดนกระทบ</p>
+        </div>
+
+        <div className="space-y-1.5 mt-5">
+          <Label>ชื่อ KB ที่เป็น whitelist พื้นที่ให้บริการ</Label>
+          <Input
+            value={s.service_area_kb_title ?? ""}
+            onChange={e=>upd("service_area_kb_title", e.target.value)}
+            placeholder="พื้นที่ที่บุญนำพาสามารถไปให้บริการได้"
+          />
+          <p className="text-xs text-muted-foreground">ใส่ชื่อ KB ตรงตามที่ตั้งไว้ — ระบบจะดึง content มาแสดงให้ AI เช็กก่อนตอบเรื่องค่าเดินทาง</p>
+        </div>
+
+        <div className="space-y-1.5 mt-5">
+          <Label>คำที่บ่งบอกว่าลูกค้าพูดถึงสถานที่/จังหวัด (1 คำต่อบรรทัด)</Label>
+          <Textarea
+            rows={6}
+            value={(s.location_keywords ?? []).join("\n")}
+            onChange={e=>upd("location_keywords", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
+            placeholder={"จังหวัด\nจัดที่\nอ.\nอำเภอ\nเชียงใหม่\nภูเก็ต"}
+          />
+          <p className="text-xs text-muted-foreground">ถ้าข้อความลูกค้ามีคำเหล่านี้ → trigger ให้เช็ก whitelist พื้นที่ — ใส่ชื่อจังหวัดที่ไม่ได้ให้บริการเพื่อกัน AI แต่งราคาค่าเดินทาง</p>
+        </div>
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
