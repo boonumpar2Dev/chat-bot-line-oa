@@ -55,6 +55,47 @@ function getItemVideos(item: any): { url: string; thumb_url: string }[] {
   return Array.isArray(item.video_urls) ? item.video_urls.filter((v: any) => v?.url && v?.thumb_url) : [];
 }
 
+// Parse วัน/เดือน (ไทย) จากข้อความลูกค้า — return YYYY-MM-DD หรือ null
+// รองรับ "2 กรกฎาคม", "2 กค", "2 ก.ค.", "วันที่ 2 ก.ค.", "2/7", "2-7"
+function parseThaiEventDate(text: string): string | null {
+  if (!text) return null;
+  const monthMap: Record<string, number> = {
+    "มกราคม":1,"มกรา":1,"มค":1,"ม.ค":1,
+    "กุมภาพันธ์":2,"กุมภา":2,"กพ":2,"ก.พ":2,
+    "มีนาคม":3,"มีนา":3,"มีค":3,"มี.ค":3,
+    "เมษายน":4,"เมษา":4,"เมย":4,"เม.ย":4,
+    "พฤษภาคม":5,"พฤษภา":5,"พค":5,"พ.ค":5,
+    "มิถุนายน":6,"มิถุนา":6,"มิย":6,"มิ.ย":6,
+    "กรกฎาคม":7,"กรกฎา":7,"กค":7,"ก.ค":7,
+    "สิงหาคม":8,"สิงหา":8,"สค":8,"ส.ค":8,
+    "กันยายน":9,"กันยา":9,"กย":9,"ก.ย":9,
+    "ตุลาคม":10,"ตุลา":10,"ตค":10,"ต.ค":10,
+    "พฤศจิกายน":11,"พฤศจิ":11,"พย":11,"พ.ย":11,
+    "ธันวาคม":12,"ธันวา":12,"ธค":12,"ธ.ค":12,
+  };
+  const monthKeys = Object.keys(monthMap).sort((a, b) => b.length - a.length);
+  const monthAlt = monthKeys.map(k => k.replace(/\./g, "\\.")).join("|");
+  let day = 0, month = 0;
+  const re1 = new RegExp(`(?:วันที่\\s*)?(\\d{1,2})\\s*(?:\\.?\\s*)?(${monthAlt})\\.?`, "i");
+  const m1 = text.match(re1);
+  if (m1) {
+    day = parseInt(m1[1], 10);
+    const key = m1[2].replace(/\./g, "");
+    month = monthMap[key] ?? monthMap[m1[2]];
+  } else {
+    const m2 = text.match(/\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+    if (m2) { day = parseInt(m2[1], 10); month = parseInt(m2[2], 10); }
+  }
+  if (!day || !month || day < 1 || day > 31 || month < 1 || month > 12) return null;
+  const bkk = new Date(Date.now() + 7 * 3600000);
+  let year = bkk.getUTCFullYear();
+  const curMonth = bkk.getUTCMonth() + 1;
+  const curDay = bkk.getUTCDate();
+  if (month < curMonth || (month === curMonth && day < curDay)) year += 1;
+  return `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+}
+
+
 async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -734,10 +775,26 @@ async function processEvent(event: any, supabase: any) {
   if (typeof intent.guest_count === "number" && intent.guest_count > 0 && !freshCustomer.guest_count) {
     intentUpdate.guest_count = Math.floor(intent.guest_count);
   }
-  if (intent.event_date && !freshCustomer.event_date) {
-    const d = String(intent.event_date);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) intentUpdate.event_date = d;
+  if (!freshCustomer.event_date) {
+    // Layer 1: parse Thai date จากข้อความลูกค้าเอง (กันพลาดมากกว่าเชื่อ AI)
+    const parsed = parseThaiEventDate(messageText);
+    if (parsed) {
+      intentUpdate.event_date = parsed;
+      console.log(`[Intent] event_date parsed from text: ${parsed}`);
+    } else if (intent.event_date) {
+      // Layer 2: ใช้ที่ AI ส่ง แต่ตรวจว่าไม่ใช่ปีในอดีต
+      const d = String(intent.event_date);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        const today = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
+        if (d >= today.slice(0, 4) + "-01-01") {
+          intentUpdate.event_date = d;
+        } else {
+          console.warn(`[Intent] AI returned past event_date ${d} — ignored`);
+        }
+      }
+    }
   }
+
   if (Object.keys(intentUpdate).length > 0) {
     await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
     console.log(`[Intent] saved`, intentUpdate);
