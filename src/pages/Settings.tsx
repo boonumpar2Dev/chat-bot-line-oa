@@ -101,6 +101,8 @@ export default function Settings() {
       comparison_phase_enabled: s.comparison_phase_enabled,
       comparison_kb_category: s.comparison_kb_category,
       comparison_instruction: s.comparison_instruction,
+      phase2_instruction: s.phase2_instruction,
+      max_images_per_reply: s.max_images_per_reply,
       ai_persona: s.ai_persona,
       trivial_replies: s.trivial_replies,
       tax_id_keywords: s.tax_id_keywords,
