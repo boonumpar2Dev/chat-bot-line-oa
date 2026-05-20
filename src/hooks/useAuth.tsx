@@ -21,9 +21,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
+      // skip role re-fetch on TOKEN_REFRESHED / USER_UPDATED to avoid flicker
+      if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
       if (s?.user) {
         setTimeout(() => {
           supabase.from("user_roles").select("role").eq("user_id", s.user.id).maybeSingle()
@@ -42,7 +44,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setLoading(false);
     });
-    return () => sub.subscription.unsubscribe();
+
+    // When tab regains focus, force refresh session to avoid stale/expired tokens
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        supabase.auth.refreshSession().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      sub.subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, []);
 
   const signOut = async () => { await supabase.auth.signOut(); };
