@@ -13,7 +13,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import LineConnectionCard from "@/components/settings/LineConnectionCard";
 
 type Settings = {
   id?: string;
