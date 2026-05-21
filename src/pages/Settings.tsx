@@ -13,7 +13,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Save, Bot, Clock, Shield, MessageCircle, Plus, X, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import LineConnectionCard from "@/components/settings/LineConnectionCard";
 
 type Settings = {
   id?: string;
@@ -318,8 +317,6 @@ export default function Settings() {
         <Textarea value={s.fallback_message} onChange={e=>upd("fallback_message",e.target.value)} rows={4} />
         <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
       </Card>
-      {isAdmin && <LineConnectionCard />}
-
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
         <div className="flex items-center gap-2 mb-2"><AlertTriangle className="text-destructive"/><h2 className="font-display text-lg font-semibold">โซนทดสอบ (Danger Zone)</h2></div>
         <p className="text-sm text-muted-foreground mb-4">ใช้ระหว่างเทสระบบ — ลบข้อมูลแล้วเรียกคืนไม่ได้</p>

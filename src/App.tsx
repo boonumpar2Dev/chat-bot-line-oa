@@ -15,6 +15,7 @@ import Settings from "./pages/Settings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
 import AiTokens from "./pages/AiTokens";
+import LineConnection from "./pages/LineConnection";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
                 <Route path="/ai-tokens" element={<ProtectedRoute adminOnly><AiTokens /></ProtectedRoute>} />
+                <Route path="/line-connection" element={<ProtectedRoute adminOnly><LineConnection /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
