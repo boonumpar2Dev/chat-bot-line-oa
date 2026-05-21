@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       .is("phone", null)
       .eq("ai_active", true);
 
-    const accessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+    const accessToken = (await getLineConfig()).channel_access_token;
     let sentCount = 0;
 
     for (const cust of customers || []) {
