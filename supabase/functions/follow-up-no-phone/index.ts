@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { getLineConfig } from "../_shared/line-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,7 @@ Deno.serve(async (req) => {
       .is("phone", null)
       .eq("ai_active", true);
 
-    const accessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+    const accessToken = (await getLineConfig()).channel_access_token;
     let sentCount = 0;
 
     for (const cust of customers || []) {
