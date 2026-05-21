@@ -495,6 +495,33 @@ export type Database = {
         }
         Relationships: []
       }
+      line_config: {
+        Row: {
+          channel_access_token: string
+          channel_id: string
+          channel_secret: string
+          id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          channel_access_token?: string
+          channel_id?: string
+          channel_secret?: string
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          channel_access_token?: string
+          channel_id?: string
+          channel_secret?: string
+          id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       package_categories: {
         Row: {
           created_at: string
