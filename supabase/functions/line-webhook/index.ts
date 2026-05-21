@@ -922,7 +922,9 @@ Deno.serve(async (req) => {
   try {
     const body = await req.text();
     const signature = req.headers.get("x-line-signature") || "";
-    if (LINE_SECRET && signature && !(await verifySignature(body, signature, LINE_SECRET))) {
+    const cfg = await getLineConfig();
+    LINE_TOKEN = cfg.channel_access_token;
+    if (cfg.channel_secret && signature && !(await verifySignature(body, signature, cfg.channel_secret))) {
       return Response.json({ error: "Invalid signature" }, { status: 401 });
     }
     const { events = [] } = JSON.parse(body || "{}");
