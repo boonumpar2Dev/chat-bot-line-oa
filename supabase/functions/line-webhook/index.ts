@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens } from "../_shared/ai-context.ts";
 import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
+import { getLineConfig } from "../_shared/line-config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,8 +11,7 @@ const corsHeaders = {
 
 const processingIds = new Set<string>();
 const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed"];
-const LINE_TOKEN = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")!;
-const LINE_SECRET = Deno.env.get("LINE_CHANNEL_SECRET")!;
+let LINE_TOKEN = ""; // loaded per-request from getLineConfig()
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
