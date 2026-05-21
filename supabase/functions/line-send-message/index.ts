@@ -27,11 +27,12 @@ Deno.serve(async (req) => {
     const lineMessages = messages || (message ? [{ type: "text", text: message }] : null);
     if (!lineMessages) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
+    const { channel_access_token } = await getLineConfig();
     const res = await fetch("https://api.line.me/v2/bot/message/push", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN")}`,
+        Authorization: `Bearer ${channel_access_token}`,
       },
       body: JSON.stringify({ to: line_user_id, messages: lineMessages }),
     });
