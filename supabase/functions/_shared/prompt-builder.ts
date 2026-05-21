@@ -58,8 +58,8 @@ export function buildPrompt(i: BuildPromptInput): string {
 - ไม่มีใน KB → บอกให้เจ้าหน้าที่ติดต่อกลับ
 - 📄 ถ้าข้อความมี "📄 เนื้อหาในรูป:" = ลูกค้าส่งแคปแชท/ใบเสนอราคามา ให้อ่านเหมือนลูกค้าพิมพ์เอง
 
-📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด):
-- event_type, venue, guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${i.returningPrompt || ""}${i.comparisonSection || ""}${i.knownIntentStr || ""}${i.summarySection || ""}
+📥 สกัด intent (ห้ามเดา ใส่ null ถ้าไม่ชัด) — **ทุก field ต้องเป็นภาษาไทยเท่านั้น ห้ามใช้ภาษาอังกฤษเด็ดขาด**:
+- event_type (ไทย เช่น "ทำบุญ", "งานบวช", "งานแต่ง", "งานศพ", "ขึ้นบ้านใหม่" — ห้าม "merit-making", "wedding", "funeral"), venue (ไทย), guest_count (เลขจำนวนเต็ม), event_date (YYYY-MM-DD)${i.returningPrompt || ""}${i.comparisonSection || ""}${i.knownIntentStr || ""}${i.summarySection || ""}
 
 KB:
 ${i.kbContext || "(ว่าง)"}
