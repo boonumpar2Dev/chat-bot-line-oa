@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap } from "lucide-react";
+import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
 import { Button } from "@/components/ui/button";
