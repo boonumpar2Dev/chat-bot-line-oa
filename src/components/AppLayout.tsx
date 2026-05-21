@@ -14,6 +14,7 @@ const nav: { to: string; label: string; icon: any; exact?: boolean; key: MenuKey
   { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
   { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
   { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", adminOnly: true },
+  { to: "/line-connection", label: "เชื่อมต่อ LINE", icon: Plug, key: "ai_tokens", adminOnly: true },
   { to: "/settings", label: "ตั้งค่า", icon: Settings, key: "settings" },
 ];
 
