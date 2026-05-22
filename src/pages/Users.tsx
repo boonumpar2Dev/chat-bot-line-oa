@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { Loader2, Shield, Trash2, Plus, Lock, Save } from "lucide-react";
+import { Loader2, Shield, Trash2, Plus, Lock, Save, Pencil, KeyRound } from "lucide-react";
 
 type AppRole = "admin" | "manager" | "staff";
 const ROLE_LABEL: Record<AppRole, string> = { admin: "Admin", manager: "Manager", staff: "Staff" };
@@ -54,10 +54,10 @@ export default function Users() {
     load();
   };
 
-  const removeUserRole = async (userId: string) => {
-    const { error } = await supabase.from("user_roles").delete().eq("user_id", userId);
-    if (error) { toast.error(error.message); return; }
-    toast.success("ลบบทบาทแล้ว");
+  const deleteUser = async (userId: string) => {
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", { body: { user_id: userId } });
+    if (error || (data as any)?.error) { toast.error((data as any)?.error || error?.message || "ลบไม่สำเร็จ"); return; }
+    toast.success("ลบผู้ใช้แล้ว");
     load();
   };
 
@@ -99,20 +99,21 @@ export default function Users() {
                 onSaved={() => { load(); reloadMenus(); }}
               />
             )}
+            <EditUserDialog user={u} onSaved={load} disabled={false} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบบทบาท">
+                <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบผู้ใช้">
                   <Trash2 className="w-4 h-4 text-destructive"/>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>ลบบทบาทของ {u.email}?</AlertDialogTitle>
-                  <AlertDialogDescription>ผู้ใช้จะยังเข้าระบบได้แต่ไม่มีสิทธิ์ใดๆ</AlertDialogDescription>
+                  <AlertDialogTitle>ลบผู้ใช้ {u.email}?</AlertDialogTitle>
+                  <AlertDialogDescription>ผู้ใช้จะถูกลบออกจากระบบทั้งหมด (auth, profile, roles, สิทธิ์เมนู) — การกระทำนี้ไม่สามารถย้อนกลับได้</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => removeUserRole(u.id)}>ลบบทบาท</AlertDialogAction>
+                  <AlertDialogAction onClick={() => deleteUser(u.id)} className="bg-destructive hover:bg-destructive/90">ลบถาวร</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -278,3 +279,72 @@ function EditMenuDialog({
     </Dialog>
   );
 }
+
+function EditUserDialog({ user, onSaved, disabled }: { user: any; onSaved: () => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(user.email || "");
+  const [displayName, setDisplayName] = useState(user.display_name || "");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setEmail(user.email || "");
+      setDisplayName(user.display_name || "");
+      setPassword("");
+    }
+  }, [open, user]);
+
+  const submit = async () => {
+    if (password && password.length < 6) { toast.error("password อย่างน้อย 6 ตัวอักษร"); return; }
+    setBusy(true);
+    const body: any = { user_id: user.id };
+    if (email.trim() !== (user.email || "")) body.email = email.trim();
+    if (displayName !== (user.display_name || "")) body.display_name = displayName;
+    if (password) body.password = password;
+    const { data, error } = await supabase.functions.invoke("admin-update-user", { body });
+    setBusy(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "อัปเดตไม่สำเร็จ");
+      return;
+    }
+    toast.success("อัปเดตผู้ใช้แล้ว");
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" disabled={disabled}><Pencil className="w-3.5 h-3.5 mr-1"/>แก้ไข</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>แก้ไขผู้ใช้</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <Label>ชื่อแสดง</Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} />
+          </div>
+          <div>
+            <Label className="flex items-center gap-1"><KeyRound className="w-3.5 h-3.5"/>รีเซ็ตรหัสผ่าน (เว้นว่างถ้าไม่เปลี่ยน)</Label>
+            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="รหัสผ่านใหม่ อย่างน้อย 6 ตัว" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Save className="w-4 h-4 mr-1"/>}
+            บันทึก
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
