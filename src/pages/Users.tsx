@@ -99,20 +99,21 @@ export default function Users() {
                 onSaved={() => { load(); reloadMenus(); }}
               />
             )}
+            <EditUserDialog user={u} onSaved={load} disabled={false} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบบทบาท">
+                <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบผู้ใช้">
                   <Trash2 className="w-4 h-4 text-destructive"/>
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>ลบบทบาทของ {u.email}?</AlertDialogTitle>
-                  <AlertDialogDescription>ผู้ใช้จะยังเข้าระบบได้แต่ไม่มีสิทธิ์ใดๆ</AlertDialogDescription>
+                  <AlertDialogTitle>ลบผู้ใช้ {u.email}?</AlertDialogTitle>
+                  <AlertDialogDescription>ผู้ใช้จะถูกลบออกจากระบบทั้งหมด (auth, profile, roles, สิทธิ์เมนู) — การกระทำนี้ไม่สามารถย้อนกลับได้</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => removeUserRole(u.id)}>ลบบทบาท</AlertDialogAction>
+                  <AlertDialogAction onClick={() => deleteUser(u.id)} className="bg-destructive hover:bg-destructive/90">ลบถาวร</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
