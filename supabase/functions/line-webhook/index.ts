@@ -522,17 +522,8 @@ async function processEvent(event: any, supabase: any) {
     }
   }
 
+  // (Schedule gate ย้ายไปอยู่บนสุดแล้ว — ดู block "Schedule gate" หลังโหลด cfg)
 
-  // Schedule
-  if (cfg.schedule_enabled) {
-    const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
-    const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
-    const [sh, sm] = (cfg.start_time || "18:00").split(":").map(Number);
-    const [eh, em] = (cfg.end_time || "08:00").split(":").map(Number);
-    const start = sh * 60 + sm, end = eh * 60 + em;
-    const inWindow = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
-    if (!inWindow) return;
-  }
 
   // Fetch AI context + cache + total message count
   const [
