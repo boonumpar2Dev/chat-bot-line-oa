@@ -49,7 +49,11 @@ type Settings = {
   tier_special_rules: string;
   trivial_replies: string[];
   tax_id_keywords: string[];
+  self_pronouns_allowed: string[];
+  customer_pronouns_allowed: string[];
+  forbidden_pronouns: string[];
 };
+
 
 export default function Settings() {
   const { role } = useAuth();
