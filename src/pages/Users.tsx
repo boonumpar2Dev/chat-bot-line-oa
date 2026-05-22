@@ -279,3 +279,72 @@ function EditMenuDialog({
     </Dialog>
   );
 }
+
+function EditUserDialog({ user, onSaved, disabled }: { user: any; onSaved: () => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(user.email || "");
+  const [displayName, setDisplayName] = useState(user.display_name || "");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setEmail(user.email || "");
+      setDisplayName(user.display_name || "");
+      setPassword("");
+    }
+  }, [open, user]);
+
+  const submit = async () => {
+    if (password && password.length < 6) { toast.error("password อย่างน้อย 6 ตัวอักษร"); return; }
+    setBusy(true);
+    const body: any = { user_id: user.id };
+    if (email.trim() !== (user.email || "")) body.email = email.trim();
+    if (displayName !== (user.display_name || "")) body.display_name = displayName;
+    if (password) body.password = password;
+    const { data, error } = await supabase.functions.invoke("admin-update-user", { body });
+    setBusy(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "อัปเดตไม่สำเร็จ");
+      return;
+    }
+    toast.success("อัปเดตผู้ใช้แล้ว");
+    setOpen(false);
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" disabled={disabled}><Pencil className="w-3.5 h-3.5 mr-1"/>แก้ไข</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>แก้ไขผู้ใช้</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <Label>ชื่อแสดง</Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} />
+          </div>
+          <div>
+            <Label className="flex items-center gap-1"><KeyRound className="w-3.5 h-3.5"/>รีเซ็ตรหัสผ่าน (เว้นว่างถ้าไม่เปลี่ยน)</Label>
+            <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="รหัสผ่านใหม่ อย่างน้อย 6 ตัว" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
+          <Button onClick={submit} disabled={busy}>
+            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <Save className="w-4 h-4 mr-1"/>}
+            บันทึก
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
