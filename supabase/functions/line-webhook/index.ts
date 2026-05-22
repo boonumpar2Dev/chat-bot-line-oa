@@ -330,6 +330,21 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
+  // 🕐 Schedule gate (บนสุด): นอกช่วงเวลาทำการ → เงียบสนิท ไม่ตอบอะไรเลย
+  // ไม่ส่งข้อความตอบรับเบอร์/Tax ID/handover ใดๆ ทั้งสิ้น
+  if (cfg.schedule_enabled) {
+    const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
+    const [sh, sm] = (cfg.start_time || "18:00").split(":").map(Number);
+    const [eh, em] = (cfg.end_time || "08:00").split(":").map(Number);
+    const start = sh * 60 + sm, end = eh * 60 + em;
+    const inWindow = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
+    if (!inWindow) {
+      console.log(`[Schedule] outside ${cfg.start_time}-${cfg.end_time} (now ${bkk.getHours()}:${String(bkk.getMinutes()).padStart(2,"0")}) → silent`);
+      return;
+    }
+  }
+
   // Skip pure acknowledgements (อ่านจาก cfg.trivial_replies)
   const trivial: string[] = (cfg.trivial_replies && cfg.trivial_replies.length) ? cfg.trivial_replies : [
     "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
