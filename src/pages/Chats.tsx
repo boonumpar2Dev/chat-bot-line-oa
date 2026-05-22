@@ -216,13 +216,25 @@ export default function Chats() {
     } finally { setSending(false); }
   };
 
+  const [pausePickerOpen, setPausePickerOpen] = useState(false);
+
   const toggleAi = async (active: boolean) => {
     if (!selected) return;
-    const update: any = { ai_active: active };
-    if (active) { update.manual_chat_until = null; update.ai_resumed_at = new Date().toISOString(); }
+    if (!active) { setPausePickerOpen(true); return; }
+    const update: any = { ai_active: true, manual_chat_until: null, ai_resumed_at: new Date().toISOString() };
     await supabase.from("customers").update(update).eq("id", selected.id);
     updateLocalCustomer(update);
-    toast.success(active ? "เปิด AI แล้ว" : "ปิด AI แล้ว");
+    toast.success("เปิด AI แล้ว");
+  };
+
+  const pauseAiFor = async (hours: number) => {
+    if (!selected) return;
+    const until = new Date(Date.now() + hours * 3600000).toISOString();
+    const update: any = { ai_active: false, manual_chat_until: until };
+    await supabase.from("customers").update(update).eq("id", selected.id);
+    updateLocalCustomer(update);
+    setPausePickerOpen(false);
+    toast.success(`ปิด AI ${hours} ชม.`);
   };
 
   const updateCustomer = async (patch: any) => {
