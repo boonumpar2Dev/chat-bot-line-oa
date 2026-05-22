@@ -351,6 +351,22 @@ export default function Chats() {
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer}/>
                 </SheetContent>
               </Sheet>
+              <Dialog open={pausePickerOpen} onOpenChange={setPausePickerOpen}>
+                <DialogContent className="max-w-xs">
+                  <DialogHeader>
+                    <DialogTitle>ปิด AI ชั่วคราว</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-xs text-muted-foreground -mt-2">เลือกระยะเวลาที่ต้องการให้บอทพัก แล้วบอทจะกลับมาทำงานอัตโนมัติ</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[1, 3, 5, 6].map(h => (
+                      <Button key={h} variant="outline" onClick={() => pauseAiFor(h)}>{h} ชม.</Button>
+                    ))}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" size="sm" onClick={() => setPausePickerOpen(false)}>ยกเลิก</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
             {/* Manual timer */}
