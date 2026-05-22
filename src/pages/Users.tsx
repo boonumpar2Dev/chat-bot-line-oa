@@ -54,10 +54,10 @@ export default function Users() {
     load();
   };
 
-  const removeUserRole = async (userId: string) => {
-    const { error } = await supabase.from("user_roles").delete().eq("user_id", userId);
-    if (error) { toast.error(error.message); return; }
-    toast.success("ลบบทบาทแล้ว");
+  const deleteUser = async (userId: string) => {
+    const { data, error } = await supabase.functions.invoke("admin-delete-user", { body: { user_id: userId } });
+    if (error || (data as any)?.error) { toast.error((data as any)?.error || error?.message || "ลบไม่สำเร็จ"); return; }
+    toast.success("ลบผู้ใช้แล้ว");
     load();
   };
 
