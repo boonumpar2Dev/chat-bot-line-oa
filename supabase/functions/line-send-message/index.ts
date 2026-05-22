@@ -57,7 +57,6 @@ Deno.serve(async (req) => {
         manual_chat_until: until,
         last_message_at: new Date().toISOString(),
         last_message_snippet: `👤 ${text.slice(0, 60)}`,
-        unread_count: 0,
       }).eq("id", customer_id);
     }
 
