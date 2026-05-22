@@ -223,14 +223,15 @@ export default function Settings() {
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center gap-2 mb-5"><Clock className="text-primary"/><h2 className="font-display text-lg font-semibold">เวลาทำการ</h2></div>
+        <div className="flex items-center gap-2 mb-1"><Clock className="text-primary"/><h2 className="font-display text-lg font-semibold">เวลาที่ให้บอททำงาน</h2></div>
+        <p className="text-xs text-muted-foreground mb-4">กำหนดช่วงเวลาที่อนุญาตให้บอทตอบลูกค้า นอกช่วงนี้บอทจะเงียบ (ให้คนตอบเอง) — ถ้าปิดสวิตช์ บอททำงาน 24 ชม.</p>
         <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 mb-4">
-          <Label className="font-medium">เปิดเฉพาะนอกเวลา</Label>
+          <Label className="font-medium">จำกัดเวลาทำงานของบอท</Label>
           <Switch checked={s.schedule_enabled} onCheckedChange={v=>upd("schedule_enabled",v)} />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label>เริ่ม</Label><Input type="time" value={s.start_time} onChange={e=>upd("start_time",e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>สิ้นสุด</Label><Input type="time" value={s.end_time} onChange={e=>upd("end_time",e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>บอทเริ่มตอบ</Label><Input type="time" value={s.start_time} onChange={e=>upd("start_time",e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>บอทหยุดตอบ</Label><Input type="time" value={s.end_time} onChange={e=>upd("end_time",e.target.value)} /></div>
         </div>
       </Card>
 
