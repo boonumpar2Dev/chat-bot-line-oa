@@ -118,6 +118,9 @@ export default function Settings() {
       ai_persona: s.ai_persona,
       trivial_replies: s.trivial_replies,
       tax_id_keywords: s.tax_id_keywords,
+      self_pronouns_allowed: s.self_pronouns_allowed,
+      customer_pronouns_allowed: s.customer_pronouns_allowed,
+      forbidden_pronouns: s.forbidden_pronouns,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
