@@ -96,12 +96,14 @@ export type Database = {
           confidence_threshold: number
           cooldown_minutes: number
           created_at: string
+          customer_pronouns_allowed: string[]
           debounce_seconds: number
           end_time: string
           fallback_message: string
           fallback_mute_hours: number
           followup_enabled: boolean
           followup_hours: number
+          forbidden_pronouns: string[]
           forbidden_terms: string[]
           id: string
           image_selection_rules: string
@@ -116,6 +118,7 @@ export type Database = {
           phone_mute_hours: number
           post_phone_max_replies: number
           schedule_enabled: boolean
+          self_pronouns_allowed: string[]
           service_area_kb_title: string
           sla_hours: number
           start_time: string
@@ -135,12 +138,14 @@ export type Database = {
           confidence_threshold?: number
           cooldown_minutes?: number
           created_at?: string
+          customer_pronouns_allowed?: string[]
           debounce_seconds?: number
           end_time?: string
           fallback_message?: string
           fallback_mute_hours?: number
           followup_enabled?: boolean
           followup_hours?: number
+          forbidden_pronouns?: string[]
           forbidden_terms?: string[]
           id?: string
           image_selection_rules?: string
@@ -155,6 +160,7 @@ export type Database = {
           phone_mute_hours?: number
           post_phone_max_replies?: number
           schedule_enabled?: boolean
+          self_pronouns_allowed?: string[]
           service_area_kb_title?: string
           sla_hours?: number
           start_time?: string
@@ -174,12 +180,14 @@ export type Database = {
           confidence_threshold?: number
           cooldown_minutes?: number
           created_at?: string
+          customer_pronouns_allowed?: string[]
           debounce_seconds?: number
           end_time?: string
           fallback_message?: string
           fallback_mute_hours?: number
           followup_enabled?: boolean
           followup_hours?: number
+          forbidden_pronouns?: string[]
           forbidden_terms?: string[]
           id?: string
           image_selection_rules?: string
@@ -194,6 +202,7 @@ export type Database = {
           phone_mute_hours?: number
           post_phone_max_replies?: number
           schedule_enabled?: boolean
+          self_pronouns_allowed?: string[]
           service_area_kb_title?: string
           sla_hours?: number
           start_time?: string

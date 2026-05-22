@@ -26,10 +26,20 @@ export function buildPrompt(i: BuildPromptInput): string {
   const cfg = i.cfg || {};
   const persona = (cfg.ai_persona || 'คุณคือ AI ผู้ช่วย ตอบภาษาไทย เป็นกันเอง ใช้ "ค่ะ/นะคะ" ลงท้ายเบาๆ').trim();
 
-  const rules: string[] = Array.isArray(cfg.strict_rules) ? cfg.strict_rules.filter((r: string) => r?.trim()) : [];
-  const strictBlock = rules.length
-    ? `\n\n🔴 กฎ AI (สำคัญสุด ห้ามผิดเด็ดขาด — เหนือกฎอื่นทั้งหมด):\n${rules.map((r, idx) => `${idx + 1}. ${r}`).join("\n")}`
+  // Auto-generate pronoun rule from settings fields (ไม่ต้อง hardcode ใน strict_rules)
+  const selfAllowed: string[] = Array.isArray(cfg.self_pronouns_allowed) ? cfg.self_pronouns_allowed.filter((x: string) => x?.trim()) : [];
+  const custAllowed: string[] = Array.isArray(cfg.customer_pronouns_allowed) ? cfg.customer_pronouns_allowed.filter((x: string) => x?.trim()) : [];
+  const forbidden: string[] = Array.isArray(cfg.forbidden_pronouns) ? cfg.forbidden_pronouns.filter((x: string) => x?.trim()) : [];
+  const pronounRule = (selfAllowed.length || custAllowed.length || forbidden.length)
+    ? `🗣️ กฎสรรพนาม (สำคัญ):${selfAllowed.length ? ` แทนตัวเองได้แค่ ${selfAllowed.map(x => `"${x}"`).join("/")} เท่านั้น` : ""}${custAllowed.length ? ` | เรียกลูกค้าได้แค่ ${custAllowed.map(x => `"${x}"`).join("/")} เท่านั้น (ถ้าทราบชื่อให้ใช้ "คุณ[ชื่อ]" ถ้าไม่ทราบใช้ "ลูกค้า" หรือเลี่ยงไม่ระบุสรรพนาม)` : ""}${forbidden.length ? ` | ห้ามใช้คำเหล่านี้เด็ดขาด: ${forbidden.join(", ")}` : ""}`
     : "";
+
+  const rules: string[] = Array.isArray(cfg.strict_rules) ? cfg.strict_rules.filter((r: string) => r?.trim()) : [];
+  const allRules = pronounRule ? [pronounRule, ...rules] : rules;
+  const strictBlock = allRules.length
+    ? `\n\n🔴 กฎ AI (สำคัญสุด ห้ามผิดเด็ดขาด — เหนือกฎอื่นทั้งหมด):\n${allRules.map((r, idx) => `${idx + 1}. ${r}`).join("\n")}`
+    : "";
+
 
   // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
   const _now = new Date();

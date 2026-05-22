@@ -49,7 +49,11 @@ type Settings = {
   tier_special_rules: string;
   trivial_replies: string[];
   tax_id_keywords: string[];
+  self_pronouns_allowed: string[];
+  customer_pronouns_allowed: string[];
+  forbidden_pronouns: string[];
 };
+
 
 export default function Settings() {
   const { role } = useAuth();
@@ -114,6 +118,9 @@ export default function Settings() {
       ai_persona: s.ai_persona,
       trivial_replies: s.trivial_replies,
       tax_id_keywords: s.tax_id_keywords,
+      self_pronouns_allowed: s.self_pronouns_allowed,
+      customer_pronouns_allowed: s.customer_pronouns_allowed,
+      forbidden_pronouns: s.forbidden_pronouns,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
@@ -171,6 +178,26 @@ export default function Settings() {
             <Label>คีย์เวิร์ด Tax ID</Label>
             <Input value={s.tax_id_keywords.join(", ")} onChange={e=>upd("tax_id_keywords", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
             <p className="text-xs text-muted-foreground">คำที่บ่งบอกว่าเป็นเลขผู้เสียภาษี</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-soft border-border/60">
+        <div className="flex items-center gap-2 mb-1"><MessageCircle className="text-primary"/><h2 className="font-display text-lg font-semibold">สรรพนามของบอท</h2></div>
+        <p className="text-xs text-muted-foreground mb-5">กำหนดว่าบอทเรียกตัวเองว่าอะไร เรียกลูกค้าว่าอะไร และคำไหนห้ามใช้ — ระบบจะเพิ่มเป็นกฎอัตโนมัติทุกครั้งที่ตอบ</p>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>แทนตัวเองได้ (คั่นด้วย ,)</Label>
+            <Input value={(s.self_pronouns_allowed ?? []).join(", ")} onChange={e=>upd("self_pronouns_allowed", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="ทีมงาน, แอดมิน, บุญนำพา" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>เรียกลูกค้าได้ (คั่นด้วย ,)</Label>
+            <Input value={(s.customer_pronouns_allowed ?? []).join(", ")} onChange={e=>upd("customer_pronouns_allowed", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="ลูกค้า, คุณ{ชื่อ}" />
+            <p className="text-xs text-muted-foreground">ใช้ <code>{"{ชื่อ}"}</code> เพื่อให้บอทแทนชื่อลูกค้าจริง</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>คำต้องห้าม (คั่นด้วย ,)</Label>
+            <Textarea rows={2} value={(s.forbidden_pronouns ?? []).join(", ")} onChange={e=>upd("forbidden_pronouns", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="แม่หมอ, พี่, น้อง, ตัวเอง, เธอ..." />
           </div>
         </div>
       </Card>
