@@ -183,6 +183,26 @@ export default function Settings() {
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
+        <div className="flex items-center gap-2 mb-1"><MessageCircle className="text-primary"/><h2 className="font-display text-lg font-semibold">สรรพนามของบอท</h2></div>
+        <p className="text-xs text-muted-foreground mb-5">กำหนดว่าบอทเรียกตัวเองว่าอะไร เรียกลูกค้าว่าอะไร และคำไหนห้ามใช้ — ระบบจะเพิ่มเป็นกฎอัตโนมัติทุกครั้งที่ตอบ</p>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>แทนตัวเองได้ (คั่นด้วย ,)</Label>
+            <Input value={(s.self_pronouns_allowed ?? []).join(", ")} onChange={e=>upd("self_pronouns_allowed", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="ทีมงาน, แอดมิน, บุญนำพา" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>เรียกลูกค้าได้ (คั่นด้วย ,)</Label>
+            <Input value={(s.customer_pronouns_allowed ?? []).join(", ")} onChange={e=>upd("customer_pronouns_allowed", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="ลูกค้า, คุณ{ชื่อ}" />
+            <p className="text-xs text-muted-foreground">ใช้ <code>{"{ชื่อ}"}</code> เพื่อให้บอทแทนชื่อลูกค้าจริง</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label>คำต้องห้าม (คั่นด้วย ,)</Label>
+            <Textarea rows={2} value={(s.forbidden_pronouns ?? []).join(", ")} onChange={e=>upd("forbidden_pronouns", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="แม่หมอ, พี่, น้อง, ตัวเอง, เธอ..." />
+          </div>
+        </div>
+      </Card>
+
+      <Card className="p-6 shadow-soft border-border/60">
         <div className="flex items-center gap-2 mb-5"><Clock className="text-primary"/><h2 className="font-display text-lg font-semibold">Manual Chat & Mute Timer</h2></div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5"><Label>Manual Chat (ชม.)</Label><Input type="number" value={s.manual_chat_hours} onChange={e=>upd("manual_chat_hours",+e.target.value)} /><p className="text-xs text-muted-foreground">หยุด AI เมื่อแอดมินตอบ</p></div>
