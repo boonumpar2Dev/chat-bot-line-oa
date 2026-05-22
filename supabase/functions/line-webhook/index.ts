@@ -397,12 +397,17 @@ async function processEvent(event: any, supabase: any) {
   // Phone detection — collect ALL candidates (ข้าม run ที่ยาว 13 หลักเพื่อกัน Tax ID)
   const pureDigits = messageText.replace(/[\s\-().+]/g, "");
   const isPure = /^\d+$/.test(pureDigits);
-  const phoneSeqs = messageText.match(/\d[\d\s\-().]{6,25}\d/g) || [];
+  // ❌ ข้าม sequence ที่มีจุด "." คั่น (เช่น "9.00-12.00" = เวลา ไม่ใช่เบอร์)
+  const phoneSeqs = (messageText.match(/\d[\d\s\-().]{6,25}\d/g) || []).filter(s => !s.includes("."));
+
+  // 🕐 ตรวจ context รอบๆ เลข: ถ้ามีคำบอกเวลา/หน่วยอื่น → ไม่ใช่เบอร์
+  const nonPhoneContextRe = /(เวลา|โมง|น\.|นาฬิกา|นาที|ชั่วโมง|ชม\.|บาท|ท่าน|คน|กิโล|กก\.|กรัม|เมตร|วัน|เดือน|ปี|ครั้ง)/;
+  const hasNonPhoneContext = nonPhoneContextRe.test(messageText);
 
   const candidates: string[] = [];
   if (isPure && pureDigits.length >= 7 && pureDigits.length <= 12) {
     candidates.push(pureDigits);
-  } else {
+  } else if (!hasNonPhoneContext) {
     for (const s of phoneSeqs) {
       const d = s.replace(/[^0-9]/g, "");
       if (d.length >= 7 && d.length <= 12) candidates.push(d);
@@ -416,9 +421,9 @@ async function processEvent(event: any, supabase: any) {
   const isValidThaiPhone = (p: string) => /^0[689]\d{8}$/.test(p) || /^0[2-7]\d{7}$/.test(p);
   const validPhones = Array.from(new Set(normalized.filter(isValidThaiPhone)));
 
-  // Invalid phone-like: ถามใหม่ ก็ต่อเมื่อข้อความสั้นและดูเหมือนตั้งใจให้เบอร์
+  // Invalid phone-like: ถามใหม่ ก็ต่อเมื่อ AI เพิ่งถามเบอร์ + ข้อความสั้นและดูเหมือนตั้งใจให้เบอร์
   const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
-  const looksLikePhoneIntent = nonDigit.length <= 40;
+  const looksLikePhoneIntent = aiAskedPhone && nonDigit.length <= 40 && !hasNonPhoneContext;
   const invalidPhones = (validPhones.length === 0 && looksLikePhoneIntent)
     ? normalized.filter(p => !isValidThaiPhone(p) && /^0?\d{7,10}$/.test(p))
     : [];
@@ -457,13 +462,14 @@ async function processEvent(event: any, supabase: any) {
     return;
   }
 
-  // Invalid phone-like: ไม่เก็บ + ถามนุ่มๆ
+  // Invalid phone-like: ไม่เก็บ + ถามนุ่มๆ (เฉพาะตอน AI ถามเบอร์ + ไม่มี context เวลา/หน่วย)
   if (invalidPhones.length > 0) {
     const bad = invalidPhones[0];
     const text = `ขอเบอร์อีกครั้งได้ไหมคะ เบอร์ที่ให้มา "${bad}" ดูไม่ตรงรูปแบบเบอร์ไทยค่ะ 🙏\n\n• มือถือ 10 หลัก ขึ้นต้น 06/08/09 (เช่น 081-234-5678)\n• เบอร์บ้าน 9 หลัก ขึ้นต้น 02-07 (เช่น 02-123-4567)`;
     await sendAndSave(supabase, customer.id, lineUserId, text);
     return;
   }
+
 
   // Safety gates
   if (!freshCustomer.ai_active) return;
