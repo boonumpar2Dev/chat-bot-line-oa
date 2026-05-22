@@ -216,13 +216,25 @@ export default function Chats() {
     } finally { setSending(false); }
   };
 
+  const [pausePickerOpen, setPausePickerOpen] = useState(false);
+
   const toggleAi = async (active: boolean) => {
     if (!selected) return;
-    const update: any = { ai_active: active };
-    if (active) { update.manual_chat_until = null; update.ai_resumed_at = new Date().toISOString(); }
+    if (!active) { setPausePickerOpen(true); return; }
+    const update: any = { ai_active: true, manual_chat_until: null, ai_resumed_at: new Date().toISOString() };
     await supabase.from("customers").update(update).eq("id", selected.id);
     updateLocalCustomer(update);
-    toast.success(active ? "เปิด AI แล้ว" : "ปิด AI แล้ว");
+    toast.success("เปิด AI แล้ว");
+  };
+
+  const pauseAiFor = async (hours: number) => {
+    if (!selected) return;
+    const until = new Date(Date.now() + hours * 3600000).toISOString();
+    const update: any = { ai_active: false, manual_chat_until: until };
+    await supabase.from("customers").update(update).eq("id", selected.id);
+    updateLocalCustomer(update);
+    setPausePickerOpen(false);
+    toast.success(`ปิด AI ${hours} ชม.`);
   };
 
   const updateCustomer = async (patch: any) => {
@@ -339,6 +351,22 @@ export default function Chats() {
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer}/>
                 </SheetContent>
               </Sheet>
+              <Dialog open={pausePickerOpen} onOpenChange={setPausePickerOpen}>
+                <DialogContent className="max-w-xs">
+                  <DialogHeader>
+                    <DialogTitle>ปิด AI ชั่วคราว</DialogTitle>
+                  </DialogHeader>
+                  <p className="text-xs text-muted-foreground -mt-2">เลือกระยะเวลาที่ต้องการให้บอทพัก แล้วบอทจะกลับมาทำงานอัตโนมัติ</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[1, 3, 5, 6].map(h => (
+                      <Button key={h} variant="outline" onClick={() => pauseAiFor(h)}>{h} ชม.</Button>
+                    ))}
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" size="sm" onClick={() => setPausePickerOpen(false)}>ยกเลิก</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
             {/* Manual timer */}
