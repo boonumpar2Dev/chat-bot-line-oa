@@ -541,11 +541,16 @@ async function processEvent(event: any, supabase: any) {
 
   // === Hybrid filter: ถ้ารู้ event_type → กรอง pkg/promo ที่ตรง category, ไม่งั้นส่งทั้งหมด ===
   const evType = (freshCustomer.event_type || "").trim().toLowerCase();
+  // token-overlap match: split ทั้งสองฝั่งด้วย + / space / , แล้วเช็กว่ามี token ไหน substring overlap กัน
+  const tokenize = (s: string) => s.toLowerCase().split(/[\s+,/]+/).map(t => t.trim()).filter(t => t.length >= 2);
   const filterMatch = (cat: string | null | undefined) => {
     if (!evType) return true;
     if (!cat) return false;
     const c = String(cat).toLowerCase();
-    return c.includes(evType) || evType.includes(c);
+    if (c.includes(evType) || evType.includes(c)) return true;
+    const evTokens = tokenize(evType);
+    const catTokens = tokenize(c);
+    return evTokens.some(et => catTokens.some(ct => et.includes(ct) || ct.includes(et)));
   };
   const filteredPkgs = evType
     ? (pkgs || []).filter((p: any) => filterMatch(p.category))
@@ -555,7 +560,8 @@ async function processEvent(event: any, supabase: any) {
   const filteredPromos = evType
     ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
     : (promos || []);
-  const usePromos = filteredPromos;
+  // ✅ fallback: ถ้ากรองแล้วเหลือ 0 → ส่งโปรทั้งหมดให้ AI ตัดสินใจเอง (กันพลาด)
+  const usePromos = filteredPromos.length > 0 ? filteredPromos : (promos || []);
 
   // === KB / Package / Promo context: ใช้ cache ถ้าไม่มี filter, ไม่งั้น build ใหม่ ===
   const cacheMap = new Map<string, string>((cacheRows || []).map((r: any) => [r.key, r.content]));
