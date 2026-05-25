@@ -220,6 +220,20 @@ export default function Chats() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Fetch customers found by message search that aren't already loaded
+  useEffect(() => {
+    if (msgMatchIds.size === 0) return;
+    const missing = Array.from(msgMatchIds).filter(id => !customers.some(c => c.id === id));
+    if (!missing.length) return;
+    supabase.from("customers").select("*").in("id", missing).then(({ data }) => {
+      if (!data?.length) return;
+      setCustomers(prev => {
+        const ids = new Set(prev.map(c => c.id));
+        return [...prev, ...data.filter((c: any) => !ids.has(c.id))];
+      });
+    });
+  }, [msgMatchIds]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return customers;
