@@ -107,3 +107,61 @@ export function buildPromoBlock(promos: any[]): string {
     return s;
   }).join("\n\n");
 }
+
+// Thai stopwords to filter out during keyword extraction
+const STOPWORDS = new Set([
+  "ครับ","ค่ะ","คะ","นะ","นะคะ","จ้า","มี","ไหม","อะไร","ยังไง","เท่าไหร่",
+  "อยาก","ต้องการ","สนใจ","ขอ","ให้","ที่","ของ","ใน","จะ","ได้","แล้ว",
+  "กัน","กับ","เป็น","คือ","ว่า","และ","ไม่","หรือ","แต่"
+]);
+
+/**
+ * Extract relevant keywords from text, filtering out stopwords and short tokens.
+ */
+export function extractKeywords(text: string): string[] {
+  if (!text) return [];
+  const cleaned = text.replace(/[^\u0E00-\u0E7Fa-z0-9\s]/g, " ").trim();
+  const words = cleaned.split(/\s+/).filter(w => w.length >= 2);
+  const unique = new Set(words.map(w => w.toLowerCase()));
+  return Array.from(unique).filter(w => !STOPWORDS.has(w));
+}
+
+/**
+ * Filter KB items to only the most relevant ones based on keyword matching.
+ * Falls back to the full list on short greetings or when no matches are found.
+ */
+export function filterRelevantKB(
+  kbItems: any[],
+  messageText: string,
+  recentHistory: string,
+  maxItems: number = 8
+): any[] {
+  if (!kbItems || kbItems.length === 0) return [];
+  if (messageText.trim().length < 10) return kbItems; // greeting fallback
+
+  const combined = (messageText + " " + recentHistory).toLowerCase();
+  const keywords = extractKeywords(combined);
+  if (keywords.length === 0) return kbItems;
+
+  const scored = kbItems.map((item: any) => {
+    let score = 1;
+    const content = (item.content || "").toLowerCase();
+    const title = (item.title || "").toLowerCase();
+    const category = (item.category || "").toLowerCase();
+    const tags = Array.isArray(item.tags) ? item.tags.map((t: string) => t.toLowerCase()) : [];
+
+    for (const kw of keywords) {
+      if (content.includes(kw)) score += kw.length;
+      if (title.includes(kw)) score += kw.length * 2;
+      if (category.includes(kw)) score += kw.length * 3;
+      for (const tag of tags) {
+        if (tag.includes(kw)) score += kw.length * 2;
+      }
+    }
+    return { item, score };
+  });
+
+  const relevant = scored.filter((s: any) => s.score > 0).sort((a: any, b: any) => b.score - a.score);
+  if (relevant.length === 1) return kbItems; // no matches found, fallback to full list
+  return relevant.slice(1, maxItems + 1).map((s: any) => s.item);
+}
