@@ -386,6 +386,17 @@ export default function Chats() {
               </div>
             </button>
           ))}
+          {!isSearching && hasMore && !loading && (
+            <div ref={sentinelRef} className="p-4 flex justify-center">
+              {loadingMore ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground"/> : <span className="text-[10px] text-muted-foreground">เลื่อนเพื่อโหลดเพิ่ม…</span>}
+            </div>
+          )}
+          {!isSearching && !hasMore && customers.length > 0 && (
+            <p className="p-3 text-center text-[10px] text-muted-foreground">— ครบทั้งหมด {customers.length} คน —</p>
+          )}
+          {isSearching && !loading && (
+            <p className="p-3 text-center text-[10px] text-muted-foreground">ผลค้นหา: {filtered.length} คน</p>
+          )}
         </ScrollArea>
       </aside>
 
