@@ -134,16 +134,24 @@ export function filterRelevantKB(
   kbItems: any[],
   messageText: string,
   recentHistory: string,
-  maxItems: number = 8
+  maxItems: number = 8,
+  mustIncludeIds: string[] = []
 ): any[] {
   if (!kbItems || kbItems.length === 0) return [];
-  if (messageText.trim().length < 10) return kbItems; // greeting fallback
+
+  // แยก must-include ออกก่อน — items เหล่านี้จะถูกส่งไป AI ทุกครั้ง
+  const mustSet = new Set(mustIncludeIds || []);
+  const mustInclude = kbItems.filter((i: any) => i?.id && mustSet.has(i.id));
+  const rest = kbItems.filter((i: any) => !(i?.id && mustSet.has(i.id)));
+
+  // greeting fallback → คืน must + rest ทั้งหมด (กัน duplicate ผ่าน mustSet แล้ว)
+  if (messageText.trim().length < 10) return [...mustInclude, ...rest];
 
   const combined = (messageText + " " + recentHistory).toLowerCase();
   const keywords = extractKeywords(combined);
-  if (keywords.length === 0) return kbItems;
+  if (keywords.length === 0) return [...mustInclude, ...rest];
 
-  const scored = kbItems.map((item: any) => {
+  const scored = rest.map((item: any) => {
     let score = 0;
     const content = (item.content || "").toLowerCase();
     const title = (item.title || "").toLowerCase();
@@ -162,6 +170,7 @@ export function filterRelevantKB(
   });
 
   const relevant = scored.filter((s: any) => s.score > 0).sort((a: any, b: any) => b.score - a.score);
-  if (relevant.length === 0) return kbItems; // no matches found, fallback to full list
-  return relevant.slice(0, maxItems).map((s: any) => s.item);
+  // ไม่มี match → fallback ส่ง rest ทั้งหมด พ่วงกับ mustInclude
+  const filteredRest = relevant.length === 0 ? rest : relevant.slice(0, maxItems).map((s: any) => s.item);
+  return [...mustInclude, ...filteredRest];
 }
