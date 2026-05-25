@@ -443,6 +443,7 @@ function KnowledgeBaseTab() {
                 <h3 className="font-display font-semibold truncate">{i.title}</h3>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {i.category && <Badge variant="secondary">{i.category}</Badge>}
+                  {i.is_always_include && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">📌 ทุกครั้ง</Badge>}
                   {i.status !== "active" && <Badge variant="outline">ปิดใช้งาน</Badge>}
                 </div>
               </div>
