@@ -17,6 +17,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 type Settings = {
   id?: string;
   ai_enabled: boolean;
+  ai_whitelist_enabled: boolean;
+  ai_whitelist_user_ids: string[];
   confidence_threshold: number;
   cooldown_minutes: number;
   manual_chat_hours: number;
@@ -101,7 +103,7 @@ export default function Settings() {
     if (!s) return;
     setSaving(true);
     const { error } = await supabase.from("app_settings").update({
-      ai_enabled: s.ai_enabled, confidence_threshold: s.confidence_threshold, cooldown_minutes: s.cooldown_minutes,
+      ai_enabled: s.ai_enabled, ai_whitelist_enabled: s.ai_whitelist_enabled, ai_whitelist_user_ids: s.ai_whitelist_user_ids, confidence_threshold: s.confidence_threshold, cooldown_minutes: s.cooldown_minutes,
       manual_chat_hours: s.manual_chat_hours, phone_mute_hours: s.phone_mute_hours, post_phone_max_replies: s.post_phone_max_replies, fallback_mute_hours: s.fallback_mute_hours,
       followup_hours: s.followup_hours, followup_enabled: s.followup_enabled, schedule_enabled: s.schedule_enabled,
       start_time: s.start_time, end_time: s.end_time, strict_rules: s.strict_rules, sla_hours: s.sla_hours, fallback_message: s.fallback_message,
@@ -157,6 +159,29 @@ export default function Settings() {
             <Label>รอลูกค้าพิมพ์เสร็จก่อนตอบ (วินาที)</Label>
             <Input type="number" min={0} max={120} value={s.debounce_seconds ?? 15} onChange={e=>upd("debounce_seconds",+e.target.value)} />
             <p className="text-xs text-muted-foreground">ถ้าลูกค้าพิมพ์หลายข้อความติดกัน AI จะรอตามจำนวนวินาทีนี้แล้วตอบรวมทีเดียว (แนะนำ 10–20 วิ, ใส่ 0 = ปิด)</p>
+          </div>
+
+          <div className="space-y-3 p-4 rounded-lg border border-amber-500/40 bg-amber-500/5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="font-medium">🧪 โหมดทดสอบ (Whitelist)</Label>
+                <p className="text-xs text-muted-foreground mt-1">เปิดเมื่อต้องการให้ AI ตอบเฉพาะ LINE user ID ที่ระบุไว้ — ลูกค้าคนอื่นจะไม่ได้รับการตอบกลับจาก AI</p>
+              </div>
+              <Switch checked={s.ai_whitelist_enabled ?? false} onCheckedChange={v=>upd("ai_whitelist_enabled",v)} />
+            </div>
+            {s.ai_whitelist_enabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">LINE user ID ที่อนุญาต (หนึ่ง ID ต่อบรรทัด)</Label>
+                <Textarea
+                  rows={4}
+                  className="font-mono text-xs"
+                  placeholder={"Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nUyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"}
+                  value={(s.ai_whitelist_user_ids ?? []).join("\n")}
+                  onChange={e=>upd("ai_whitelist_user_ids", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
+                />
+                <p className="text-[11px] text-muted-foreground">ID เริ่มต้นด้วย U ตามด้วยตัวอักษร/ตัวเลข 32 ตัว — หาได้จากหน้า Chats หรือตาราง customers (line_user_id)</p>
+              </div>
+            )}
           </div>
         </div>
       </Card>
