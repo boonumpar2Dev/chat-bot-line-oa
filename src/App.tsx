@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Chats from "./pages/Chats";
 import Knowledge from "./pages/Knowledge";
 import Settings from "./pages/Settings";
+import AiSettings from "./pages/AiSettings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
 import AiTokens from "./pages/AiTokens";
