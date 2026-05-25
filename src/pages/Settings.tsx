@@ -103,7 +103,7 @@ export default function Settings() {
     if (!s) return;
     setSaving(true);
     const { error } = await supabase.from("app_settings").update({
-      ai_enabled: s.ai_enabled, confidence_threshold: s.confidence_threshold, cooldown_minutes: s.cooldown_minutes,
+      ai_enabled: s.ai_enabled, ai_whitelist_enabled: s.ai_whitelist_enabled, ai_whitelist_user_ids: s.ai_whitelist_user_ids, confidence_threshold: s.confidence_threshold, cooldown_minutes: s.cooldown_minutes,
       manual_chat_hours: s.manual_chat_hours, phone_mute_hours: s.phone_mute_hours, post_phone_max_replies: s.post_phone_max_replies, fallback_mute_hours: s.fallback_mute_hours,
       followup_hours: s.followup_hours, followup_enabled: s.followup_enabled, schedule_enabled: s.schedule_enabled,
       start_time: s.start_time, end_time: s.end_time, strict_rules: s.strict_rules, sla_hours: s.sla_hours, fallback_message: s.fallback_message,
