@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug } from "lucide-react";
+import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ const nav: { to: string; label: string; icon: any; exact?: boolean; key: MenuKey
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
   { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
   { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
+  { to: "/ai-settings", label: "ตั้งค่า AI", icon: Bot, key: "ai_settings" },
   { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
   { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", adminOnly: true },
   { to: "/line-connection", label: "เชื่อมต่อ LINE", icon: Plug, key: "ai_tokens", adminOnly: true },

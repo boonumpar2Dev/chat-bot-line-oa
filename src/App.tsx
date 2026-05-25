@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import Chats from "./pages/Chats";
 import Knowledge from "./pages/Knowledge";
 import Settings from "./pages/Settings";
+import AiSettings from "./pages/AiSettings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
 import AiTokens from "./pages/AiTokens";
@@ -35,6 +36,7 @@ const App = () => (
                 <Route path="/" element={<ProtectedRoute menuKey="dashboard"><Dashboard /></ProtectedRoute>} />
                 <Route path="/chats" element={<ProtectedRoute menuKey="chats"><Chats /></ProtectedRoute>} />
                 <Route path="/knowledge" element={<ProtectedRoute menuKey="knowledge"><Knowledge /></ProtectedRoute>} />
+                <Route path="/ai-settings" element={<ProtectedRoute menuKey="ai_settings"><AiSettings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
                 <Route path="/ai-tokens" element={<ProtectedRoute adminOnly><AiTokens /></ProtectedRoute>} />

@@ -35,7 +35,10 @@ export function buildPrompt(i: BuildPromptInput): string {
     : "";
 
   const rules: string[] = Array.isArray(cfg.strict_rules) ? cfg.strict_rules.filter((r: string) => r?.trim()) : [];
-  const allRules = pronounRule ? [pronounRule, ...rules] : rules;
+  const replyLen = Number.isFinite(+cfg.reply_length) && +cfg.reply_length > 0 ? +cfg.reply_length : 60;
+  const replyBubbles = Number.isFinite(+cfg.reply_bubbles) && +cfg.reply_bubbles > 0 ? +cfg.reply_bubbles : 3;
+  const styleRule = `✂️ สไตล์การตอบ: ตอบสั้น ≤${replyLen} คำต่อบับเบิล แยกบับเบิลด้วย "---" (สูงสุด ${replyBubbles} บับเบิล) — ห้ามยาวเกิน ห้ามตื๊อ`;
+  const allRules = pronounRule ? [pronounRule, styleRule, ...rules] : [styleRule, ...rules];
   const strictBlock = allRules.length
     ? `\n\n🔴 กฎ AI (สำคัญสุด ห้ามผิดเด็ดขาด — เหนือกฎอื่นทั้งหมด):\n${allRules.map((r, idx) => `${idx + 1}. ${r}`).join("\n")}`
     : "";

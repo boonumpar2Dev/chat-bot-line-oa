@@ -186,45 +186,12 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center gap-2 mb-5"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">บทบาท AI (Persona)</h2></div>
-        <div className="space-y-1.5">
-          <Label>AI คือใคร พูดยังไง</Label>
-          <Textarea rows={3} value={s.ai_persona} onChange={e=>upd("ai_persona", e.target.value)} placeholder='เช่น "คุณคือ AI ผู้ช่วยร้านสปา..."' />
-          <p className="text-xs text-muted-foreground">บรรทัดแรกของ prompt — กำหนดน้ำเสียง/อาชีพของ AI ส่วน "กฎที่ต้องทำตาม" ใส่ในการ์ด "กฎ AI" ด้านล่าง</p>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-4 mt-5">
-          <div className="space-y-1.5">
-            <Label>คำที่ไม่ต้องตอบ (Trivial replies)</Label>
-            <Input value={s.trivial_replies.join(", ")} onChange={e=>upd("trivial_replies", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
-            <p className="text-xs text-muted-foreground">เช่น ok, ขอบคุณ, 👍</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>คีย์เวิร์ด Tax ID</Label>
-            <Input value={s.tax_id_keywords.join(", ")} onChange={e=>upd("tax_id_keywords", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} />
-            <p className="text-xs text-muted-foreground">คำที่บ่งบอกว่าเป็นเลขผู้เสียภาษี</p>
-          </div>
-        </div>
-      </Card>
-
-      <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center gap-2 mb-1"><MessageCircle className="text-primary"/><h2 className="font-display text-lg font-semibold">สรรพนามของบอท</h2></div>
-        <p className="text-xs text-muted-foreground mb-5">กำหนดว่าบอทเรียกตัวเองว่าอะไร เรียกลูกค้าว่าอะไร และคำไหนห้ามใช้ — ระบบจะเพิ่มเป็นกฎอัตโนมัติทุกครั้งที่ตอบ</p>
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>แทนตัวเองได้ (คั่นด้วย ,)</Label>
-            <Input value={(s.self_pronouns_allowed ?? []).join(", ")} onChange={e=>upd("self_pronouns_allowed", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="ทีมงาน, แอดมิน, บุญนำพา" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>เรียกลูกค้าได้ (คั่นด้วย ,)</Label>
-            <Input value={(s.customer_pronouns_allowed ?? []).join(", ")} onChange={e=>upd("customer_pronouns_allowed", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="ลูกค้า, คุณ{ชื่อ}" />
-            <p className="text-xs text-muted-foreground">ใช้ <code>{"{ชื่อ}"}</code> เพื่อให้บอทแทนชื่อลูกค้าจริง</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>คำต้องห้าม (คั่นด้วย ,)</Label>
-            <Textarea rows={2} value={(s.forbidden_pronouns ?? []).join(", ")} onChange={e=>upd("forbidden_pronouns", e.target.value.split(",").map(x=>x.trim()).filter(Boolean))} placeholder="แม่หมอ, พี่, น้อง, ตัวเอง, เธอ..." />
-          </div>
-        </div>
+      <Card className="p-6 shadow-soft border-border/60 bg-primary/5">
+        <div className="flex items-center gap-2 mb-2"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">บทบาท AI / สรรพนาม / สไตล์การตอบ ย้ายไป "ตั้งค่า AI" แล้ว</h2></div>
+        <p className="text-xs text-muted-foreground mb-3">รวมการตั้งค่าพฤติกรรม AI ไว้ที่เดียว — Persona, สรรพนาม, สไตล์การตอบ, กลยุทธ์ส่งรูป และข้อความ Fallback</p>
+        <a href="/ai-settings" className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-sm">
+          ไปหน้าตั้งค่า AI →
+        </a>
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
@@ -268,108 +235,6 @@ export default function Settings() {
         </a>
       </Card>
 
-      <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center gap-2 mb-1"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1)</h2></div>
-        <p className="text-xs text-muted-foreground mb-4">
-          เมื่อลูกค้ายังไม่ระบุงบ/ระดับแพ็กเกจ AI จะส่ง "รูปเปรียบเทียบ" จาก KB หมวดที่เลือกก่อน เพื่อให้ลูกค้าเลือกตามงบเอง พอเลือกแล้วค่อยส่งรูปรายละเอียดของระดับนั้นโดยเฉพาะ
-        </p>
-        <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 mb-4">
-          <div><Label className="font-medium">เปิดใช้กลยุทธ์นี้</Label><p className="text-xs text-muted-foreground mt-1">ปิดไว้ถ้าธุรกิจไม่ได้แบ่งระดับราคาแบบหลาย tier</p></div>
-          <Switch checked={s.comparison_phase_enabled} onCheckedChange={v=>upd("comparison_phase_enabled",v)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>หมวด Knowledge Base สำหรับรูปเปรียบเทียบ</Label>
-          <select
-            className="w-full h-10 rounded-md border bg-background px-3 text-sm"
-            value={s.comparison_kb_category ?? ""}
-            onChange={e=>upd("comparison_kb_category", e.target.value || null)}
-            disabled={!s.comparison_phase_enabled}
-          >
-            <option value="">— เลือกหมวด —</option>
-            {kbCategories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <p className="text-xs text-muted-foreground">ตั้ง entry ใน KB หมวดนี้แยกตามช่วงจำนวนคน เช่น "เปรียบเทียบ 40 ท่าน", "เปรียบเทียบ 100 ท่าน"</p>
-        </div>
-        <div className="space-y-1.5 mt-5">
-          <Label>น้ำเสียง AI ตอนส่งรูปเปรียบเทียบ (Phase 1)</Label>
-          <Textarea
-            rows={4}
-            value={s.comparison_instruction ?? ""}
-            onChange={e=>upd("comparison_instruction", e.target.value)}
-            disabled={!s.comparison_phase_enabled}
-            placeholder='เช่น "พูดแบบที่ปรึกษา ไม่ใช่สคริปต์ — สรุปสั้นๆ ว่าลูกค้าจะได้เห็นอะไร แล้วชวนคุยต่อ ห้ามใช้ประโยคซ้ำๆ เช่น..."'
-          />
-          <p className="text-xs text-muted-foreground">กำหนดว่า AI ควรพูดยังไงตอนแนบรูปเปรียบเทียบ — แก้ตรงนี้ได้เลยโดยไม่ต้องแก้โค้ด</p>
-        </div>
-        <div className="space-y-1.5 mt-5">
-          <Label>กฎเลือกรูปตอนลูกค้าเลือกแพ็ก/ระดับแล้ว (Phase 2)</Label>
-          <Textarea
-            rows={5}
-            value={s.phase2_instruction ?? ""}
-            onChange={e=>upd("phase2_instruction", e.target.value)}
-            placeholder='เช่น "ส่งเฉพาะรูป tier ที่แนะนำเท่านั้น ห้ามแนบ KB เมนู/รูปอื่น เว้นแต่ลูกค้าจะขอดูเมนูชัดเจน"'
-          />
-          <p className="text-xs text-muted-foreground">ใช้ทั้งเมื่อเปิด/ปิดกลยุทธ์ Phase 1 — กันไม่ให้ AI แถมรูปเมนู/รูปอื่นเวลาลูกค้าถามแค่แพ็กเกจ/ราคา</p>
-        </div>
-        <div className="space-y-1.5 mt-5">
-          <Label>จำนวนรูปสูงสุดต่อข้อความ (1-20)</Label>
-          <Input
-            type="number" min={1} max={20}
-            value={s.max_images_per_reply ?? 5}
-            onChange={e=>upd("max_images_per_reply", Math.max(1, Math.min(20, parseInt(e.target.value) || 5)))}
-          />
-          <p className="text-xs text-muted-foreground">จำกัดจำนวนรูป/วิดีโอที่ AI ส่งในรอบเดียว (กัน KB ตัวเดียวระเบิดเป็น 9-10 รูป) — แนะนำ 4-6</p>
-        </div>
-
-        <div className="space-y-1.5 mt-5">
-          <Label>คำที่ลูกค้าใช้ขอดูรูปเมนู/ตัวอย่าง (1 คำต่อบรรทัด)</Label>
-          <Textarea
-            rows={4}
-            value={(s.menu_request_keywords ?? []).join("\n")}
-            onChange={e=>upd("menu_request_keywords", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
-            placeholder={"เมนู\nตัวอย่าง\nดูรูป\nรูปอาหาร"}
-          />
-          <p className="text-xs text-muted-foreground">ถ้าลูกค้าพิมพ์คำใดคำหนึ่ง → AI ได้รับอนุญาตให้แนบรูป KB เมนู/ตัวอย่าง — ไม่งั้นจะถูก drop อัตโนมัติ</p>
-        </div>
-
-        <div className="space-y-1.5 mt-5">
-          <Label>คำในชื่อ KB ที่ถือว่าเป็นรูปเมนู/ตัวอย่าง (1 คำต่อบรรทัด)</Label>
-          <Textarea
-            rows={3}
-            value={(s.kb_menu_title_keywords ?? []).join("\n")}
-            onChange={e=>upd("kb_menu_title_keywords", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
-            placeholder={"เมนู\nตัวอย่าง\nซุ้ม"}
-          />
-          <p className="text-xs text-muted-foreground">ชื่อ KB ที่มีคำเหล่านี้ จะถูก drop เมื่อลูกค้าไม่ได้ขอดูเมนู (ใช้คู่กับช่องด้านบน) — รูป tier/แพ็กเกจ/โปรไม่โดนกระทบ</p>
-        </div>
-
-        <div className="space-y-1.5 mt-5">
-          <Label>ชื่อ KB ที่เป็น whitelist พื้นที่ให้บริการ</Label>
-          <Input
-            value={s.service_area_kb_title ?? ""}
-            onChange={e=>upd("service_area_kb_title", e.target.value)}
-            placeholder="พื้นที่ที่บุญนำพาสามารถไปให้บริการได้"
-          />
-          <p className="text-xs text-muted-foreground">ใส่ชื่อ KB ตรงตามที่ตั้งไว้ — ระบบจะดึง content มาแสดงให้ AI เช็กก่อนตอบเรื่องค่าเดินทาง</p>
-        </div>
-
-        <div className="space-y-1.5 mt-5">
-          <Label>คำที่บ่งบอกว่าลูกค้าพูดถึงสถานที่/จังหวัด (1 คำต่อบรรทัด)</Label>
-          <Textarea
-            rows={6}
-            value={(s.location_keywords ?? []).join("\n")}
-            onChange={e=>upd("location_keywords", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
-            placeholder={"จังหวัด\nจัดที่\nอ.\nอำเภอ\nเชียงใหม่\nภูเก็ต"}
-          />
-          <p className="text-xs text-muted-foreground">ถ้าข้อความลูกค้ามีคำเหล่านี้ → trigger ให้เช็ก whitelist พื้นที่ — ใส่ชื่อจังหวัดที่ไม่ได้ให้บริการเพื่อกัน AI แต่งราคาค่าเดินทาง</p>
-        </div>
-      </Card>
-
-      <Card className="p-6 shadow-soft border-border/60">
-        <h2 className="font-display text-lg font-semibold mb-4">ข้อความ Fallback</h2>
-        <Textarea value={s.fallback_message} onChange={e=>upd("fallback_message",e.target.value)} rows={4} />
-        <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
-      </Card>
       <Card className="p-6 shadow-soft border-destructive/40 bg-destructive/5">
         <div className="flex items-center gap-2 mb-2"><AlertTriangle className="text-destructive"/><h2 className="font-display text-lg font-semibold">โซนทดสอบ (Danger Zone)</h2></div>
         <p className="text-sm text-muted-foreground mb-4">ใช้ระหว่างเทสระบบ — ลบข้อมูลแล้วเรียกคืนไม่ได้</p>

@@ -119,6 +119,8 @@ export type Database = {
           phase2_instruction: string
           phone_mute_hours: number
           post_phone_max_replies: number
+          reply_bubbles: number
+          reply_length: number
           schedule_enabled: boolean
           self_pronouns_allowed: string[]
           service_area_kb_title: string
@@ -163,6 +165,8 @@ export type Database = {
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
+          reply_bubbles?: number
+          reply_length?: number
           schedule_enabled?: boolean
           self_pronouns_allowed?: string[]
           service_area_kb_title?: string
@@ -207,6 +211,8 @@ export type Database = {
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
+          reply_bubbles?: number
+          reply_length?: number
           schedule_enabled?: boolean
           self_pronouns_allowed?: string[]
           service_area_kb_title?: string
