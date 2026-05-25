@@ -543,6 +543,14 @@ function KnowledgeBaseTab() {
                 </div>
               )}
             </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <div className="space-y-0.5">
+                <Label>📌 ส่งให้ AI ทุกครั้ง</Label>
+                <p className="text-[11px] text-muted-foreground">เปิดถ้าข้อมูลนี้สำคัญมาก AI ต้องรู้ตลอดเวลา</p>
+              </div>
+              <Switch checked={!!edit.is_always_include}
+                onCheckedChange={v => setEdit({ ...edit, is_always_include: v })}/>
+            </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>
               <Switch checked={edit.status === "active"}
