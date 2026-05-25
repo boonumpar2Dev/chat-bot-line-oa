@@ -75,23 +75,104 @@ export default function Chats() {
   const [trainText, setTrainText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Pagination + server-side search
+  const PAGE_SIZE = 50;
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const isSearching = debouncedSearch.length >= 2;
 
   const selected = customers.find(c => c.id === selectedId);
 
-  // Customers + realtime
+  // Initial load + reload when search changes
   useEffect(() => {
     let active = true;
-    const load = async () => {
-      const { data } = await supabase.from("customers").select("*")
-        .order("last_message_at", { ascending: false, nullsFirst: false }).limit(200);
-      if (active) { setCustomers(data || []); setLoading(false); }
-    };
-    load();
+    setLoading(true);
+    setPage(0);
+    setHasMore(true);
+    (async () => {
+      let q = supabase.from("customers").select("*")
+        .order("last_message_at", { ascending: false, nullsFirst: false });
+      if (isSearching) {
+        const s = debouncedSearch.replace(/[%,]/g, "");
+        q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%`).limit(100);
+      } else {
+        q = q.range(0, PAGE_SIZE - 1);
+      }
+      const { data } = await q;
+      if (!active) return;
+      setCustomers(data || []);
+      setHasMore(!isSearching && (data?.length || 0) === PAGE_SIZE);
+      setLoading(false);
+    })();
+    return () => { active = false; };
+  }, [debouncedSearch, isSearching]);
+
+  // Realtime: patch in place (no full reload)
+  useEffect(() => {
     const ch = supabase.channel("customers-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, (payload: any) => {
+        const newRow: any = payload.new;
+        const oldRow: any = payload.old;
+        if (payload.eventType === "DELETE") {
+          if (oldRow?.id) setCustomers(prev => prev.filter(c => c.id !== oldRow.id));
+          return;
+        }
+        if (!newRow?.id) return;
+        setCustomers(prev => {
+          const idx = prev.findIndex(c => c.id === newRow.id);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = { ...next[idx], ...newRow };
+            return next.sort((a, b) =>
+              new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
+            );
+          }
+          if (payload.eventType === "INSERT" && !isSearching) return [newRow, ...prev];
+          return prev;
+        });
+      })
       .subscribe();
-    return () => { active = false; supabase.removeChannel(ch); };
-  }, []);
+    return () => { supabase.removeChannel(ch); };
+  }, [isSearching]);
+
+  // Infinite scroll
+  const loadMore = async () => {
+    if (loadingMore || !hasMore || isSearching) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const from = nextPage * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data } = await supabase.from("customers").select("*")
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .range(from, to);
+    setCustomers(prev => {
+      const ids = new Set(prev.map(c => c.id));
+      return [...prev, ...(data || []).filter((c: any) => !ids.has(c.id))];
+    });
+    setHasMore((data?.length || 0) === PAGE_SIZE);
+    setPage(nextPage);
+    setLoadingMore(false);
+  };
+
+  useEffect(() => {
+    if (!sentinelRef.current || isSearching || !hasMore) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) loadMore();
+    }, { rootMargin: "200px" });
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [page, hasMore, loadingMore, isSearching, customers.length]);
+
 
   // Messages + realtime
   useEffect(() => {
