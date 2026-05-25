@@ -493,16 +493,17 @@ async function processEvent(event: any, supabase: any) {
     const msgMs = typeof event.timestamp === "number" ? event.timestamp : 0;
     if (msgMs > 0 && msgMs < new Date(freshCustomer.ai_resumed_at).getTime()) return;
   }
-  // status เป็นแค่ป้าย funnel — ai_active เป็น single source of truth (เช็คไปแล้วบรรทัด 391)
-  if (cfg.ai_enabled === false) return;
-
-  // 🧪 Whitelist mode: ถ้าเปิดอยู่ AI ตอบเฉพาะ line_user_id ที่อยู่ใน list เท่านั้น
+  // 🧪 Whitelist (โหมดทดสอบ) เป็น override — ถ้าเปิด ให้ทำงานเฉพาะคนใน list โดยไม่สนใจ ai_enabled
   if (cfg.ai_whitelist_enabled === true) {
     const wl: string[] = Array.isArray(cfg.ai_whitelist_user_ids) ? cfg.ai_whitelist_user_ids : [];
     if (!wl.includes(lineUserId)) {
       console.log(`[Whitelist] Skip AI reply for ${lineUserId} (not in whitelist)`);
       return;
     }
+    // ผ่าน whitelist → ตอบได้เลย ไม่ต้องเช็ค ai_enabled
+  } else {
+    // โหมดปกติ — ต้องเปิด master switch
+    if (cfg.ai_enabled === false) return;
   }
 
   // 📞 Post-phone reply cap: ถ้าลูกค้ามีเบอร์ในระบบแล้ว → AI ตอบได้แค่ N รอบ (default 3) แล้วปิด handover ให้แอดมิน
