@@ -154,10 +154,9 @@ Deno.serve(async (req) => {
     ]);
     const cfg = cfgArr?.[0] || {};
 
-    const kbContext = (kb || []).map((k: any) => {
-      const imgs = getItemImages(k);
-      return `## ${k.title}\n${(k.content || "").slice(0, 800)}${imgs.length ? `\n[มีรูป ${imgs.length} รูป]` : ""}`;
-    }).join("\n\n");
+    const recentHistory = history.slice(-8).map(h => h.content).join(" ");
+    const filteredKb = filterRelevantKB(kb || [], text, recentHistory);
+    const kbContext = buildKbBlock(filteredKb);
 
     const pkgContext = (pkgs || []).length > 0 ? "\n\n--- แคตตาล็อกแพ็กเกจ ---\n" + (pkgs || []).map((p: any) => {
       let s = `## แพ็กเกจ: ${p.name}`;
