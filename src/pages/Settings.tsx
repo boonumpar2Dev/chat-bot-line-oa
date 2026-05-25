@@ -185,8 +185,6 @@ export default function Settings() {
           </div>
         </div>
       </Card>
-        </div>
-      </Card>
 
       <Card className="p-6 shadow-soft border-border/60">
         <div className="flex items-center gap-2 mb-5"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">บทบาท AI (Persona)</h2></div>
