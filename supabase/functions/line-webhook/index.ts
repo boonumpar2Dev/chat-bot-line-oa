@@ -582,7 +582,8 @@ async function processEvent(event: any, supabase: any) {
   const kbWithVideos = kbItems.filter((i: any) => getItemVideos(i).length > 0);
 
   // KB ไม่มี filter → ใช้ cache ได้เลย
-  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(kbItems);
+  const filteredKb = filterRelevantKB(kbItems, messageText, recentMsgsText);
+  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(filteredKb);
   kbContext = truncateToTokens(kbContext, BUDGET_KB);
 
   // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
