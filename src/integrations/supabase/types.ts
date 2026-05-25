@@ -89,6 +89,8 @@ export type Database = {
         Row: {
           ai_enabled: boolean
           ai_persona: string
+          ai_whitelist_enabled: boolean
+          ai_whitelist_user_ids: string[]
           allowed_service_types: string[]
           comparison_instruction: string
           comparison_kb_category: string | null
@@ -131,6 +133,8 @@ export type Database = {
         Insert: {
           ai_enabled?: boolean
           ai_persona?: string
+          ai_whitelist_enabled?: boolean
+          ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
           comparison_instruction?: string
           comparison_kb_category?: string | null
@@ -173,6 +177,8 @@ export type Database = {
         Update: {
           ai_enabled?: boolean
           ai_persona?: string
+          ai_whitelist_enabled?: boolean
+          ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
           comparison_instruction?: string
           comparison_kb_category?: string | null
