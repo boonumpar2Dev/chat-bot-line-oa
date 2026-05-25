@@ -144,7 +144,7 @@ export function filterRelevantKB(
   if (keywords.length === 0) return kbItems;
 
   const scored = kbItems.map((item: any) => {
-    let score = 1;
+    let score = 0;
     const content = (item.content || "").toLowerCase();
     const title = (item.title || "").toLowerCase();
     const category = (item.category || "").toLowerCase();
