@@ -162,6 +162,6 @@ export function filterRelevantKB(
   });
 
   const relevant = scored.filter((s: any) => s.score > 0).sort((a: any, b: any) => b.score - a.score);
-  if (relevant.length === 1) return kbItems; // no matches found, fallback to full list
-  return relevant.slice(1, maxItems + 1).map((s: any) => s.item);
+  if (relevant.length === 0) return kbItems; // no matches found, fallback to full list
+  return relevant.slice(0, maxItems).map((s: any) => s.item);
 }
