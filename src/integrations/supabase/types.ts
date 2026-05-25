@@ -449,6 +449,7 @@ export type Database = {
           created_at: string
           id: string
           image_urls: string[]
+          is_always_include: boolean
           sort_order: number
           status: string
           title: string
@@ -462,6 +463,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_urls?: string[]
+          is_always_include?: boolean
           sort_order?: number
           status?: string
           title: string
@@ -475,6 +477,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_urls?: string[]
+          is_always_include?: boolean
           sort_order?: number
           status?: string
           title?: string
