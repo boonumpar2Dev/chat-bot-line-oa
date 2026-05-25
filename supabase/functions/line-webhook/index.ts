@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens } from "../_shared/ai-context.ts";
+import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncateToTokens, filterRelevantKB } from "../_shared/ai-context.ts";
 import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
@@ -582,7 +582,8 @@ async function processEvent(event: any, supabase: any) {
   const kbWithVideos = kbItems.filter((i: any) => getItemVideos(i).length > 0);
 
   // KB ไม่มี filter → ใช้ cache ได้เลย
-  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(kbItems);
+  const filteredKb = filterRelevantKB(kbItems, messageText, recentMsgs);
+  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(filteredKb);
   kbContext = truncateToTokens(kbContext, BUDGET_KB);
 
   // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
