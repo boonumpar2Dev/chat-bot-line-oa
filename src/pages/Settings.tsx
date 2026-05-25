@@ -160,6 +160,31 @@ export default function Settings() {
             <Input type="number" min={0} max={120} value={s.debounce_seconds ?? 15} onChange={e=>upd("debounce_seconds",+e.target.value)} />
             <p className="text-xs text-muted-foreground">ถ้าลูกค้าพิมพ์หลายข้อความติดกัน AI จะรอตามจำนวนวินาทีนี้แล้วตอบรวมทีเดียว (แนะนำ 10–20 วิ, ใส่ 0 = ปิด)</p>
           </div>
+
+          <div className="space-y-3 p-4 rounded-lg border border-amber-500/40 bg-amber-500/5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="font-medium">🧪 โหมดทดสอบ (Whitelist)</Label>
+                <p className="text-xs text-muted-foreground mt-1">เปิดเมื่อต้องการให้ AI ตอบเฉพาะ LINE user ID ที่ระบุไว้ — ลูกค้าคนอื่นจะไม่ได้รับการตอบกลับจาก AI</p>
+              </div>
+              <Switch checked={s.ai_whitelist_enabled ?? false} onCheckedChange={v=>upd("ai_whitelist_enabled",v)} />
+            </div>
+            {s.ai_whitelist_enabled && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">LINE user ID ที่อนุญาต (หนึ่ง ID ต่อบรรทัด)</Label>
+                <Textarea
+                  rows={4}
+                  className="font-mono text-xs"
+                  placeholder={"Uxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\nUyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"}
+                  value={(s.ai_whitelist_user_ids ?? []).join("\n")}
+                  onChange={e=>upd("ai_whitelist_user_ids", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
+                />
+                <p className="text-[11px] text-muted-foreground">ID เริ่มต้นด้วย U ตามด้วยตัวอักษร/ตัวเลข 32 ตัว — หาได้จากหน้า Chats หรือตาราง customers (line_user_id)</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
         </div>
       </Card>
 
