@@ -591,9 +591,16 @@ async function processEvent(event: any, supabase: any) {
   const kbWithImages = kbItems.filter((i: any) => getItemImages(i).length > 0);
   const kbWithVideos = kbItems.filter((i: any) => getItemVideos(i).length > 0);
 
+  // เตรียม history string ก่อน เพื่อใช้ใน filterRelevantKB
+  let historyForFilter = [...(recentConvs || [])].reverse();
+  const _lastAdminIdxF = historyForFilter.map((m, i) => m.sender === "admin" ? i : -1).filter(i => i >= 0).pop();
+  if (_lastAdminIdxF !== undefined) historyForFilter = historyForFilter.slice(_lastAdminIdxF);
+  else historyForFilter = historyForFilter.slice(-6);
+  const recentMsgsForFilter = historyForFilter.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
+
   // KB ไม่มี filter → ใช้ cache ได้เลย
   const mustIncludeIds = kbItems.filter((i: any) => i?.is_always_include).map((i: any) => i.id);
-  const filteredKb = filterRelevantKB(kbItems, messageText, recentMsgs, 8, mustIncludeIds);
+  const filteredKb = filterRelevantKB(kbItems, messageText, recentMsgsForFilter, 8, mustIncludeIds);
   let kbContext = cacheMap.get("kb_summary") || buildKbBlock(filteredKb);
   kbContext = truncateToTokens(kbContext, BUDGET_KB);
 
