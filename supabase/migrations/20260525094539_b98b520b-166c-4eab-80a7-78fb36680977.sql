@@ -1,0 +1,1 @@
+ALTER TABLE public.knowledge_base ADD COLUMN IF NOT EXISTS is_always_include boolean NOT NULL DEFAULT false;

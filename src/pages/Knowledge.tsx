@@ -23,11 +23,11 @@ import AiRulesTab from "@/components/knowledge/AiRulesTab";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
-type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; bundle_image_titles: string[]; status: string; sort_order: number; };
+type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; bundle_image_titles: string[]; status: string; sort_order: number; is_always_include: boolean; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], video_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
-const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
+const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0, is_always_include: false };
 
 // Auto rebuild AI cache หลัง CRUD — fire-and-forget ไม่บล็อก UI
 export const triggerRebuildAiCache = () => {
@@ -443,6 +443,7 @@ function KnowledgeBaseTab() {
                 <h3 className="font-display font-semibold truncate">{i.title}</h3>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {i.category && <Badge variant="secondary">{i.category}</Badge>}
+                  {i.is_always_include && <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200">📌 ทุกครั้ง</Badge>}
                   {i.status !== "active" && <Badge variant="outline">ปิดใช้งาน</Badge>}
                 </div>
               </div>
@@ -541,6 +542,14 @@ function KnowledgeBaseTab() {
                   ))}
                 </div>
               )}
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <div className="space-y-0.5">
+                <Label>📌 ส่งให้ AI ทุกครั้ง</Label>
+                <p className="text-[11px] text-muted-foreground">เปิดถ้าข้อมูลนี้สำคัญมาก AI ต้องรู้ตลอดเวลา</p>
+              </div>
+              <Switch checked={!!edit.is_always_include}
+                onCheckedChange={v => setEdit({ ...edit, is_always_include: v })}/>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
               <Label>เปิดใช้งาน</Label>

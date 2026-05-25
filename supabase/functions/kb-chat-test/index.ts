@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
     const cfg = cfgArr?.[0] || {};
 
     const recentHistory = history.slice(-8).map(h => h.content).join(" ");
-    const filteredKb = filterRelevantKB(kb || [], text, recentHistory);
+    const mustIncludeIds = (kb || []).filter((i: any) => i?.is_always_include).map((i: any) => i.id);
+    const filteredKb = filterRelevantKB(kb || [], text, recentHistory, 8, mustIncludeIds);
     const kbContext = buildKbBlock(filteredKb);
 
     const pkgContext = (pkgs || []).length > 0 ? "\n\n--- แคตตาล็อกแพ็กเกจ ---\n" + (pkgs || []).map((p: any) => {
