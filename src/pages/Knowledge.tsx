@@ -23,11 +23,11 @@ import AiRulesTab from "@/components/knowledge/AiRulesTab";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
-type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; bundle_image_titles: string[]; status: string; sort_order: number; };
+type KB = { id?: string; title: string; content: string; category: string | null; image_urls: string[]; video_urls: VideoItem[]; bundle_image_titles: string[]; status: string; sort_order: number; is_always_include: boolean; };
 
 const blankPkg: Pkg = { name: "", category: "", description: "", min_condition: "", pricing_tiers: [], custom_attributes: [], ai_instruction: "", notes: "", image_urls: [], video_urls: [], is_active: true };
 const blankPromo: Promo = { name: "", description: "", applicable_categories: [], image_urls: [], video_urls: [], is_active: true, min_guests: null };
-const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0 };
+const blankKB: KB = { title: "", content: "", category: "", image_urls: [], video_urls: [], bundle_image_titles: [], status: "active", sort_order: 0, is_always_include: false };
 
 // Auto rebuild AI cache หลัง CRUD — fire-and-forget ไม่บล็อก UI
 export const triggerRebuildAiCache = () => {
