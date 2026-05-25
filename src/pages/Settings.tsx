@@ -17,6 +17,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 type Settings = {
   id?: string;
   ai_enabled: boolean;
+  ai_whitelist_enabled: boolean;
+  ai_whitelist_user_ids: string[];
   confidence_threshold: number;
   cooldown_minutes: number;
   manual_chat_hours: number;
