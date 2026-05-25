@@ -165,7 +165,7 @@ export default function Settings() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label className="font-medium">🧪 โหมดทดสอบ (Whitelist)</Label>
-                <p className="text-xs text-muted-foreground mt-1">เปิดเมื่อต้องการให้ AI ตอบเฉพาะ LINE user ID ที่ระบุไว้ — ลูกค้าคนอื่นจะไม่ได้รับการตอบกลับจาก AI</p>
+                <p className="text-xs text-muted-foreground mt-1">เปิดเมื่อต้องการให้ AI ตอบเฉพาะ LINE user ID ที่ระบุไว้ — ลูกค้าคนอื่นจะไม่ได้รับการตอบกลับจาก AI <strong>(โหมดนี้ override สวิตช์ "เปิดใช้งาน AI" — เปิดอันนี้อันเดียวก็ทดสอบได้ ไม่ต้องเปิด master)</strong></p>
               </div>
               <Switch checked={s.ai_whitelist_enabled ?? false} onCheckedChange={v=>upd("ai_whitelist_enabled",v)} />
             </div>
