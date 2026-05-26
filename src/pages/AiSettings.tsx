@@ -200,6 +200,11 @@ export default function AiSettings() {
               <Input value={s.service_area_kb_title ?? ""} onChange={e => upd("service_area_kb_title", e.target.value)} placeholder="พื้นที่ที่บุญนำพาสามารถไปให้บริการได้" />
               <p className="text-xs text-muted-foreground">ใส่ชื่อ KB ตรงตามที่ตั้งไว้</p>
             </div>
+            <div className="space-y-1.5 mt-5">
+              <Label>คำที่บ่งบอกว่าลูกค้าพูดถึงสถานที่/จังหวัด (1 คำต่อบรรทัด)</Label>
+              <Textarea rows={6} value={(s.location_keywords ?? []).join("\n")} onChange={e => upd("location_keywords", e.target.value.split("\n").map((x: string) => x.trim()).filter(Boolean))} placeholder={"จังหวัด\nจัดที่\nอ.\nอำเภอ\nเชียงใหม่\nภูเก็ต"} />
+              <p className="text-xs text-muted-foreground">trigger ให้เช็ก whitelist พื้นที่</p>
+            </div>
 
             <Accordion type="single" collapsible className="mt-6">
               <AccordionItem value="adv-image-rules" className="border rounded-lg px-4">
@@ -228,11 +233,6 @@ export default function AiSettings() {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-            <div className="space-y-1.5 mt-5">
-              <Label>คำที่บ่งบอกว่าลูกค้าพูดถึงสถานที่/จังหวัด (1 คำต่อบรรทัด)</Label>
-              <Textarea rows={6} value={(s.location_keywords ?? []).join("\n")} onChange={e => upd("location_keywords", e.target.value.split("\n").map((x: string) => x.trim()).filter(Boolean))} placeholder={"จังหวัด\nจัดที่\nอ.\nอำเภอ\nเชียงใหม่\nภูเก็ต"} />
-              <p className="text-xs text-muted-foreground">trigger ให้เช็ก whitelist พื้นที่</p>
-            </div>
           </Card>
         </TabsContent>
 
