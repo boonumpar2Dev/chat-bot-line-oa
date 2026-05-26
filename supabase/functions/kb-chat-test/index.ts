@@ -19,13 +19,13 @@ function getItemVideos(item: any): { url: string; thumb_url: string }[] {
   return Array.isArray(item.video_urls) ? item.video_urls.filter((v: any) => v?.url && v?.thumb_url) : [];
 }
 
-async function callAI(prompt: string, model: string) {
+async function callAI(systemPrompt: string, userPrompt: string, model: string) {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
       response_format: { type: "json_object" },
     }),
   });
