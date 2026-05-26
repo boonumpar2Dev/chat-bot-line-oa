@@ -96,13 +96,13 @@ function parseThaiEventDate(text: string): string | null {
 }
 
 
-async function callAI(prompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; _usage?: any; _model?: string }> {
+async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
     body: JSON.stringify({
       model,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
       response_format: {
         type: "json_schema",
         json_schema: {
@@ -713,7 +713,7 @@ async function processEvent(event: any, supabase: any) {
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
-  const prompt = buildPrompt({
+  const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
     kbContext,
     pkgContext,
@@ -731,14 +731,14 @@ async function processEvent(event: any, supabase: any) {
 
 
   // Log token usage (เพื่อ monitor การประหยัด)
-  console.log(`[Tokens] prompt≈${countTokens(prompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
+  console.log(`[Tokens] prompt≈${countTokens(systemPrompt) + countTokens(userPrompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
 
   let aiResp: any;
   try {
-    aiResp = await callAI(prompt, "google/gemini-3-flash-preview");
+    aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-3-flash-preview");
   } catch (e: any) {
     console.warn(`[LLM] gemini-3-flash failed: ${e.message} — fallback to gemini-2.5-flash`);
-    try { aiResp = await callAI(prompt, "google/gemini-2.5-flash"); }
+    try { aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-2.5-flash"); }
     catch (e2: any) { console.error("AI failed:", e2.message); return; }
   }
   if (aiResp?._usage) {
