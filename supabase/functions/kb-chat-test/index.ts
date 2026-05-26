@@ -253,7 +253,7 @@ Deno.serve(async (req) => {
       ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownFacts.join("\n")}`
       : "";
 
-    const prompt = buildPrompt({
+    const { systemPrompt, userPrompt } = buildPrompt({
       cfg,
       kbContext,
       pkgContext,
@@ -269,10 +269,10 @@ Deno.serve(async (req) => {
 
 
     let aiResp: any;
-    try { aiResp = await callAI(prompt, "google/gemini-3-flash-preview"); }
+    try { aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-3-flash-preview"); }
     catch (e: any) {
       console.warn(`gemini-3-flash failed: ${e.message}, trying gemini-2.5-flash`);
-      aiResp = await callAI(prompt, "google/gemini-2.5-flash");
+      aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-2.5-flash");
     }
     if (aiResp?._usage) {
       logTokenUsage(supabase, { model: aiResp._model, source: "kb_test", apiResponse: { usage: aiResp._usage } });
