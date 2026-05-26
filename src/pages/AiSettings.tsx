@@ -200,6 +200,34 @@ export default function AiSettings() {
               <Input value={s.service_area_kb_title ?? ""} onChange={e => upd("service_area_kb_title", e.target.value)} placeholder="พื้นที่ที่บุญนำพาสามารถไปให้บริการได้" />
               <p className="text-xs text-muted-foreground">ใส่ชื่อ KB ตรงตามที่ตั้งไว้</p>
             </div>
+
+            <Accordion type="single" collapsible className="mt-6">
+              <AccordionItem value="adv-image-rules" className="border rounded-lg px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="text-left">
+                    <div className="font-display text-base font-semibold">⚙️ กฎการส่งรูปขั้นสูง</div>
+                    <div className="text-xs text-muted-foreground font-normal mt-0.5">กำหนดพฤติกรรมการส่งรูปในแต่ละสถานการณ์</div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-5 pt-2">
+                  <div className="space-y-1.5">
+                    <Label>เมื่อลูกค้าถามเรื่องอื่น (ไม่ได้ขอรูป)</Label>
+                    <Textarea rows={2} value={s.image_rule_no_extra ?? ""} onChange={e => upd("image_rule_no_extra", e.target.value)} />
+                    <p className="text-xs text-muted-foreground">เช่น ถามชิม/ค่าส่ง/เงื่อนไข/ราคา → ห้ามแถมรูป</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>เมื่อลูกค้าบอกจำนวนคนแต่ยังไม่ระบุรูปแบบ</Label>
+                    <Textarea rows={2} value={s.image_rule_no_format ?? ""} onChange={e => upd("image_rule_no_format", e.target.value)} />
+                    <p className="text-xs text-muted-foreground">ให้ส่งภาพรวมก่อนเสมอ ไม่ว่าจะรู้จำนวนคนแล้วก็ตาม</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>เมื่อเคยส่งรูปเปรียบเทียบไปแล้ว</Label>
+                    <Textarea rows={2} value={s.image_rule_no_repeat ?? ""} onChange={e => upd("image_rule_no_repeat", e.target.value)} />
+                    <p className="text-xs text-muted-foreground">ป้องกันการส่งรูปซ้ำหลังลูกค้าตัดสินใจแล้ว</p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
             <div className="space-y-1.5 mt-5">
               <Label>คำที่บ่งบอกว่าลูกค้าพูดถึงสถานที่/จังหวัด (1 คำต่อบรรทัด)</Label>
               <Textarea rows={6} value={(s.location_keywords ?? []).join("\n")} onChange={e => upd("location_keywords", e.target.value.split("\n").map((x: string) => x.trim()).filter(Boolean))} placeholder={"จังหวัด\nจัดที่\nอ.\nอำเภอ\nเชียงใหม่\nภูเก็ต"} />
