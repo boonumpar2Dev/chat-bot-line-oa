@@ -50,6 +50,9 @@ export default function AiSettings() {
       service_area_kb_title: s.service_area_kb_title,
       location_keywords: s.location_keywords,
       fallback_message: s.fallback_message,
+      image_rule_no_extra: s.image_rule_no_extra,
+      image_rule_no_format: s.image_rule_no_format,
+      image_rule_no_repeat: s.image_rule_no_repeat,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
