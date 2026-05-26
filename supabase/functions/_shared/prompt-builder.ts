@@ -63,7 +63,7 @@ export function buildPrompt(i: BuildPromptInput): string {
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  return `${persona}${strictBlock}${dateBlock}
+  return `${persona}${strictBlock}${advImgBlock}${dateBlock}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด):
 - ตอบจาก KB/แคตตาล็อกแพ็กเกจเท่านั้น — **ห้ามแต่งราคา/ชื่อ tier/ชื่อระดับคุณภาพ/ชื่อเมนู/ชื่อแพ็กเกจ/ชื่อบริการ** เด็ดขาด
