@@ -713,7 +713,7 @@ async function processEvent(event: any, supabase: any) {
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "";
 
-  const prompt = buildPrompt({
+  const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
     kbContext,
     pkgContext,
@@ -731,14 +731,14 @@ async function processEvent(event: any, supabase: any) {
 
 
   // Log token usage (เพื่อ monitor การประหยัด)
-  console.log(`[Tokens] prompt≈${countTokens(prompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
+  console.log(`[Tokens] prompt≈${countTokens(systemPrompt) + countTokens(userPrompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
 
   let aiResp: any;
   try {
-    aiResp = await callAI(prompt, "google/gemini-3-flash-preview");
+    aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-3-flash-preview");
   } catch (e: any) {
     console.warn(`[LLM] gemini-3-flash failed: ${e.message} — fallback to gemini-2.5-flash`);
-    try { aiResp = await callAI(prompt, "google/gemini-2.5-flash"); }
+    try { aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-2.5-flash"); }
     catch (e2: any) { console.error("AI failed:", e2.message); return; }
   }
   if (aiResp?._usage) {
