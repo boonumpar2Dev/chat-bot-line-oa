@@ -108,6 +108,9 @@ export type Database = {
           forbidden_pronouns: string[]
           forbidden_terms: string[]
           id: string
+          image_rule_no_extra: string
+          image_rule_no_format: string
+          image_rule_no_repeat: string
           image_selection_rules: string
           intent_collection_order: string
           kb_menu_title_keywords: string[]
@@ -154,6 +157,9 @@ export type Database = {
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
           id?: string
+          image_rule_no_extra?: string
+          image_rule_no_format?: string
+          image_rule_no_repeat?: string
           image_selection_rules?: string
           intent_collection_order?: string
           kb_menu_title_keywords?: string[]
@@ -200,6 +206,9 @@ export type Database = {
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
           id?: string
+          image_rule_no_extra?: string
+          image_rule_no_format?: string
+          image_rule_no_repeat?: string
           image_selection_rules?: string
           intent_collection_order?: string
           kb_menu_title_keywords?: string[]
