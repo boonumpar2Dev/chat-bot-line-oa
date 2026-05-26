@@ -330,6 +330,16 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
+  // 🚫 AI ปิดอยู่ / อยู่ในช่วง manual chat → เงียบสนิท ไม่ตอบอะไรเลย (ไม่ validate เบอร์/tax ด้วย)
+  if (!freshCustomer.ai_active) return;
+  if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) return;
+  if (freshCustomer.ai_resumed_at) {
+    const msgMs = typeof event.timestamp === "number" ? event.timestamp : 0;
+    if (msgMs > 0 && msgMs < new Date(freshCustomer.ai_resumed_at).getTime()) return;
+  }
+
+
+
   // 🕐 Schedule gate (บนสุด): นอกช่วงเวลาทำการ → เงียบสนิท ไม่ตอบอะไรเลย
   // ไม่ส่งข้อความตอบรับเบอร์/Tax ID/handover ใดๆ ทั้งสิ้น
   if (cfg.schedule_enabled) {
