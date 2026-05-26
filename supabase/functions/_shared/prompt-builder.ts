@@ -43,6 +43,13 @@ export function buildPrompt(i: BuildPromptInput): string {
     ? `\n\n🔴 กฎ AI (สำคัญสุด ห้ามผิดเด็ดขาด — เหนือกฎอื่นทั้งหมด):\n${allRules.map((r, idx) => `${idx + 1}. ${r}`).join("\n")}`
     : "";
 
+  // กฎการส่งรูปขั้นสูง (อ่านจาก app_settings — แก้ได้ใน UI ตั้งค่า AI > กลยุทธ์รูป)
+  const advImgRules = [cfg.image_rule_no_extra, cfg.image_rule_no_format, cfg.image_rule_no_repeat]
+    .map((r: any) => (typeof r === "string" ? r.trim() : "")).filter(Boolean);
+  const advImgBlock = advImgRules.length
+    ? `\n\n🖼️ กฎการส่งรูปขั้นสูง:\n${advImgRules.map((r, i) => `- ${r}`).join("\n")}`
+    : "";
+
 
   // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
   const _now = new Date();
@@ -56,7 +63,7 @@ export function buildPrompt(i: BuildPromptInput): string {
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  return `${persona}${strictBlock}${dateBlock}
+  return `${persona}${strictBlock}${advImgBlock}${dateBlock}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด):
 - ตอบจาก KB/แคตตาล็อกแพ็กเกจเท่านั้น — **ห้ามแต่งราคา/ชื่อ tier/ชื่อระดับคุณภาพ/ชื่อเมนู/ชื่อแพ็กเกจ/ชื่อบริการ** เด็ดขาด

@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +50,9 @@ export default function AiSettings() {
       service_area_kb_title: s.service_area_kb_title,
       location_keywords: s.location_keywords,
       fallback_message: s.fallback_message,
+      image_rule_no_extra: s.image_rule_no_extra,
+      image_rule_no_format: s.image_rule_no_format,
+      image_rule_no_repeat: s.image_rule_no_repeat,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
@@ -201,6 +205,34 @@ export default function AiSettings() {
               <Textarea rows={6} value={(s.location_keywords ?? []).join("\n")} onChange={e => upd("location_keywords", e.target.value.split("\n").map((x: string) => x.trim()).filter(Boolean))} placeholder={"จังหวัด\nจัดที่\nอ.\nอำเภอ\nเชียงใหม่\nภูเก็ต"} />
               <p className="text-xs text-muted-foreground">trigger ให้เช็ก whitelist พื้นที่</p>
             </div>
+
+            <Accordion type="single" collapsible className="mt-6">
+              <AccordionItem value="adv-image-rules" className="border rounded-lg px-4">
+                <AccordionTrigger className="hover:no-underline">
+                  <div className="text-left">
+                    <div className="font-display text-base font-semibold">⚙️ กฎการส่งรูปขั้นสูง</div>
+                    <div className="text-xs text-muted-foreground font-normal mt-0.5">กำหนดพฤติกรรมการส่งรูปในแต่ละสถานการณ์</div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-5 pt-2">
+                  <div className="space-y-1.5">
+                    <Label>เมื่อลูกค้าถามเรื่องอื่น (ไม่ได้ขอรูป)</Label>
+                    <Textarea rows={2} value={s.image_rule_no_extra ?? ""} onChange={e => upd("image_rule_no_extra", e.target.value)} />
+                    <p className="text-xs text-muted-foreground">เช่น ถามชิม/ค่าส่ง/เงื่อนไข/ราคา → ห้ามแถมรูป</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>เมื่อลูกค้าบอกจำนวนคนแต่ยังไม่ระบุรูปแบบ</Label>
+                    <Textarea rows={2} value={s.image_rule_no_format ?? ""} onChange={e => upd("image_rule_no_format", e.target.value)} />
+                    <p className="text-xs text-muted-foreground">ให้ส่งภาพรวมก่อนเสมอ ไม่ว่าจะรู้จำนวนคนแล้วก็ตาม</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>เมื่อเคยส่งรูปเปรียบเทียบไปแล้ว</Label>
+                    <Textarea rows={2} value={s.image_rule_no_repeat ?? ""} onChange={e => upd("image_rule_no_repeat", e.target.value)} />
+                    <p className="text-xs text-muted-foreground">ป้องกันการส่งรูปซ้ำหลังลูกค้าตัดสินใจแล้ว</p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
         </TabsContent>
 
