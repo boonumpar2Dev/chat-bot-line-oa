@@ -222,9 +222,12 @@ export default function Settings() {
           <Switch checked={s.schedule_enabled} onCheckedChange={v=>upd("schedule_enabled",v)} />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5"><Label>บอทเริ่มตอบ</Label><Input type="time" value={s.start_time} onChange={e=>upd("start_time",e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>บอทหยุดตอบ</Label><Input type="time" value={s.end_time} onChange={e=>upd("end_time",e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>บอทเริ่มตอบ</Label><Input type="time" value={s.start_time} onChange={e=>{ upd("start_time",e.target.value); if(!s.schedule_enabled) upd("schedule_enabled",true); }} /></div>
+          <div className="space-y-1.5"><Label>บอทหยุดตอบ</Label><Input type="time" value={s.end_time} onChange={e=>{ upd("end_time",e.target.value); if(!s.schedule_enabled) upd("schedule_enabled",true); }} /></div>
         </div>
+        {!s.schedule_enabled && (
+          <p className="text-xs text-amber-600 mt-3">⚠️ สวิตช์ปิดอยู่ — บอทจะตอบ 24 ชม. ไม่สนใจเวลาที่ตั้ง ถ้าต้องการจำกัดเวลาให้เปิดสวิตช์ด้านบน</p>
+        )}
       </Card>
 
       <Card className="p-6 shadow-soft border-border/60 bg-primary/5">
