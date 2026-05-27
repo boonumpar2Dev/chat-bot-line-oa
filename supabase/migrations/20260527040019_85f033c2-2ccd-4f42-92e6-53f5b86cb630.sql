@@ -1,0 +1,1 @@
+UPDATE public.app_settings SET schedule_enabled = true WHERE key = 'ai_config';
