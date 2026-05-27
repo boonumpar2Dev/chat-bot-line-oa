@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
@@ -533,40 +533,149 @@ export default function Chats() {
   );
 }
 
+type ClassifiedItem = {
+  type: "rule" | "knowledge";
+  content: string;
+  title?: string;
+  category?: string;
+  reasoning?: string;
+};
+
 function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [items, setItems] = useState<ClassifiedItem[]>([]);
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
+
   useEffect(() => {
-    if (text) {
-      const snippet = text.slice(0, 60);
-      setTitle(`ปรับปรุงคำตอบ: ${snippet}${text.length>60?"…":""}`);
-      setContent(`**คำตอบเดิมของ AI (ที่อยากปรับปรุง):**\n${text}\n\n**คำตอบที่ถูกต้อง / ที่ควรตอบแทน:**\n(พิมพ์คำตอบที่ดีกว่าตรงนี้ — AI จะใช้เป็นแนวทางตอบครั้งต่อไป)`);
-    }
+    if (text) { setFeedback(""); setItems([]); }
   }, [text]);
-  const save = async () => {
-    if (!title.trim() || !content.trim()) return;
-    setSaving(true);
-    const { error } = await supabase.from("knowledge_base").insert({ title: title.trim(), content: content.trim(), status: "active" });
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("บันทึกเข้าคลังความรู้แล้ว ✨ AI จะใช้ตอบครั้งต่อไป");
-    onClose();
+
+  const analyze = async () => {
+    const fb = feedback.trim();
+    if (!fb || !text) return;
+    setAnalyzing(true);
+    setItems([]);
+    try {
+      const combined = `คำตอบเดิมของ AI:\n"""${text}"""\n\nสิ่งที่แอดมินอยากให้ปรับ:\n${fb}`;
+      const { data, error } = await supabase.functions.invoke("classify-knowledge", { body: { text: combined } });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const arr: ClassifiedItem[] = Array.isArray(data?.items) ? data.items : [];
+      if (!arr.length) throw new Error("AI วิเคราะห์ไม่ได้ ลองเขียนใหม่นะคะ");
+      setItems(arr);
+    } catch (e: any) {
+      toast.error(e.message || "วิเคราะห์ไม่สำเร็จ");
+    } finally {
+      setAnalyzing(false);
+    }
   };
+
+  const updateItem = (idx: number, patch: Partial<ClassifiedItem>) =>
+    setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
+
+  const saveItem = async (idx: number) => {
+    const it = items[idx];
+    if (!it.content?.trim()) { toast.error("เนื้อหาว่าง"); return; }
+    setSavingIdx(idx);
+    try {
+      if (it.type === "rule") {
+        const { data: cfg } = await supabase.from("app_settings").select("strict_rules").eq("key", "ai_config").maybeSingle();
+        const existing: string[] = cfg?.strict_rules || [];
+        const { error } = await supabase.from("app_settings")
+          .update({ strict_rules: [...existing, it.content.trim()] })
+          .eq("key", "ai_config");
+        if (error) throw error;
+        toast.success("✅ บันทึกเป็นกฎ AI แล้ว");
+      } else {
+        const { error } = await supabase.from("knowledge_base").insert({
+          title: (it.title || it.content.slice(0, 40)).trim(),
+          content: it.content.trim(),
+          category: it.category?.trim() || null,
+          status: "active",
+        });
+        if (error) throw error;
+        toast.success("✅ บันทึกเข้าฐานความรู้แล้ว");
+        supabase.functions.invoke("rebuild-ai-cache").catch(() => {});
+      }
+      const next = items.filter((_, i) => i !== idx);
+      setItems(next);
+      if (next.length === 0) onClose();
+    } catch (e: any) {
+      toast.error(e.message || "บันทึกไม่สำเร็จ");
+    } finally {
+      setSavingIdx(null);
+    }
+  };
+
   return (
     <Dialog open={!!text} onOpenChange={(o)=>!o && onClose()}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Brain className="w-4 h-4 text-primary"/>ปรับปรุงคำตอบของ AI</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-primary"/>ปรับปรุงคำตอบของ AI
+          </DialogTitle>
+        </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1.5"><Label className="text-xs">หัวข้อ</Label>
-            <Input value={title} onChange={e=>setTitle(e.target.value)}/></div>
-          <div className="space-y-1.5"><Label className="text-xs">เนื้อหา (คำตอบเดิม + คำตอบที่ถูกต้อง)</Label>
-            <Textarea rows={8} value={content} onChange={e=>setContent(e.target.value)}/></div>
-          <p className="text-[11px] text-muted-foreground">บันทึกแล้วจะไปอยู่ใน "สอน AI" → ข้อมูลทั่วไป สามารถแก้ไขเพิ่มเติมได้ภายหลัง</p>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">คำตอบเดิมของ AI</Label>
+            <div className="text-sm bg-muted/50 border rounded-md p-3 whitespace-pre-wrap max-h-32 overflow-y-auto">
+              {text}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">บอกเหมือนคุยกับเพื่อน ว่าอยากให้ AI ปรับยังไง</Label>
+            <Textarea
+              rows={3}
+              value={feedback}
+              onChange={e=>setFeedback(e.target.value)}
+              placeholder={`เช่น\n• อย่าพูดว่า "3 รูปแบบ" โดยไม่บอกชื่อ ต้องระบุ บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน\n• ตอบสั้นลงอีก ไม่เกิน 2 ประโยค\n• ค่าส่งกรุงเทพฟรี ต่างจังหวัด 15 บ./กม.`}
+              disabled={analyzing}
+            />
+            <div className="flex justify-end">
+              <Button size="sm" onClick={analyze} disabled={analyzing || !feedback.trim()}>
+                {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
+                {analyzing ? "AI กำลังวิเคราะห์…" : "ให้ AI ช่วยจัด"}
+              </Button>
+            </div>
+          </div>
+
+          {items.length > 0 && (
+            <div className="space-y-2 pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground">AI จัดเป็น {items.length} รายการ — ตรวจ/แก้ก่อนกดบันทึก</p>
+              {items.map((it, idx) => (
+                <div key={idx} className="border-l-4 rounded p-3 bg-card space-y-2"
+                  style={{ borderLeftColor: it.type === "rule" ? "hsl(0 80% 55%)" : "hsl(200 80% 50%)" }}>
+                  <div className="flex items-center justify-between">
+                    <span className={cn("text-xs font-medium px-2 py-0.5 rounded",
+                      it.type === "rule" ? "bg-red-500/10 text-red-700" : "bg-blue-500/10 text-blue-700")}>
+                      {it.type === "rule" ? "🛡️ กฎ AI (ใช้ทุกครั้ง)" : "📚 ฐานความรู้ (ดึงเมื่อถาม)"}
+                    </span>
+                    <Button size="sm" variant="ghost" className="h-6 text-[11px]"
+                      onClick={()=>updateItem(idx, { type: it.type === "rule" ? "knowledge" : "rule" })}>
+                      ย้ายอีกฝั่ง
+                    </Button>
+                  </div>
+                  {it.reasoning && <p className="text-[11px] text-muted-foreground italic">💡 {it.reasoning}</p>}
+                  {it.type === "knowledge" && (
+                    <Input className="h-8 text-sm" placeholder="หัวข้อ"
+                      value={it.title || ""} onChange={e=>updateItem(idx, { title: e.target.value })}/>
+                  )}
+                  <Textarea rows={3} className="text-sm"
+                    value={it.content} onChange={e=>updateItem(idx, { content: e.target.value })}/>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="ghost" onClick={()=>setItems(prev => prev.filter((_,i)=>i!==idx))}>ทิ้ง</Button>
+                    <Button size="sm" onClick={()=>saveItem(idx)} disabled={savingIdx===idx}>
+                      {savingIdx===idx && <Loader2 className="w-3.5 h-3.5 animate-spin"/>}บันทึก
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-          <Button onClick={save} disabled={saving || !title.trim() || !content.trim()}>{saving && <Loader2 className="w-4 h-4 animate-spin"/>}บันทึก</Button>
+          <Button variant="outline" onClick={onClose}>ปิด</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
