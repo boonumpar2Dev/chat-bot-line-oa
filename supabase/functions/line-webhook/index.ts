@@ -458,7 +458,8 @@ async function processEvent(event: any, supabase: any) {
   const pureDigits = messageText.replace(/[\s\-().+]/g, "");
   const isPure = /^\d+$/.test(pureDigits);
   // ❌ ข้าม sequence ที่มีจุด "." คั่น (เช่น "9.00-12.00" = เวลา ไม่ใช่เบอร์)
-  const phoneSeqs = (messageText.match(/\d[\d\s\-().]{6,25}\d/g) || []).filter(s => !s.includes("."));
+  // ⚠️ ใช้ space ตัวเดียว (ไม่ใช่ \s) เพื่อกัน newline กิน — ไม่งั้น "084-236-4224\n4. พระ..." จะกลายเป็น 11 หลัก
+  const phoneSeqs = (messageText.match(/\d[\d \-().]{6,25}\d/g) || []).filter(s => !s.includes("."));
 
   // 🕐 ตรวจ context รอบๆ เลข: ถ้ามีคำบอกเวลา/หน่วยอื่น → ไม่ใช่เบอร์
   const nonPhoneContextRe = /(เวลา|โมง|น\.|นาฬิกา|นาที|ชั่วโมง|ชม\.|บาท|ท่าน|คน|กิโล|กก\.|กรัม|เมตร|วัน|เดือน|ปี|ครั้ง)/;
