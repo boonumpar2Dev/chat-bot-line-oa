@@ -909,6 +909,10 @@ ${greetingFilled ? `- สไตล์ทักทายที่แนะนำ 
   if (typeof intent.guest_count === "number" && intent.guest_count > 0 && !freshCustomer.guest_count) {
     intentUpdate.guest_count = Math.floor(intent.guest_count);
   }
+  if (intent.nickname && !freshCustomer.nickname) {
+    const nn = String(intent.nickname).trim().slice(0, 50);
+    if (nn && nn.length >= 1 && nn.length <= 50) intentUpdate.nickname = nn;
+  }
   if (!freshCustomer.event_date) {
     // Layer 1: parse Thai date จากข้อความลูกค้าเอง (กันพลาดมากกว่าเชื่อ AI)
     const parsed = parseThaiEventDate(messageText);
