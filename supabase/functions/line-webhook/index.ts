@@ -529,16 +529,9 @@ async function processEvent(event: any, supabase: any) {
     const fmtList = validPhones.map(fmtOne);
     const fmtStr = fmtList.length === 1 ? fmtList[0] : fmtList.join(", ");
     const summary = buildCustomerSummary({ ...freshCustomer, phone: fmtStr }, cfg);
-    const lines = [
-      validPhones.length === 1
-        ? `ขอบคุณสำหรับข้อมูลค่ะ บันทึกเบอร์โทร ${fmtStr} เรียบร้อยแล้ว`
-        : `ขอบคุณสำหรับข้อมูลค่ะ บันทึกเบอร์โทรทั้ง ${validPhones.length} เบอร์เรียบร้อยแล้ว: ${fmtStr}`,
-      "",
-      "จะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยนะคะ",
-      "",
-      ...summary,
-    ];
-    await sendAndSave(supabase, customer.id, lineUserId, lines.join("\n"));
+    const introTpl = cfg.handover_intro_phone || `ขอบคุณสำหรับข้อมูลค่ะ บันทึกเบอร์โทร {phone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยนะคะ`;
+    const intro = renderTemplate(introTpl, { phone: fmtStr, phone_count: String(validPhones.length) });
+    await sendAndSave(supabase, customer.id, lineUserId, [intro, "", ...summary].join("\n"));
     return;
   }
 
