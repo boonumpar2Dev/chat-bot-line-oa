@@ -58,6 +58,7 @@ export default function AiSettings() {
       returning_skip_intent_questions: s.returning_skip_intent_questions,
       returning_days_threshold: s.returning_days_threshold,
       returning_context_instruction: s.returning_context_instruction,
+      intent_fields: s.intent_fields,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
