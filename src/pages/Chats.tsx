@@ -771,25 +771,52 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
   };
   useEffect(() => { loadEvents(); }, [customer.id]);
 
+  const openArchiveDialog = () => {
+    setArchiveDraft({
+      event_type: customer.event_type || "",
+      guest_count: customer.guest_count || "",
+      event_date: customer.event_date || "",
+      venue: customer.venue || "",
+      total_amount: customer.clv_amount || 0,
+      notes: "",
+    });
+    setArchiveOpen(true);
+  };
+
   const archiveCurrentEvent = async () => {
-    if (!customer.event_type && !customer.guest_count && !customer.event_date) {
-      toast.error("ยังไม่มีข้อมูลงานปัจจุบันให้บันทึก");
+    const d = archiveDraft || {};
+    if (!d.event_type && !d.guest_count && !d.event_date) {
+      toast.error("กรุณากรอกข้อมูลงานอย่างน้อย 1 ช่อง");
       return;
     }
     setArchiving(true);
     try {
+      // 1) อัปเดต customer ด้วยค่าที่แอดมินตรวจแล้ว (ก่อน snapshot)
+      const adminPatch = {
+        event_type: d.event_type || null,
+        guest_count: d.guest_count ? parseInt(d.guest_count) : null,
+        event_date: d.event_date || null,
+        venue: d.venue || null,
+        clv_amount: parseFloat(d.total_amount) || 0,
+      };
+      const { error: preErr } = await supabase.from("customers").update(adminPatch).eq("id", customer.id);
+      if (preErr) throw preErr;
+
+      // 2) Snapshot ลง customer_events
       const { error: insErr } = await supabase.from("customer_events").insert({
         customer_id: customer.id,
-        event_type: customer.event_type,
-        guest_count: customer.guest_count,
-        event_date: customer.event_date,
-        venue: customer.venue,
+        event_type: adminPatch.event_type,
+        guest_count: adminPatch.guest_count,
+        event_date: adminPatch.event_date,
+        venue: adminPatch.venue,
         package_name: null,
-        total_amount: customer.clv_amount || 0,
+        total_amount: adminPatch.clv_amount,
         status: "completed",
+        notes: d.notes || null,
       });
       if (insErr) throw insErr;
-      // reset current event + บอก AI ว่าเป็น returning
+
+      // 3) Reset current event + เปลี่ยนสถานะ returning
       const patch = {
         event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
         last_sent_image_titles: [], status: "returning" as const,
@@ -798,6 +825,7 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
       if (updErr) throw updErr;
       onUpdate(patch);
       toast.success("บันทึกประวัติงานแล้ว — พร้อมรับงานใหม่");
+      setArchiveOpen(false);
       loadEvents();
     } catch (e: any) {
       toast.error(e.message);
@@ -805,6 +833,7 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
       setArchiving(false);
     }
   };
+
 
   const deleteEvent = async (id: string) => {
     const { error } = await supabase.from("customer_events").delete().eq("id", id);
