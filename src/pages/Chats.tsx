@@ -935,25 +935,54 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
             ))}
           </div>
         )}
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button size="sm" variant="outline" className="w-full" disabled={archiving}>
-              <BookmarkCheck className="w-3 h-3 mr-1"/> ปิดงาน / บันทึกประวัติ
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>บันทึกงานปัจจุบันเข้าประวัติ?</AlertDialogTitle>
-              <AlertDialogDescription>
-                จะ snapshot ข้อมูลงานปัจจุบัน (ประเภทงาน/จำนวน/วัน/สถานที่) ลงประวัติ แล้ว reset ช่องเหล่านี้ + เปลี่ยนสถานะเป็น "returning" เพื่อให้ AI ทักทายแบบลูกค้าเก่าในครั้งต่อไป
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-              <AlertDialogAction onClick={archiveCurrentEvent}>บันทึก</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <Button size="sm" variant="outline" className="w-full" disabled={archiving} onClick={openArchiveDialog}>
+          <BookmarkCheck className="w-3 h-3 mr-1"/> ปิดงาน / บันทึกประวัติ
+        </Button>
+        <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>ตรวจข้อมูลก่อนบันทึกเข้าประวัติ</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <p className="text-[11px] text-muted-foreground">
+                แอดมินตรวจ/แก้ให้ถูกต้องก่อนกดบันทึก — ค่าที่แก้จะอัปเดตข้อมูลลูกค้าและบันทึกเข้าประวัติงาน จากนั้นจะ reset ช่องงานปัจจุบัน + เปลี่ยนสถานะเป็น "returning"
+              </p>
+              <div>
+                <Label className="text-xs">ประเภทงาน</Label>
+                <Input value={archiveDraft.event_type || ""} onChange={e => setArchiveDraft({ ...archiveDraft, event_type: e.target.value })}/>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs">จำนวนแขก</Label>
+                  <Input type="number" value={archiveDraft.guest_count || ""} onChange={e => setArchiveDraft({ ...archiveDraft, guest_count: e.target.value })}/>
+                </div>
+                <div>
+                  <Label className="text-xs">วันจัดงาน</Label>
+                  <Input type="date" value={archiveDraft.event_date || ""} onChange={e => setArchiveDraft({ ...archiveDraft, event_date: e.target.value })}/>
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">สถานที่</Label>
+                <Input value={archiveDraft.venue || ""} onChange={e => setArchiveDraft({ ...archiveDraft, venue: e.target.value })}/>
+              </div>
+              <div>
+                <Label className="text-xs">ยอดรวม (CLV)</Label>
+                <Input type="number" value={archiveDraft.total_amount || 0} onChange={e => setArchiveDraft({ ...archiveDraft, total_amount: e.target.value })}/>
+              </div>
+              <div>
+                <Label className="text-xs">โน้ตเพิ่มเติม (ถ้ามี)</Label>
+                <Textarea rows={2} value={archiveDraft.notes || ""} onChange={e => setArchiveDraft({ ...archiveDraft, notes: e.target.value })}/>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setArchiveOpen(false)} disabled={archiving}>ยกเลิก</Button>
+              <Button onClick={archiveCurrentEvent} disabled={archiving}>
+                {archiving && <Loader2 className="w-3 h-3 mr-1 animate-spin"/>}บันทึก
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
 
       <Separator/>
