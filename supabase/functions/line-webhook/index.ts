@@ -31,6 +31,29 @@ function triggerSummarize(customerId: string) {
   }).catch(e => console.error("[summarize trigger] failed:", e?.message));
 }
 
+// สรุปข้อมูลลูกค้าสำหรับส่งกลับ + ให้แอดมินอ่าน (ใช้ตอนปิดบอท handover)
+function buildCustomerSummary(c: any, cfg: any): string[] {
+  const lines: string[] = ["📋 สรุปข้อมูลที่ได้รับ:"];
+  if (c?.nickname) lines.push(`- ชื่อ: ${c.nickname}`);
+  if (c?.phone) lines.push(`- เบอร์โทร: ${c.phone}`);
+  if (c?.tax_id) lines.push(`- เลขผู้เสียภาษี/Tag: ${c.tax_id}`);
+  if (c?.event_type) lines.push(`- ประเภทงาน: ${c.event_type}`);
+  if (c?.venue) lines.push(`- สถานที่/จังหวัด: ${c.venue}`);
+  if (c?.event_date) lines.push(`- วันจัดงาน: ${c.event_date}`);
+  if (c?.guest_count) lines.push(`- จำนวนคน: ${c.guest_count} ท่าน`);
+  const intentData = (c?.intent_data && typeof c.intent_data === "object") ? c.intent_data : {};
+  const intentFields = Array.isArray(cfg?.intent_fields) ? cfg.intent_fields : [];
+  for (const f of intentFields) {
+    if (!f?.key) continue;
+    const v = intentData[f.key];
+    if (v === null || v === undefined || v === "") continue;
+    const label = f.label || f.key;
+    const valStr = Array.isArray(v) ? v.join(", ") : String(v);
+    lines.push(`- ${label}: ${valStr}`);
+  }
+  return lines;
+}
+
 async function verifySignature(body: string, signature: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
