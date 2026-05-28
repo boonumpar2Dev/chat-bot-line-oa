@@ -79,11 +79,12 @@ export default function AiSettings() {
       </div>
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
           <TabsTrigger value="returning" className="gap-1.5"><UserCheck className="w-4 h-4" />ลูกค้าเก่า</TabsTrigger>
+          <TabsTrigger value="intent" className="gap-1.5"><Database className="w-4 h-4" />ข้อมูลที่เก็บ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
           <TabsTrigger value="fallback" className="gap-1.5"><MessageSquare className="w-4 h-4" />Fallback</TabsTrigger>
         </TabsList>
