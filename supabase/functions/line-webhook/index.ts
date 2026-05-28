@@ -577,8 +577,8 @@ async function processEvent(event: any, supabase: any) {
           ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
         }).eq("id", customer.id);
         const summary = buildCustomerSummary(freshCustomer, cfg);
-        await sendAndSave(supabase, customer.id, lineUserId,
-          ["ขอบคุณที่สอบถามนะคะ 🙏 เดี๋ยวเจ้าหน้าที่ติดต่อกลับไปสรุปรายละเอียดให้ค่ะ", "", ...summary].join("\n"));
+        const intro = cfg.handover_intro_postcap || "ขอบคุณที่สอบถามนะคะ 🙏 เดี๋ยวเจ้าหน้าที่ติดต่อกลับไปสรุปรายละเอียดให้ค่ะ";
+        await sendAndSave(supabase, customer.id, lineUserId, [intro, "", ...summary].join("\n"));
         console.log(`[PostPhoneCap] AI replied ${aiReplies}/${maxPostPhone} after phone saved → handover`);
         return;
       }
