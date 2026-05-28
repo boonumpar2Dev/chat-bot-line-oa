@@ -740,8 +740,22 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
   const [tagInput, setTagInput] = useState("");
   const [pastEvents, setPastEvents] = useState<any[]>([]);
   const [archiving, setArchiving] = useState(false);
+  const [intentFields, setIntentFields] = useState<any[]>([]);
   useEffect(() => setLocal(customer), [customer.id]);
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
+
+  useEffect(() => {
+    supabase.from("app_settings").select("intent_fields").eq("key", "default").maybeSingle()
+      .then(({ data }) => setIntentFields(Array.isArray((data as any)?.intent_fields) ? (data as any).intent_fields : []));
+  }, []);
+
+  const intentData: Record<string, any> = (local.intent_data && typeof local.intent_data === "object") ? local.intent_data : {};
+  const saveIntent = (key: string, value: string) => {
+    const next = { ...intentData };
+    if (value) next[key] = value; else delete next[key];
+    setLocal({ ...local, intent_data: next });
+    onUpdate({ intent_data: next });
+  };
 
   const loadEvents = async () => {
     const { data } = await supabase
@@ -941,6 +955,24 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
           <Input value={local.venue || ""} onChange={e => setLocal({ ...local, venue: e.target.value })} onBlur={() => onUpdate({ venue: local.venue })}/></div>
         <div><Label className="text-xs">โน้ตแอดมิน</Label>
           <Textarea rows={3} value={local.admin_notes || ""} onChange={e => setLocal({ ...local, admin_notes: e.target.value })} onBlur={() => onUpdate({ admin_notes: local.admin_notes })}/></div>
+
+        {intentFields.filter(f => f.key && Array.isArray(f.values) && f.values.length > 0).length > 0 && (
+          <div className="space-y-3 pt-2 border-t">
+            <Label className="text-xs text-muted-foreground">ข้อมูลจาก AI (แก้ไขได้)</Label>
+            {intentFields.filter(f => f.key && Array.isArray(f.values) && f.values.length > 0).map(f => (
+              <div key={f.key}>
+                <Label className="text-xs">{f.label || f.key}{f.required && <span className="text-destructive ml-1">*</span>}</Label>
+                <Select value={intentData[f.key] || "__none__"} onValueChange={v => saveIntent(f.key, v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="— เลือก —"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— ไม่ระบุ —</SelectItem>
+                    {f.values.map((v: string) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
