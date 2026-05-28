@@ -694,7 +694,39 @@ async function processEvent(event: any, supabase: any) {
   if (freshCustomer.venue) knownIntent.push(`สถานที่: ${freshCustomer.venue}`);
   if (freshCustomer.guest_count) knownIntent.push(`จำนวนคน: ${freshCustomer.guest_count}`);
   if (freshCustomer.event_date) knownIntent.push(`วันจัดงาน: ${freshCustomer.event_date}`);
+
+  // 🧩 Configurable intent fields (จาก app_settings.intent_fields) — admin ตั้งเองได้
+  const intentFields: any[] = Array.isArray(cfg.intent_fields) ? cfg.intent_fields.filter((f: any) => f?.key && f?.label) : [];
+  const customerIntentData: Record<string, any> = (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object") ? freshCustomer.intent_data : {};
+  const intentFieldInstructions: string[] = [];
+  const missingRequiredLabels: string[] = [];
+  for (const f of intentFields) {
+    const val = customerIntentData[f.key];
+    if (val !== undefined && val !== null && String(val).trim()) {
+      knownIntent.push(`${f.label}: ${val}`);
+      if (f.instruction) intentFieldInstructions.push(`✅ รู้ ${f.label} แล้ว (= "${val}") → ${f.instruction}`);
+    } else if (f.required) {
+      missingRequiredLabels.push(f.label);
+    }
+  }
+
   let knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+
+  // คำสั่งสำหรับ field ที่ admin กำหนด + field ที่ยังขาด
+  if (intentFields.length > 0) {
+    const fieldDescs = intentFields.map((f: any) => {
+      const valuesHint = Array.isArray(f.values) && f.values.length > 0 ? ` (ค่าที่อนุญาต: ${f.values.join(" / ")})` : "";
+      const reqHint = f.required ? " [จำเป็น]" : "";
+      return `  - "${f.key}" = ${f.label}${valuesHint}${reqHint}`;
+    }).join("\n");
+    knownIntentStr += `\n\n🎯 ข้อมูลพิเศษที่ต้องสกัดและส่งคืนใน "extra_intent_json" (JSON string):\n${fieldDescs}\n⚠️ ใส่เฉพาะ key ในรายการนี้เท่านั้น ห้ามใส่ key อื่น ห้ามแต่งค่า ถ้าไม่แน่ใจให้ละไว้`;
+  }
+  if (intentFieldInstructions.length > 0) {
+    knownIntentStr += `\n\n📌 กฎจากข้อมูลที่รู้แล้ว (สำคัญ):\n${intentFieldInstructions.join("\n")}`;
+  }
+  if (missingRequiredLabels.length > 0) {
+    knownIntentStr += `\n\n❓ ยังไม่ทราบข้อมูลสำคัญ: ${missingRequiredLabels.join(", ")} — ถามทีละข้อในจังหวะที่เหมาะสม`;
+  }
 
   // 🔢 ตรวจจำนวนแขกจากข้อความ + ที่เก็บไว้ — ถ้า max <40 → เพิ่ม alert กฎห้ามเสนอโต๊ะจีน/ซุ้ม/ภาพรวม
   const guestNumsInText = Array.from(String(messageText).matchAll(/(\d{1,4})\s*(?:ท่าน|คน|พระ|แขก)/g)).map(m => parseInt(m[1], 10)).filter(n => n > 0 && n < 1000);
