@@ -928,10 +928,42 @@ ${greetingFilled ? `- สไตล์ทักทายที่แนะนำ 
     }
   }
 
+  // 🧩 Merge extra_intent_json (configurable fields) — whitelist by intent_fields keys, validate values
+  try {
+    const rawExtra = (aiResp.extra_intent_json || "{}").trim();
+    if (rawExtra && rawExtra !== "{}" && intentFields.length > 0) {
+      const parsedExtra = JSON.parse(rawExtra);
+      if (parsedExtra && typeof parsedExtra === "object" && !Array.isArray(parsedExtra)) {
+        const allowedKeys = new Set(intentFields.map((f: any) => String(f.key)));
+        const fieldByKey: Record<string, any> = Object.fromEntries(intentFields.map((f: any) => [f.key, f]));
+        const merged: Record<string, any> = { ...customerIntentData };
+        let changed = false;
+        for (const [k, v] of Object.entries(parsedExtra)) {
+          if (!allowedKeys.has(k)) continue;
+          if (v === null || v === undefined || String(v).trim() === "") continue;
+          const sval = String(v).slice(0, 300).trim();
+          const allowed = Array.isArray(fieldByKey[k]?.values) ? fieldByKey[k].values : [];
+          if (allowed.length > 0 && !allowed.includes(sval)) {
+            console.warn(`[IntentData] dropped ${k}="${sval}" — not in allowed values`);
+            continue;
+          }
+          if (merged[k] !== sval) { merged[k] = sval; changed = true; }
+        }
+        if (changed) {
+          intentUpdate.intent_data = merged;
+          console.log(`[IntentData] merged`, merged);
+        }
+      }
+    }
+  } catch (e: any) {
+    console.warn(`[IntentData] parse failed: ${e.message}`);
+  }
+
   if (Object.keys(intentUpdate).length > 0) {
     await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
     console.log(`[Intent] saved`, intentUpdate);
   }
+
 
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
