@@ -330,6 +330,15 @@ async function processEvent(event: any, supabase: any) {
   const cfg = cfgArr?.[0] || {};
   const freshCustomer = freshArr?.[0] || customer;
 
+  // โหลดประวัติงานเก่า (customer_events) — ใช้สร้างบริบทลูกค้าเก่า/VIP
+  const { data: pastEventsArr } = await supabase
+    .from("customer_events")
+    .select("event_type, guest_count, event_date, venue, package_name, total_amount, status")
+    .eq("customer_id", freshCustomer.id)
+    .order("event_date", { ascending: false, nullsFirst: false })
+    .limit(5);
+  const pastEvents = pastEventsArr || [];
+
   // 🚫 AI ปิดอยู่ / อยู่ในช่วง manual chat → เงียบสนิท ไม่ตอบอะไรเลย (ไม่ validate เบอร์/tax ด้วย)
   if (!freshCustomer.ai_active) return;
   if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) return;
