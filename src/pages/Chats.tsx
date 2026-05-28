@@ -104,7 +104,7 @@ export default function Chats() {
         .order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
         const s = debouncedSearch.replace(/[%,]/g, "");
-        q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%`).limit(100);
+        q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
         q = q.range(0, PAGE_SIZE - 1);
       }
