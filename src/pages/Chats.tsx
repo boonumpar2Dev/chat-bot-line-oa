@@ -774,7 +774,7 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
       // reset current event + บอก AI ว่าเป็น returning
       const patch = {
         event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
-        last_sent_image_titles: [], status: "returning",
+        last_sent_image_titles: [], status: "returning" as const,
       };
       const { error: updErr } = await supabase.from("customers").update(patch).eq("id", customer.id);
       if (updErr) throw updErr;
