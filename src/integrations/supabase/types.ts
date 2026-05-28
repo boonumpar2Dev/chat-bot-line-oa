@@ -113,6 +113,7 @@ export type Database = {
           image_rule_no_repeat: string
           image_selection_rules: string
           intent_collection_order: string
+          intent_fields: Json
           kb_menu_title_keywords: string[]
           key: string
           location_keywords: string[]
@@ -167,6 +168,7 @@ export type Database = {
           image_rule_no_repeat?: string
           image_selection_rules?: string
           intent_collection_order?: string
+          intent_fields?: Json
           kb_menu_title_keywords?: string[]
           key: string
           location_keywords?: string[]
@@ -221,6 +223,7 @@ export type Database = {
           image_rule_no_repeat?: string
           image_selection_rules?: string
           intent_collection_order?: string
+          intent_fields?: Json
           kb_menu_title_keywords?: string[]
           key?: string
           location_keywords?: string[]
@@ -446,6 +449,7 @@ export type Database = {
           event_type: string | null
           guest_count: number | null
           id: string
+          intent_data: Json
           last_message_at: string | null
           last_message_snippet: string | null
           last_sent_image_titles: string[]
@@ -478,6 +482,7 @@ export type Database = {
           event_type?: string | null
           guest_count?: number | null
           id?: string
+          intent_data?: Json
           last_message_at?: string | null
           last_message_snippet?: string | null
           last_sent_image_titles?: string[]
@@ -510,6 +515,7 @@ export type Database = {
           event_type?: string | null
           guest_count?: number | null
           id?: string
+          intent_data?: Json
           last_message_at?: string | null
           last_message_snippet?: string | null
           last_sent_image_titles?: string[]

@@ -96,7 +96,7 @@ function parseThaiEventDate(text: string): string | null {
 }
 
 
-async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; _usage?: any; _model?: string }> {
+async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; extra_intent_json?: string; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -127,8 +127,9 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
                 },
                 required: ["event_type", "venue", "guest_count", "event_date"],
               },
+              extra_intent_json: { type: "string", description: 'JSON string of extra intent fields per app_settings.intent_fields whitelist, e.g. {"service_type":"บุฟเฟ่ต์"}. Use "{}" if nothing to add.' },
             },
-            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent"],
+            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent", "extra_intent_json"],
           },
         },
       },
@@ -693,7 +694,39 @@ async function processEvent(event: any, supabase: any) {
   if (freshCustomer.venue) knownIntent.push(`สถานที่: ${freshCustomer.venue}`);
   if (freshCustomer.guest_count) knownIntent.push(`จำนวนคน: ${freshCustomer.guest_count}`);
   if (freshCustomer.event_date) knownIntent.push(`วันจัดงาน: ${freshCustomer.event_date}`);
+
+  // 🧩 Configurable intent fields (จาก app_settings.intent_fields) — admin ตั้งเองได้
+  const intentFields: any[] = Array.isArray(cfg.intent_fields) ? cfg.intent_fields.filter((f: any) => f?.key && f?.label) : [];
+  const customerIntentData: Record<string, any> = (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object") ? freshCustomer.intent_data : {};
+  const intentFieldInstructions: string[] = [];
+  const missingRequiredLabels: string[] = [];
+  for (const f of intentFields) {
+    const val = customerIntentData[f.key];
+    if (val !== undefined && val !== null && String(val).trim()) {
+      knownIntent.push(`${f.label}: ${val}`);
+      if (f.instruction) intentFieldInstructions.push(`✅ รู้ ${f.label} แล้ว (= "${val}") → ${f.instruction}`);
+    } else if (f.required) {
+      missingRequiredLabels.push(f.label);
+    }
+  }
+
   let knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+
+  // คำสั่งสำหรับ field ที่ admin กำหนด + field ที่ยังขาด
+  if (intentFields.length > 0) {
+    const fieldDescs = intentFields.map((f: any) => {
+      const valuesHint = Array.isArray(f.values) && f.values.length > 0 ? ` (ค่าที่อนุญาต: ${f.values.join(" / ")})` : "";
+      const reqHint = f.required ? " [จำเป็น]" : "";
+      return `  - "${f.key}" = ${f.label}${valuesHint}${reqHint}`;
+    }).join("\n");
+    knownIntentStr += `\n\n🎯 ข้อมูลพิเศษที่ต้องสกัดและส่งคืนใน "extra_intent_json" (JSON string):\n${fieldDescs}\n⚠️ ใส่เฉพาะ key ในรายการนี้เท่านั้น ห้ามใส่ key อื่น ห้ามแต่งค่า ถ้าไม่แน่ใจให้ละไว้`;
+  }
+  if (intentFieldInstructions.length > 0) {
+    knownIntentStr += `\n\n📌 กฎจากข้อมูลที่รู้แล้ว (สำคัญ):\n${intentFieldInstructions.join("\n")}`;
+  }
+  if (missingRequiredLabels.length > 0) {
+    knownIntentStr += `\n\n❓ ยังไม่ทราบข้อมูลสำคัญ: ${missingRequiredLabels.join(", ")} — ถามทีละข้อในจังหวะที่เหมาะสม`;
+  }
 
   // 🔢 ตรวจจำนวนแขกจากข้อความ + ที่เก็บไว้ — ถ้า max <40 → เพิ่ม alert กฎห้ามเสนอโต๊ะจีน/ซุ้ม/ภาพรวม
   const guestNumsInText = Array.from(String(messageText).matchAll(/(\d{1,4})\s*(?:ท่าน|คน|พระ|แขก)/g)).map(m => parseInt(m[1], 10)).filter(n => n > 0 && n < 1000);
@@ -895,10 +928,42 @@ ${greetingFilled ? `- สไตล์ทักทายที่แนะนำ 
     }
   }
 
+  // 🧩 Merge extra_intent_json (configurable fields) — whitelist by intent_fields keys, validate values
+  try {
+    const rawExtra = (aiResp.extra_intent_json || "{}").trim();
+    if (rawExtra && rawExtra !== "{}" && intentFields.length > 0) {
+      const parsedExtra = JSON.parse(rawExtra);
+      if (parsedExtra && typeof parsedExtra === "object" && !Array.isArray(parsedExtra)) {
+        const allowedKeys = new Set(intentFields.map((f: any) => String(f.key)));
+        const fieldByKey: Record<string, any> = Object.fromEntries(intentFields.map((f: any) => [f.key, f]));
+        const merged: Record<string, any> = { ...customerIntentData };
+        let changed = false;
+        for (const [k, v] of Object.entries(parsedExtra)) {
+          if (!allowedKeys.has(k)) continue;
+          if (v === null || v === undefined || String(v).trim() === "") continue;
+          const sval = String(v).slice(0, 300).trim();
+          const allowed = Array.isArray(fieldByKey[k]?.values) ? fieldByKey[k].values : [];
+          if (allowed.length > 0 && !allowed.includes(sval)) {
+            console.warn(`[IntentData] dropped ${k}="${sval}" — not in allowed values`);
+            continue;
+          }
+          if (merged[k] !== sval) { merged[k] = sval; changed = true; }
+        }
+        if (changed) {
+          intentUpdate.intent_data = merged;
+          console.log(`[IntentData] merged`, merged);
+        }
+      }
+    }
+  } catch (e: any) {
+    console.warn(`[IntentData] parse failed: ${e.message}`);
+  }
+
   if (Object.keys(intentUpdate).length > 0) {
     await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
     console.log(`[Intent] saved`, intentUpdate);
   }
+
 
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
