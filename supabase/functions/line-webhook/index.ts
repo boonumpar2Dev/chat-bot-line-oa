@@ -96,7 +96,7 @@ function parseThaiEventDate(text: string): string | null {
 }
 
 
-async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; extra_intent_json?: string; _usage?: any; _model?: string }> {
+async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null; nickname?: string | null }; extra_intent_json?: string; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -124,8 +124,9 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
                   venue: { type: ["string", "null"] },
                   guest_count: { type: ["number", "null"] },
                   event_date: { type: ["string", "null"] },
+                  nickname: { type: ["string", "null"], description: "ชื่อเล่น/ชื่อจริงที่ลูกค้าแนะนำตัว เช่น 'ชื่ออร' → 'อร' (ห้ามเดา ใส่ null ถ้าไม่ชัด)" },
                 },
-                required: ["event_type", "venue", "guest_count", "event_date"],
+                required: ["event_type", "venue", "guest_count", "event_date", "nickname"],
               },
               extra_intent_json: { type: "string", description: 'JSON string of extra intent fields per app_settings.intent_fields whitelist, e.g. {"service_type":"บุฟเฟ่ต์"}. Use "{}" if nothing to add.' },
             },
@@ -907,6 +908,10 @@ ${greetingFilled ? `- สไตล์ทักทายที่แนะนำ 
   if (intent.venue && !freshCustomer.venue) intentUpdate.venue = String(intent.venue).slice(0, 200);
   if (typeof intent.guest_count === "number" && intent.guest_count > 0 && !freshCustomer.guest_count) {
     intentUpdate.guest_count = Math.floor(intent.guest_count);
+  }
+  if (intent.nickname && !freshCustomer.nickname) {
+    const nn = String(intent.nickname).trim().slice(0, 50);
+    if (nn && nn.length >= 1 && nn.length <= 50) intentUpdate.nickname = nn;
   }
   if (!freshCustomer.event_date) {
     // Layer 1: parse Thai date จากข้อความลูกค้าเอง (กันพลาดมากกว่าเชื่อ AI)
