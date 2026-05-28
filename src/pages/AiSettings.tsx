@@ -367,6 +367,63 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="handover" className="mt-4">
+          <Card className="p-6 shadow-soft border-border/60 space-y-6">
+            <div className="flex items-center gap-2"><ClipboardList className="text-primary" /><h2 className="font-display text-lg font-semibold">ฟอร์มส่งต่อแอดมิน</h2></div>
+            <p className="text-xs text-muted-foreground -mt-3">ปรับแต่งข้อความตอบลูกค้า + ฟอร์มสรุปข้อมูลที่บอทส่งให้ลูกค้าตอนได้เบอร์/Tax ID/ครบโควต้าตอบ — ใช้ <code className="bg-muted px-1 rounded">{'{phone}'}</code>, <code className="bg-muted px-1 rounded">{'{tax_id}'}</code> เป็น placeholder ได้</p>
+
+            <div className="space-y-1.5">
+              <Label>หัวข้อสรุป</Label>
+              <Input value={s.handover_summary_header ?? ""} onChange={e => upd("handover_summary_header", e.target.value)} placeholder="📋 สรุปข้อมูลที่ได้รับ:" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>ฟิลด์ในสรุป (ลำดับ + label + เปิด/ปิด)</Label>
+              <div className="space-y-2">
+                {((s.handover_summary_fields ?? []) as any[]).map((f: any, i: number) => {
+                  const arr = [...((s.handover_summary_fields ?? []) as any[])];
+                  const move = (d: number) => {
+                    const j = i + d; if (j < 0 || j >= arr.length) return;
+                    [arr[i], arr[j]] = [arr[j], arr[i]]; upd("handover_summary_fields", arr);
+                  };
+                  return (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 border border-border/40">
+                      <code className="text-xs bg-background px-2 py-1 rounded min-w-[100px]">{f.key}</code>
+                      <Input className="flex-1" placeholder="label" value={f.label ?? ""} onChange={e => { const a = [...arr]; a[i] = { ...f, label: e.target.value }; upd("handover_summary_fields", a); }} />
+                      <Input className="w-32" placeholder="suffix" value={f.suffix ?? ""} onChange={e => { const a = [...arr]; a[i] = { ...f, suffix: e.target.value }; upd("handover_summary_fields", a); }} />
+                      <Switch checked={f.enabled !== false} onCheckedChange={v => { const a = [...arr]; a[i] = { ...f, enabled: v }; upd("handover_summary_fields", a); }} />
+                      <Button size="sm" variant="ghost" onClick={() => move(-1)} disabled={i === 0}><ArrowUp className="w-4 h-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => move(1)} disabled={i === arr.length - 1}><ArrowDown className="w-4 h-4" /></Button>
+                      <Button size="sm" variant="ghost" onClick={() => { const a = arr.filter((_, j) => j !== i); upd("handover_summary_fields", a); }}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    </div>
+                  );
+                })}
+                <Button variant="outline" size="sm" onClick={() => {
+                  const k = prompt("ชื่อ field (key) จาก customers หรือ intent_data:"); if (!k) return;
+                  const arr = [...((s.handover_summary_fields ?? []) as any[]), { key: k, label: k, enabled: true }];
+                  upd("handover_summary_fields", arr);
+                }}><Plus className="w-4 h-4" /> เพิ่มฟิลด์</Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">ฟิลด์ที่ใช้ได้: nickname, phone, tax_id, event_type, venue, event_date, guest_count (ข้อมูลใน intent_data จะถูกแสดงต่อท้ายอัตโนมัติตามการตั้งค่า "ข้อมูลที่เก็บ")</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>ข้อความตอนได้เบอร์โทร</Label>
+              <Textarea rows={4} value={s.handover_intro_phone ?? ""} onChange={e => upd("handover_intro_phone", e.target.value)} placeholder="ใช้ {phone} เพื่อแทนเบอร์ที่ลูกค้าให้มา" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>ข้อความตอนได้ Tax ID</Label>
+              <Textarea rows={3} value={s.handover_intro_tax ?? ""} onChange={e => upd("handover_intro_tax", e.target.value)} placeholder="ใช้ {tax_id} เพื่อแทนเลข Tax ID" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>ข้อความตอน AI ตอบครบโควต้าหลังได้เบอร์</Label>
+              <Textarea rows={3} value={s.handover_intro_postcap ?? ""} onChange={e => upd("handover_intro_postcap", e.target.value)} />
+            </div>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="fallback" className="mt-4">
           <Card className="p-6 shadow-soft border-border/60">
             <div className="flex items-center gap-2 mb-4"><MessageSquare className="text-primary" /><h2 className="font-display text-lg font-semibold">ข้อความ Fallback</h2></div>
