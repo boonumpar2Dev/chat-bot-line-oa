@@ -90,6 +90,7 @@ export default function AiSettings() {
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
           <TabsTrigger value="returning" className="gap-1.5"><UserCheck className="w-4 h-4" />ลูกค้าเก่า</TabsTrigger>
           <TabsTrigger value="intent" className="gap-1.5"><Database className="w-4 h-4" />ข้อมูลที่เก็บ</TabsTrigger>
+          <TabsTrigger value="handover" className="gap-1.5"><ClipboardList className="w-4 h-4" />ฟอร์มส่งต่อ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
           <TabsTrigger value="fallback" className="gap-1.5"><MessageSquare className="w-4 h-4" />Fallback</TabsTrigger>
         </TabsList>
