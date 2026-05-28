@@ -124,6 +124,10 @@ export type Database = {
           post_phone_max_replies: number
           reply_bubbles: number
           reply_length: number
+          returning_context_instruction: string
+          returning_customer_greeting: string
+          returning_days_threshold: number
+          returning_skip_intent_questions: boolean
           schedule_enabled: boolean
           self_pronouns_allowed: string[]
           service_area_kb_title: string
@@ -134,6 +138,7 @@ export type Database = {
           tier_special_rules: string
           trivial_replies: string[]
           updated_at: string
+          vip_customer_greeting: string
         }
         Insert: {
           ai_enabled?: boolean
@@ -173,6 +178,10 @@ export type Database = {
           post_phone_max_replies?: number
           reply_bubbles?: number
           reply_length?: number
+          returning_context_instruction?: string
+          returning_customer_greeting?: string
+          returning_days_threshold?: number
+          returning_skip_intent_questions?: boolean
           schedule_enabled?: boolean
           self_pronouns_allowed?: string[]
           service_area_kb_title?: string
@@ -183,6 +192,7 @@ export type Database = {
           tier_special_rules?: string
           trivial_replies?: string[]
           updated_at?: string
+          vip_customer_greeting?: string
         }
         Update: {
           ai_enabled?: boolean
@@ -222,6 +232,10 @@ export type Database = {
           post_phone_max_replies?: number
           reply_bubbles?: number
           reply_length?: number
+          returning_context_instruction?: string
+          returning_customer_greeting?: string
+          returning_days_threshold?: number
+          returning_skip_intent_questions?: boolean
           schedule_enabled?: boolean
           self_pronouns_allowed?: string[]
           service_area_kb_title?: string
@@ -232,6 +246,7 @@ export type Database = {
           tier_special_rules?: string
           trivial_replies?: string[]
           updated_at?: string
+          vip_customer_greeting?: string
         }
         Relationships: []
       }
@@ -356,6 +371,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "conversations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          event_date: string | null
+          event_type: string | null
+          guest_count: number | null
+          id: string
+          notes: string | null
+          package_name: string | null
+          status: string
+          total_amount: number | null
+          venue: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          event_date?: string | null
+          event_type?: string | null
+          guest_count?: number | null
+          id?: string
+          notes?: string | null
+          package_name?: string | null
+          status?: string
+          total_amount?: number | null
+          venue?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          event_date?: string | null
+          event_type?: string | null
+          guest_count?: number | null
+          id?: string
+          notes?: string | null
+          package_name?: string | null
+          status?: string
+          total_amount?: number | null
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_events_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"

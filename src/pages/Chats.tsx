@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
@@ -738,8 +738,61 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
 function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p: any) => void }) {
   const [local, setLocal] = useState(customer);
   const [tagInput, setTagInput] = useState("");
+  const [pastEvents, setPastEvents] = useState<any[]>([]);
+  const [archiving, setArchiving] = useState(false);
   useEffect(() => setLocal(customer), [customer.id]);
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
+
+  const loadEvents = async () => {
+    const { data } = await supabase
+      .from("customer_events")
+      .select("*")
+      .eq("customer_id", customer.id)
+      .order("event_date", { ascending: false, nullsFirst: false });
+    setPastEvents(data || []);
+  };
+  useEffect(() => { loadEvents(); }, [customer.id]);
+
+  const archiveCurrentEvent = async () => {
+    if (!customer.event_type && !customer.guest_count && !customer.event_date) {
+      toast.error("ยังไม่มีข้อมูลงานปัจจุบันให้บันทึก");
+      return;
+    }
+    setArchiving(true);
+    try {
+      const { error: insErr } = await supabase.from("customer_events").insert({
+        customer_id: customer.id,
+        event_type: customer.event_type,
+        guest_count: customer.guest_count,
+        event_date: customer.event_date,
+        venue: customer.venue,
+        package_name: null,
+        total_amount: customer.clv_amount || 0,
+        status: "completed",
+      });
+      if (insErr) throw insErr;
+      // reset current event + บอก AI ว่าเป็น returning
+      const patch = {
+        event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
+        last_sent_image_titles: [], status: "returning" as const,
+      };
+      const { error: updErr } = await supabase.from("customers").update(patch).eq("id", customer.id);
+      if (updErr) throw updErr;
+      onUpdate(patch);
+      toast.success("บันทึกประวัติงานแล้ว — พร้อมรับงานใหม่");
+      loadEvents();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const deleteEvent = async (id: string) => {
+    const { error } = await supabase.from("customer_events").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    loadEvents();
+  };
 
   const tags: string[] = Array.isArray(local.tags) ? local.tags : [];
   const addTag = () => {
@@ -816,6 +869,48 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
       </div>
 
       <Separator/>
+
+      {/* ประวัติงาน + ปุ่มปิดงาน */}
+      <div>
+        <Label className="text-xs flex items-center gap-1 mb-2"><History className="w-3 h-3"/>ประวัติงาน ({pastEvents.length})</Label>
+        {pastEvents.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">ยังไม่มีประวัติงาน — กดปุ่มด้านล่างเมื่อปิดงานเพื่อบันทึกเป็นลูกค้า VIP</p>
+        ) : (
+          <div className="space-y-1.5 mb-2 max-h-40 overflow-y-auto">
+            {pastEvents.map(e => (
+              <div key={e.id} className="text-[11px] rounded border bg-muted/30 p-2 flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{e.event_type || "(งาน)"} {e.guest_count ? `· ${e.guest_count} ท่าน` : ""}</div>
+                  <div className="text-muted-foreground">{e.event_date || "—"} {e.venue ? `· ${e.venue}` : ""}</div>
+                </div>
+                <button onClick={() => deleteEvent(e.id)} className="text-muted-foreground hover:text-destructive"><X className="w-3 h-3"/></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" variant="outline" className="w-full" disabled={archiving}>
+              <BookmarkCheck className="w-3 h-3 mr-1"/> ปิดงาน / บันทึกประวัติ
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>บันทึกงานปัจจุบันเข้าประวัติ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                จะ snapshot ข้อมูลงานปัจจุบัน (ประเภทงาน/จำนวน/วัน/สถานที่) ลงประวัติ แล้ว reset ช่องเหล่านี้ + เปลี่ยนสถานะเป็น "returning" เพื่อให้ AI ทักทายแบบลูกค้าเก่าในครั้งต่อไป
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction onClick={archiveCurrentEvent}>บันทึก</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <Separator/>
+
 
       <div className="space-y-3">
         <div><Label className="text-xs">ชื่อเล่น</Label>
