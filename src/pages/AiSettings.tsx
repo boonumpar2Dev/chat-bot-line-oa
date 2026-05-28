@@ -79,7 +79,7 @@ export default function AiSettings() {
       </div>
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
