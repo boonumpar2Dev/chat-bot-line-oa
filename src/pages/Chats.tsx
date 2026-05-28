@@ -738,8 +738,61 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
 function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p: any) => void }) {
   const [local, setLocal] = useState(customer);
   const [tagInput, setTagInput] = useState("");
+  const [pastEvents, setPastEvents] = useState<any[]>([]);
+  const [archiving, setArchiving] = useState(false);
   useEffect(() => setLocal(customer), [customer.id]);
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
+
+  const loadEvents = async () => {
+    const { data } = await supabase
+      .from("customer_events")
+      .select("*")
+      .eq("customer_id", customer.id)
+      .order("event_date", { ascending: false, nullsFirst: false });
+    setPastEvents(data || []);
+  };
+  useEffect(() => { loadEvents(); }, [customer.id]);
+
+  const archiveCurrentEvent = async () => {
+    if (!customer.event_type && !customer.guest_count && !customer.event_date) {
+      toast.error("ยังไม่มีข้อมูลงานปัจจุบันให้บันทึก");
+      return;
+    }
+    setArchiving(true);
+    try {
+      const { error: insErr } = await supabase.from("customer_events").insert({
+        customer_id: customer.id,
+        event_type: customer.event_type,
+        guest_count: customer.guest_count,
+        event_date: customer.event_date,
+        venue: customer.venue,
+        package_name: null,
+        total_amount: customer.clv_amount || 0,
+        status: "completed",
+      });
+      if (insErr) throw insErr;
+      // reset current event + บอก AI ว่าเป็น returning
+      const patch = {
+        event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
+        last_sent_image_titles: [], status: "returning",
+      };
+      const { error: updErr } = await supabase.from("customers").update(patch).eq("id", customer.id);
+      if (updErr) throw updErr;
+      onUpdate(patch);
+      toast.success("บันทึกประวัติงานแล้ว — พร้อมรับงานใหม่");
+      loadEvents();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setArchiving(false);
+    }
+  };
+
+  const deleteEvent = async (id: string) => {
+    const { error } = await supabase.from("customer_events").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    loadEvents();
+  };
 
   const tags: string[] = Array.isArray(local.tags) ? local.tags : [];
   const addTag = () => {
