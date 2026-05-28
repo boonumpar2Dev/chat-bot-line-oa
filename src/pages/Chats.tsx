@@ -955,6 +955,24 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
           <Input value={local.venue || ""} onChange={e => setLocal({ ...local, venue: e.target.value })} onBlur={() => onUpdate({ venue: local.venue })}/></div>
         <div><Label className="text-xs">โน้ตแอดมิน</Label>
           <Textarea rows={3} value={local.admin_notes || ""} onChange={e => setLocal({ ...local, admin_notes: e.target.value })} onBlur={() => onUpdate({ admin_notes: local.admin_notes })}/></div>
+
+        {intentFields.filter(f => f.key && Array.isArray(f.values) && f.values.length > 0).length > 0 && (
+          <div className="space-y-3 pt-2 border-t">
+            <Label className="text-xs text-muted-foreground">ข้อมูลจาก AI (แก้ไขได้)</Label>
+            {intentFields.filter(f => f.key && Array.isArray(f.values) && f.values.length > 0).map(f => (
+              <div key={f.key}>
+                <Label className="text-xs">{f.label || f.key}{f.required && <span className="text-destructive ml-1">*</span>}</Label>
+                <Select value={intentData[f.key] || "__none__"} onValueChange={v => saveIntent(f.key, v === "__none__" ? "" : v)}>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="— เลือก —"/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— ไม่ระบุ —</SelectItem>
+                    {f.values.map((v: string) => <SelectItem key={v} value={v}>{v}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
