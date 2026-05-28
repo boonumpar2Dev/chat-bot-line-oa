@@ -1,79 +1,124 @@
+# แผนงาน 2 เรื่อง: ระบบจำลูกค้าเก่า + ระบบ Tag/Broadcast
 
-## 1) Smart Teach Box เปลือง token ตอนใช้งานจริงไหม?
+## ปัญหาที่พบจากตัวอย่างแชท (Ufe2388f...)
 
-**ไม่เปลืองเลย** — `classify-knowledge` ทำงานเฉพาะตอนกด "ให้ AI ช่วยจัด" ที่หน้า Knowledge (ฝั่ง admin) เท่านั้น  
-ไม่ได้ถูกเรียกใน `line-webhook` / `kb-chat-test` (ฝั่งลูกค้า) เลย → runtime cost = 0
-
-ที่เปลือง token จริง ๆ คือ **`strict_rules` ที่ส่งเข้า system prompt ทุกข้อความ** ตอนนี้:
-- 28 ข้อ, ~6,860 ตัวอักษร ≈ **2,300 tokens/ข้อความ**
-- ถ้าวันละ 200 ข้อความ = 460K tokens/วัน เฉพาะกฎ
-- มีหลายข้อที่เป็น "ข้อมูล" ปนมา (ราคา/เงื่อนไข) → ย้ายไป KB ได้ ประหยัด ~30-40%
+ลูกค้ารายนี้ status = `returning`, มี event_type/guest_count/event_date แล้ว แต่ AI ยังตอบเหมือนลูกค้าใหม่ — เพราะ logic ปัจจุบันใน `line-webhook` ดู "ลูกค้าเก่า" จาก **มีเบอร์โทร** เท่านั้น ไม่ได้ดูจาก `status`, `contact_year`, `clv_amount`, หรือประวัติงานเก่า
 
 ---
 
-## 2) รีวิวกฎ 28 ข้อ — แยก 3 กลุ่ม
+## ส่วนที่ 1: ระบบจำ/ตอบลูกค้าเก่า (Returning Customer Awareness)
 
-### กลุ่ม A: เก็บไว้เป็น "กฎ" (Guard/Style — ต้องอยู่ทุกครั้ง) — 18 ข้อ
-สั้น ๆ บังคับพฤติกรรม ไม่มีตัวเลข/ข้อมูลธุรกิจ
+### 1.1 นิยาม "ลูกค้าเก่า" ที่ AI ควรรู้ (มี 3 ระดับ)
 
-| # | สรุป |
-|---|---|
-| 2 | ห้าม "ยินดีด้วย" ใช้ "ยินดีค่ะ/รับทราบค่ะ" |
-| 3 | เบอร์/Tag ID ห้ามตื๊อ |
-| 4 | ใช้ "ค่ะ/คะ" เท่านั้น |
-| 5 | bundle_image อย่าใส่ tier image ซ้ำ |
-| 7 | ห้ามอธิบายตรรกะปัดเศษ |
-| 9 | ลูกค้าจบบทสนทนา → ตอบสั้นจบ |
-| 10 | ตอบสั้น <10 คำ คั่นบับเบิลด้วย --- |
-| 12 | ถามแล้วไม่ตอบ ห้ามถามซ้ำรอบถัดไป |
-| 13 | จำนวนเศษเสนอทางเดียว |
-| 14 | "ขอแค่ X" → ตอบแค่ X ห้ามแถมคำถาม |
-| 15 | สัญญาว่าจะส่งต่อทีม → หยุดทันที |
-| 16 | ต่างจังหวัด → ต้องถามจังหวัด/อำเภอก่อนเสนอราคา |
-| 20 | สติ๊กเกอร์ → OCR |
-| 21 | ลูกค้าให้เบอร์แล้วห้ามถามซ้ำ |
-| (image_selection_rules) | กฎเลือกรูปตาม intent |
-| (tier_special_rules) | กฎจำนวนคน รวมพระ/แขก |
-| (intent_collection_order) | ลำดับเก็บข้อมูล |
-| (ai_persona) | บุคลิกการตอบ |
-
-### กลุ่ม B: รวบ/ตัดทิ้ง — 4 ข้อ (ซ้ำกัน)
-ข้อ 8, 17, 11, 18, 19 ว่าด้วย capacity/tier เลือกแขก ซ้ำกันหลายมุม → **รวบเหลือ 1 ข้อ**:
-> "เลือก tier ตาม capacity เท่านั้น: ลูกค้าบอก 'แขก N' → ใช้ guest_pax ≥ N | 'รวม N' → ใช้ total_pax | ถ้าไม่มี tier ที่พอ ตัดแพ็กนั้นออก | ถ้ามี quality_levels เสนอครบทุกระดับ ราคามาจาก pricing_tiers เท่านั้น"
-
-→ ลดจาก 5 ข้อ เหลือ 1 ข้อ ประหยัดราว ~800 ตัวอักษร
-
-### กลุ่ม C: ย้ายไป Knowledge Base (เป็น "ข้อมูล" ไม่ใช่กฎ) — 3 ข้อใหญ่
-
-| # | เนื้อหา | ย้ายไปเป็น KB |
+| ระดับ | เงื่อนไข | สไตล์การตอบ |
 |---|---|---|
-| 22 | กฎการชิมอาหาร (พื้นที่ + เงื่อนไข + เวลานัด ครบชุด) | KB หัวข้อ "การชิมอาหาร" หมวด "ข้อมูลพื้นฐานแพ็กเกจ" |
-| 23 | เงื่อนไขค่าเดินทาง (ราคาเต็มทุกพื้นที่) | **มีอยู่แล้วใน KB** "ค่าเดินทาง / ค่าจัดส่ง" → ลบจากกฎทันที |
-| 6 | กฎเสนอโปรโมชั่น (4 ข้อย่อย — เช็คจำนวนแขก/บอกชื่อโปร) | ครึ่งบนเก็บเป็นกฎสั้น "เสนอโปรต้องเช็ค min_guests ก่อน + บอกชื่อโปรเต็ม" / รายละเอียดอยู่ใน promotions table อยู่แล้ว |
-| 1 | กฎราคา pricing_tiers (5 ย่อย) | ย่อเหลือ "ราคามาจาก pricing_tiers เท่านั้น ปัดขึ้น tier ถัดไป เกิน tier สูงสุด → ส่งต่อทีม" |
+| **VIP / ซ้ำ** | `status='confirmed'` หรือ `clv_amount>0` หรือเคยจัดงานแล้ว | ทักทายแบบรู้จัก ไม่ถามข้อมูลพื้นฐานซ้ำ ชวนคุยงานใหม่เลย |
+| **Returning** | `status='returning'` หรือ `contact_year < ปีปัจจุบัน` หรือเคยทักครั้งก่อน >30 วัน | ทักทายแบบ "ยินดีต้อนรับกลับนะคะ" + ถามว่างานครั้งนี้คล้ายเดิมไหม |
+| **Active lead** | มี intent ครบ (event_type+guest+date) แต่ยังไม่ confirm | ไม่ทักทายใหม่ คุยต่อจากที่ค้าง |
+
+### 1.2 เปลี่ยน prompt ให้ AI รู้บริบท
+
+แก้ `line-webhook/index.ts` ช่วงสร้าง `returningPrompt`:
+- เพิ่ม block `🟢 บริบทลูกค้า` ที่บอก AI ว่าลูกค้าระดับไหน + ประวัติงานเก่า (event_type/date ครั้งก่อน) + tags
+- เพิ่มกฎ "ห้ามทักทายแบบลูกค้าใหม่ ถ้า status ≠ 'new'"
+- ถ้ามี `conversation_summary` หรือเคยจัดงานแล้ว → AI ต้องอ้างถึงบ้าง (เช่น "งานทำบุญรอบที่แล้วเป็นยังไงบ้างคะ")
+
+### 1.3 ตั้งค่าได้ใน UI (ไม่ hardcode)
+
+เพิ่มฟิลด์ใน `app_settings` + UI หน้า "ตั้งค่า AI":
+- `returning_customer_greeting` (text) — template ทักทายลูกค้าเก่า เช่น "ยินดีต้อนรับกลับค่ะคุณ{ชื่อ}"
+- `vip_customer_greeting` (text) — template สำหรับ VIP
+- `returning_skip_intent_questions` (bool, default true) — ถ้าเคยมี event_type/guest_count ห้ามถามซ้ำ
+- `returning_days_threshold` (int, default 30) — เงียบกี่วันถึงนับเป็น returning
+
+### 1.4 (ออปชัน) เก็บประวัติงานเก่าแยก
+
+ปัจจุบัน customer มี event_* แค่งานเดียว (overwrite ทุกครั้ง) — ถ้าอยากให้ AI จำได้ว่าเคยจัดงานอะไรบ้าง ควรเพิ่มตาราง `customer_events`:
+```
+customer_events: id, customer_id, event_type, guest_count, event_date, 
+                 venue, package_name, total_amount, status, created_at
+```
+แอดมินกดปุ่ม "ปิดงาน/บันทึกประวัติ" บนหน้าแชท → snapshot event ปัจจุบันลง history → reset field บน customer พร้อมรับงานใหม่
+
+> ถ้ายังไม่อยากเพิ่มตอนนี้ ใช้แค่ `conversation_summary` + status ไปก่อนได้
 
 ---
 
-## 3) ผลลัพธ์ที่จะได้
+## ส่วนที่ 2: ระบบ Tag + Broadcast (จัดกลุ่มลูกค้าเพื่อการตลาด)
 
-| | ก่อน | หลัง |
-|---|---|---|
-| จำนวนข้อ | 28 | ~16 |
-| ตัวอักษร | 6,860 | ~3,800 |
-| Tokens/ข้อความ | ~2,300 | ~1,300 |
-| **ประหยัด** | — | **~43%** |
+ปัจจุบัน customers มี column `tags text[]` อยู่แล้ว แต่ไม่มี UI จัดการรวมศูนย์ + ไม่มี broadcast
 
-KB "ค่าเดินทาง" และ "การชิมอาหาร" จะถูกดึงมาเฉพาะตอนลูกค้าถาม (มี retrieval อยู่แล้ว) → ไม่กระทบความถูกต้อง
+### 2.1 ตารางใหม่
+
+```
+tags
+  id, name (unique), color, description, sort_order, created_at
+  -- master list ของ tag ที่ใช้ในระบบ (เพื่อ autocomplete + จัดสี)
+
+broadcast_campaigns
+  id, name, message_text, image_urls[], video_urls jsonb,
+  target_tags text[],          -- ส่งให้ลูกค้าที่มี tag ใดใน list
+  target_status text[],         -- กรองตาม status เพิ่มได้
+  target_exclude_tags text[],   -- ยกเว้น tag (เช่น "do-not-contact")
+  scheduled_at, sent_at,
+  total_recipients, success_count, failed_count,
+  status (draft|scheduled|sending|done|failed),
+  created_by, created_at
+```
+
+### 2.2 เมนูใหม่ในระบบ (แยกเมนู ใช่)
+
+เพิ่ม 2 เมนูใน sidebar (admin/manager):
+- **"แท็กลูกค้า"** (`/tags`) — CRUD master tags + ดูจำนวนลูกค้าต่อ tag + bulk assign
+- **"Broadcast"** (`/broadcast`) — สร้าง campaign, preview รายชื่อผู้รับ, ส่งทันที/ตั้งเวลา, ดูประวัติ + อัตราส่งสำเร็จ
+
+อัปเดต `MenuKey` type + `ALL_MENUS` + `ROLE_DEFAULTS` ใน `useMenuPermissions.tsx`
+
+### 2.3 ฟีเจอร์ในหน้า Chats (รวมเข้ากับของเดิม)
+
+- Tag chip บน chat list แสดงสีจาก master tag
+- ในกล่องรายละเอียดลูกค้า: เปลี่ยน input tag เป็น autocomplete จาก master list + ปุ่มสร้าง tag ใหม่
+- ปุ่ม "เลือกหลายรายการ" → bulk add/remove tag
+
+### 2.4 Broadcast flow (Edge function)
+
+สร้าง `broadcast-send` edge function:
+1. รับ campaign_id
+2. query customers ตาม target_tags/status/exclude → list line_user_id
+3. loop ส่งผ่าน LINE push API (rate limit ~500/sec, batch)
+4. update success_count/failed_count + log แต่ละ recipient (ตารางย่อย `broadcast_recipients` ถ้าอยากเก็บละเอียด)
+5. มี cron job รัน scheduled campaigns
+
+### 2.5 Tag เชื่อมกับ AI
+
+เพิ่มฟิลด์ `ai_tag_instructions` ใน tags (text) — เช่น tag "VIP" → "ลูกค้ารายนี้เป็น VIP ให้ใช้ภาษาทางการขึ้น เสนอแพ็กเกจระดับบนก่อน"
+ตอน build prompt เอา instructions ของ tag ที่ลูกค้ามี → ใส่ใน `knownIntentStr`
 
 ---
 
-## 4) แผนทำงาน (ถ้าอนุมัติ)
+## ลำดับการทำ (แนะนำแบ่งเป็น 3 step ค่อยทำทีละอัน)
 
-1. **สร้าง KB ใหม่ 1 รายการ**: "การชิมอาหาร" หมวด "ข้อมูลพื้นฐานแพ็กเกจ" (copy เนื้อหาจากกฎข้อ 22)
-2. **แก้ `app_settings.strict_rules`** เหลือ 16 ข้อตามตารางด้านบน (รวบกลุ่ม B, ตัดกลุ่ม C, ย่อข้อ 1 และ 6)
-3. **เพิ่ม hint ใต้ textarea "กฎ AI"** ใน Settings:
-   > 💡 กฎ = บังคับให้ AI ทำ/ไม่ทำ (สั้น) — ราคา/เงื่อนไข/รายการ → ใส่ใน **สอน AI** จะประหยัด token กว่า  
-   > [ลองใช้ Smart Teach Box →]
-4. **ไม่แตะ** prompt-builder, edge functions อื่น — เพราะ retrieval logic ของ KB ทำงานอยู่แล้ว
+**Step A — Returning awareness** (เล็ก เห็นผลทันที)
+- เพิ่มฟิลด์ใน app_settings + UI ตั้งค่า AI
+- แก้ `returningPrompt` ใน line-webhook ให้ดู status + tags + ประวัติ
+- ทดสอบกับ Ufe2388f...
 
-ยืนยันให้ลุยตามนี้ไหม? หรืออยากปรับการแบ่งกลุ่ม (เช่น ขอเก็บข้อไหนไว้เป็นกฎต่อ)?
+**Step B — Tag management** (กลาง)
+- migration: tags table + seed จาก tag เก่าใน customers.tags
+- หน้า `/tags` (CRUD + bulk assign)
+- อัปเดต Chats ให้ใช้ autocomplete
+- เชื่อม `ai_tag_instructions` เข้า prompt
+
+**Step C — Broadcast** (ใหญ่)
+- migration: broadcast_campaigns + recipients
+- หน้า `/broadcast` (composer + preview + history)
+- edge function `broadcast-send` + cron
+
+---
+
+## คำถามก่อนเริ่ม
+
+1. **Step A** ทำเลยก่อนใช่ไหม (เป็น Quick win สำหรับลูกค้าตัวอย่าง)
+2. ต้องการตาราง `customer_events` แยกประวัติงานเก่าตอนนี้เลย หรือใช้ `conversation_summary`/status ไปก่อน
+3. **Step B และ C** — อยากให้ผมทำต่อทันทีในรอบนี้ หรือแยกรอบ (เพราะ Broadcast มีหลายส่วน เทสยาก)
+4. Broadcast — ใช้ LINE push (เปลืองโควต้า LINE) หรือเฉพาะลูกค้าที่ทักภายใน 24ชม. (free reply) เท่านั้น
