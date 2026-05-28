@@ -435,8 +435,9 @@ async function processEvent(event: any, supabase: any) {
     await supabase.from("customers").update({
       tax_id: taxId, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
     }).eq("id", customer.id);
-    await sendAndSave(supabase, customer.id, lineUserId,
-      `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`);
+    const summary = buildCustomerSummary({ ...freshCustomer, tax_id: taxId }, cfg);
+    const msg = [`รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`, "", ...summary].join("\n");
+    await sendAndSave(supabase, customer.id, lineUserId, msg);
     return;
   }
   // AI ถามเบอร์อยู่ แต่ลูกค้าตอบเลขยาวเกินไป → ขอเบอร์ใหม่ (ห้ามตกไปเป็น tax)
