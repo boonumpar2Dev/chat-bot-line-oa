@@ -107,6 +107,11 @@ export type Database = {
           followup_hours: number
           forbidden_pronouns: string[]
           forbidden_terms: string[]
+          handover_intro_phone: string
+          handover_intro_postcap: string
+          handover_intro_tax: string
+          handover_summary_fields: Json
+          handover_summary_header: string
           id: string
           image_rule_no_extra: string
           image_rule_no_format: string
@@ -162,6 +167,11 @@ export type Database = {
           followup_hours?: number
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
+          handover_intro_phone?: string
+          handover_intro_postcap?: string
+          handover_intro_tax?: string
+          handover_summary_fields?: Json
+          handover_summary_header?: string
           id?: string
           image_rule_no_extra?: string
           image_rule_no_format?: string
@@ -217,6 +227,11 @@ export type Database = {
           followup_hours?: number
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
+          handover_intro_phone?: string
+          handover_intro_postcap?: string
+          handover_intro_tax?: string
+          handover_summary_fields?: Json
+          handover_summary_header?: string
           id?: string
           image_rule_no_extra?: string
           image_rule_no_format?: string
