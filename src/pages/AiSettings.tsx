@@ -59,6 +59,11 @@ export default function AiSettings() {
       returning_days_threshold: s.returning_days_threshold,
       returning_context_instruction: s.returning_context_instruction,
       intent_fields: s.intent_fields,
+      handover_summary_header: s.handover_summary_header,
+      handover_summary_fields: s.handover_summary_fields,
+      handover_intro_phone: s.handover_intro_phone,
+      handover_intro_tax: s.handover_intro_tax,
+      handover_intro_postcap: s.handover_intro_postcap,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
