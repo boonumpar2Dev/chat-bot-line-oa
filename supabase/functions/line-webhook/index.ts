@@ -96,7 +96,7 @@ function parseThaiEventDate(text: string): string | null {
 }
 
 
-async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; _usage?: any; _model?: string }> {
+async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null }; extra_intent_json?: string; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -127,8 +127,9 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
                 },
                 required: ["event_type", "venue", "guest_count", "event_date"],
               },
+              extra_intent_json: { type: "string", description: 'JSON string of extra intent fields per app_settings.intent_fields whitelist, e.g. {"service_type":"บุฟเฟ่ต์"}. Use "{}" if nothing to add.' },
             },
-            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent"],
+            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent", "extra_intent_json"],
           },
         },
       },
