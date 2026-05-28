@@ -198,6 +198,80 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="intent" className="mt-4">
+          <Card className="p-6 shadow-soft border-border/60 space-y-4">
+            <div>
+              <div className="flex items-center gap-2"><Database className="text-primary" /><h2 className="font-display text-lg font-semibold">ข้อมูลที่ AI ต้องเก็บจากลูกค้า</h2></div>
+              <p className="text-xs text-muted-foreground mt-1">
+                กำหนด field ที่ให้ AI สกัดและเก็บอัตโนมัติจากบทสนทนา เช่น "รูปแบบงาน", "ข้อจำกัดอาหาร" — ค่าจะเก็บใน <code className="text-[10px] bg-muted px-1 rounded">customers.intent_data</code> และแสดงใน prompt "ข้อมูลที่เก็บไว้แล้ว" ทุกครั้ง
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                💡 <b>เคล็ดลับ:</b> ใส่ "ค่าที่อนุญาต" เพื่อล็อกค่า (กัน AI ใส่มั่ว) — เว้นว่างถ้าเป็น free-text. ใส่ "คำสั่ง" เพื่อบอก AI ว่าทำอะไรเมื่อรู้ค่าแล้ว เช่น "ห้ามถามซ้ำ"
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {(Array.isArray(s.intent_fields) ? s.intent_fields : []).map((f: any, idx: number) => (
+                <Card key={idx} className="p-4 bg-muted/30 space-y-3 border-border/40">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-1 grid sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Key (อังกฤษ, ไม่มีเว้นวรรค)</Label>
+                        <Input value={f.key ?? ""} onChange={e => {
+                          const v = e.target.value.replace(/[^a-z0-9_]/gi, "_").toLowerCase();
+                          const arr = [...s.intent_fields]; arr[idx] = { ...arr[idx], key: v }; upd("intent_fields", arr);
+                        }} placeholder="service_type" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">ป้ายชื่อ (ไทย)</Label>
+                        <Input value={f.label ?? ""} onChange={e => {
+                          const arr = [...s.intent_fields]; arr[idx] = { ...arr[idx], label: e.target.value }; upd("intent_fields", arr);
+                        }} placeholder="รูปแบบงาน" />
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={idx === 0} onClick={() => {
+                        const arr = [...s.intent_fields]; [arr[idx-1], arr[idx]] = [arr[idx], arr[idx-1]]; upd("intent_fields", arr);
+                      }}><ArrowUp className="w-3 h-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" disabled={idx === s.intent_fields.length - 1} onClick={() => {
+                        const arr = [...s.intent_fields]; [arr[idx+1], arr[idx]] = [arr[idx], arr[idx+1]]; upd("intent_fields", arr);
+                      }}><ArrowDown className="w-3 h-3" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => {
+                        if (!confirm(`ลบ field "${f.label || f.key}"?`)) return;
+                        upd("intent_fields", s.intent_fields.filter((_: any, i: number) => i !== idx));
+                      }}><Trash2 className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">ค่าที่อนุญาต (1 ค่าต่อบรรทัด — เว้นว่างถ้า free-text)</Label>
+                    <Textarea rows={2} value={(f.values ?? []).join("\n")} onChange={e => {
+                      const arr = [...s.intent_fields]; arr[idx] = { ...arr[idx], values: e.target.value.split("\n").map(x => x.trim()).filter(Boolean) }; upd("intent_fields", arr);
+                    }} placeholder={"บุฟเฟ่ต์\nซุ้มอาหาร\nโต๊ะจีน"} className="text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">คำสั่ง AI เมื่อรู้ค่านี้แล้ว (optional)</Label>
+                    <Textarea rows={2} value={f.instruction ?? ""} onChange={e => {
+                      const arr = [...s.intent_fields]; arr[idx] = { ...arr[idx], instruction: e.target.value }; upd("intent_fields", arr);
+                    }} placeholder="ถ้ารู้รูปแบบงานแล้ว ห้ามถามซ้ำเด็ดขาด ให้ส่งรูปเมนูที่ตรงทันทีเมื่อขอ" className="text-sm" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch checked={!!f.required} onCheckedChange={v => {
+                      const arr = [...s.intent_fields]; arr[idx] = { ...arr[idx], required: v }; upd("intent_fields", arr);
+                    }} />
+                    <Label className="text-xs">จำเป็น (AI จะถามจนกว่าจะได้)</Label>
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            <Button variant="outline" size="sm" onClick={() => {
+              const arr = Array.isArray(s.intent_fields) ? [...s.intent_fields] : [];
+              arr.push({ key: "", label: "", values: [], required: false, instruction: "" });
+              upd("intent_fields", arr);
+            }}><Plus className="w-4 h-4" /> เพิ่ม field</Button>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="images" className="mt-4">
           <Card className="p-6 shadow-soft border-border/60">
             <div className="flex items-center gap-2 mb-1"><ImageIcon className="text-primary" /><h2 className="font-display text-lg font-semibold">กลยุทธ์ส่งรูปเปรียบเทียบ (Phase 1)</h2></div>
