@@ -745,7 +745,7 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
 
   useEffect(() => {
-    supabase.from("app_settings").select("intent_fields").eq("key", "default").maybeSingle()
+    supabase.from("app_settings").select("intent_fields").eq("key", "ai_config").maybeSingle()
       .then(({ data }) => setIntentFields(Array.isArray((data as any)?.intent_fields) ? (data as any).intent_fields : []));
   }, []);
 
