@@ -467,12 +467,16 @@ async function processEvent(event: any, supabase: any) {
   const candidates: string[] = [];
   if (isPure && pureDigits.length >= 7 && pureDigits.length <= 12) {
     candidates.push(pureDigits);
-  } else if (!hasNonPhoneContext) {
+  } else {
+    // เก็บทุก sequence ที่ดูเหมือนเบอร์ — ถ้ามี context "ท่าน/บาท/น./..." ปนมาด้วย
+    // ค่อยกรองด้วย isValidThaiPhone regex (เป๊ะมาก) ทีหลัง
+    // เหตุผล: case ลูกค้าส่งข้อมูลรวม (เช่น "เบอร์ 084-xxx, แขก 80 ท่าน") ต้องจับเบอร์ได้
     for (const s of phoneSeqs) {
       const d = s.replace(/[^0-9]/g, "");
       if (d.length >= 7 && d.length <= 12) candidates.push(d);
     }
   }
+
   // Normalize +66/66 → 0
   const normalized = candidates.map(p => /^66\d{8,9}$/.test(p) ? "0" + p.slice(2) : p);
 
