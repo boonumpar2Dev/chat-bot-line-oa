@@ -241,6 +241,7 @@ export default function Chats() {
       (c.display_name || "").toLowerCase().includes(q) ||
       (c.nickname || "").toLowerCase().includes(q) ||
       (c.phone || "").includes(q) ||
+      (c.line_user_id || "").toLowerCase().includes(q) ||
       msgMatchIds.has(c.id)
     );
   }, [customers, search, msgMatchIds]);
