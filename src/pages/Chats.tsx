@@ -104,7 +104,7 @@ export default function Chats() {
         .order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
         const s = debouncedSearch.replace(/[%,]/g, "");
-        q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%`).limit(100);
+        q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
         q = q.range(0, PAGE_SIZE - 1);
       }
@@ -241,6 +241,7 @@ export default function Chats() {
       (c.display_name || "").toLowerCase().includes(q) ||
       (c.nickname || "").toLowerCase().includes(q) ||
       (c.phone || "").includes(q) ||
+      (c.line_user_id || "").toLowerCase().includes(q) ||
       msgMatchIds.has(c.id)
     );
   }, [customers, search, msgMatchIds]);
@@ -353,7 +354,7 @@ export default function Chats() {
         <div className="p-3 border-b">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
-            <Input placeholder="ค้นหาชื่อ / เบอร์ / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
+            <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
         </div>
         <ScrollArea className="flex-1">
