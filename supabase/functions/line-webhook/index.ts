@@ -454,7 +454,8 @@ async function processEvent(event: any, supabase: any) {
       tax_id: taxId, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
     }).eq("id", customer.id);
     const summary = buildCustomerSummary({ ...freshCustomer, tax_id: taxId }, cfg);
-    const msg = [`รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`, "", ...summary].join("\n");
+    const intro = renderTemplate(cfg.handover_intro_tax || `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag {tax_id} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`, { tax_id: taxId });
+    const msg = [intro, "", ...summary].join("\n");
     await sendAndSave(supabase, customer.id, lineUserId, msg);
     return;
   }
