@@ -46,7 +46,13 @@ Deno.serve(async (req) => {
     // Save admin message + start manual chat timer
     if (customer_id) {
       const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const text = lineMessages.map((m: any) => m.text || `[${m.type}]`).join("\n");
+      const text = lineMessages.map((m: any) => {
+        if (m.type === "text") return m.text || "";
+        if (m.type === "image") return `[รูปภาพ]\n📎 ${m.originalContentUrl || m.previewImageUrl || ""}`;
+        if (m.type === "video") return `[วิดีโอ]\n📎 ${m.originalContentUrl || ""}`;
+        if (m.type === "file") return `[ไฟล์]\n📎 ${m.originalContentUrl || ""}`;
+        return `[${m.type}]`;
+      }).join("\n");
       const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours").eq("key", "ai_config").limit(1);
       const manualHours = cfgArr?.[0]?.manual_chat_hours || 360;
       const until = new Date(Date.now() + manualHours * 3600000).toISOString();
