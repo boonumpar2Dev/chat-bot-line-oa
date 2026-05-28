@@ -354,7 +354,7 @@ export default function Chats() {
         <div className="p-3 border-b">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
-            <Input placeholder="ค้นหาชื่อ / เบอร์ / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
+            <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
         </div>
         <ScrollArea className="flex-1">
