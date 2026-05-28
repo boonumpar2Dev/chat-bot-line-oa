@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare } from "lucide-react";
+import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 
 type Cfg = any;
@@ -53,6 +53,11 @@ export default function AiSettings() {
       image_rule_no_extra: s.image_rule_no_extra,
       image_rule_no_format: s.image_rule_no_format,
       image_rule_no_repeat: s.image_rule_no_repeat,
+      returning_customer_greeting: s.returning_customer_greeting,
+      vip_customer_greeting: s.vip_customer_greeting,
+      returning_skip_intent_questions: s.returning_skip_intent_questions,
+      returning_days_threshold: s.returning_days_threshold,
+      returning_context_instruction: s.returning_context_instruction,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
@@ -73,10 +78,11 @@ export default function AiSettings() {
       </div>
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full h-auto">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
+          <TabsTrigger value="returning" className="gap-1.5"><UserCheck className="w-4 h-4" />ลูกค้าเก่า</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
           <TabsTrigger value="fallback" className="gap-1.5"><MessageSquare className="w-4 h-4" />Fallback</TabsTrigger>
         </TabsList>
