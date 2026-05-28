@@ -740,8 +740,22 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
   const [tagInput, setTagInput] = useState("");
   const [pastEvents, setPastEvents] = useState<any[]>([]);
   const [archiving, setArchiving] = useState(false);
+  const [intentFields, setIntentFields] = useState<any[]>([]);
   useEffect(() => setLocal(customer), [customer.id]);
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
+
+  useEffect(() => {
+    supabase.from("app_settings").select("intent_fields").eq("key", "default").maybeSingle()
+      .then(({ data }) => setIntentFields(Array.isArray((data as any)?.intent_fields) ? (data as any).intent_fields : []));
+  }, []);
+
+  const intentData: Record<string, any> = (local.intent_data && typeof local.intent_data === "object") ? local.intent_data : {};
+  const saveIntent = (key: string, value: string) => {
+    const next = { ...intentData };
+    if (value) next[key] = value; else delete next[key];
+    setLocal({ ...local, intent_data: next });
+    onUpdate({ intent_data: next });
+  };
 
   const loadEvents = async () => {
     const { data } = await supabase
