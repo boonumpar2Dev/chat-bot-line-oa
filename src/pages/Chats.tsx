@@ -870,6 +870,48 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
 
       <Separator/>
 
+      {/* ประวัติงาน + ปุ่มปิดงาน */}
+      <div>
+        <Label className="text-xs flex items-center gap-1 mb-2"><History className="w-3 h-3"/>ประวัติงาน ({pastEvents.length})</Label>
+        {pastEvents.length === 0 ? (
+          <p className="text-[11px] text-muted-foreground">ยังไม่มีประวัติงาน — กดปุ่มด้านล่างเมื่อปิดงานเพื่อบันทึกเป็นลูกค้า VIP</p>
+        ) : (
+          <div className="space-y-1.5 mb-2 max-h-40 overflow-y-auto">
+            {pastEvents.map(e => (
+              <div key={e.id} className="text-[11px] rounded border bg-muted/30 p-2 flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{e.event_type || "(งาน)"} {e.guest_count ? `· ${e.guest_count} ท่าน` : ""}</div>
+                  <div className="text-muted-foreground">{e.event_date || "—"} {e.venue ? `· ${e.venue}` : ""}</div>
+                </div>
+                <button onClick={() => deleteEvent(e.id)} className="text-muted-foreground hover:text-destructive"><X className="w-3 h-3"/></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button size="sm" variant="outline" className="w-full" disabled={archiving}>
+              <BookmarkCheck className="w-3 h-3 mr-1"/> ปิดงาน / บันทึกประวัติ
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>บันทึกงานปัจจุบันเข้าประวัติ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                จะ snapshot ข้อมูลงานปัจจุบัน (ประเภทงาน/จำนวน/วัน/สถานที่) ลงประวัติ แล้ว reset ช่องเหล่านี้ + เปลี่ยนสถานะเป็น "returning" เพื่อให้ AI ทักทายแบบลูกค้าเก่าในครั้งต่อไป
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+              <AlertDialogAction onClick={archiveCurrentEvent}>บันทึก</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <Separator/>
+
+
       <div className="space-y-3">
         <div><Label className="text-xs">ชื่อเล่น</Label>
           <Input value={local.nickname || ""} onChange={e => setLocal({ ...local, nickname: e.target.value })} onBlur={() => onUpdate({ nickname: local.nickname })}/></div>
