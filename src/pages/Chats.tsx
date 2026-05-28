@@ -742,7 +742,10 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
   const [pastEvents, setPastEvents] = useState<any[]>([]);
   const [archiving, setArchiving] = useState(false);
   const [intentFields, setIntentFields] = useState<any[]>([]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveDraft, setArchiveDraft] = useState<any>({});
   useEffect(() => setLocal(customer), [customer.id]);
+
   const save = (k: string, v: any) => { setLocal({ ...local, [k]: v }); onUpdate({ [k]: v }); };
 
   useEffect(() => {
