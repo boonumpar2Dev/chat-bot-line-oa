@@ -1000,7 +1000,7 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
               </div>
               <div>
                 <Label className="text-xs">ยอดรวม (CLV)</Label>
-                <Input type="number" value={archiveDraft.total_amount || 0} onChange={e => setArchiveDraft({ ...archiveDraft, total_amount: e.target.value })}/>
+                <Input type="number" value={archiveDraft.total_amount ?? ""} onChange={e => setArchiveDraft({ ...archiveDraft, total_amount: e.target.value })}/>
               </div>
               <div>
                 <Label className="text-xs">โน้ตเพิ่มเติม (ถ้ามี)</Label>
