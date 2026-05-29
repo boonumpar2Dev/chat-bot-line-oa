@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, MessageSquare, Crown, History, Sparkles, Calendar, Users as UsersIcon, MapPin, Receipt } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
@@ -160,39 +160,6 @@ export default function CustomerDetail() {
             )}
           </Card>
 
-          {/* Recent messages */}
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <MessageSquare className="w-4 h-4 text-primary"/> ข้อความล่าสุด
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => nav(`/chats?customer=${customer.id}`)}>
-                ดูทั้งหมด →
-              </Button>
-            </div>
-            {messages.length === 0 ? (
-              <p className="text-xs text-muted-foreground">ยังไม่มีข้อความ</p>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {messages.map(m => {
-                  const fromCustomer = m.sender === "customer";
-                  return (
-                    <div key={m.id} className={cn("flex", fromCustomer ? "justify-start" : "justify-end")}>
-                      <div className={cn(
-                        "max-w-[80%] rounded-lg px-3 py-2 text-sm",
-                        fromCustomer ? "bg-muted text-foreground" : "bg-primary text-primary-foreground"
-                      )}>
-                        <p className="whitespace-pre-wrap break-words">{m.message}</p>
-                        <p className={cn("text-[10px] mt-1 opacity-60", !fromCustomer && "text-right")}>
-                          {formatDistanceToNow(new Date(m.created_at), { addSuffix: true, locale: th })}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
         </div>
 
         {/* Right: edit panel */}
