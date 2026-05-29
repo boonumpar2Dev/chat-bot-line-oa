@@ -58,7 +58,20 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Total count (independent of pagination/filter)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      let q = supabase.from("customers").select("id", { count: "exact", head: true });
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+      const { count } = await q;
+      if (active) setTotalCount(count ?? null);
+    })();
+    return () => { active = false; };
+  }, [statusFilter]);
 
   useEffect(() => { const t = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(t); }, [search]);
 
