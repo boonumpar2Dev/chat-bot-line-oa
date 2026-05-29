@@ -11,7 +11,7 @@ import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Cr
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
+
 
 const STATUS_LABEL: Record<string, string> = {
   new: "ใหม่", returning: "เคยติดต่อ", pending_quote: "รอใบเสนอ",
