@@ -221,14 +221,11 @@ export default function Customers() {
                   key={c.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => nav(`/customers/${c.id}`)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(c.id); }
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/customers/${c.id}`); }
                   }}
-                  className={cn(
-                    "group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                    selectedId === c.id && "ring-2 ring-primary border-primary"
-                  )}
+                  className="group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {/* Open chat — icon button, top-right */}
                   <Button
