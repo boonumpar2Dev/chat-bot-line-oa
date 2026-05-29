@@ -772,15 +772,43 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
   useEffect(() => { loadEvents(); }, [customer.id]);
 
   const openArchiveDialog = () => {
+    // Prefill: ค่าหลักจาก customers → fallback ไป intent_data ถ้าว่าง
+    const intent = intentData || {};
     setArchiveDraft({
-      event_type: customer.event_type || "",
-      guest_count: customer.guest_count || "",
-      event_date: customer.event_date || "",
-      venue: customer.venue || "",
-      total_amount: customer.clv_amount || 0,
+      event_type: customer.event_type || intent.event_type || intent.service_type || "",
+      guest_count: customer.guest_count || intent.guest_count || "",
+      event_date: customer.event_date || intent.event_date || "",
+      venue: customer.venue || intent.venue || "",
+      total_amount: customer.clv_amount || intent.total_amount || 0,
       notes: "",
     });
     setArchiveOpen(true);
+  };
+
+  const [extracting, setExtracting] = useState(false);
+  const extractFromChat = async () => {
+    setExtracting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-event-from-chat", {
+        body: { customer_id: customer.id },
+      });
+      if (error) throw error;
+      const ex = data?.extracted || {};
+      setArchiveDraft((prev: any) => ({
+        ...prev,
+        event_type: ex.event_type || prev.event_type || "",
+        guest_count: ex.guest_count || prev.guest_count || "",
+        event_date: ex.event_date || prev.event_date || "",
+        venue: ex.venue || prev.venue || "",
+        total_amount: ex.total_amount || prev.total_amount || 0,
+        notes: ex.notes ? (prev.notes ? `${prev.notes}\n${ex.notes}` : ex.notes) : prev.notes,
+      }));
+      toast.success("ดึงข้อมูลจากแชทสำเร็จ — ตรวจสอบก่อนบันทึก");
+    } catch (e: any) {
+      toast.error("ดึงข้อมูลไม่สำเร็จ: " + (e?.message || e));
+    } finally {
+      setExtracting(false);
+    }
   };
 
   const archiveCurrentEvent = async () => {
@@ -944,9 +972,14 @@ function CustomerInfoPanel({ customer, onUpdate }: { customer: any; onUpdate: (p
               <DialogTitle>ตรวจข้อมูลก่อนบันทึกเข้าประวัติ</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 text-sm">
-              <p className="text-[11px] text-muted-foreground">
-                แอดมินตรวจ/แก้ให้ถูกต้องก่อนกดบันทึก — ค่าที่แก้จะอัปเดตข้อมูลลูกค้าและบันทึกเข้าประวัติงาน จากนั้นจะ reset ช่องงานปัจจุบัน + เปลี่ยนสถานะเป็น "returning"
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] text-muted-foreground flex-1">
+                  ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน แล้ว reset ช่องงาน + เปลี่ยนสถานะ "returning"
+                </p>
+                <Button size="sm" variant="outline" onClick={extractFromChat} disabled={extracting || archiving} className="shrink-0">
+                  {extracting ? <Loader2 className="w-3 h-3 mr-1 animate-spin"/> : "🤖"} ดึงจากแชท
+                </Button>
+              </div>
               <div>
                 <Label className="text-xs">ประเภทงาน</Label>
                 <Input value={archiveDraft.event_type || ""} onChange={e => setArchiveDraft({ ...archiveDraft, event_type: e.target.value })}/>
