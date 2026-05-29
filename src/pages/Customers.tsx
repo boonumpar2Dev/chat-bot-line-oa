@@ -57,7 +57,7 @@ export default function Customers() {
   const [debounced, setDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
