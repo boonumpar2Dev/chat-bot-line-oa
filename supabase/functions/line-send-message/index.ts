@@ -28,19 +28,27 @@ Deno.serve(async (req) => {
     if (!lineMessages) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
     const { channel_access_token } = await getLineConfig();
-    const res = await fetch("https://api.line.me/v2/bot/message/push", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${channel_access_token}`,
-      },
-      body: JSON.stringify({ to: line_user_id, messages: lineMessages }),
-    });
+    // LINE Push API จำกัด 5 messages ต่อ request — แบ่งเป็น chunk
+    const chunks: any[][] = [];
+    for (let i = 0; i < lineMessages.length; i += 5) chunks.push(lineMessages.slice(i, i + 5));
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("LINE push error:", err);
-      return Response.json({ error: err }, { status: 400, headers: corsHeaders });
+    for (let idx = 0; idx < chunks.length; idx++) {
+      const res = await fetch("https://api.line.me/v2/bot/message/push", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${channel_access_token}`,
+        },
+        body: JSON.stringify({ to: line_user_id, messages: chunks[idx] }),
+      });
+      if (!res.ok) {
+        const err = await res.text();
+        console.error(`LINE push error (chunk ${idx + 1}/${chunks.length}):`, err);
+        return Response.json({
+          error: err,
+          partial: idx > 0 ? `ส่งสำเร็จ ${idx * 5} ข้อความก่อนเกิดข้อผิดพลาด` : undefined,
+        }, { status: 400, headers: corsHeaders });
+      }
     }
 
     // Save admin message + start manual chat timer
