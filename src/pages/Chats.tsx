@@ -61,8 +61,9 @@ async function uploadToStorage(file: File): Promise<string | null> {
 }
 
 export default function Chats() {
+  const [sp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(sp.get("customer"));
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
