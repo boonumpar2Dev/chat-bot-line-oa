@@ -58,7 +58,20 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Total count (independent of pagination/filter)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      let q = supabase.from("customers").select("id", { count: "exact", head: true });
+      if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+      const { count } = await q;
+      if (active) setTotalCount(count ?? null);
+    })();
+    return () => { active = false; };
+  }, [statusFilter]);
 
   useEffect(() => { const t = setTimeout(() => setDebounced(search.trim()), 300); return () => clearTimeout(t); }, [search]);
 
@@ -150,7 +163,11 @@ export default function Customers() {
               <UsersIcon className="w-6 h-6 text-primary" />
               ลูกค้า
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">จัดการข้อมูลลูกค้าทั้งหมด · {customers.length.toLocaleString()} คน</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {totalCount !== null
+                ? <>ทั้งหมด {totalCount.toLocaleString()} คน · แสดง {customers.length.toLocaleString()}</>
+                : <>กำลังนับ...</>}
+            </p>
           </div>
         </div>
 
@@ -200,15 +217,30 @@ export default function Customers() {
             {filtered.map(c => {
               const tier = tierOf(c);
               return (
-                <button
+                <div
                   key={c.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedId(c.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(c.id); }
+                  }}
                   className={cn(
-                    "group text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30",
+                    "group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                     selectedId === c.id && "ring-2 ring-primary border-primary"
                   )}
                 >
-                  <div className="flex items-start gap-3">
+                  {/* Open chat — icon button, top-right */}
+                  <Button
+                    size="icon" variant="ghost"
+                    aria-label="เปิดแชท"
+                    className="absolute top-2 right-2 h-8 w-8 opacity-60 group-hover:opacity-100 hover:bg-primary/10 hover:text-primary"
+                    onClick={(e) => { e.stopPropagation(); nav(`/chats?customer=${c.id}`); }}
+                  >
+                    <MessageSquare className="w-4 h-4"/>
+                  </Button>
+
+                  <div className="flex items-start gap-3 pr-8">
                     <Avatar className="w-12 h-12 shrink-0">
                       <AvatarImage src={c.picture_url} alt={c.display_name}/>
                       <AvatarFallback>{(c.display_name || "?")[0]}</AvatarFallback>
@@ -227,11 +259,15 @@ export default function Customers() {
                         </Badge>
                       </div>
                       <div className="space-y-1 text-xs text-muted-foreground">
-                        {c.phone && (
+                        {c.phone ? (
                           <div className="flex items-center gap-1.5"><Phone className="w-3 h-3"/> {c.phone}</div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 opacity-50"><Phone className="w-3 h-3"/> ยังไม่มีเบอร์</div>
                         )}
-                        {c.event_date && (
+                        {c.event_date ? (
                           <div className="flex items-center gap-1.5"><Calendar className="w-3 h-3"/> {new Date(c.event_date).toLocaleDateString("th-TH")}</div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 opacity-50"><Calendar className="w-3 h-3"/> ยังไม่มีข้อมูลงาน</div>
                         )}
                         {c.last_message_at && (
                           <div className="text-[11px] opacity-70">คุยล่าสุด {formatDistanceToNow(new Date(c.last_message_at), { addSuffix: true, locale: th })}</div>
@@ -239,15 +275,7 @@ export default function Customers() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-3 pt-3 border-t">
-                    <Button
-                      size="sm" variant="ghost" className="h-7 text-xs flex-1"
-                      onClick={(e) => { e.stopPropagation(); nav(`/chats?customer=${c.id}`); }}
-                    >
-                      <MessageSquare className="w-3 h-3 mr-1"/> เปิดแชท
-                    </Button>
-                  </div>
-                </button>
+                </div>
               );
             })}
             <div ref={sentinelRef} className="col-span-full h-8 flex items-center justify-center text-xs text-muted-foreground">
