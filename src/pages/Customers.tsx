@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+
 import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Crown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
+
 
 const STATUS_LABEL: Record<string, string> = {
   new: "ใหม่", returning: "เคยติดต่อ", pending_quote: "รอใบเสนอ",
@@ -57,7 +57,7 @@ export default function Customers() {
   const [debounced, setDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -140,12 +140,6 @@ export default function Customers() {
     return customers.filter(c => tierFilter === "all" || tierOf(c) === tierFilter);
   }, [customers, tierFilter]);
 
-  const selected = customers.find(c => c.id === selectedId);
-
-  const updateCustomer = (patch: any) => {
-    if (!selectedId) return;
-    setCustomers(p => p.map(c => c.id === selectedId ? { ...c, ...patch } : c));
-  };
 
   const updateFilter = (k: string, v: string) => {
     const next = new URLSearchParams(sp);
@@ -221,14 +215,11 @@ export default function Customers() {
                   key={c.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedId(c.id)}
+                  onClick={() => nav(`/customers/${c.id}`)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(c.id); }
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/customers/${c.id}`); }
                   }}
-                  className={cn(
-                    "group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-                    selectedId === c.id && "ring-2 ring-primary border-primary"
-                  )}
+                  className="group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   {/* Open chat — icon button, top-right */}
                   <Button
@@ -285,24 +276,6 @@ export default function Customers() {
         )}
       </div>
 
-      {/* Detail Sheet */}
-      <Sheet open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent side="right" className="p-0 w-full sm:max-w-lg overflow-y-auto">
-          {selected && (
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b">
-                <h2 className="font-semibold">ข้อมูลลูกค้า</h2>
-                <Button size="sm" variant="outline" onClick={() => nav(`/chats?customer=${selected.id}`)}>
-                  <MessageSquare className="w-3.5 h-3.5 mr-1"/> เปิดแชท
-                </Button>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
