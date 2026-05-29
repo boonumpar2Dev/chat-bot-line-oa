@@ -168,7 +168,7 @@ export default function CustomerDetail() {
             <div className="px-4 py-2.5 border-b bg-muted/30">
               <h2 className="font-semibold text-sm">ข้อมูล & การตั้งค่า</h2>
             </div>
-            <div className="max-h-[calc(100vh-12rem)] overflow-y-auto">
+            <div className="max-h-[calc(100vh-12rem)] overflow-y-auto px-4 pb-4">
               <CustomerInfoPanel customer={customer} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
             </div>
           </Card>
