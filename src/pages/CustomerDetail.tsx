@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, MessageSquare, Crown, History, Sparkles, Calendar, Users as UsersIcon, MapPin, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 
 const STATUS_LABEL: Record<string, string> = {
