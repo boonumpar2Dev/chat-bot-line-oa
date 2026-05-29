@@ -695,7 +695,8 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
-    .replace(/^\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]\s*/g, "")
+    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]/g, "")
+    .replace(/\n{2,}/g, "\n")
     .trim();
   // highlight matching text
   const renderText = (txt: string) => {
@@ -714,10 +715,17 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
           </button>
         )}
       </span>
-      {imgUrls.map((u: string) => (
-        <img key={u} src={u} alt="" onClick={() => onImageClick(u)}
-          className="max-w-[280px] rounded-lg border cursor-pointer hover:opacity-90"/>
-      ))}
+      {imgUrls.length > 0 && (
+        <div className={cn(
+          "grid gap-1.5 max-w-[320px]",
+          imgUrls.length === 1 ? "grid-cols-1" : "grid-cols-2"
+        )}>
+          {imgUrls.map((u: string) => (
+            <img key={u} src={u} alt="" loading="lazy" onClick={() => onImageClick(u)}
+              className="w-full aspect-square object-cover rounded-lg border cursor-pointer hover:opacity-90"/>
+          ))}
+        </div>
+      )}
       {ocrText && (
         <div className="max-w-[80%] rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 px-3 py-2 text-xs whitespace-pre-wrap break-words text-muted-foreground">
           <div className="flex items-center gap-1 mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
