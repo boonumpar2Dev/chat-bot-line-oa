@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -60,8 +61,9 @@ async function uploadToStorage(file: File): Promise<string | null> {
 }
 
 export default function Chats() {
+  const [sp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(sp.get("customer"));
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
@@ -117,6 +119,18 @@ export default function Chats() {
     })();
     return () => { active = false; };
   }, [debouncedSearch, isSearching]);
+
+  // Ensure deep-linked customer (?customer=id) is loaded
+  useEffect(() => {
+    const id = sp.get("customer");
+    if (!id) return;
+    setSelectedId(id);
+    if (customers.some(c => c.id === id)) return;
+    (async () => {
+      const { data } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+      if (data) setCustomers(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
+    })();
+  }, [sp, customers.length]);
 
   // Realtime: patch in place (no full reload)
   useEffect(() => {

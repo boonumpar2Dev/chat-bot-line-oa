@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot } from "lucide-react";
+import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 const nav: { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean }[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
   { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
+  { to: "/customers", label: "ลูกค้า", icon: UserCircle2, key: "chats" },
   { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
   { to: "/ai-settings", label: "ตั้งค่า AI", icon: Bot, key: "ai_settings" },
   { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },

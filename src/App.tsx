@@ -10,6 +10,7 @@ import AppLayout from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Chats from "./pages/Chats";
+import Customers from "./pages/Customers";
 import Knowledge from "./pages/Knowledge";
 import Settings from "./pages/Settings";
 import AiSettings from "./pages/AiSettings";
@@ -35,6 +36,7 @@ const App = () => (
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<ProtectedRoute menuKey="dashboard"><Dashboard /></ProtectedRoute>} />
                 <Route path="/chats" element={<ProtectedRoute menuKey="chats"><Chats /></ProtectedRoute>} />
+                <Route path="/customers" element={<ProtectedRoute menuKey="chats"><Customers /></ProtectedRoute>} />
                 <Route path="/knowledge" element={<ProtectedRoute menuKey="knowledge"><Knowledge /></ProtectedRoute>} />
                 <Route path="/ai-settings" element={<ProtectedRoute menuKey="ai_settings"><AiSettings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
