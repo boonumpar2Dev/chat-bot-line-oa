@@ -140,12 +140,6 @@ export default function Customers() {
     return customers.filter(c => tierFilter === "all" || tierOf(c) === tierFilter);
   }, [customers, tierFilter]);
 
-  const selected = customers.find(c => c.id === selectedId);
-
-  const updateCustomer = (patch: any) => {
-    if (!selectedId) return;
-    setCustomers(p => p.map(c => c.id === selectedId ? { ...c, ...patch } : c));
-  };
 
   const updateFilter = (k: string, v: string) => {
     const next = new URLSearchParams(sp);
