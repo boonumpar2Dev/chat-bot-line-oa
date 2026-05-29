@@ -120,6 +120,18 @@ export default function Chats() {
     return () => { active = false; };
   }, [debouncedSearch, isSearching]);
 
+  // Ensure deep-linked customer (?customer=id) is loaded
+  useEffect(() => {
+    const id = sp.get("customer");
+    if (!id) return;
+    setSelectedId(id);
+    if (customers.some(c => c.id === id)) return;
+    (async () => {
+      const { data } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+      if (data) setCustomers(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
+    })();
+  }, [sp, customers.length]);
+
   // Realtime: patch in place (no full reload)
   useEffect(() => {
     const ch = supabase.channel("customers-rt")
