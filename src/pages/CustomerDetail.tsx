@@ -6,9 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, MessageSquare, Crown, History, Sparkles, Calendar, Users as UsersIcon, MapPin, Receipt } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import { th } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 
 const STATUS_LABEL: Record<string, string> = {
