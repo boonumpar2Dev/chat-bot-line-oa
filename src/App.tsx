@@ -11,6 +11,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Chats from "./pages/Chats";
 import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import Knowledge from "./pages/Knowledge";
 import Settings from "./pages/Settings";
 import AiSettings from "./pages/AiSettings";
