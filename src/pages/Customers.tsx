@@ -282,24 +282,6 @@ export default function Customers() {
         )}
       </div>
 
-      {/* Detail Sheet */}
-      <Sheet open={!!selectedId} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent side="right" className="p-0 w-full sm:max-w-lg overflow-y-auto">
-          {selected && (
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b">
-                <h2 className="font-semibold">ข้อมูลลูกค้า</h2>
-                <Button size="sm" variant="outline" onClick={() => nav(`/chats?customer=${selected.id}`)}>
-                  <MessageSquare className="w-3.5 h-3.5 mr-1"/> เปิดแชท
-                </Button>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
-              </div>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
