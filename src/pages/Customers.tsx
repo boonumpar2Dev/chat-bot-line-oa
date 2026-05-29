@@ -163,7 +163,11 @@ export default function Customers() {
               <UsersIcon className="w-6 h-6 text-primary" />
               ลูกค้า
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">จัดการข้อมูลลูกค้าทั้งหมด · {customers.length.toLocaleString()} คน</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {totalCount !== null
+                ? <>ทั้งหมด {totalCount.toLocaleString()} คน · แสดง {customers.length.toLocaleString()}</>
+                : <>กำลังนับ...</>}
+            </p>
           </div>
         </div>
 
