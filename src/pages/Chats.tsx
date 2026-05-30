@@ -114,7 +114,7 @@ export default function Chats() {
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
-  const [stagedFiles, setStagedFiles] = useState<string[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
