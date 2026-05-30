@@ -52,12 +52,59 @@ function getFileType(url = "") {
   return "file";
 }
 
-async function uploadToStorage(file: File): Promise<string | null> {
+async function uploadToStorage(file: File): Promise<{ url: string; name: string; size: number } | null> {
   const ext = file.name.split(".").pop() || "bin";
   const path = `chat-uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from("line-media").upload(path, file, { upsert: false });
   if (error) { toast.error("อัปโหลดไม่สำเร็จ: " + error.message); return null; }
-  return supabase.storage.from("line-media").getPublicUrl(path).data.publicUrl;
+  const url = supabase.storage.from("line-media").getPublicUrl(path).data.publicUrl;
+  return { url, name: file.name, size: file.size };
+}
+
+function formatBytes(b: number) {
+  if (!b) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function buildFileFlex(url: string, name: string, size: number) {
+  const ext = (name.split(".").pop() || "FILE").toUpperCase().slice(0, 5);
+  const sizeText = formatBytes(size);
+  return {
+    type: "flex",
+    altText: `📄 ไฟล์: ${name}`,
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      body: {
+        type: "box", layout: "vertical", spacing: "md", paddingAll: "16px",
+        contents: [
+          {
+            type: "box", layout: "horizontal", spacing: "md", alignItems: "center",
+            contents: [
+              {
+                type: "box", layout: "vertical", width: "48px", height: "48px",
+                backgroundColor: "#EFF6FF", cornerRadius: "8px", justifyContent: "center", alignItems: "center",
+                contents: [{ type: "text", text: ext, size: "xs", weight: "bold", color: "#2563EB", align: "center" }],
+              },
+              {
+                type: "box", layout: "vertical", flex: 1, spacing: "xs",
+                contents: [
+                  { type: "text", text: name, size: "sm", weight: "bold", color: "#111827", wrap: true, maxLines: 2 },
+                  ...(sizeText ? [{ type: "text", text: sizeText, size: "xs", color: "#6B7280" }] : []),
+                ],
+              },
+            ],
+          },
+          {
+            type: "button", style: "primary", color: "#2563EB", height: "sm",
+            action: { type: "uri", label: "ดาวน์โหลดไฟล์", uri: url },
+          },
+        ],
+      },
+    },
+  };
 }
 
 export default function Chats() {
@@ -67,7 +114,7 @@ export default function Chats() {
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
   const [reply, setReply] = useState("");
-  const [stagedFiles, setStagedFiles] = useState<string[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -293,8 +340,8 @@ export default function Chats() {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
-    const urls = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as string[];
-    setStagedFiles(p => [...p, ...urls]);
+    const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
+    setStagedFiles(p => [...p, ...results]);
     setUploading(false);
     e.target.value = "";
   };
@@ -304,14 +351,14 @@ export default function Chats() {
     setSending(true);
     try {
       const lineMessages: any[] = [];
-      for (const url of stagedFiles) {
-        const t = getFileType(url);
+      for (const f of stagedFiles) {
+        const t = getFileType(f.url);
         if (t === "image") {
-          lineMessages.push({ type: "image", originalContentUrl: url, previewImageUrl: url });
+          lineMessages.push({ type: "image", originalContentUrl: f.url, previewImageUrl: f.url });
         } else if (t === "video") {
-          lineMessages.push({ type: "video", originalContentUrl: url, previewImageUrl: url });
+          lineMessages.push({ type: "video", originalContentUrl: f.url, previewImageUrl: f.url });
         } else {
-          lineMessages.push({ type: "text", text: `📎 ${url}` });
+          lineMessages.push(buildFileFlex(f.url, f.name, f.size));
         }
       }
       if (reply.trim()) lineMessages.push({ type: "text", text: reply.trim() });
@@ -510,8 +557,8 @@ export default function Chats() {
             </ScrollArea>
 
             {/* Staged files */}
-            <StagedMessageBar files={stagedFiles}
-              onRemoveFile={(u) => setStagedFiles(p => p.filter(x => x !== u))}
+            <StagedMessageBar files={stagedFiles.map(f => f.url)}
+              onRemoveFile={(u) => setStagedFiles(p => p.filter(x => x.url !== u))}
               onClearAll={() => setStagedFiles([])}/>
 
             {/* Composer */}
