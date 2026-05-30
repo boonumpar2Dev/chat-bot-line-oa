@@ -340,8 +340,8 @@ export default function Chats() {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploading(true);
-    const urls = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as string[];
-    setStagedFiles(p => [...p, ...urls]);
+    const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
+    setStagedFiles(p => [...p, ...results]);
     setUploading(false);
     e.target.value = "";
   };
@@ -351,14 +351,14 @@ export default function Chats() {
     setSending(true);
     try {
       const lineMessages: any[] = [];
-      for (const url of stagedFiles) {
-        const t = getFileType(url);
+      for (const f of stagedFiles) {
+        const t = getFileType(f.url);
         if (t === "image") {
-          lineMessages.push({ type: "image", originalContentUrl: url, previewImageUrl: url });
+          lineMessages.push({ type: "image", originalContentUrl: f.url, previewImageUrl: f.url });
         } else if (t === "video") {
-          lineMessages.push({ type: "video", originalContentUrl: url, previewImageUrl: url });
+          lineMessages.push({ type: "video", originalContentUrl: f.url, previewImageUrl: f.url });
         } else {
-          lineMessages.push({ type: "text", text: `📎 ${url}` });
+          lineMessages.push(buildFileFlex(f.url, f.name, f.size));
         }
       }
       if (reply.trim()) lineMessages.push({ type: "text", text: reply.trim() });
