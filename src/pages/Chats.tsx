@@ -557,8 +557,8 @@ export default function Chats() {
             </ScrollArea>
 
             {/* Staged files */}
-            <StagedMessageBar files={stagedFiles}
-              onRemoveFile={(u) => setStagedFiles(p => p.filter(x => x !== u))}
+            <StagedMessageBar files={stagedFiles.map(f => f.url)}
+              onRemoveFile={(u) => setStagedFiles(p => p.filter(x => x.url !== u))}
               onClearAll={() => setStagedFiles([])}/>
 
             {/* Composer */}
