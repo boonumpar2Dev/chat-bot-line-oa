@@ -52,12 +52,59 @@ function getFileType(url = "") {
   return "file";
 }
 
-async function uploadToStorage(file: File): Promise<string | null> {
+async function uploadToStorage(file: File): Promise<{ url: string; name: string; size: number } | null> {
   const ext = file.name.split(".").pop() || "bin";
   const path = `chat-uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const { error } = await supabase.storage.from("line-media").upload(path, file, { upsert: false });
   if (error) { toast.error("อัปโหลดไม่สำเร็จ: " + error.message); return null; }
-  return supabase.storage.from("line-media").getPublicUrl(path).data.publicUrl;
+  const url = supabase.storage.from("line-media").getPublicUrl(path).data.publicUrl;
+  return { url, name: file.name, size: file.size };
+}
+
+function formatBytes(b: number) {
+  if (!b) return "";
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function buildFileFlex(url: string, name: string, size: number) {
+  const ext = (name.split(".").pop() || "FILE").toUpperCase().slice(0, 5);
+  const sizeText = formatBytes(size);
+  return {
+    type: "flex",
+    altText: `📄 ไฟล์: ${name}`,
+    contents: {
+      type: "bubble",
+      size: "kilo",
+      body: {
+        type: "box", layout: "vertical", spacing: "md", paddingAll: "16px",
+        contents: [
+          {
+            type: "box", layout: "horizontal", spacing: "md", alignItems: "center",
+            contents: [
+              {
+                type: "box", layout: "vertical", width: "48px", height: "48px",
+                backgroundColor: "#EFF6FF", cornerRadius: "8px", justifyContent: "center", alignItems: "center",
+                contents: [{ type: "text", text: ext, size: "xs", weight: "bold", color: "#2563EB", align: "center" }],
+              },
+              {
+                type: "box", layout: "vertical", flex: 1, spacing: "xs",
+                contents: [
+                  { type: "text", text: name, size: "sm", weight: "bold", color: "#111827", wrap: true, maxLines: 2 },
+                  ...(sizeText ? [{ type: "text", text: sizeText, size: "xs", color: "#6B7280" }] : []),
+                ],
+              },
+            ],
+          },
+          {
+            type: "button", style: "primary", color: "#2563EB", height: "sm",
+            action: { type: "uri", label: "ดาวน์โหลดไฟล์", uri: url },
+          },
+        ],
+      },
+    },
+  };
 }
 
 export default function Chats() {
