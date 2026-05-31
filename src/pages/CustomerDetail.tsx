@@ -88,10 +88,10 @@ export default function CustomerDetail() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-display font-bold text-lg truncate">{customer.nickname || customer.display_name || "ไม่ระบุชื่อ"}</h1>
-              {tier === "vip" && <Crown className="w-4 h-4 text-amber-500 shrink-0"/>}
+              {tier === "VIP" && <Crown className="w-4 h-4 text-amber-500 shrink-0"/>}
             </div>
             <div className="flex gap-1.5 mt-0.5">
-              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", TIER_COLOR[tier])}>{TIER_LABEL[tier]}</Badge>
+              {tier && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">{tier}</Badge>}
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">{STATUS_LABEL[customer.status] || customer.status}</Badge>
             </div>
           </div>
