@@ -62,6 +62,31 @@ export default function Customers() {
   const [tagPickerOpen, setTagPickerOpen] = useState<null | "add" | "remove">(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // Tier (manual, admin-managed)
+  const [tierList, setTierList] = useState<TierDef[]>(DEFAULT_TIERS);
+  const [tierMgrOpen, setTierMgrOpen] = useState(false);
+  const tierByName = useMemo(() => Object.fromEntries(tierList.map(t => [t.name, t])), [tierList]);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("tier_list").eq("key", "ai_config").maybeSingle()
+      .then(({ data }: any) => {
+        const list = Array.isArray(data?.tier_list) ? data.tier_list : null;
+        if (list && list.length) setTierList(list);
+      });
+  }, []);
+
+  const saveTierList = async (list: TierDef[]) => {
+    setTierList(list);
+    const { error } = await supabase.from("app_settings").update({ tier_list: list as any }).eq("key", "ai_config");
+    if (error) toast.error(error.message);
+  };
+
+  const setCustomerTier = async (id: string, tier: string | null) => {
+    const { error } = await supabase.from("customers").update({ tier }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setCustomers(prev => prev.map(c => c.id === id ? { ...c, tier } : c));
+  };
+
   // Total count (independent of pagination/filter)
   useEffect(() => {
     let active = true;
