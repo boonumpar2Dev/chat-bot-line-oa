@@ -841,6 +841,7 @@ export type Database = {
         Returns: boolean
       }
       is_staff_member: { Args: { _user_id: string }; Returns: boolean }
+      rescan_auto_tags: { Args: never; Returns: number }
     }
     Enums: {
       app_role: "admin" | "manager" | "staff"
