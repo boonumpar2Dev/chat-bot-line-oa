@@ -15,12 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { Loader2, Shield, Trash2, Plus, Lock, Save, Pencil, KeyRound } from "lucide-react";
 
-type AppRole = "admin" | "manager" | "staff";
-const ROLE_LABEL: Record<AppRole, string> = { admin: "Admin", manager: "Manager", staff: "Staff" };
-const ASSIGNABLE_MENUS = ALL_MENUS.filter(m => !m.adminOnly);
+type AppRole = "owner" | "admin" | "manager" | "staff";
+const ROLE_LABEL: Record<AppRole, string> = { owner: "Owner", admin: "Admin", manager: "Manager", staff: "Staff" };
+const ASSIGNABLE_MENUS = ALL_MENUS.filter(m => !m.adminOnly && !m.ownerOnly);
 
 export default function Users() {
-  const { user: me } = useAuth();
+  const { user: me, role: myRole } = useAuth();
+  const isOwner = myRole === "owner";
   const { reload: reloadMenus } = useMenuPermissions();
   const [users, setUsers] = useState<any[]>([]);
   const [perms, setPerms] = useState<Record<string, MenuKey[]>>({});
@@ -37,14 +38,16 @@ export default function Users() {
       ...p,
       role: (roles?.find(r => r.user_id === p.id)?.role || "staff") as AppRole,
     }));
+    // Hide owner users from non-owner viewers
+    const filtered = isOwner ? merged : merged.filter(u => u.role !== "owner");
     const pmap: Record<string, MenuKey[]> = {};
     (ps || []).forEach((r: any) => { pmap[r.user_id] = r.menu_keys as MenuKey[]; });
-    setUsers(merged);
+    setUsers(filtered);
     setPerms(pmap);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [isOwner]);
 
   const changeRole = async (userId: string, newRole: AppRole) => {
     await supabase.from("user_roles").delete().eq("user_id", userId);
