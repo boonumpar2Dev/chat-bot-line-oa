@@ -20,6 +20,7 @@ export interface BuildPromptInput {
   returningPrompt?: string;
   comparisonSection?: string;
   jsonSchemaHint?: string;
+  tagInstructions?: string;
 }
 
 export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPrompt: string } {
@@ -48,6 +49,12 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     .map((r: any) => (typeof r === "string" ? r.trim() : "")).filter(Boolean);
   const advImgBlock = advImgRules.length
     ? `\n\n🖼️ กฎการส่งรูปขั้นสูง:\n${advImgRules.map((r, i) => `- ${r}`).join("\n")}`
+    : "";
+
+  // 🏷️ คำสั่งเฉพาะตามแท็กของลูกค้ารายนี้ (จากตาราง tags.ai_tag_instructions)
+  // — เป็น "แนวทาง" ไม่ใช่ strict_rules; ถ้าขัดกับ strict_rules ให้ strict_rules ชนะ
+  const tagBlock = (i.tagInstructions && i.tagInstructions.trim())
+    ? `\n\n🏷️ บริบทเฉพาะลูกค้ารายนี้ (จากแท็ก — เป็นแนวทาง, ถ้าขัด strict_rules ให้ strict_rules ชนะ):\n${i.tagInstructions.trim()}`
     : "";
 
 
