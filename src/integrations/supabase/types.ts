@@ -92,6 +92,7 @@ export type Database = {
           ai_whitelist_enabled: boolean
           ai_whitelist_user_ids: string[]
           allowed_service_types: string[]
+          auto_tag_settings: Json
           comparison_instruction: string
           comparison_kb_category: string | null
           comparison_phase_enabled: boolean
@@ -152,6 +153,7 @@ export type Database = {
           ai_whitelist_enabled?: boolean
           ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
+          auto_tag_settings?: Json
           comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
@@ -212,6 +214,7 @@ export type Database = {
           ai_whitelist_enabled?: boolean
           ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
+          auto_tag_settings?: Json
           comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
@@ -826,6 +829,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_auto_tags: {
+        Args: { _cfg: Json; _nickname: string; _status: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
