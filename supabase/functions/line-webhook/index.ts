@@ -789,35 +789,12 @@ async function processEvent(event: any, supabase: any) {
   const hasPhone = !!freshCustomer.phone;
   const fmtPhone = hasPhone ? freshCustomer.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3") : "";
 
-  // ===== บริบทลูกค้าเก่า (Returning / VIP awareness) =====
-  // ระดับลูกค้า: vip (เคยจัดงานจริง / confirmed / clv>0) > returning (status=returning หรือเงียบไปนาน) > active (มี intent ค้าง) > new
-  const _now = Date.now();
-  const lastMsgMs = freshCustomer.last_message_at ? new Date(freshCustomer.last_message_at).getTime() : 0;
-  const daysSinceLast = lastMsgMs > 0 ? Math.floor((_now - lastMsgMs) / 86400000) : 0;
-  const returningThreshold = Number.isFinite(+cfg.returning_days_threshold) && +cfg.returning_days_threshold > 0 ? +cfg.returning_days_threshold : 30;
-  const hasPastEvent = pastEvents.length > 0;
-  const isVip = hasPastEvent || freshCustomer.status === "confirmed" || (Number(freshCustomer.clv_amount) || 0) > 0;
-  const isReturning = !isVip && (
-    freshCustomer.status === "returning" ||
-    (freshCustomer.contact_year && freshCustomer.contact_year < new Date().getFullYear()) ||
-    (daysSinceLast >= returningThreshold && customerTurns <= 1)
-  );
-  const hasActiveIntent = !!(freshCustomer.event_type || freshCustomer.guest_count || freshCustomer.event_date);
-  const isActive = !isVip && !isReturning && hasActiveIntent;
-
-  const custLevel = isVip ? "VIP" : isReturning ? "RETURNING" : isActive ? "ACTIVE_LEAD" : "NEW";
+  // ===== บริบทลูกค้าเก่า (อิงสถานะ + แท็ก + ประวัติงาน — ไม่มี Lifecycle อัตโนมัติแล้ว) =====
   const custName = (freshCustomer.nickname || freshCustomer.display_name || "").toString().trim();
+  const hasPastEvent = pastEvents.length > 0;
 
   let customerContextSection = "";
-  if (custLevel !== "NEW") {
-    const greetingTmpl = isVip
-      ? (cfg.vip_customer_greeting || "สวัสดีค่ะคุณ{ชื่อ} ขอบคุณที่กลับมาใช้บริการอีกครั้งนะคะ 🙏")
-      : isReturning
-      ? (cfg.returning_customer_greeting || "ยินดีต้อนรับกลับนะคะคุณ{ชื่อ} 🙏")
-      : "";
-    const greetingFilled = greetingTmpl.replace(/\{ชื่อ\}/g, custName || "ลูกค้า");
-    const ctxInstr = (cfg.returning_context_instruction || "").trim();
-
+  if (hasPastEvent) {
     const pastLines = pastEvents.map((e: any) => {
       const parts = [
         e.event_type || "(งาน)",
@@ -830,12 +807,12 @@ async function processEvent(event: any, supabase: any) {
       return `  • ${parts.join(" | ")}`;
     }).join("\n");
 
-    const skipIntent = cfg.returning_skip_intent_questions !== false;
     customerContextSection = `
 
-🟢 บริบทลูกค้า (สำคัญ — อย่าทำเหมือนลูกค้าใหม่):
-- ระดับ: ${custLevel}${custName ? ` | ชื่อ: คุณ${custName}` : ""}${daysSinceLast > 0 ? ` | เงียบไป ${daysSinceLast} วัน` : ""}${freshCustomer.status ? ` | สถานะ: ${freshCustomer.status}` : ""}
-${greetingFilled ? `- สไตล์ทักทายที่แนะนำ (ใช้เป็นแนว ปรับให้เป็นธรรมชาติได้): "${greetingFilled}"\n` : ""}${pastLines ? `- ประวัติงานที่เคยจัด/สนใจ:\n${pastLines}\n` : ""}${ctxInstr ? `- กฎ: ${ctxInstr}\n` : ""}${skipIntent && hasActiveIntent ? `- ⚠️ มีข้อมูลลูกค้าเก็บไว้แล้ว — ห้ามถามซ้ำ ใช้ข้อมูลเดิมต่อได้เลย\n` : ""}${isVip && hasPastEvent ? `- 💎 เป็นลูกค้าเคยใช้บริการจริง — อ้างถึงงานเก่าได้ (เช่น "งาน ${pastEvents[0].event_type || "ก่อน"} เป็นยังไงบ้างคะ")\n` : ""}`;
+🟢 ลูกค้ารายนี้เคยใช้บริการมาก่อน${custName ? ` (คุณ${custName})` : ""} — ห้ามทักทายเหมือนลูกค้าใหม่ ห้ามถามข้อมูลซ้ำที่เคยรู้ อ้างถึงงานเก่าได้
+- ประวัติงานที่เคยจัด:
+${pastLines}
+`;
   }
 
   const returningPrompt = customerContextSection + (hasPhone ? `
