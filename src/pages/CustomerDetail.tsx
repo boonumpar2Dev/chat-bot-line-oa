@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 
 const STATUS_LABEL: Record<string, string> = {
-  new: "ใหม่", returning: "เคยติดต่อ", pending_quote: "รอใบเสนอ",
-  pending_confirm: "รอยืนยัน", confirmed: "ยืนยันแล้ว", cancelled: "ยกเลิก",
+  new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา",
+  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
 };
 
 function tierOf(c: any): "vip" | "returning" | "active" | "new" {
