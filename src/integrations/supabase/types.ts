@@ -749,6 +749,39 @@ export type Database = {
         }
         Relationships: []
       }
+      tags: {
+        Row: {
+          ai_tag_instructions: string | null
+          color: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          ai_tag_instructions?: string | null
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_tag_instructions?: string | null
+          color?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_menu_permissions: {
         Row: {
           menu_keys: string[]

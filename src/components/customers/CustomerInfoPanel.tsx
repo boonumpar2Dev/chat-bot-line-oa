@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
 import {
   Tag, X, Copy, ExternalLink, Smartphone, BookmarkCheck, History,
@@ -39,6 +41,8 @@ export default function CustomerInfoPanel({
 }: CustomerInfoPanelProps) {
   const [local, setLocal] = useState(customer);
   const [tagInput, setTagInput] = useState("");
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [masterTags, setMasterTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [pastEvents, setPastEvents] = useState<any[]>([]);
   const [archiving, setArchiving] = useState(false);
   const [intentFields, setIntentFields] = useState<any[]>([]);
@@ -64,6 +68,19 @@ export default function CustomerInfoPanel({
           Array.isArray((data as any)?.intent_fields) ? (data as any).intent_fields : []
         )
       );
+  }, []);
+
+  const loadMasterTags = async () => {
+    const { data } = await supabase
+      .from("tags")
+      .select("id, name, color")
+      .order("sort_order")
+      .order("name");
+    setMasterTags((data as any) || []);
+  };
+
+  useEffect(() => {
+    loadMasterTags();
   }, []);
 
   const intentData: Record<string, any> =
@@ -198,13 +215,25 @@ export default function CustomerInfoPanel({
 
   const tags: string[] = Array.isArray(local.tags) ? local.tags : [];
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (!t || tags.includes(t)) return;
+  const tagColor = (name: string) =>
+    masterTags.find((m) => m.name === name)?.color || "#94a3b8";
+
+  const addTag = async (rawName?: string) => {
+    const t = (rawName ?? tagInput).trim();
+    if (!t || tags.includes(t)) {
+      setTagInput("");
+      return;
+    }
     const next = [...tags, t];
     setLocal({ ...local, tags: next });
     onUpdate({ tags: next });
     setTagInput("");
+    setTagPickerOpen(false);
+    // Auto-create in master list if not exists
+    if (!masterTags.find((m) => m.name === t)) {
+      const { error } = await supabase.from("tags").insert({ name: t, color: "#94a3b8" });
+      if (!error) loadMasterTags();
+    }
   };
 
   const removeTag = (t: string) => {
@@ -253,34 +282,66 @@ export default function CustomerInfoPanel({
             <span className="text-xs text-muted-foreground">ยังไม่มีแท็ก</span>
           )}
           {tags.map((t) => (
-            <Badge key={t} variant="secondary" className="text-xs gap-1 pr-1">
+            <Badge
+              key={t}
+              className="text-xs gap-1 pr-1 border-0 text-white"
+              style={{ backgroundColor: tagColor(t) }}
+            >
               {t}
               <button
                 onClick={() => removeTag(t)}
-                className="hover:bg-destructive/20 rounded-full p-0.5"
+                className="hover:bg-black/20 rounded-full p-0.5"
               >
                 <X className="w-3 h-3" />
               </button>
             </Badge>
           ))}
         </div>
-        <div className="flex gap-1">
-          <Input
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addTag();
-              }
-            }}
-            placeholder="เพิ่มแท็ก แล้วกด Enter"
-            className="h-8 text-sm"
-          />
-          <Button size="sm" variant="outline" onClick={addTag}>
-            +
-          </Button>
-        </div>
+        <Popover open={tagPickerOpen} onOpenChange={setTagPickerOpen}>
+          <PopoverTrigger asChild>
+            <Button size="sm" variant="outline" className="h-8 w-full justify-start text-xs text-muted-foreground">
+              <Tag className="w-3 h-3 mr-1" /> เพิ่มแท็ก...
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-0" align="start">
+            <Command>
+              <CommandInput
+                placeholder="ค้นหาหรือสร้างแท็กใหม่"
+                value={tagInput}
+                onValueChange={setTagInput}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && tagInput.trim()) {
+                    e.preventDefault();
+                    addTag(tagInput);
+                  }
+                }}
+              />
+              <CommandList>
+                <CommandEmpty>
+                  <button
+                    onClick={() => addTag(tagInput)}
+                    className="text-xs text-primary hover:underline px-2 py-1"
+                  >
+                    + สร้างแท็ก "{tagInput}"
+                  </button>
+                </CommandEmpty>
+                <CommandGroup>
+                  {masterTags
+                    .filter((m) => !tags.includes(m.name))
+                    .map((m) => (
+                      <CommandItem key={m.id} value={m.name} onSelect={() => addTag(m.name)}>
+                        <span
+                          className="w-3 h-3 rounded-full mr-2 shrink-0"
+                          style={{ backgroundColor: m.color }}
+                        />
+                        {m.name}
+                      </CommandItem>
+                    ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <Separator />
