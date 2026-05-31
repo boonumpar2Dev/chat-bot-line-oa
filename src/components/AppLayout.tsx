@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-type NavItem = { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean };
+type NavItem = { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean; ownerOnly?: boolean };
 type NavGroup = { label?: string; items: NavItem[] };
 
 const navGroups: NavGroup[] = [
@@ -26,7 +26,7 @@ const navGroups: NavGroup[] = [
   ]},
   { label: "ระบบ", items: [
     { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
-    { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", adminOnly: true },
+    { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", ownerOnly: true },
     { to: "/line-connection", label: "เชื่อมต่อ LINE", icon: Plug, key: "ai_tokens", adminOnly: true },
     { to: "/settings", label: "ตั้งค่าระบบ", icon: Settings, key: "settings" },
   ]},
@@ -38,7 +38,11 @@ function NavItems({ collapsed, onNav }: { collapsed: boolean; onNav?: () => void
   const visibleGroups = navGroups
     .map(g => ({
       ...g,
-      items: g.items.filter(i => i.adminOnly ? role === "admin" : menus.includes(i.key)),
+      items: g.items.filter(i => {
+        if (i.ownerOnly) return role === "owner";
+        if (i.adminOnly) return role === "admin" || role === "owner";
+        return menus.includes(i.key);
+      }),
     }))
     .filter(g => g.items.length > 0);
   return (

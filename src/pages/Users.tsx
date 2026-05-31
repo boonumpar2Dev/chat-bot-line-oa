@@ -15,12 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { toast } from "sonner";
 import { Loader2, Shield, Trash2, Plus, Lock, Save, Pencil, KeyRound } from "lucide-react";
 
-type AppRole = "admin" | "manager" | "staff";
-const ROLE_LABEL: Record<AppRole, string> = { admin: "Admin", manager: "Manager", staff: "Staff" };
-const ASSIGNABLE_MENUS = ALL_MENUS.filter(m => !m.adminOnly);
+type AppRole = "owner" | "admin" | "manager" | "staff";
+const ROLE_LABEL: Record<AppRole, string> = { owner: "Owner", admin: "Admin", manager: "Manager", staff: "Staff" };
+const ASSIGNABLE_MENUS = ALL_MENUS.filter(m => !m.adminOnly && !m.ownerOnly);
 
 export default function Users() {
-  const { user: me } = useAuth();
+  const { user: me, role: myRole } = useAuth();
+  const isOwner = myRole === "owner";
   const { reload: reloadMenus } = useMenuPermissions();
   const [users, setUsers] = useState<any[]>([]);
   const [perms, setPerms] = useState<Record<string, MenuKey[]>>({});
@@ -37,14 +38,16 @@ export default function Users() {
       ...p,
       role: (roles?.find(r => r.user_id === p.id)?.role || "staff") as AppRole,
     }));
+    // Hide owner users from non-owner viewers
+    const filtered = isOwner ? merged : merged.filter(u => u.role !== "owner");
     const pmap: Record<string, MenuKey[]> = {};
     (ps || []).forEach((r: any) => { pmap[r.user_id] = r.menu_keys as MenuKey[]; });
-    setUsers(merged);
+    setUsers(filtered);
     setPerms(pmap);
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [isOwner]);
 
   const changeRole = async (userId: string, newRole: AppRole) => {
     await supabase.from("user_roles").delete().eq("user_id", userId);
@@ -70,7 +73,7 @@ export default function Users() {
           <h1 className="font-display text-3xl font-semibold mb-1">จัดการผู้ใช้</h1>
           <p className="text-muted-foreground">รายชื่อผู้ใช้ระบบและบทบาท ({users.length} คน)</p>
         </div>
-        <AddUserDialog onCreated={() => { load(); reloadMenus(); }} />
+        <AddUserDialog onCreated={() => { load(); reloadMenus(); }} isOwner={isOwner} />
       </div>
 
       <Card className="shadow-soft border-border/60 divide-y">
@@ -81,16 +84,17 @@ export default function Users() {
               <p className="font-medium truncate">{u.display_name || u.email}{u.id === me?.id && <span className="text-xs text-muted-foreground ml-2">(คุณ)</span>}</p>
               <p className="text-xs text-muted-foreground truncate">{u.email}</p>
             </div>
-            <Badge variant={u.role === "admin" ? "default" : "secondary"} className="hidden sm:flex"><Shield className="w-3 h-3 mr-1"/>{ROLE_LABEL[u.role]}</Badge>
-            <Select value={u.role} onValueChange={(v) => changeRole(u.id, v as AppRole)} disabled={u.id === me?.id}>
+            <Badge variant={u.role === "owner" || u.role === "admin" ? "default" : "secondary"} className="hidden sm:flex"><Shield className="w-3 h-3 mr-1"/>{ROLE_LABEL[u.role]}</Badge>
+            <Select value={u.role} onValueChange={(v) => changeRole(u.id, v as AppRole)} disabled={u.id === me?.id || (u.role === "owner" && !isOwner)}>
               <SelectTrigger className="w-32"><SelectValue/></SelectTrigger>
               <SelectContent>
+                {isOwner && <SelectItem value="owner">Owner</SelectItem>}
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
             </Select>
-            {u.role !== "admin" && (
+            {u.role !== "admin" && u.role !== "owner" && (
               <EditMenuDialog
                 userId={u.id}
                 userLabel={u.display_name || u.email}
@@ -99,10 +103,10 @@ export default function Users() {
                 onSaved={() => { load(); reloadMenus(); }}
               />
             )}
-            <EditUserDialog user={u} onSaved={load} disabled={false} />
+            <EditUserDialog user={u} onSaved={load} disabled={u.role === "owner" && !isOwner} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบผู้ใช้">
+                <Button size="icon" variant="ghost" disabled={u.id === me?.id || (u.role === "owner" && !isOwner)} title="ลบผู้ใช้">
                   <Trash2 className="w-4 h-4 text-destructive"/>
                 </Button>
               </AlertDialogTrigger>
@@ -125,7 +129,8 @@ export default function Users() {
       <Card className="mt-6 p-5 bg-muted/30 border-dashed">
         <div className="flex items-center gap-2 mb-2"><Lock className="w-4 h-4 text-primary"/><h3 className="font-semibold">บทบาทและสิทธิ์เริ่มต้น</h3></div>
         <ul className="text-sm text-muted-foreground space-y-1 ml-6 list-disc">
-          <li><strong>Admin</strong> — เห็นและจัดการทุกเมนู (รวม "จัดการผู้ใช้" และ "AI Tokens")</li>
+          {isOwner && <li><strong>Owner</strong> — เจ้าของระบบ (เห็นทุกอย่างรวม AI Tokens) — ซ่อนจากผู้ใช้อื่น</li>}
+          <li><strong>Admin</strong> — เห็นและจัดการทุกเมนู (รวม "จัดการผู้ใช้")</li>
           <li><strong>Manager</strong> — Dashboard, จัดการแชท, สอน AI, ตั้งค่า</li>
           <li><strong>Staff</strong> — จัดการแชท เท่านั้น</li>
         </ul>
@@ -135,7 +140,7 @@ export default function Users() {
   );
 }
 
-function AddUserDialog({ onCreated }: { onCreated: () => void }) {
+function AddUserDialog({ onCreated, isOwner }: { onCreated: () => void; isOwner: boolean }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -195,13 +200,14 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
               <SelectTrigger><SelectValue/></SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin (เห็นทุกเมนู)</SelectItem>
+                {isOwner && <SelectItem value="owner">Owner (เจ้าของระบบ — เห็นทุกอย่าง)</SelectItem>}
+                <SelectItem value="admin">Admin (เห็นทุกเมนูปกติ)</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {role !== "admin" && (
+          {role !== "admin" && role !== "owner" && (
             <div>
               <Label className="mb-2 block">สิทธิ์เมนู</Label>
               <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">

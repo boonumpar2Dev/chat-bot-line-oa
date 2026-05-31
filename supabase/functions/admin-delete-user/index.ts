@@ -17,12 +17,21 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "unauthorized" }, 401);
 
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-    const { data: roleRow } = await admin.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-    if (!roleRow) return json({ error: "admin only" }, 403);
+    const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", user.id);
+    const callerRoles = (roleRows || []).map((r: any) => r.role);
+    const isOwner = callerRoles.includes("owner");
+    const isAdmin = callerRoles.includes("admin");
+    if (!isOwner && !isAdmin) return json({ error: "admin only" }, 403);
 
     const { user_id } = await req.json();
     if (!user_id) return json({ error: "user_id required" }, 400);
     if (user_id === user.id) return json({ error: "cannot delete yourself" }, 400);
+
+    // Non-owner cannot delete owner accounts
+    if (!isOwner) {
+      const { data: tgt } = await admin.from("user_roles").select("role").eq("user_id", user_id).eq("role", "owner").maybeSingle();
+      if (tgt) return json({ error: "cannot delete owner" }, 403);
+    }
 
     // Clean up dependent rows first (no FK cascade configured)
     await admin.from("user_menu_permissions").delete().eq("user_id", user_id);
