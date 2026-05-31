@@ -848,6 +848,27 @@ ${greetingFilled ? `- สไตล์ทักทายที่แนะนำ 
 - สนทนาครบ 3 รอบยังไม่ได้ข้อมูล → ถามยืนยันเบอร์เลย
 - ลูกค้ายืนยัน (ได้/ได้เลย/ค่ะ/ครับ/OK) → set confirm_existing_phone: true` : "");
 
+  // 🏷️ ดึงคำสั่ง AI ของแท็กที่ลูกค้าคนนี้มี (ถ้ามี) — fail-safe ถ้าพังให้ใช้ string ว่าง
+  let tagInstructions = "";
+  try {
+    const custTags: string[] = Array.isArray(customer.tags) ? customer.tags.filter((x: any) => typeof x === "string" && x.trim()) : [];
+    if (custTags.length) {
+      const { data: tagRows } = await supabase
+        .from("tags")
+        .select("name, ai_tag_instructions")
+        .in("name", custTags)
+        .not("ai_tag_instructions", "is", null);
+      if (tagRows?.length) {
+        tagInstructions = tagRows
+          .filter((t: any) => t.ai_tag_instructions && String(t.ai_tag_instructions).trim())
+          .map((t: any) => `- [${t.name}] ${String(t.ai_tag_instructions).trim()}`)
+          .join("\n");
+      }
+    }
+  } catch (e: any) {
+    console.warn("[tags] fetch ai_tag_instructions failed:", e?.message);
+  }
+
   const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
     kbContext,
@@ -861,6 +882,7 @@ ${greetingFilled ? `- สไตล์ทักทายที่แนะนำ 
     summarySection,
     returningPrompt,
     comparisonSection,
+    tagInstructions,
   });
 
 
