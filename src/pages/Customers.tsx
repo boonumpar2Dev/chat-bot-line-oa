@@ -276,14 +276,24 @@ export default function Customers() {
             <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="ระดับ"/></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">ทุกระดับ</SelectItem>
-              <SelectItem value="vip">VIP</SelectItem>
-              <SelectItem value="returning">เคยติดต่อ</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="new">ใหม่</SelectItem>
+              {tierList.map(t => (
+                <SelectItem key={t.name} value={t.name}>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                    {t.name}
+                  </span>
+                </SelectItem>
+              ))}
+              <SelectItem value="__none__">ยังไม่กำหนด</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
+            <Settings2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
+
+      <TierManagerDialog open={tierMgrOpen} onOpenChange={setTierMgrOpen} tierList={tierList} onSave={saveTierList} />
 
       {/* Bulk action bar (only when selected) */}
       {selected.size > 0 && (
