@@ -841,6 +841,7 @@ export type Database = {
         Returns: boolean
       }
       is_staff_member: { Args: { _user_id: string }; Returns: boolean }
+      managed_auto_tags: { Args: { _cfg: Json }; Returns: string[] }
       rescan_auto_tags: { Args: never; Returns: number }
     }
     Enums: {
@@ -852,6 +853,7 @@ export type Database = {
         | "pending_confirm"
         | "confirmed"
         | "cancelled"
+        | "inquiry"
       message_sender: "customer" | "ai" | "admin"
     }
     CompositeTypes: {
@@ -988,6 +990,7 @@ export const Constants = {
         "pending_confirm",
         "confirmed",
         "cancelled",
+        "inquiry",
       ],
       message_sender: ["customer", "ai", "admin"],
     },
