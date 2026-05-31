@@ -20,6 +20,7 @@ export interface BuildPromptInput {
   returningPrompt?: string;
   comparisonSection?: string;
   jsonSchemaHint?: string;
+  tagInstructions?: string;
 }
 
 export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPrompt: string } {
@@ -50,6 +51,12 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     ? `\n\n🖼️ กฎการส่งรูปขั้นสูง:\n${advImgRules.map((r, i) => `- ${r}`).join("\n")}`
     : "";
 
+  // 🏷️ คำสั่งเฉพาะตามแท็กของลูกค้ารายนี้ (จากตาราง tags.ai_tag_instructions)
+  // — เป็น "แนวทาง" ไม่ใช่ strict_rules; ถ้าขัดกับ strict_rules ให้ strict_rules ชนะ
+  const tagBlock = (i.tagInstructions && i.tagInstructions.trim())
+    ? `\n\n🏷️ บริบทเฉพาะลูกค้ารายนี้ (จากแท็ก — เป็นแนวทาง, ถ้าขัด strict_rules ให้ strict_rules ชนะ):\n${i.tagInstructions.trim()}`
+    : "";
+
 
   // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
   const _now = new Date();
@@ -63,7 +70,7 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${dateBlock}
+  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${dateBlock}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด):
 - ตอบจาก KB/แคตตาล็อกแพ็กเกจเท่านั้น — **ห้ามแต่งราคา/ชื่อ tier/ชื่อระดับคุณภาพ/ชื่อเมนู/ชื่อแพ็กเกจ/ชื่อบริการ** เด็ดขาด

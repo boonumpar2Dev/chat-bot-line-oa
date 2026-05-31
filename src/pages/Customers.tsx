@@ -5,12 +5,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Crown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Crown, Tag as TagIcon, X, Plus, Minus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 
 const STATUS_LABEL: Record<string, string> = {
@@ -58,9 +61,15 @@ export default function Customers() {
   const [debounced, setDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
-  
+
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Bulk select state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [masterTags, setMasterTags] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [tagPickerOpen, setTagPickerOpen] = useState<null | "add" | "remove">(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Total count (independent of pagination/filter)
   useEffect(() => {
@@ -82,6 +91,7 @@ export default function Customers() {
   useEffect(() => {
     let active = true;
     setLoading(true); setPage(0); setHasMore(true);
+    setSelected(new Set());
     (async () => {
       let q = supabase.from("customers").select("*").order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
@@ -100,6 +110,12 @@ export default function Customers() {
     })();
     return () => { active = false; };
   }, [debounced, isSearching, statusFilter]);
+
+  // Load master tags
+  useEffect(() => {
+    supabase.from("tags").select("id, name, color").order("sort_order").order("name")
+      .then(({ data }) => setMasterTags((data as any) || []));
+  }, []);
 
   // Realtime patch
   useEffect(() => {
@@ -141,6 +157,59 @@ export default function Customers() {
     return customers.filter(c => tierFilter === "all" || tierOf(c) === tierFilter);
   }, [customers, tierFilter]);
 
+  const tagColor = (name: string) => masterTags.find(m => m.name === name)?.color || "#94a3b8";
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+  const selectAllVisible = () => setSelected(new Set(filtered.map(c => c.id)));
+  const clearSelection = () => setSelected(new Set());
+
+  const bulkApplyTag = async (tagName: string, mode: "add" | "remove") => {
+    const ids = Array.from(selected);
+    if (!ids.length || !tagName) return;
+    setBulkBusy(true);
+    try {
+      const targets = customers.filter(c => selected.has(c.id));
+      const updates = await Promise.all(targets.map(async (c) => {
+        const cur: string[] = Array.isArray(c.tags) ? c.tags : [];
+        let next: string[];
+        if (mode === "add") {
+          if (cur.includes(tagName)) return null;
+          next = [...cur, tagName];
+        } else {
+          if (!cur.includes(tagName)) return null;
+          next = cur.filter(t => t !== tagName);
+        }
+        const { error } = await supabase.from("customers").update({ tags: next }).eq("id", c.id);
+        if (error) throw error;
+        return { id: c.id, next };
+      }));
+      const applied = updates.filter(Boolean) as { id: string; next: string[] }[];
+      if (applied.length) {
+        setCustomers(prev => prev.map(c => {
+          const u = applied.find(a => a.id === c.id);
+          return u ? { ...c, tags: u.next } : c;
+        }));
+      }
+      // ensure tag exists in master (idempotent)
+      if (mode === "add" && !masterTags.find(m => m.name === tagName)) {
+        await supabase.from("tags").insert({ name: tagName, color: "#94a3b8" });
+        const { data } = await supabase.from("tags").select("id, name, color").order("sort_order").order("name");
+        setMasterTags((data as any) || []);
+      }
+      toast.success(`${mode === "add" ? "เพิ่ม" : "ลบ"}แท็ก "${tagName}" — กระทบ ${applied.length}/${ids.length} ราย`);
+      setTagPickerOpen(null);
+    } catch (e: any) {
+      toast.error(e?.message || "ทำไม่สำเร็จ");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const updateFilter = (k: string, v: string) => {
     const next = new URLSearchParams(sp);
@@ -196,6 +265,48 @@ export default function Customers() {
         </div>
       </div>
 
+      {/* Bulk action bar (only when selected) */}
+      {selected.size > 0 && (
+        <div className="border-b bg-primary/5 px-4 lg:px-6 py-2.5 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">เลือก {selected.size} ราย</span>
+          <Button size="sm" variant="ghost" onClick={selectAllVisible} className="h-7 text-xs">เลือกทั้งหมดที่แสดง</Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection} className="h-7 text-xs">ล้างเลือก</Button>
+          <div className="ml-auto flex gap-2">
+            <Popover open={tagPickerOpen === "add"} onOpenChange={(o) => setTagPickerOpen(o ? "add" : null)}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="default" disabled={bulkBusy} className="h-8 gap-1">
+                  <Plus className="w-3.5 h-3.5"/> เพิ่มแท็ก
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="end">
+                <TagPicker masterTags={masterTags} mode="add" onPick={(name) => bulkApplyTag(name, "add")} />
+              </PopoverContent>
+            </Popover>
+            <Popover open={tagPickerOpen === "remove"} onOpenChange={(o) => setTagPickerOpen(o ? "remove" : null)}>
+              <PopoverTrigger asChild>
+                <Button size="sm" variant="outline" disabled={bulkBusy} className="h-8 gap-1">
+                  <Minus className="w-3.5 h-3.5"/> ลบแท็ก
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-0" align="end">
+                <TagPicker
+                  masterTags={(() => {
+                    // เฉพาะแท็กที่มีในกลุ่มที่เลือก
+                    const inSel = new Set<string>();
+                    customers.filter(c => selected.has(c.id)).forEach(c => (c.tags || []).forEach((t: string) => inSel.add(t)));
+                    return masterTags.filter(m => inSel.has(m.name)).concat(
+                      Array.from(inSel).filter(t => !masterTags.find(m => m.name === t)).map(t => ({ id: t, name: t, color: "#94a3b8" }))
+                    );
+                  })()}
+                  mode="remove"
+                  onPick={(name) => bulkApplyTag(name, "remove")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        </div>
+      )}
+
       {/* List */}
       <div className="flex-1 overflow-auto">
         {loading ? (
@@ -211,6 +322,7 @@ export default function Customers() {
           <div className="p-3 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {filtered.map(c => {
               const tier = tierOf(c);
+              const isSelected = selected.has(c.id);
               return (
                 <div
                   key={c.id}
@@ -220,8 +332,19 @@ export default function Customers() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); nav(`/customers/${c.id}`); }
                   }}
-                  className="group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className={cn(
+                    "group relative text-left p-4 rounded-xl border bg-card hover:bg-accent/40 transition-all hover:shadow-md hover:border-primary/30 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                    isSelected && "ring-2 ring-primary border-primary/40 bg-primary/5"
+                  )}
                 >
+                  {/* Checkbox — top-left */}
+                  <div
+                    className="absolute top-3 left-3"
+                    onClick={(e) => { e.stopPropagation(); toggleSelect(c.id); }}
+                  >
+                    <Checkbox checked={isSelected} className="bg-card" />
+                  </div>
+
                   {/* Open chat — icon button, top-right */}
                   <Button
                     size="icon" variant="ghost"
@@ -232,7 +355,7 @@ export default function Customers() {
                     <MessageSquare className="w-4 h-4"/>
                   </Button>
 
-                  <div className="flex items-start gap-3 pr-8">
+                  <div className="flex items-start gap-3 pr-8 pl-7">
                     <Avatar className="w-12 h-12 shrink-0">
                       <AvatarImage src={c.picture_url} alt={c.display_name}/>
                       <AvatarFallback>{(c.display_name || "?")[0]}</AvatarFallback>
@@ -250,6 +373,18 @@ export default function Customers() {
                           {STATUS_LABEL[c.status] || c.status}
                         </Badge>
                       </div>
+                      {Array.isArray(c.tags) && c.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {c.tags.slice(0, 5).map((t: string) => (
+                            <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
+                              {t}
+                            </Badge>
+                          ))}
+                          {c.tags.length > 5 && (
+                            <span className="text-[10px] text-muted-foreground">+{c.tags.length - 5}</span>
+                          )}
+                        </div>
+                      )}
                       <div className="space-y-1 text-xs text-muted-foreground">
                         {c.phone ? (
                           <div className="flex items-center gap-1.5"><Phone className="w-3 h-3"/> {c.phone}</div>
@@ -278,5 +413,35 @@ export default function Customers() {
       </div>
 
     </div>
+  );
+}
+
+function TagPicker({
+  masterTags, mode, onPick,
+}: { masterTags: { id: string; name: string; color: string }[]; mode: "add" | "remove"; onPick: (name: string) => void }) {
+  const [input, setInput] = useState("");
+  return (
+    <Command>
+      <CommandInput placeholder={mode === "add" ? "พิมพ์เพื่อค้นหา/สร้างแท็กใหม่" : "เลือกแท็กที่จะลบ"} value={input} onValueChange={setInput} />
+      <CommandList>
+        <CommandEmpty>
+          {mode === "add" && input.trim() ? (
+            <button onClick={() => onPick(input.trim())} className="text-xs text-primary hover:underline px-2 py-1">
+              + สร้างและเพิ่มแท็ก "{input.trim()}"
+            </button>
+          ) : (
+            <span className="text-xs text-muted-foreground px-2 py-1">ไม่พบแท็ก</span>
+          )}
+        </CommandEmpty>
+        <CommandGroup>
+          {masterTags.map(m => (
+            <CommandItem key={m.id} value={m.name} onSelect={() => onPick(m.name)}>
+              <span className="w-3 h-3 rounded-full mr-2 shrink-0" style={{ backgroundColor: m.color }} />
+              {m.name}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
   );
 }
