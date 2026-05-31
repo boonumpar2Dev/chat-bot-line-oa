@@ -500,3 +500,51 @@ function TagPicker({
     </Command>
   );
 }
+
+function TierManagerDialog({
+  open, onOpenChange, tierList, onSave,
+}: { open: boolean; onOpenChange: (o: boolean) => void; tierList: TierDef[]; onSave: (list: TierDef[]) => void | Promise<void> }) {
+  const [draft, setDraft] = useState<TierDef[]>(tierList);
+  useEffect(() => { if (open) setDraft(tierList); }, [open, tierList]);
+
+  const update = (i: number, patch: Partial<TierDef>) => setDraft(prev => prev.map((t, idx) => idx === i ? { ...t, ...patch } : t));
+  const remove = (i: number) => setDraft(prev => prev.filter((_, idx) => idx !== i));
+  const add = () => setDraft(prev => [...prev, { name: "", color: "#94a3b8" }]);
+
+  const save = async () => {
+    const clean = draft.map(t => ({ name: t.name.trim(), color: t.color || "#94a3b8" })).filter(t => t.name);
+    const seen = new Set<string>();
+    const dedup = clean.filter(t => seen.has(t.name) ? false : (seen.add(t.name), true));
+    await onSave(dedup);
+    toast.success("บันทึกระดับลูกค้าแล้ว");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>ตั้งค่าระดับลูกค้า (Tier)</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          {draft.map((t, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input type="color" value={t.color} onChange={e => update(i, { color: e.target.value })} className="w-12 h-9 p-1 cursor-pointer" />
+              <Input value={t.name} onChange={e => update(i, { name: e.target.value })} placeholder="ชื่อระดับ เช่น VIP, A, Gold" className="flex-1" />
+              <Button variant="ghost" size="icon" onClick={() => remove(i)} className="text-destructive shrink-0"><Trash2Icon /></Button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={add} className="w-full gap-1"><Plus className="w-3.5 h-3.5"/> เพิ่มระดับ</Button>
+          <p className="text-[11px] text-muted-foreground pt-2">💡 ระดับลูกค้าเป็นแบบกำหนดเอง — แอดมินติดเอง ไม่อัตโนมัติ ใช้ได้กับทุกธุรกิจ (เช่น VIP/ทั่วไป หรือ A/B/C)</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+          <Button onClick={save}>บันทึก</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Trash2Icon() { return <X className="w-4 h-4"/>; }
+
