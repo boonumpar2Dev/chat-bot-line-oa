@@ -836,7 +836,7 @@ export type Database = {
       rescan_auto_tags: { Args: never; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "manager" | "staff"
+      app_role: "admin" | "manager" | "staff" | "owner"
       customer_status:
         | "new"
         | "returning"
@@ -973,7 +973,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "manager", "staff"],
+      app_role: ["admin", "manager", "staff", "owner"],
       customer_status: [
         "new",
         "returning",
