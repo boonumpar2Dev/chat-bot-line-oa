@@ -8,36 +8,62 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-const nav: { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean }[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
-  { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
-  { to: "/customers", label: "ลูกค้า", icon: UserCircle2, key: "chats" },
-  { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
-  { to: "/ai-settings", label: "ตั้งค่า AI", icon: Bot, key: "ai_settings" },
-  { to: "/tags", label: "แท็กลูกค้า", icon: TagIcon, key: "tags" },
-  { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
-  { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", adminOnly: true },
-  { to: "/line-connection", label: "เชื่อมต่อ LINE", icon: Plug, key: "ai_tokens", adminOnly: true },
-  { to: "/settings", label: "ตั้งค่า", icon: Settings, key: "settings" },
+type NavItem = { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean };
+type NavGroup = { label?: string; items: NavItem[] };
+
+const navGroups: NavGroup[] = [
+  { items: [
+    { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
+  ]},
+  { label: "ลูกค้า", items: [
+    { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
+    { to: "/customers", label: "รายชื่อลูกค้า", icon: UserCircle2, key: "chats" },
+    { to: "/tags", label: "แท็กลูกค้า", icon: TagIcon, key: "tags" },
+  ]},
+  { label: "AI", items: [
+    { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
+    { to: "/ai-settings", label: "ตั้งค่า AI", icon: Bot, key: "ai_settings" },
+  ]},
+  { label: "ระบบ", items: [
+    { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
+    { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", adminOnly: true },
+    { to: "/line-connection", label: "เชื่อมต่อ LINE", icon: Plug, key: "ai_tokens", adminOnly: true },
+    { to: "/settings", label: "ตั้งค่าระบบ", icon: Settings, key: "settings" },
+  ]},
 ];
 
 function NavItems({ collapsed, onNav }: { collapsed: boolean; onNav?: () => void }) {
   const { role } = useAuth();
   const { menus } = useMenuPermissions();
+  const visibleGroups = navGroups
+    .map(g => ({
+      ...g,
+      items: g.items.filter(i => i.adminOnly ? role === "admin" : menus.includes(i.key)),
+    }))
+    .filter(g => g.items.length > 0);
   return (
-    <nav className="flex-1 px-3 py-2 space-y-1">
-      {nav.filter(i => {
-        if (i.adminOnly) return role === "admin";
-        return menus.includes(i.key);
-      }).map(item => (
-        <NavLink key={item.to} to={item.to} end={item.exact} onClick={onNav}
-          className={({ isActive }) => cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-            isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )}>
-          <item.icon className="w-5 h-5 shrink-0" />
-          {!collapsed && <span>{item.label}</span>}
-        </NavLink>
+    <nav className="flex-1 px-3 py-2 space-y-3 overflow-y-auto">
+      {visibleGroups.map((group, gi) => (
+        <div key={gi} className="space-y-1">
+          {group.label && !collapsed && (
+            <div className="px-3 pt-1 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
+              {group.label}
+            </div>
+          )}
+          {group.label && collapsed && gi > 0 && (
+            <div className="mx-3 my-1 border-t border-sidebar-border/50" />
+          )}
+          {group.items.map(item => (
+            <NavLink key={item.to} to={item.to} end={item.exact} onClick={onNav}
+              className={({ isActive }) => cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-soft" : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}>
+              <item.icon className="w-5 h-5 shrink-0" />
+              {!collapsed && <span>{item.label}</span>}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   );
