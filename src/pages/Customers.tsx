@@ -9,7 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Crown, Tag as TagIcon, X, Plus, Minus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Minus, Settings2, Crown, GripVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -31,21 +32,11 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground border-border",
 };
 
-function tierOf(c: any): "vip" | "returning" | "active" | "new" {
-  if (c.status === "confirmed" || (c.clv_amount || 0) >= 50000) return "vip";
-  if (c.status === "returning" || (c.clv_amount || 0) > 0) return "returning";
-  const last = c.last_message_at ? new Date(c.last_message_at).getTime() : 0;
-  if (last && Date.now() - last < 30 * 86400000) return "active";
-  return "new";
-}
-
-const TIER_LABEL = { vip: "VIP", returning: "เคยติดต่อ", active: "Active", new: "ใหม่" };
-const TIER_COLOR: Record<string, string> = {
-  vip: "bg-gradient-to-r from-amber-400 to-yellow-500 text-white border-0",
-  returning: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
-  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-  new: "bg-muted text-muted-foreground border-border",
-};
+type TierDef = { name: string; color: string };
+const DEFAULT_TIERS: TierDef[] = [
+  { name: "VIP", color: "#f59e0b" },
+  { name: "ลูกค้าทั่วไป", color: "#94a3b8" },
+];
 
 const PAGE_SIZE = 50;
 
@@ -70,6 +61,31 @@ export default function Customers() {
   const [masterTags, setMasterTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagPickerOpen, setTagPickerOpen] = useState<null | "add" | "remove">(null);
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Tier (manual, admin-managed)
+  const [tierList, setTierList] = useState<TierDef[]>(DEFAULT_TIERS);
+  const [tierMgrOpen, setTierMgrOpen] = useState(false);
+  const tierByName = useMemo(() => Object.fromEntries(tierList.map(t => [t.name, t])), [tierList]);
+
+  useEffect(() => {
+    supabase.from("app_settings").select("tier_list").eq("key", "ai_config").maybeSingle()
+      .then(({ data }: any) => {
+        const list = Array.isArray(data?.tier_list) ? data.tier_list : null;
+        if (list && list.length) setTierList(list);
+      });
+  }, []);
+
+  const saveTierList = async (list: TierDef[]) => {
+    setTierList(list);
+    const { error } = await supabase.from("app_settings").update({ tier_list: list as any }).eq("key", "ai_config");
+    if (error) toast.error(error.message);
+  };
+
+  const setCustomerTier = async (id: string, tier: string | null) => {
+    const { error } = await supabase.from("customers").update({ tier }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setCustomers(prev => prev.map(c => c.id === id ? { ...c, tier } : c));
+  };
 
   // Total count (independent of pagination/filter)
   useEffect(() => {
@@ -154,7 +170,11 @@ export default function Customers() {
   }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter]);
 
   const filtered = useMemo(() => {
-    return customers.filter(c => tierFilter === "all" || tierOf(c) === tierFilter);
+    return customers.filter(c => {
+      if (tierFilter === "all") return true;
+      if (tierFilter === "__none__") return !c.tier;
+      return c.tier === tierFilter;
+    });
   }, [customers, tierFilter]);
 
   const tagColor = (name: string) => masterTags.find(m => m.name === name)?.color || "#94a3b8";
@@ -256,14 +276,24 @@ export default function Customers() {
             <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="ระดับ"/></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">ทุกระดับ</SelectItem>
-              <SelectItem value="vip">VIP</SelectItem>
-              <SelectItem value="returning">เคยติดต่อ</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="new">ใหม่</SelectItem>
+              {tierList.map(t => (
+                <SelectItem key={t.name} value={t.name}>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                    {t.name}
+                  </span>
+                </SelectItem>
+              ))}
+              <SelectItem value="__none__">ยังไม่กำหนด</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
+            <Settings2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
+
+      <TierManagerDialog open={tierMgrOpen} onOpenChange={setTierMgrOpen} tierList={tierList} onSave={saveTierList} />
 
       {/* Bulk action bar (only when selected) */}
       {selected.size > 0 && (
@@ -321,7 +351,7 @@ export default function Customers() {
         ) : (
           <div className="p-3 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {filtered.map(c => {
-              const tier = tierOf(c);
+              const tierDef = c.tier ? tierByName[c.tier] : null;
               const isSelected = selected.has(c.id);
               return (
                 <div
@@ -363,12 +393,37 @@ export default function Customers() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold truncate">{c.nickname || c.display_name || "ไม่ระบุชื่อ"}</p>
-                        {tier === "vip" && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0"/>}
+                        {c.tier === "VIP" && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0"/>}
                       </div>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", TIER_COLOR[tier])}>
-                          {TIER_LABEL[tier]}
-                        </Badge>
+                      <div className="flex flex-wrap gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="inline-flex">
+                              {tierDef ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-0 text-white cursor-pointer" style={{ backgroundColor: tierDef.color }}>
+                                  {tierDef.name}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-dashed text-muted-foreground cursor-pointer">
+                                  + ระดับ
+                                </Badge>
+                              )}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-1" align="start">
+                            {tierList.map(t => (
+                              <button key={t.name} onClick={() => setCustomerTier(c.id, t.name)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm">
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                                {t.name}
+                              </button>
+                            ))}
+                            {c.tier && (
+                              <button onClick={() => setCustomerTier(c.id, null)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-destructive/10 text-destructive text-left text-xs border-t mt-1 pt-2">
+                                <X className="w-3 h-3" /> ลบระดับ
+                              </button>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", STATUS_COLOR[c.status])}>
                           {STATUS_LABEL[c.status] || c.status}
                         </Badge>
@@ -445,3 +500,51 @@ function TagPicker({
     </Command>
   );
 }
+
+function TierManagerDialog({
+  open, onOpenChange, tierList, onSave,
+}: { open: boolean; onOpenChange: (o: boolean) => void; tierList: TierDef[]; onSave: (list: TierDef[]) => void | Promise<void> }) {
+  const [draft, setDraft] = useState<TierDef[]>(tierList);
+  useEffect(() => { if (open) setDraft(tierList); }, [open, tierList]);
+
+  const update = (i: number, patch: Partial<TierDef>) => setDraft(prev => prev.map((t, idx) => idx === i ? { ...t, ...patch } : t));
+  const remove = (i: number) => setDraft(prev => prev.filter((_, idx) => idx !== i));
+  const add = () => setDraft(prev => [...prev, { name: "", color: "#94a3b8" }]);
+
+  const save = async () => {
+    const clean = draft.map(t => ({ name: t.name.trim(), color: t.color || "#94a3b8" })).filter(t => t.name);
+    const seen = new Set<string>();
+    const dedup = clean.filter(t => seen.has(t.name) ? false : (seen.add(t.name), true));
+    await onSave(dedup);
+    toast.success("บันทึกระดับลูกค้าแล้ว");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>ตั้งค่าระดับลูกค้า (Tier)</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          {draft.map((t, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input type="color" value={t.color} onChange={e => update(i, { color: e.target.value })} className="w-12 h-9 p-1 cursor-pointer" />
+              <Input value={t.name} onChange={e => update(i, { name: e.target.value })} placeholder="ชื่อระดับ เช่น VIP, A, Gold" className="flex-1" />
+              <Button variant="ghost" size="icon" onClick={() => remove(i)} className="text-destructive shrink-0"><Trash2Icon /></Button>
+            </div>
+          ))}
+          <Button variant="outline" size="sm" onClick={add} className="w-full gap-1"><Plus className="w-3.5 h-3.5"/> เพิ่มระดับ</Button>
+          <p className="text-[11px] text-muted-foreground pt-2">💡 ระดับลูกค้าเป็นแบบกำหนดเอง — แอดมินติดเอง ไม่อัตโนมัติ ใช้ได้กับทุกธุรกิจ (เช่น VIP/ทั่วไป หรือ A/B/C)</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>ยกเลิก</Button>
+          <Button onClick={save}>บันทึก</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Trash2Icon() { return <X className="w-4 h-4"/>; }
+

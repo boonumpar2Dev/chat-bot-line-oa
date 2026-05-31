@@ -16,21 +16,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
 };
 
-function tierOf(c: any): "vip" | "returning" | "active" | "new" {
-  if (c.status === "confirmed" || (c.clv_amount || 0) >= 50000) return "vip";
-  if (c.status === "returning" || (c.clv_amount || 0) > 0) return "returning";
-  const last = c.last_message_at ? new Date(c.last_message_at).getTime() : 0;
-  if (last && Date.now() - last < 30 * 86400000) return "active";
-  return "new";
-}
-
-const TIER_LABEL = { vip: "VIP", returning: "เคยติดต่อ", active: "Active", new: "ใหม่" };
-const TIER_COLOR: Record<string, string> = {
-  vip: "bg-gradient-to-r from-amber-400 to-yellow-500 text-white border-0",
-  returning: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
-  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-  new: "bg-muted text-muted-foreground border-border",
-};
+// Tier is now manual (customers.tier) — admin-managed, no auto computation
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -87,7 +73,7 @@ export default function CustomerDetail() {
     );
   }
 
-  const tier = tierOf(customer);
+  const tier = customer.tier as string | null;
 
   return (
     <div className="min-h-full bg-background">
@@ -102,10 +88,10 @@ export default function CustomerDetail() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-display font-bold text-lg truncate">{customer.nickname || customer.display_name || "ไม่ระบุชื่อ"}</h1>
-              {tier === "vip" && <Crown className="w-4 h-4 text-amber-500 shrink-0"/>}
+              {tier === "VIP" && <Crown className="w-4 h-4 text-amber-500 shrink-0"/>}
             </div>
             <div className="flex gap-1.5 mt-0.5">
-              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", TIER_COLOR[tier])}>{TIER_LABEL[tier]}</Badge>
+              {tier && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">{tier}</Badge>}
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">{STATUS_LABEL[customer.status] || customer.status}</Badge>
             </div>
           </div>
