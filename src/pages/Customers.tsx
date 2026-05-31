@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Minus, Settings2, Crown, GripVertical } from "lucide-react";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ export default function Customers() {
   // Bulk select state
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [masterTags, setMasterTags] = useState<{ id: string; name: string; color: string }[]>([]);
-  const [tagPickerOpen, setTagPickerOpen] = useState<null | "add" | "remove">(null);
+  const [bulkTagOpen, setBulkTagOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
   // Tier (manual, admin-managed)
@@ -189,41 +189,34 @@ export default function Customers() {
   const selectAllVisible = () => setSelected(new Set(filtered.map(c => c.id)));
   const clearSelection = () => setSelected(new Set());
 
-  const bulkApplyTag = async (tagName: string, mode: "add" | "remove") => {
-    const ids = Array.from(selected);
-    if (!ids.length || !tagName) return;
+  const applyTagChanges = async (ids: string[], adds: string[], removes: string[]) => {
+    if (!ids.length || (!adds.length && !removes.length)) return;
     setBulkBusy(true);
     try {
-      const targets = customers.filter(c => selected.has(c.id));
-      const updates = await Promise.all(targets.map(async (c) => {
+      const targets = customers.filter(c => ids.includes(c.id));
+      const updates: { id: string; next: string[] }[] = [];
+      for (const c of targets) {
         const cur: string[] = Array.isArray(c.tags) ? c.tags : [];
-        let next: string[];
-        if (mode === "add") {
-          if (cur.includes(tagName)) return null;
-          next = [...cur, tagName];
-        } else {
-          if (!cur.includes(tagName)) return null;
-          next = cur.filter(t => t !== tagName);
-        }
+        let next = [...cur];
+        for (const a of adds) if (!next.includes(a)) next.push(a);
+        if (removes.length) next = next.filter(t => !removes.includes(t));
+        if (next.length === cur.length && next.every(t => cur.includes(t))) continue;
         const { error } = await supabase.from("customers").update({ tags: next }).eq("id", c.id);
         if (error) throw error;
-        return { id: c.id, next };
-      }));
-      const applied = updates.filter(Boolean) as { id: string; next: string[] }[];
-      if (applied.length) {
+        updates.push({ id: c.id, next });
+      }
+      if (updates.length) {
         setCustomers(prev => prev.map(c => {
-          const u = applied.find(a => a.id === c.id);
+          const u = updates.find(a => a.id === c.id);
           return u ? { ...c, tags: u.next } : c;
         }));
       }
-      // ensure tag exists in master (idempotent)
-      if (mode === "add" && !masterTags.find(m => m.name === tagName)) {
-        await supabase.from("tags").insert({ name: tagName, color: "#94a3b8" });
+      const newTags = adds.filter(a => !masterTags.find(m => m.name === a));
+      if (newTags.length) {
+        await supabase.from("tags").insert(newTags.map(name => ({ name, color: "#94a3b8" })));
         const { data } = await supabase.from("tags").select("id, name, color").order("sort_order").order("name");
         setMasterTags((data as any) || []);
       }
-      toast.success(`${mode === "add" ? "เพิ่ม" : "ลบ"}แท็ก "${tagName}" — กระทบ ${applied.length}/${ids.length} ราย`);
-      setTagPickerOpen(null);
     } catch (e: any) {
       toast.error(e?.message || "ทำไม่สำเร็จ");
     } finally {
@@ -301,35 +294,19 @@ export default function Customers() {
           <span className="text-sm font-medium">เลือก {selected.size} ราย</span>
           <Button size="sm" variant="ghost" onClick={selectAllVisible} className="h-7 text-xs">เลือกทั้งหมดที่แสดง</Button>
           <Button size="sm" variant="ghost" onClick={clearSelection} className="h-7 text-xs">ล้างเลือก</Button>
-          <div className="ml-auto flex gap-2">
-            <Popover open={tagPickerOpen === "add"} onOpenChange={(o) => setTagPickerOpen(o ? "add" : null)}>
+          <div className="ml-auto">
+            <Popover open={bulkTagOpen} onOpenChange={setBulkTagOpen}>
               <PopoverTrigger asChild>
                 <Button size="sm" variant="default" disabled={bulkBusy} className="h-8 gap-1">
-                  <Plus className="w-3.5 h-3.5"/> เพิ่มแท็ก
+                  <TagIcon className="w-3.5 h-3.5"/> จัดการแท็ก
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="end">
-                <TagPicker masterTags={masterTags} mode="add" onPick={(name) => bulkApplyTag(name, "add")} />
-              </PopoverContent>
-            </Popover>
-            <Popover open={tagPickerOpen === "remove"} onOpenChange={(o) => setTagPickerOpen(o ? "remove" : null)}>
-              <PopoverTrigger asChild>
-                <Button size="sm" variant="outline" disabled={bulkBusy} className="h-8 gap-1">
-                  <Minus className="w-3.5 h-3.5"/> ลบแท็ก
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="end">
-                <TagPicker
-                  masterTags={(() => {
-                    // เฉพาะแท็กที่มีในกลุ่มที่เลือก
-                    const inSel = new Set<string>();
-                    customers.filter(c => selected.has(c.id)).forEach(c => (c.tags || []).forEach((t: string) => inSel.add(t)));
-                    return masterTags.filter(m => inSel.has(m.name)).concat(
-                      Array.from(inSel).filter(t => !masterTags.find(m => m.name === t)).map(t => ({ id: t, name: t, color: "#94a3b8" }))
-                    );
-                  })()}
-                  mode="remove"
-                  onPick={(name) => bulkApplyTag(name, "remove")}
+              <PopoverContent className="w-72 p-0" align="end">
+                <TagChecklist
+                  targets={customers.filter(c => selected.has(c.id))}
+                  masterTags={masterTags}
+                  busy={bulkBusy}
+                  onApply={(adds, removes) => applyTagChanges(Array.from(selected), adds, removes)}
                 />
               </PopoverContent>
             </Popover>
@@ -428,18 +405,31 @@ export default function Customers() {
                           {STATUS_LABEL[c.status] || c.status}
                         </Badge>
                       </div>
-                      {Array.isArray(c.tags) && c.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {c.tags.slice(0, 5).map((t: string) => (
-                            <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
-                              {t}
-                            </Badge>
-                          ))}
-                          {c.tags.length > 5 && (
-                            <span className="text-[10px] text-muted-foreground">+{c.tags.length - 5}</span>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                        {Array.isArray(c.tags) && c.tags.slice(0, 5).map((t: string) => (
+                          <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
+                            {t}
+                          </Badge>
+                        ))}
+                        {Array.isArray(c.tags) && c.tags.length > 5 && (
+                          <span className="text-[10px] text-muted-foreground self-center">+{c.tags.length - 5}</span>
+                        )}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0 h-5 rounded-md border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground transition">
+                              <Plus className="w-2.5 h-2.5"/> แท็ก
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-0" align="start">
+                            <TagChecklist
+                              targets={[c]}
+                              masterTags={masterTags}
+                              busy={bulkBusy}
+                              onApply={(adds, removes) => applyTagChanges([c.id], adds, removes)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <div className="space-y-1 text-xs text-muted-foreground">
                         {c.phone ? (
                           <div className="flex items-center gap-1.5"><Phone className="w-3 h-3"/> {c.phone}</div>
@@ -471,32 +461,95 @@ export default function Customers() {
   );
 }
 
-function TagPicker({
-  masterTags, mode, onPick,
-}: { masterTags: { id: string; name: string; color: string }[]; mode: "add" | "remove"; onPick: (name: string) => void }) {
+function TagChecklist({
+  targets, masterTags, busy, onApply,
+}: {
+  targets: any[];
+  masterTags: { id: string; name: string; color: string }[];
+  busy: boolean;
+  onApply: (adds: string[], removes: string[]) => Promise<void> | void;
+}) {
   const [input, setInput] = useState("");
+
+  const total = targets.length;
+  const stateOf = (name: string): "all" | "some" | "none" => {
+    const n = targets.filter(c => Array.isArray(c.tags) && c.tags.includes(name)).length;
+    if (n === 0) return "none";
+    if (n === total) return "all";
+    return "some";
+  };
+
+  const toggle = async (name: string) => {
+    const st = stateOf(name);
+    if (st === "all") await onApply([], [name]);
+    else await onApply([name], []); // add to all (includes "some" → fill rest)
+  };
+
+  // Merge master tags with any tag present on targets but missing from master
+  const allTags = useMemo(() => {
+    const present = new Set<string>();
+    targets.forEach(c => (c.tags || []).forEach((t: string) => present.add(t)));
+    const extras = Array.from(present)
+      .filter(t => !masterTags.find(m => m.name === t))
+      .map(t => ({ id: t, name: t, color: "#94a3b8" }));
+    return [...masterTags, ...extras];
+  }, [masterTags, targets]);
+
+  const q = input.trim().toLowerCase();
+  const filtered = q ? allTags.filter(m => m.name.toLowerCase().includes(q)) : allTags;
+  const canCreate = !!q && !allTags.find(m => m.name.toLowerCase() === q);
+
   return (
-    <Command>
-      <CommandInput placeholder={mode === "add" ? "พิมพ์เพื่อค้นหา/สร้างแท็กใหม่" : "เลือกแท็กที่จะลบ"} value={input} onValueChange={setInput} />
-      <CommandList>
-        <CommandEmpty>
-          {mode === "add" && input.trim() ? (
-            <button onClick={() => onPick(input.trim())} className="text-xs text-primary hover:underline px-2 py-1">
-              + สร้างและเพิ่มแท็ก "{input.trim()}"
-            </button>
-          ) : (
-            <span className="text-xs text-muted-foreground px-2 py-1">ไม่พบแท็ก</span>
-          )}
-        </CommandEmpty>
-        <CommandGroup>
-          {masterTags.map(m => (
-            <CommandItem key={m.id} value={m.name} onSelect={() => onPick(m.name)}>
-              <span className="w-3 h-3 rounded-full mr-2 shrink-0" style={{ backgroundColor: m.color }} />
-              {m.name}
+    <Command shouldFilter={false}>
+      <CommandInput placeholder="ค้นหา / สร้างแท็กใหม่" value={input} onValueChange={setInput} />
+      <CommandList className="max-h-64">
+        {filtered.length === 0 && !canCreate && (
+          <CommandEmpty>ไม่พบแท็ก</CommandEmpty>
+        )}
+        {canCreate && (
+          <CommandGroup heading="สร้างใหม่">
+            <CommandItem
+              value={`__create__${input}`}
+              onSelect={() => { toggle(input.trim()); setInput(""); }}
+              disabled={busy}
+            >
+              <Plus className="w-3.5 h-3.5 mr-2 text-primary" />
+              <span>สร้างและเพิ่ม "<span className="font-medium">{input.trim()}</span>"</span>
             </CommandItem>
-          ))}
-        </CommandGroup>
+          </CommandGroup>
+        )}
+        {filtered.length > 0 && (
+          <CommandGroup>
+            {filtered.map(m => {
+              const st = stateOf(m.name);
+              return (
+                <CommandItem
+                  key={m.id}
+                  value={m.name}
+                  onSelect={() => toggle(m.name)}
+                  disabled={busy}
+                  className="gap-2"
+                >
+                  <Checkbox
+                    checked={st === "all" ? true : st === "some" ? "indeterminate" : false}
+                    className="pointer-events-none"
+                  />
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+                  <span className="flex-1 truncate">{m.name}</span>
+                  {st === "some" && total > 1 && (
+                    <span className="text-[10px] text-muted-foreground">บางส่วน</span>
+                  )}
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
       </CommandList>
+      {total > 1 && (
+        <div className="border-t px-3 py-2 text-[11px] text-muted-foreground">
+          กำลังจัดการ {total} ราย · คลิกเพื่อเพิ่ม/ลบกับทุกคน
+        </div>
+      )}
     </Command>
   );
 }
