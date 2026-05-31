@@ -351,7 +351,7 @@ export default function Customers() {
         ) : (
           <div className="p-3 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {filtered.map(c => {
-              const tier = tierOf(c);
+              const tierDef = c.tier ? tierByName[c.tier] : null;
               const isSelected = selected.has(c.id);
               return (
                 <div
@@ -393,12 +393,37 @@ export default function Customers() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-semibold truncate">{c.nickname || c.display_name || "ไม่ระบุชื่อ"}</p>
-                        {tier === "vip" && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0"/>}
+                        {c.tier === "VIP" && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0"/>}
                       </div>
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", TIER_COLOR[tier])}>
-                          {TIER_LABEL[tier]}
-                        </Badge>
+                      <div className="flex flex-wrap gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="inline-flex">
+                              {tierDef ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-0 text-white cursor-pointer" style={{ backgroundColor: tierDef.color }}>
+                                  {tierDef.name}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-dashed text-muted-foreground cursor-pointer">
+                                  + ระดับ
+                                </Badge>
+                              )}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-1" align="start">
+                            {tierList.map(t => (
+                              <button key={t.name} onClick={() => setCustomerTier(c.id, t.name)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm">
+                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                                {t.name}
+                              </button>
+                            ))}
+                            {c.tier && (
+                              <button onClick={() => setCustomerTier(c.id, null)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-destructive/10 text-destructive text-left text-xs border-t mt-1 pt-2">
+                                <X className="w-3 h-3" /> ลบระดับ
+                              </button>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                         <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", STATUS_COLOR[c.status])}>
                           {STATUS_LABEL[c.status] || c.status}
                         </Badge>
