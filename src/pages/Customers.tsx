@@ -170,7 +170,11 @@ export default function Customers() {
   }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter]);
 
   const filtered = useMemo(() => {
-    return customers.filter(c => tierFilter === "all" || tierOf(c) === tierFilter);
+    return customers.filter(c => {
+      if (tierFilter === "all") return true;
+      if (tierFilter === "__none__") return !c.tier;
+      return c.tier === tierFilter;
+    });
   }, [customers, tierFilter]);
 
   const tagColor = (name: string) => masterTags.find(m => m.name === name)?.color || "#94a3b8";
