@@ -140,7 +140,7 @@ export default function Users() {
   );
 }
 
-function AddUserDialog({ onCreated }: { onCreated: () => void }) {
+function AddUserDialog({ onCreated, isOwner }: { onCreated: () => void; isOwner: boolean }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -200,13 +200,14 @@ function AddUserDialog({ onCreated }: { onCreated: () => void }) {
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
               <SelectTrigger><SelectValue/></SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Admin (เห็นทุกเมนู)</SelectItem>
+                {isOwner && <SelectItem value="owner">Owner (เจ้าของระบบ — เห็นทุกอย่าง)</SelectItem>}
+                <SelectItem value="admin">Admin (เห็นทุกเมนูปกติ)</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {role !== "admin" && (
+          {role !== "admin" && role !== "owner" && (
             <div>
               <Label className="mb-2 block">สิทธิ์เมนู</Label>
               <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">
