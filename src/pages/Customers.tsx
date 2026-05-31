@@ -461,32 +461,95 @@ export default function Customers() {
   );
 }
 
-function TagPicker({
-  masterTags, mode, onPick,
-}: { masterTags: { id: string; name: string; color: string }[]; mode: "add" | "remove"; onPick: (name: string) => void }) {
+function TagChecklist({
+  targets, masterTags, busy, onApply,
+}: {
+  targets: any[];
+  masterTags: { id: string; name: string; color: string }[];
+  busy: boolean;
+  onApply: (adds: string[], removes: string[]) => Promise<void> | void;
+}) {
   const [input, setInput] = useState("");
+
+  const total = targets.length;
+  const stateOf = (name: string): "all" | "some" | "none" => {
+    const n = targets.filter(c => Array.isArray(c.tags) && c.tags.includes(name)).length;
+    if (n === 0) return "none";
+    if (n === total) return "all";
+    return "some";
+  };
+
+  const toggle = async (name: string) => {
+    const st = stateOf(name);
+    if (st === "all") await onApply([], [name]);
+    else await onApply([name], []); // add to all (includes "some" → fill rest)
+  };
+
+  // Merge master tags with any tag present on targets but missing from master
+  const allTags = useMemo(() => {
+    const present = new Set<string>();
+    targets.forEach(c => (c.tags || []).forEach((t: string) => present.add(t)));
+    const extras = Array.from(present)
+      .filter(t => !masterTags.find(m => m.name === t))
+      .map(t => ({ id: t, name: t, color: "#94a3b8" }));
+    return [...masterTags, ...extras];
+  }, [masterTags, targets]);
+
+  const q = input.trim().toLowerCase();
+  const filtered = q ? allTags.filter(m => m.name.toLowerCase().includes(q)) : allTags;
+  const canCreate = !!q && !allTags.find(m => m.name.toLowerCase() === q);
+
   return (
-    <Command>
-      <CommandInput placeholder={mode === "add" ? "พิมพ์เพื่อค้นหา/สร้างแท็กใหม่" : "เลือกแท็กที่จะลบ"} value={input} onValueChange={setInput} />
-      <CommandList>
-        <CommandEmpty>
-          {mode === "add" && input.trim() ? (
-            <button onClick={() => onPick(input.trim())} className="text-xs text-primary hover:underline px-2 py-1">
-              + สร้างและเพิ่มแท็ก "{input.trim()}"
-            </button>
-          ) : (
-            <span className="text-xs text-muted-foreground px-2 py-1">ไม่พบแท็ก</span>
-          )}
-        </CommandEmpty>
-        <CommandGroup>
-          {masterTags.map(m => (
-            <CommandItem key={m.id} value={m.name} onSelect={() => onPick(m.name)}>
-              <span className="w-3 h-3 rounded-full mr-2 shrink-0" style={{ backgroundColor: m.color }} />
-              {m.name}
+    <Command shouldFilter={false}>
+      <CommandInput placeholder="ค้นหา / สร้างแท็กใหม่" value={input} onValueChange={setInput} />
+      <CommandList className="max-h-64">
+        {filtered.length === 0 && !canCreate && (
+          <CommandEmpty>ไม่พบแท็ก</CommandEmpty>
+        )}
+        {canCreate && (
+          <CommandGroup heading="สร้างใหม่">
+            <CommandItem
+              value={`__create__${input}`}
+              onSelect={() => { toggle(input.trim()); setInput(""); }}
+              disabled={busy}
+            >
+              <Plus className="w-3.5 h-3.5 mr-2 text-primary" />
+              <span>สร้างและเพิ่ม "<span className="font-medium">{input.trim()}</span>"</span>
             </CommandItem>
-          ))}
-        </CommandGroup>
+          </CommandGroup>
+        )}
+        {filtered.length > 0 && (
+          <CommandGroup>
+            {filtered.map(m => {
+              const st = stateOf(m.name);
+              return (
+                <CommandItem
+                  key={m.id}
+                  value={m.name}
+                  onSelect={() => toggle(m.name)}
+                  disabled={busy}
+                  className="gap-2"
+                >
+                  <Checkbox
+                    checked={st === "all" ? true : st === "some" ? "indeterminate" : false}
+                    className="pointer-events-none"
+                  />
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: m.color }} />
+                  <span className="flex-1 truncate">{m.name}</span>
+                  {st === "some" && total > 1 && (
+                    <span className="text-[10px] text-muted-foreground">บางส่วน</span>
+                  )}
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
       </CommandList>
+      {total > 1 && (
+        <div className="border-t px-3 py-2 text-[11px] text-muted-foreground">
+          กำลังจัดการ {total} ราย · คลิกเพื่อเพิ่ม/ลบกับทุกคน
+        </div>
+      )}
     </Command>
   );
 }
