@@ -33,11 +33,11 @@ type AutoTagSettings = {
 const PRESET_COLORS = ["#94a3b8","#ef4444","#f97316","#eab308","#22c55e","#06b6d4","#3b82f6","#8b5cf6","#ec4899","#64748b"];
 
 const STATUS_LABEL: Record<string, string> = {
-  new: "ใหม่", returning: "เคยติดต่อ",
-  pending_quote: "รอใบเสนอ", pending_confirm: "รอยืนยัน",
-  confirmed: "ยืนยันแล้ว", cancelled: "ยกเลิก",
+  new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า",
+  pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม",
+  confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
 };
-const STATUS_KEYS = ["new","returning","pending_quote","pending_confirm","confirmed","cancelled"];
+const STATUS_KEYS = ["new","inquiry","returning","pending_quote","pending_confirm","confirmed","cancelled"];
 
 const MONTH_PREVIEW: Record<string, string[]> = {
   short_th: ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."],
@@ -49,7 +49,7 @@ const MONTH_PREVIEW: Record<string, string[]> = {
 
 const DEFAULT_AUTO: AutoTagSettings = {
   enabled: true, locale: "th", year_format: "be", month_format: "short_th",
-  status_tag_map: { confirmed: "ยืนยัน", cancelled: "ยกเลิก", pending_quote: "รอเสนอราคา", pending_confirm: "รอยืนยัน" },
+  status_tag_map: { inquiry: "ลูกค้ากลุ่มคาดหวัง", pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก" },
   custom_name_rules: [],
 };
 
