@@ -16,21 +16,7 @@ const STATUS_LABEL: Record<string, string> = {
   pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
 };
 
-function tierOf(c: any): "vip" | "returning" | "active" | "new" {
-  if (c.status === "confirmed" || (c.clv_amount || 0) >= 50000) return "vip";
-  if (c.status === "returning" || (c.clv_amount || 0) > 0) return "returning";
-  const last = c.last_message_at ? new Date(c.last_message_at).getTime() : 0;
-  if (last && Date.now() - last < 30 * 86400000) return "active";
-  return "new";
-}
-
-const TIER_LABEL = { vip: "VIP", returning: "เคยติดต่อ", active: "Active", new: "ใหม่" };
-const TIER_COLOR: Record<string, string> = {
-  vip: "bg-gradient-to-r from-amber-400 to-yellow-500 text-white border-0",
-  returning: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
-  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-  new: "bg-muted text-muted-foreground border-border",
-};
+// Tier is now manual (customers.tier) — admin-managed, no auto computation
 
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
