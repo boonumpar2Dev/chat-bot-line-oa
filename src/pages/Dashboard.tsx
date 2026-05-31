@@ -8,11 +8,12 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
 const STATUS_LABELS: Record<string, string> = {
-  new: "ใหม่",
-  returning: "กลับมา",
+  new: "ลูกค้าใหม่",
+  inquiry: "สอบถาม",
+  returning: "ลูกค้าเก่า",
   pending_quote: "รอเสนอราคา",
-  pending_confirm: "รอยืนยัน",
-  confirmed: "ยืนยันแล้ว",
+  pending_confirm: "รอคอนเฟิร์ม",
+  confirmed: "คอนเฟิร์ม",
   cancelled: "ยกเลิก",
 };
 
