@@ -477,13 +477,13 @@ function computePreview(nickname: string, cfg: AutoTagSettings): string[] {
   }
   if (m !== null) out.push(months[m - 1]);
 
-  // Year
+  // Year: pick LAST 4-digit; else LAST 2-digit (assume BE 25xx)
   let y: number | null = null;
-  const m4 = nickname.match(/(\d{4})/);
-  if (m4) y = parseInt(m4[1]);
+  const m4all = nickname.match(/\d{4}/g);
+  if (m4all && m4all.length) y = parseInt(m4all[m4all.length - 1]);
   else {
-    const m2 = nickname.match(/(?<!\d)(\d{2})(?!\d)/);
-    if (m2) y = 2500 + parseInt(m2[1]);
+    const m2all = nickname.match(/(?<!\d)\d{2}(?!\d)/g);
+    if (m2all && m2all.length) y = 2500 + parseInt(m2all[m2all.length - 1]);
   }
   if (y !== null) {
     const be = y > 2400 ? y : y + 543;
