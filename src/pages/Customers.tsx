@@ -405,18 +405,31 @@ export default function Customers() {
                           {STATUS_LABEL[c.status] || c.status}
                         </Badge>
                       </div>
-                      {Array.isArray(c.tags) && c.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mb-2">
-                          {c.tags.slice(0, 5).map((t: string) => (
-                            <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
-                              {t}
-                            </Badge>
-                          ))}
-                          {c.tags.length > 5 && (
-                            <span className="text-[10px] text-muted-foreground">+{c.tags.length - 5}</span>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                        {Array.isArray(c.tags) && c.tags.slice(0, 5).map((t: string) => (
+                          <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
+                            {t}
+                          </Badge>
+                        ))}
+                        {Array.isArray(c.tags) && c.tags.length > 5 && (
+                          <span className="text-[10px] text-muted-foreground self-center">+{c.tags.length - 5}</span>
+                        )}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0 h-5 rounded-md border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground transition">
+                              <Plus className="w-2.5 h-2.5"/> แท็ก
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-0" align="start">
+                            <TagChecklist
+                              targets={[c]}
+                              masterTags={masterTags}
+                              busy={bulkBusy}
+                              onApply={(adds, removes) => applyTagChanges([c.id], adds, removes)}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <div className="space-y-1 text-xs text-muted-foreground">
                         {c.phone ? (
                           <div className="flex items-center gap-1.5"><Phone className="w-3 h-3"/> {c.phone}</div>
