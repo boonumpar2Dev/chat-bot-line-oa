@@ -155,48 +155,7 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="returning" className="mt-4">
-          <Card className="p-6 shadow-soft border-border/60 space-y-5">
-            <div>
-              <div className="flex items-center gap-2"><UserCheck className="text-primary" /><h2 className="font-display text-lg font-semibold">การตอบลูกค้าเก่า / VIP</h2></div>
-              <p className="text-xs text-muted-foreground mt-1">บอกบอทว่าจะรู้จักลูกค้าเก่ายังไง ห้ามทักทายเหมือนลูกค้าใหม่ ห้ามถามข้อมูลซ้ำ และดึงประวัติงานเก่ามาคุยต่อ</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>ข้อความทักทาย — ลูกค้ากลับมา (Returning)</Label>
-              <Textarea rows={2} value={s.returning_customer_greeting ?? ""} onChange={e => upd("returning_customer_greeting", e.target.value)} placeholder="ยินดีต้อนรับกลับนะคะคุณ{ชื่อ} 🙏" />
-              <p className="text-xs text-muted-foreground">ใช้ <code>{"{ชื่อ}"}</code> เพื่อให้บอทแทนชื่อลูกค้าจริง — บอทจะใช้เป็นแนวการทักทาย ไม่ได้ก๊อปตรงตัว</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>ข้อความทักทาย — VIP (เคยใช้บริการ/ปิดงาน)</Label>
-              <Textarea rows={2} value={s.vip_customer_greeting ?? ""} onChange={e => upd("vip_customer_greeting", e.target.value)} placeholder="สวัสดีค่ะคุณ{ชื่อ} ขอบคุณที่กลับมาใช้บริการอีกครั้งนะคะ 🙏" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>คำสั่งบริบทลูกค้าเก่า (ให้ AI อ่าน)</Label>
-              <Textarea rows={4} value={s.returning_context_instruction ?? ""} onChange={e => upd("returning_context_instruction", e.target.value)} placeholder="ลูกค้ารายนี้เคยติดต่อมาก่อน — ห้ามถามข้อมูลพื้นฐานซ้ำ ใช้บริบทเดิมต่อ..." />
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>เงียบกี่วันถึงนับเป็น "ลูกค้ากลับมา"</Label>
-                <Input type="number" min={1} max={365} value={s.returning_days_threshold ?? 30} onChange={e => upd("returning_days_threshold", Math.max(1, Math.min(365, parseInt(e.target.value) || 30)))} />
-                <p className="text-xs text-muted-foreground">ลูกค้าที่หายไปนานกว่านี้ บอทจะทักทายแบบ "ยินดีต้อนรับกลับ"</p>
-              </div>
-              <div className="space-y-1.5 flex flex-col">
-                <Label>ห้ามถามข้อมูลซ้ำที่เคยรู้</Label>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 mt-auto">
-                  <Switch checked={s.returning_skip_intent_questions !== false} onCheckedChange={v => upd("returning_skip_intent_questions", v)} />
-                  <span className="text-sm">{s.returning_skip_intent_questions !== false ? "เปิด — ใช้ข้อมูลเดิมต่อ" : "ปิด — ถามใหม่ทุกครั้ง"}</span>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-xs text-muted-foreground">
-              💡 <b>ระดับลูกค้าที่บอทแยกอัตโนมัติ:</b><br />
-              • <b>VIP</b> — เคยปิดงาน (มีในประวัติงาน) หรือสถานะ confirmed หรือ CLV &gt; 0<br />
-              • <b>Returning</b> — สถานะ returning หรือเงียบเกินจำนวนวันที่ตั้งไว้<br />
-              • <b>Active lead</b> — มี intent ค้าง (ประเภทงาน/จำนวนคน/วันงาน) ยังคุยอยู่<br />
-              • <b>New</b> — รายใหม่ ทักทายปกติ
-            </div>
-          </Card>
-        </TabsContent>
+
 
         <TabsContent value="intent" className="mt-4">
           <Card className="p-6 shadow-soft border-border/60 space-y-4">
