@@ -73,7 +73,7 @@ export default function Users() {
           <h1 className="font-display text-3xl font-semibold mb-1">จัดการผู้ใช้</h1>
           <p className="text-muted-foreground">รายชื่อผู้ใช้ระบบและบทบาท ({users.length} คน)</p>
         </div>
-        <AddUserDialog onCreated={() => { load(); reloadMenus(); }} />
+        <AddUserDialog onCreated={() => { load(); reloadMenus(); }} isOwner={isOwner} />
       </div>
 
       <Card className="shadow-soft border-border/60 divide-y">
