@@ -159,7 +159,7 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground truncate mt-0.5">{r.last_message_snippet || "—"}</p>
               </div>
               <span className="text-xs text-destructive shrink-0 font-medium">
-                เกิน {formatDistanceToNow(new Date(r.sla_deadline), { locale: th })}
+                เกิน {formatDistanceToNow(new Date(r._sla_deadline), { locale: th })}
               </span>
             </Link>
           ))}
