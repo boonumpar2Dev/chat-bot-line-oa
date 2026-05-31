@@ -84,16 +84,17 @@ export default function Users() {
               <p className="font-medium truncate">{u.display_name || u.email}{u.id === me?.id && <span className="text-xs text-muted-foreground ml-2">(คุณ)</span>}</p>
               <p className="text-xs text-muted-foreground truncate">{u.email}</p>
             </div>
-            <Badge variant={u.role === "admin" ? "default" : "secondary"} className="hidden sm:flex"><Shield className="w-3 h-3 mr-1"/>{ROLE_LABEL[u.role]}</Badge>
-            <Select value={u.role} onValueChange={(v) => changeRole(u.id, v as AppRole)} disabled={u.id === me?.id}>
+            <Badge variant={u.role === "owner" || u.role === "admin" ? "default" : "secondary"} className="hidden sm:flex"><Shield className="w-3 h-3 mr-1"/>{ROLE_LABEL[u.role]}</Badge>
+            <Select value={u.role} onValueChange={(v) => changeRole(u.id, v as AppRole)} disabled={u.id === me?.id || (u.role === "owner" && !isOwner)}>
               <SelectTrigger className="w-32"><SelectValue/></SelectTrigger>
               <SelectContent>
+                {isOwner && <SelectItem value="owner">Owner</SelectItem>}
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
               </SelectContent>
             </Select>
-            {u.role !== "admin" && (
+            {u.role !== "admin" && u.role !== "owner" && (
               <EditMenuDialog
                 userId={u.id}
                 userLabel={u.display_name || u.email}
@@ -102,10 +103,10 @@ export default function Users() {
                 onSaved={() => { load(); reloadMenus(); }}
               />
             )}
-            <EditUserDialog user={u} onSaved={load} disabled={false} />
+            <EditUserDialog user={u} onSaved={load} disabled={u.role === "owner" && !isOwner} />
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="icon" variant="ghost" disabled={u.id === me?.id} title="ลบผู้ใช้">
+                <Button size="icon" variant="ghost" disabled={u.id === me?.id || (u.role === "owner" && !isOwner)} title="ลบผู้ใช้">
                   <Trash2 className="w-4 h-4 text-destructive"/>
                 </Button>
               </AlertDialogTrigger>
@@ -128,7 +129,8 @@ export default function Users() {
       <Card className="mt-6 p-5 bg-muted/30 border-dashed">
         <div className="flex items-center gap-2 mb-2"><Lock className="w-4 h-4 text-primary"/><h3 className="font-semibold">บทบาทและสิทธิ์เริ่มต้น</h3></div>
         <ul className="text-sm text-muted-foreground space-y-1 ml-6 list-disc">
-          <li><strong>Admin</strong> — เห็นและจัดการทุกเมนู (รวม "จัดการผู้ใช้" และ "AI Tokens")</li>
+          {isOwner && <li><strong>Owner</strong> — เจ้าของระบบ (เห็นทุกอย่างรวม AI Tokens) — ซ่อนจากผู้ใช้อื่น</li>}
+          <li><strong>Admin</strong> — เห็นและจัดการทุกเมนู (รวม "จัดการผู้ใช้")</li>
           <li><strong>Manager</strong> — Dashboard, จัดการแชท, สอน AI, ตั้งค่า</li>
           <li><strong>Staff</strong> — จัดการแชท เท่านั้น</li>
         </ul>
