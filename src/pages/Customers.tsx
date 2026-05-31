@@ -59,7 +59,7 @@ export default function Customers() {
   // Bulk select state
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [masterTags, setMasterTags] = useState<{ id: string; name: string; color: string }[]>([]);
-  const [tagPickerOpen, setTagPickerOpen] = useState<null | "add" | "remove">(null);
+  const [bulkTagOpen, setBulkTagOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
 
   // Tier (manual, admin-managed)
