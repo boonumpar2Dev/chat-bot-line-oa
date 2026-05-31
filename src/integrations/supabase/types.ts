@@ -831,6 +831,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin_or_owner: { Args: { _user_id: string }; Returns: boolean }
       is_staff_member: { Args: { _user_id: string }; Returns: boolean }
       managed_auto_tags: { Args: { _cfg: Json }; Returns: string[] }
       rescan_auto_tags: { Args: never; Returns: number }
