@@ -73,7 +73,7 @@ export default function CustomerDetail() {
     );
   }
 
-  const tier = tierOf(customer);
+  const tier = customer.tier as string | null;
 
   return (
     <div className="min-h-full bg-background">
