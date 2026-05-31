@@ -42,19 +42,30 @@ export default function Dashboard() {
     },
   });
 
-  // SLA breaches: customers with sla_deadline in the past, not confirmed/cancelled
+  // SLA breaches: คำนวณ on-the-fly จาก last_message_at + sla_hours (app_settings)
+  // เงื่อนไข: ยังไม่ได้อ่าน (unread_count > 0), ไม่ใช่ confirmed/cancelled, และเกินเวลา SLA
   const { data: slaBreached } = useQuery({
     queryKey: ["sla-breached"],
     queryFn: async () => {
-      const now = new Date().toISOString();
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("sla_hours")
+        .limit(1)
+        .maybeSingle();
+      const slaHours = Number(settings?.sla_hours ?? 24);
+      const cutoff = new Date(Date.now() - slaHours * 3600 * 1000).toISOString();
       const { data } = await supabase
         .from("customers")
         .select("*")
-        .lt("sla_deadline", now)
+        .gt("unread_count", 0)
+        .lt("last_message_at", cutoff)
         .not("status", "in", "(confirmed,cancelled)")
-        .order("sla_deadline", { ascending: true })
+        .order("last_message_at", { ascending: true })
         .limit(10);
-      return data ?? [];
+      return (data ?? []).map((r: any) => ({
+        ...r,
+        _sla_deadline: new Date(new Date(r.last_message_at).getTime() + slaHours * 3600 * 1000).toISOString(),
+      }));
     },
     refetchInterval: 60_000,
   });
