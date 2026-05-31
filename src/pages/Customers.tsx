@@ -189,41 +189,34 @@ export default function Customers() {
   const selectAllVisible = () => setSelected(new Set(filtered.map(c => c.id)));
   const clearSelection = () => setSelected(new Set());
 
-  const bulkApplyTag = async (tagName: string, mode: "add" | "remove") => {
-    const ids = Array.from(selected);
-    if (!ids.length || !tagName) return;
+  const applyTagChanges = async (ids: string[], adds: string[], removes: string[]) => {
+    if (!ids.length || (!adds.length && !removes.length)) return;
     setBulkBusy(true);
     try {
-      const targets = customers.filter(c => selected.has(c.id));
-      const updates = await Promise.all(targets.map(async (c) => {
+      const targets = customers.filter(c => ids.includes(c.id));
+      const updates: { id: string; next: string[] }[] = [];
+      for (const c of targets) {
         const cur: string[] = Array.isArray(c.tags) ? c.tags : [];
-        let next: string[];
-        if (mode === "add") {
-          if (cur.includes(tagName)) return null;
-          next = [...cur, tagName];
-        } else {
-          if (!cur.includes(tagName)) return null;
-          next = cur.filter(t => t !== tagName);
-        }
+        let next = [...cur];
+        for (const a of adds) if (!next.includes(a)) next.push(a);
+        if (removes.length) next = next.filter(t => !removes.includes(t));
+        if (next.length === cur.length && next.every(t => cur.includes(t))) continue;
         const { error } = await supabase.from("customers").update({ tags: next }).eq("id", c.id);
         if (error) throw error;
-        return { id: c.id, next };
-      }));
-      const applied = updates.filter(Boolean) as { id: string; next: string[] }[];
-      if (applied.length) {
+        updates.push({ id: c.id, next });
+      }
+      if (updates.length) {
         setCustomers(prev => prev.map(c => {
-          const u = applied.find(a => a.id === c.id);
+          const u = updates.find(a => a.id === c.id);
           return u ? { ...c, tags: u.next } : c;
         }));
       }
-      // ensure tag exists in master (idempotent)
-      if (mode === "add" && !masterTags.find(m => m.name === tagName)) {
-        await supabase.from("tags").insert({ name: tagName, color: "#94a3b8" });
+      const newTags = adds.filter(a => !masterTags.find(m => m.name === a));
+      if (newTags.length) {
+        await supabase.from("tags").insert(newTags.map(name => ({ name, color: "#94a3b8" })));
         const { data } = await supabase.from("tags").select("id, name, color").order("sort_order").order("name");
         setMasterTags((data as any) || []);
       }
-      toast.success(`${mode === "add" ? "เพิ่ม" : "ลบ"}แท็ก "${tagName}" — กระทบ ${applied.length}/${ids.length} ราย`);
-      setTagPickerOpen(null);
     } catch (e: any) {
       toast.error(e?.message || "ทำไม่สำเร็จ");
     } finally {
