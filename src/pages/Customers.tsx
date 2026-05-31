@@ -294,35 +294,19 @@ export default function Customers() {
           <span className="text-sm font-medium">เลือก {selected.size} ราย</span>
           <Button size="sm" variant="ghost" onClick={selectAllVisible} className="h-7 text-xs">เลือกทั้งหมดที่แสดง</Button>
           <Button size="sm" variant="ghost" onClick={clearSelection} className="h-7 text-xs">ล้างเลือก</Button>
-          <div className="ml-auto flex gap-2">
-            <Popover open={tagPickerOpen === "add"} onOpenChange={(o) => setTagPickerOpen(o ? "add" : null)}>
+          <div className="ml-auto">
+            <Popover open={bulkTagOpen} onOpenChange={setBulkTagOpen}>
               <PopoverTrigger asChild>
                 <Button size="sm" variant="default" disabled={bulkBusy} className="h-8 gap-1">
-                  <Plus className="w-3.5 h-3.5"/> เพิ่มแท็ก
+                  <TagIcon className="w-3.5 h-3.5"/> จัดการแท็ก
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="end">
-                <TagPicker masterTags={masterTags} mode="add" onPick={(name) => bulkApplyTag(name, "add")} />
-              </PopoverContent>
-            </Popover>
-            <Popover open={tagPickerOpen === "remove"} onOpenChange={(o) => setTagPickerOpen(o ? "remove" : null)}>
-              <PopoverTrigger asChild>
-                <Button size="sm" variant="outline" disabled={bulkBusy} className="h-8 gap-1">
-                  <Minus className="w-3.5 h-3.5"/> ลบแท็ก
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-0" align="end">
-                <TagPicker
-                  masterTags={(() => {
-                    // เฉพาะแท็กที่มีในกลุ่มที่เลือก
-                    const inSel = new Set<string>();
-                    customers.filter(c => selected.has(c.id)).forEach(c => (c.tags || []).forEach((t: string) => inSel.add(t)));
-                    return masterTags.filter(m => inSel.has(m.name)).concat(
-                      Array.from(inSel).filter(t => !masterTags.find(m => m.name === t)).map(t => ({ id: t, name: t, color: "#94a3b8" }))
-                    );
-                  })()}
-                  mode="remove"
-                  onPick={(name) => bulkApplyTag(name, "remove")}
+              <PopoverContent className="w-72 p-0" align="end">
+                <TagChecklist
+                  targets={customers.filter(c => selected.has(c.id))}
+                  masterTags={masterTags}
+                  busy={bulkBusy}
+                  onApply={(adds, removes) => applyTagChanges(Array.from(selected), adds, removes)}
                 />
               </PopoverContent>
             </Popover>
