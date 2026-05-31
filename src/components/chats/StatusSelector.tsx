@@ -6,8 +6,9 @@ import { cn } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
   { value: "new", label: "ลูกค้าใหม่", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
+  { value: "inquiry", label: "สอบถาม", color: "bg-cyan-100 text-cyan-700", dot: "bg-cyan-500" },
   { value: "returning", label: "ลูกค้าเก่า", color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
-  { value: "pending_quote", label: "รอใบเสนอราคา", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
+  { value: "pending_quote", label: "รอเสนอราคา", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
   { value: "pending_confirm", label: "รอคอนเฟิร์ม", color: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
   { value: "confirmed", label: "คอนเฟิร์ม", color: "bg-green-100 text-green-700", dot: "bg-green-500" },
   { value: "cancelled", label: "ยกเลิก", color: "bg-red-100 text-red-700", dot: "bg-red-500" },
