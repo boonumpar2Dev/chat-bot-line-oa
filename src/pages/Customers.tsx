@@ -9,7 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Crown, Tag as TagIcon, X, Plus, Minus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Minus, Settings2, Crown, GripVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -31,21 +32,11 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: "bg-muted text-muted-foreground border-border",
 };
 
-function tierOf(c: any): "vip" | "returning" | "active" | "new" {
-  if (c.status === "confirmed" || (c.clv_amount || 0) >= 50000) return "vip";
-  if (c.status === "returning" || (c.clv_amount || 0) > 0) return "returning";
-  const last = c.last_message_at ? new Date(c.last_message_at).getTime() : 0;
-  if (last && Date.now() - last < 30 * 86400000) return "active";
-  return "new";
-}
-
-const TIER_LABEL = { vip: "VIP", returning: "เคยติดต่อ", active: "Active", new: "ใหม่" };
-const TIER_COLOR: Record<string, string> = {
-  vip: "bg-gradient-to-r from-amber-400 to-yellow-500 text-white border-0",
-  returning: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30",
-  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-  new: "bg-muted text-muted-foreground border-border",
-};
+type TierDef = { name: string; color: string };
+const DEFAULT_TIERS: TierDef[] = [
+  { name: "VIP", color: "#f59e0b" },
+  { name: "ลูกค้าทั่วไป", color: "#94a3b8" },
+];
 
 const PAGE_SIZE = 50;
 
