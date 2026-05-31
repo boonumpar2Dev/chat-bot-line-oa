@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export type MenuKey = "dashboard" | "chats" | "knowledge" | "ai_settings" | "tags" | "users" | "ai_tokens" | "settings";
 
-export const ALL_MENUS: { key: MenuKey; label: string; adminOnly?: boolean }[] = [
+export const ALL_MENUS: { key: MenuKey; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { key: "dashboard", label: "Dashboard" },
   { key: "chats", label: "จัดการแชท" },
   { key: "knowledge", label: "สอน AI" },
@@ -12,11 +12,12 @@ export const ALL_MENUS: { key: MenuKey; label: string; adminOnly?: boolean }[] =
   { key: "tags", label: "แท็กลูกค้า" },
   { key: "settings", label: "ตั้งค่า" },
   { key: "users", label: "จัดการผู้ใช้", adminOnly: true },
-  { key: "ai_tokens", label: "AI Tokens", adminOnly: true },
+  { key: "ai_tokens", label: "AI Tokens", ownerOnly: true },
 ];
 
-export const ROLE_DEFAULTS: Record<"admin" | "manager" | "staff", MenuKey[]> = {
-  admin: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings", "users", "ai_tokens"],
+export const ROLE_DEFAULTS: Record<"owner" | "admin" | "manager" | "staff", MenuKey[]> = {
+  owner: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings", "users", "ai_tokens"],
+  admin: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings", "users"],
   manager: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings"],
   staff: ["chats"],
 };
@@ -36,6 +37,11 @@ export const MenuPermissionsProvider = ({ children }: { children: ReactNode }) =
 
   const reload = useCallback(async () => {
     if (!user || !role) { setMenus([]); setLoading(false); return; }
+    if (role === "owner") {
+      setMenus(ROLE_DEFAULTS.owner);
+      setLoading(false);
+      return;
+    }
     if (role === "admin") {
       setMenus(ROLE_DEFAULTS.admin);
       setLoading(false);
@@ -49,7 +55,7 @@ export const MenuPermissionsProvider = ({ children }: { children: ReactNode }) =
     if (data?.menu_keys) {
       setMenus(data.menu_keys as MenuKey[]);
     } else {
-      setMenus(ROLE_DEFAULTS[role] || []);
+      setMenus(ROLE_DEFAULTS[role as "manager" | "staff"] || []);
     }
     setLoading(false);
   }, [user, role]);
