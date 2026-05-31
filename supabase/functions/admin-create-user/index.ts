@@ -19,14 +19,18 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "unauthorized" }, 401);
 
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
-    const { data: roleRow } = await admin.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle();
-    if (!roleRow) return json({ error: "admin only" }, 403);
+    const { data: roleRows } = await admin.from("user_roles").select("role").eq("user_id", user.id);
+    const callerRoles = (roleRows || []).map((r: any) => r.role);
+    const isOwner = callerRoles.includes("owner");
+    const isAdmin = callerRoles.includes("admin");
+    if (!isOwner && !isAdmin) return json({ error: "admin only" }, 403);
 
     const body = await req.json();
     const { email, password, display_name, role, menu_keys } = body || {};
     if (!email || !password || !role) return json({ error: "email, password, role required" }, 400);
     if (typeof password !== "string" || password.length < 6) return json({ error: "password ≥ 6 chars" }, 400);
-    if (!["admin", "manager", "staff"].includes(role)) return json({ error: "invalid role" }, 400);
+    if (!["owner", "admin", "manager", "staff"].includes(role)) return json({ error: "invalid role" }, 400);
+    if (role === "owner" && !isOwner) return json({ error: "only owner can create owner" }, 403);
 
     // Create user (auto-confirmed)
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
