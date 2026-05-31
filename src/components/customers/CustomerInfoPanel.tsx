@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
 import {
   Tag, X, Copy, ExternalLink, Smartphone, BookmarkCheck, History,
@@ -39,6 +41,8 @@ export default function CustomerInfoPanel({
 }: CustomerInfoPanelProps) {
   const [local, setLocal] = useState(customer);
   const [tagInput, setTagInput] = useState("");
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const [masterTags, setMasterTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [pastEvents, setPastEvents] = useState<any[]>([]);
   const [archiving, setArchiving] = useState(false);
   const [intentFields, setIntentFields] = useState<any[]>([]);
@@ -64,6 +68,19 @@ export default function CustomerInfoPanel({
           Array.isArray((data as any)?.intent_fields) ? (data as any).intent_fields : []
         )
       );
+  }, []);
+
+  const loadMasterTags = async () => {
+    const { data } = await supabase
+      .from("tags")
+      .select("id, name, color")
+      .order("sort_order")
+      .order("name");
+    setMasterTags((data as any) || []);
+  };
+
+  useEffect(() => {
+    loadMasterTags();
   }, []);
 
   const intentData: Record<string, any> =
@@ -198,13 +215,25 @@ export default function CustomerInfoPanel({
 
   const tags: string[] = Array.isArray(local.tags) ? local.tags : [];
 
-  const addTag = () => {
-    const t = tagInput.trim();
-    if (!t || tags.includes(t)) return;
+  const tagColor = (name: string) =>
+    masterTags.find((m) => m.name === name)?.color || "#94a3b8";
+
+  const addTag = async (rawName?: string) => {
+    const t = (rawName ?? tagInput).trim();
+    if (!t || tags.includes(t)) {
+      setTagInput("");
+      return;
+    }
     const next = [...tags, t];
     setLocal({ ...local, tags: next });
     onUpdate({ tags: next });
     setTagInput("");
+    setTagPickerOpen(false);
+    // Auto-create in master list if not exists
+    if (!masterTags.find((m) => m.name === t)) {
+      const { error } = await supabase.from("tags").insert({ name: t, color: "#94a3b8" });
+      if (!error) loadMasterTags();
+    }
   };
 
   const removeTag = (t: string) => {
