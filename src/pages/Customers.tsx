@@ -52,6 +52,7 @@ export default function Customers() {
   const [debounced, setDebounced] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
+  const [tagFilter, setTagFilter] = useState<string>(sp.get("tag") || "");
 
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -113,9 +114,9 @@ export default function Customers() {
       if (isSearching) {
         const s = debounced.replace(/[%,]/g, "");
         q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,tax_id.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(200);
-      } else if (statusFilter !== "all") {
-        q = q.eq("status", statusFilter as any).range(0, PAGE_SIZE - 1);
       } else {
+        if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+        if (tagFilter) q = q.contains("tags", [tagFilter]);
         q = q.range(0, PAGE_SIZE - 1);
       }
       const { data } = await q;
@@ -125,7 +126,7 @@ export default function Customers() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debounced, isSearching, statusFilter]);
+  }, [debounced, isSearching, statusFilter, tagFilter]);
 
   // Load master tags
   useEffect(() => {
@@ -156,6 +157,7 @@ export default function Customers() {
     const np = page + 1;
     let q = supabase.from("customers").select("*").order("last_message_at", { ascending: false, nullsFirst: false });
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
+    if (tagFilter) q = q.contains("tags", [tagFilter]);
     const { data } = await q.range(np * PAGE_SIZE, np * PAGE_SIZE + PAGE_SIZE - 1);
     setCustomers(p => { const ids = new Set(p.map(c => c.id)); return [...p, ...(data || []).filter((c: any) => !ids.has(c.id))]; });
     setHasMore((data?.length || 0) === PAGE_SIZE);
@@ -284,6 +286,22 @@ export default function Customers() {
             <Settings2 className="w-4 h-4" />
           </Button>
         </div>
+
+        {tagFilter && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">กรองตามแท็ก:</span>
+            <Badge className="gap-1 pr-1 border-0 text-white" style={{ backgroundColor: "#64748b" }}>
+              {tagFilter}
+              <button
+                onClick={() => { setTagFilter(""); updateFilter("tag", "all"); }}
+                className="ml-0.5 rounded-full hover:bg-white/20 p-0.5"
+                aria-label="ล้างตัวกรองแท็ก"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          </div>
+        )}
       </div>
 
       <TierManagerDialog open={tierMgrOpen} onOpenChange={setTierMgrOpen} tierList={tierList} onSave={saveTierList} />

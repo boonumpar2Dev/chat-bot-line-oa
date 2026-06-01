@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info } from "lucide-react";
+import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 type Tag = {
@@ -54,6 +56,7 @@ const DEFAULT_AUTO: AutoTagSettings = {
 };
 
 export default function Tags() {
+  const nav = useNavigate();
   const [tags, setTags] = useState<Tag[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,13 @@ export default function Tags() {
   const [aiDrafts, setAiDrafts] = useState<Record<string, string>>({});
   const [savingAi, setSavingAi] = useState<string | null>(null);
   const [savedAi, setSavedAi] = useState<string | null>(null);
+
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Auto-tag settings
   const [auto, setAuto] = useState<AutoTagSettings>(DEFAULT_AUTO);
@@ -83,6 +93,7 @@ export default function Tags() {
     setTags((tagData as Tag[]) || []);
     setCounts(c);
     setAiDrafts({});
+    setSelected(new Set());
     if (cfg?.auto_tag_settings) setAuto({ ...DEFAULT_AUTO, ...(cfg.auto_tag_settings as any) });
     setAutoDirty(false);
     setLoading(false);
@@ -145,6 +156,35 @@ export default function Tags() {
     load();
   };
 
+  const toggleSelect = (id: string) => setSelected(prev => {
+    const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
+  });
+  const selectedTags = useMemo(() => tags.filter(t => selected.has(t.id)), [tags, selected]);
+
+  const runBulkDelete = async () => {
+    const names = selectedTags.map(t => t.name);
+    if (!names.length) return;
+    setBulkBusy(true);
+    const { data, error } = await supabase.rpc("bulk_delete_tags", { _names: names, _strip_from_customers: true });
+    setBulkBusy(false); setBulkDeleteOpen(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`ลบ ${names.length} แท็ก · อัปเดตลูกค้า ${data ?? 0} ราย`);
+    load();
+  };
+
+  const runMerge = async () => {
+    const target = mergeTarget.trim();
+    if (!target) { toast.error("กรุณาใส่ชื่อแท็กปลายทาง"); return; }
+    const sources = selectedTags.map(t => t.name).filter(n => n !== target);
+    if (!sources.length) { toast.error("เลือกอย่างน้อย 1 แท็กที่จะรวม (ที่ไม่ใช่ปลายทาง)"); return; }
+    setBulkBusy(true);
+    const { data, error } = await supabase.rpc("merge_tags", { _source_names: sources, _target_name: target });
+    setBulkBusy(false); setMergeOpen(false); setMergeTarget("");
+    if (error) { toast.error(error.message); return; }
+    toast.success(`รวมเป็น "${target}" · อัปเดตลูกค้า ${data ?? 0} ราย`);
+    load();
+  };
+
   // Live preview tags from sample nickname
   const [previewName, setPreviewName] = useState("ตัวเล็ก15พค69");
   const previewTags = useMemo(() => computePreview(previewName, auto), [previewName, auto]);
@@ -169,36 +209,70 @@ export default function Tags() {
 
         {/* Manage */}
         <TabsContent value="manage" className="space-y-4 mt-0">
-          <div className="flex justify-end">
-            <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} className="gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="text-xs text-muted-foreground">
+              {selected.size > 0
+                ? <span className="font-medium text-foreground">เลือก {selected.size} แท็ก</span>
+                : <>มี {tags.length} แท็ก · กด checkbox เพื่อเลือกหลายแท็ก</>}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {selected.size > 0 && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setSelected(new Set())} className="h-8">ล้างเลือก</Button>
+                  <Button variant="outline" size="sm" disabled={selected.size < 2} onClick={() => { setMergeTarget(selectedTags[0]?.name || ""); setMergeOpen(true); }} className="h-8 gap-1">
+                    <GitMerge className="w-3.5 h-3.5"/> รวมแท็ก
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-8 gap-1">
+                    <Trash2 className="w-3.5 h-3.5"/> ลบ {selected.size}
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-8 gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
+            </div>
           </div>
           {loading ? <div className="text-center text-muted-foreground py-10">กำลังโหลด...</div>
             : tags.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-muted-foreground">ยังไม่มีแท็ก — กดปุ่ม "เพิ่มแท็ก" เพื่อเริ่ม</CardContent></Card>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {tags.map((t) => (
-                  <Card key={t.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Badge style={{ backgroundColor: t.color, color: "#fff" }} className="text-sm px-2.5 py-1 border-0">{t.name}</Badge>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0"><Users className="w-3 h-3"/> {counts[t.name] || 0}</span>
+                {tags.map((t) => {
+                  const isSelected = selected.has(t.id);
+                  const count = counts[t.name] || 0;
+                  return (
+                    <Card key={t.id} className={`hover:shadow-md transition-all ${isSelected ? "ring-2 ring-primary border-primary/40 bg-primary/5" : ""}`}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(t.id)} className="mt-1 shrink-0" aria-label={`เลือก ${t.name}`} />
+                          <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                            <Badge style={{ backgroundColor: t.color, color: "#fff" }} className="text-sm px-2.5 py-1 border-0">{t.name}</Badge>
+                            {count > 0 ? (
+                              <button
+                                onClick={() => nav(`/customers?tag=${encodeURIComponent(t.name)}`)}
+                                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                                title="ดูลูกค้าที่ติดแท็กนี้"
+                              >
+                                <Users className="w-3 h-3"/> {count}
+                                <ExternalLink className="w-2.5 h-2.5"/>
+                              </button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3"/> 0</span>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)}><Pencil className="w-3.5 h-3.5"/></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)}><Trash2 className="w-3.5 h-3.5"/></Button>
+                          </div>
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)}><Pencil className="w-3.5 h-3.5"/></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)}><Trash2 className="w-3.5 h-3.5"/></Button>
-                        </div>
-                      </div>
-                      {t.description && <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>}
-                      {t.ai_tag_instructions && (
-                        <div className="flex items-start gap-1.5 text-xs bg-primary/5 text-primary rounded-md p-2">
-                          <Sparkles className="w-3 h-3 mt-0.5 shrink-0"/><span className="line-clamp-2">{t.ai_tag_instructions}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                        {t.description && <p className="text-xs text-muted-foreground line-clamp-2 pl-7">{t.description}</p>}
+                        {t.ai_tag_instructions && (
+                          <div className="flex items-start gap-1.5 text-xs bg-primary/5 text-primary rounded-md p-2 ml-7">
+                            <Sparkles className="w-3 h-3 mt-0.5 shrink-0"/><span className="line-clamp-2">{t.ai_tag_instructions}</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
         </TabsContent>
@@ -444,6 +518,70 @@ export default function Tags() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk delete confirm */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบ {selectedTags.length} แท็ก?</AlertDialogTitle>
+            <AlertDialogDescription>
+              จะลบแท็กออกจากรายการหลัก <span className="font-medium">และ</span> ออกจากลูกค้าทุกคนที่ติดแท็กนี้
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedTags.map(t => (
+                  <Badge key={t.id} style={{ backgroundColor: t.color, color: "#fff" }} className="border-0">{t.name} ({counts[t.name] || 0})</Badge>
+                ))}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={runBulkDelete} disabled={bulkBusy} className="bg-destructive hover:bg-destructive/90">
+              {bulkBusy ? "กำลังลบ..." : "ลบทั้งหมด"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Merge dialog */}
+      <Dialog open={mergeOpen} onOpenChange={(o) => { if (!bulkBusy) setMergeOpen(o); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><GitMerge className="w-4 h-4 text-primary"/> รวมแท็ก</DialogTitle>
+            <DialogDescription>
+              รวม {selectedTags.length} แท็กที่เลือกเป็นแท็กเดียว — ลูกค้าที่เคยติดแท็กเก่าจะถูกย้ายมาติดแท็กปลายทาง และแท็กเก่าจะถูกลบ
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">แท็กที่จะรวม</Label>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {selectedTags.map(t => (
+                  <Badge key={t.id} style={{ backgroundColor: t.color, color: "#fff" }} className="border-0">{t.name} ({counts[t.name] || 0})</Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">รวมเป็นแท็กชื่อ *</Label>
+              <Input
+                value={mergeTarget}
+                onChange={(e) => setMergeTarget(e.target.value)}
+                placeholder="ชื่อแท็กปลายทาง (พิมพ์ใหม่หรือใช้ชื่อเดิม)"
+                list="merge-target-list"
+              />
+              <datalist id="merge-target-list">
+                {tags.map(t => <option key={t.id} value={t.name} />)}
+              </datalist>
+              <p className="text-[11px] text-muted-foreground">ถ้ายังไม่มีแท็กนี้จะถูกสร้างให้อัตโนมัติ</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeOpen(false)} disabled={bulkBusy}>ยกเลิก</Button>
+            <Button onClick={runMerge} disabled={bulkBusy || !mergeTarget.trim()}>
+              {bulkBusy ? "กำลังรวม..." : "รวมแท็ก"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
