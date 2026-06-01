@@ -286,6 +286,22 @@ export default function Customers() {
             <Settings2 className="w-4 h-4" />
           </Button>
         </div>
+
+        {tagFilter && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">กรองตามแท็ก:</span>
+            <Badge className="gap-1 pr-1 border-0 text-white" style={{ backgroundColor: "#64748b" }}>
+              {tagFilter}
+              <button
+                onClick={() => { setTagFilter(""); updateFilter("tag", "all"); }}
+                className="ml-0.5 rounded-full hover:bg-white/20 p-0.5"
+                aria-label="ล้างตัวกรองแท็ก"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          </div>
+        )}
       </div>
 
       <TierManagerDialog open={tierMgrOpen} onOpenChange={setTierMgrOpen} tierList={tierList} onSave={saveTierList} />
