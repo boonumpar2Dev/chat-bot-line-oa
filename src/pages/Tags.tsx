@@ -209,36 +209,70 @@ export default function Tags() {
 
         {/* Manage */}
         <TabsContent value="manage" className="space-y-4 mt-0">
-          <div className="flex justify-end">
-            <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} className="gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="text-xs text-muted-foreground">
+              {selected.size > 0
+                ? <span className="font-medium text-foreground">เลือก {selected.size} แท็ก</span>
+                : <>มี {tags.length} แท็ก · กด checkbox เพื่อเลือกหลายแท็ก</>}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {selected.size > 0 && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setSelected(new Set())} className="h-8">ล้างเลือก</Button>
+                  <Button variant="outline" size="sm" disabled={selected.size < 2} onClick={() => { setMergeTarget(selectedTags[0]?.name || ""); setMergeOpen(true); }} className="h-8 gap-1">
+                    <GitMerge className="w-3.5 h-3.5"/> รวมแท็ก
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)} className="h-8 gap-1">
+                    <Trash2 className="w-3.5 h-3.5"/> ลบ {selected.size}
+                  </Button>
+                </>
+              )}
+              <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-8 gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
+            </div>
           </div>
           {loading ? <div className="text-center text-muted-foreground py-10">กำลังโหลด...</div>
             : tags.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-muted-foreground">ยังไม่มีแท็ก — กดปุ่ม "เพิ่มแท็ก" เพื่อเริ่ม</CardContent></Card>
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {tags.map((t) => (
-                  <Card key={t.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Badge style={{ backgroundColor: t.color, color: "#fff" }} className="text-sm px-2.5 py-1 border-0">{t.name}</Badge>
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0"><Users className="w-3 h-3"/> {counts[t.name] || 0}</span>
+                {tags.map((t) => {
+                  const isSelected = selected.has(t.id);
+                  const count = counts[t.name] || 0;
+                  return (
+                    <Card key={t.id} className={`hover:shadow-md transition-all ${isSelected ? "ring-2 ring-primary border-primary/40 bg-primary/5" : ""}`}>
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(t.id)} className="mt-1 shrink-0" aria-label={`เลือก ${t.name}`} />
+                          <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                            <Badge style={{ backgroundColor: t.color, color: "#fff" }} className="text-sm px-2.5 py-1 border-0">{t.name}</Badge>
+                            {count > 0 ? (
+                              <button
+                                onClick={() => nav(`/customers?tag=${encodeURIComponent(t.name)}`)}
+                                className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+                                title="ดูลูกค้าที่ติดแท็กนี้"
+                              >
+                                <Users className="w-3 h-3"/> {count}
+                                <ExternalLink className="w-2.5 h-2.5"/>
+                              </button>
+                            ) : (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3"/> 0</span>
+                            )}
+                          </div>
+                          <div className="flex gap-1 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)}><Pencil className="w-3.5 h-3.5"/></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)}><Trash2 className="w-3.5 h-3.5"/></Button>
+                          </div>
                         </div>
-                        <div className="flex gap-1 shrink-0">
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)}><Pencil className="w-3.5 h-3.5"/></Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)}><Trash2 className="w-3.5 h-3.5"/></Button>
-                        </div>
-                      </div>
-                      {t.description && <p className="text-xs text-muted-foreground line-clamp-2">{t.description}</p>}
-                      {t.ai_tag_instructions && (
-                        <div className="flex items-start gap-1.5 text-xs bg-primary/5 text-primary rounded-md p-2">
-                          <Sparkles className="w-3 h-3 mt-0.5 shrink-0"/><span className="line-clamp-2">{t.ai_tag_instructions}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                        {t.description && <p className="text-xs text-muted-foreground line-clamp-2 pl-7">{t.description}</p>}
+                        {t.ai_tag_instructions && (
+                          <div className="flex items-start gap-1.5 text-xs bg-primary/5 text-primary rounded-md p-2 ml-7">
+                            <Sparkles className="w-3 h-3 mt-0.5 shrink-0"/><span className="line-clamp-2">{t.ai_tag_instructions}</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
         </TabsContent>
