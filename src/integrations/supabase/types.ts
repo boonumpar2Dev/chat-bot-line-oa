@@ -820,6 +820,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_delete_tags: {
+        Args: { _names: string[]; _strip_from_customers?: boolean }
+        Returns: number
+      }
       compute_auto_tags: {
         Args: { _cfg: Json; _nickname: string; _status: string }
         Returns: string[]
@@ -834,6 +838,10 @@ export type Database = {
       is_admin_or_owner: { Args: { _user_id: string }; Returns: boolean }
       is_staff_member: { Args: { _user_id: string }; Returns: boolean }
       managed_auto_tags: { Args: { _cfg: Json }; Returns: string[] }
+      merge_tags: {
+        Args: { _source_names: string[]; _target_name: string }
+        Returns: number
+      }
       rescan_auto_tags: { Args: never; Returns: number }
     }
     Enums: {
