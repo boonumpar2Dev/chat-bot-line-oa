@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,12 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info } from "lucide-react";
+import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 type Tag = {
@@ -54,6 +56,7 @@ const DEFAULT_AUTO: AutoTagSettings = {
 };
 
 export default function Tags() {
+  const nav = useNavigate();
   const [tags, setTags] = useState<Tag[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -63,6 +66,13 @@ export default function Tags() {
   const [aiDrafts, setAiDrafts] = useState<Record<string, string>>({});
   const [savingAi, setSavingAi] = useState<string | null>(null);
   const [savedAi, setSavedAi] = useState<string | null>(null);
+
+  // Bulk selection
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // Auto-tag settings
   const [auto, setAuto] = useState<AutoTagSettings>(DEFAULT_AUTO);
