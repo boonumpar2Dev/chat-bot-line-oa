@@ -93,6 +93,7 @@ export default function Tags() {
     setTags((tagData as Tag[]) || []);
     setCounts(c);
     setAiDrafts({});
+    setSelected(new Set());
     if (cfg?.auto_tag_settings) setAuto({ ...DEFAULT_AUTO, ...(cfg.auto_tag_settings as any) });
     setAutoDirty(false);
     setLoading(false);
@@ -152,6 +153,35 @@ export default function Tags() {
     setRescanning(false);
     if (error) { toast.error(error.message); return; }
     toast.success(`สแกนเสร็จ — อัปเดตลูกค้า ${data ?? 0} ราย`);
+    load();
+  };
+
+  const toggleSelect = (id: string) => setSelected(prev => {
+    const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
+  });
+  const selectedTags = useMemo(() => tags.filter(t => selected.has(t.id)), [tags, selected]);
+
+  const runBulkDelete = async () => {
+    const names = selectedTags.map(t => t.name);
+    if (!names.length) return;
+    setBulkBusy(true);
+    const { data, error } = await supabase.rpc("bulk_delete_tags", { _names: names, _strip_from_customers: true });
+    setBulkBusy(false); setBulkDeleteOpen(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`ลบ ${names.length} แท็ก · อัปเดตลูกค้า ${data ?? 0} ราย`);
+    load();
+  };
+
+  const runMerge = async () => {
+    const target = mergeTarget.trim();
+    if (!target) { toast.error("กรุณาใส่ชื่อแท็กปลายทาง"); return; }
+    const sources = selectedTags.map(t => t.name).filter(n => n !== target);
+    if (!sources.length) { toast.error("เลือกอย่างน้อย 1 แท็กที่จะรวม (ที่ไม่ใช่ปลายทาง)"); return; }
+    setBulkBusy(true);
+    const { data, error } = await supabase.rpc("merge_tags", { _source_names: sources, _target_name: target });
+    setBulkBusy(false); setMergeOpen(false); setMergeTarget("");
+    if (error) { toast.error(error.message); return; }
+    toast.success(`รวมเป็น "${target}" · อัปเดตลูกค้า ${data ?? 0} ราย`);
     load();
   };
 
