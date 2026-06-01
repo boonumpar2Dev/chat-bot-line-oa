@@ -518,6 +518,70 @@ export default function Tags() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk delete confirm */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ลบ {selectedTags.length} แท็ก?</AlertDialogTitle>
+            <AlertDialogDescription>
+              จะลบแท็กออกจากรายการหลัก <span className="font-medium">และ</span> ออกจากลูกค้าทุกคนที่ติดแท็กนี้
+              <div className="mt-2 flex flex-wrap gap-1">
+                {selectedTags.map(t => (
+                  <Badge key={t.id} style={{ backgroundColor: t.color, color: "#fff" }} className="border-0">{t.name} ({counts[t.name] || 0})</Badge>
+                ))}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={runBulkDelete} disabled={bulkBusy} className="bg-destructive hover:bg-destructive/90">
+              {bulkBusy ? "กำลังลบ..." : "ลบทั้งหมด"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Merge dialog */}
+      <Dialog open={mergeOpen} onOpenChange={(o) => { if (!bulkBusy) setMergeOpen(o); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><GitMerge className="w-4 h-4 text-primary"/> รวมแท็ก</DialogTitle>
+            <DialogDescription>
+              รวม {selectedTags.length} แท็กที่เลือกเป็นแท็กเดียว — ลูกค้าที่เคยติดแท็กเก่าจะถูกย้ายมาติดแท็กปลายทาง และแท็กเก่าจะถูกลบ
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">แท็กที่จะรวม</Label>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {selectedTags.map(t => (
+                  <Badge key={t.id} style={{ backgroundColor: t.color, color: "#fff" }} className="border-0">{t.name} ({counts[t.name] || 0})</Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">รวมเป็นแท็กชื่อ *</Label>
+              <Input
+                value={mergeTarget}
+                onChange={(e) => setMergeTarget(e.target.value)}
+                placeholder="ชื่อแท็กปลายทาง (พิมพ์ใหม่หรือใช้ชื่อเดิม)"
+                list="merge-target-list"
+              />
+              <datalist id="merge-target-list">
+                {tags.map(t => <option key={t.id} value={t.name} />)}
+              </datalist>
+              <p className="text-[11px] text-muted-foreground">ถ้ายังไม่มีแท็กนี้จะถูกสร้างให้อัตโนมัติ</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeOpen(false)} disabled={bulkBusy}>ยกเลิก</Button>
+            <Button onClick={runMerge} disabled={bulkBusy || !mergeTarget.trim()}>
+              {bulkBusy ? "กำลังรวม..." : "รวมแท็ก"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
