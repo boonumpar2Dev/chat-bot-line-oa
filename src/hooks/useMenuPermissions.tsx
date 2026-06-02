@@ -36,7 +36,9 @@ export const MenuPermissionsProvider = ({ children }: { children: ReactNode }) =
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
+    setLoading(true);
     if (!user || !role) { setMenus([]); setLoading(false); return; }
+
     if (role === "owner") {
       setMenus(ROLE_DEFAULTS.owner);
       setLoading(false);
