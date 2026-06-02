@@ -908,12 +908,14 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
   );
 }
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string> }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
-  const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
+  const adminName = isAdmin ? (m.admin_user_id && adminNames?.[m.admin_user_id]) || "แอดมิน" : "";
+  const label = isCustomer ? "ลูกค้า" : isAdmin ? `👤 ${adminName}` : "🤖 AI";
+
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []);
   const videoUrls = (m.message.match(/https?:\/\/\S+\.(?:mp4|mov|webm|m4v)/gi) || []);
   const allUrls = (m.message.match(/https?:\/\/\S+/gi) || []).map((u: string) => u.replace(/[)\].,;]+$/, ""));
