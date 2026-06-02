@@ -59,13 +59,18 @@ Deno.serve(async (req) => {
         if (m.type === "image") return `[รูปภาพ]\n📎 ${m.originalContentUrl || m.previewImageUrl || ""}`;
         if (m.type === "video") return `[วิดีโอ]\n📎 ${m.originalContentUrl || ""}`;
         if (m.type === "file") return `[ไฟล์]\n📎 ${m.originalContentUrl || ""}`;
+        // Flex/template: ใช้ altText เป็นข้อความที่อ่านได้ (เช่น "📄 ไฟล์: name.pdf") แทน "[flex]"
+        if (m.type === "flex" || m.type === "template") {
+          const alt = (m.altText || "").trim();
+          return alt || `[${m.type}]`;
+        }
         return `[${m.type}]`;
       }).join("\n");
       const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours").eq("key", "ai_config").limit(1);
       const manualHours = cfgArr?.[0]?.manual_chat_hours || 360;
       const until = new Date(Date.now() + manualHours * 3600000).toISOString();
 
-      await admin.from("conversations").insert({ customer_id, message: text, sender: "admin" });
+      await admin.from("conversations").insert({ customer_id, message: text, sender: "admin", admin_user_id: user.id });
       await admin.from("customers").update({
         ai_active: false,
         manual_chat_until: until,
@@ -73,6 +78,7 @@ Deno.serve(async (req) => {
         last_message_snippet: `👤 ${text.slice(0, 60)}`,
       }).eq("id", customer_id);
     }
+
 
     return Response.json({ ok: true }, { headers: corsHeaders });
   } catch (err: any) {

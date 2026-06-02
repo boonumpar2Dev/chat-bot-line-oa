@@ -150,6 +150,8 @@ export default function Chats() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(sp.get("customer"));
   const [messages, setMessages] = useState<Conversation[]>([]);
+  const [adminNames, setAdminNames] = useState<Record<string, string>>({});
+
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKind>("all");
   const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
@@ -325,6 +327,22 @@ export default function Chats() {
       .subscribe();
     return () => { active = false; supabase.removeChannel(ch); };
   }, [selectedId]);
+
+  // โหลดชื่อแสดงของแอดมินทุกคน (ใช้แทนคำว่า "แอดมิน" ในบับเบิลข้อความ)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("id, display_name, email");
+      if (!active || !data) return;
+      const map: Record<string, string> = {};
+      for (const p of data as any[]) {
+        map[p.id] = (p.display_name?.trim()) || (p.email?.split("@")[0]) || "แอดมิน";
+      }
+      setAdminNames(map);
+    })();
+    return () => { active = false; };
+  }, []);
+
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -693,7 +711,7 @@ export default function Chats() {
             {/* Messages */}
             <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
-                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)}/>)}
+                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}/>)}
               </div>
             </ScrollArea>
 
@@ -890,12 +908,14 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
   );
 }
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string> }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
-  const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
+  const adminName = isAdmin ? (m.admin_user_id && adminNames?.[m.admin_user_id]) || "แอดมิน" : "";
+  const label = isCustomer ? "ลูกค้า" : isAdmin ? `👤 ${adminName}` : "🤖 AI";
+
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []);
   const videoUrls = (m.message.match(/https?:\/\/\S+\.(?:mp4|mov|webm|m4v)/gi) || []);
   const allUrls = (m.message.match(/https?:\/\/\S+/gi) || []).map((u: string) => u.replace(/[)\].,;]+$/, ""));

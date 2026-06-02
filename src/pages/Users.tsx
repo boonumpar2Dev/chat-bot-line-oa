@@ -162,9 +162,10 @@ function AddUserDialog({ onCreated, isOwner }: { onCreated: () => void; isOwner:
   const submit = async () => {
     if (!email || !password) { toast.error("กรอก email และ password"); return; }
     if (password.length < 6) { toast.error("password อย่างน้อย 6 ตัวอักษร"); return; }
+    if (!displayName.trim()) { toast.error("กรอกชื่อแสดง (จะใช้แสดงเวลาตอบลูกค้าในแชท)"); return; }
     setBusy(true);
     const { data, error } = await supabase.functions.invoke("admin-create-user", {
-      body: { email, password, display_name: displayName, role, menu_keys: menus },
+      body: { email, password, display_name: displayName.trim(), role, menu_keys: menus },
     });
     setBusy(false);
     if (error || (data as any)?.error) {
@@ -174,6 +175,7 @@ function AddUserDialog({ onCreated, isOwner }: { onCreated: () => void; isOwner:
     toast.success("เพิ่มผู้ใช้สำเร็จ");
     setOpen(false); reset(); onCreated();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset(); }}>
@@ -192,9 +194,10 @@ function AddUserDialog({ onCreated, isOwner }: { onCreated: () => void; isOwner:
             <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="กำหนด password เริ่มต้น" />
           </div>
           <div>
-            <Label>ชื่อแสดง</Label>
-            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="ชื่อที่จะแสดง" />
+            <Label>ชื่อแสดง * <span className="text-xs text-muted-foreground font-normal">(ใช้แสดงเวลาตอบลูกค้าในแชท)</span></Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="เช่น tualek, น้องบุญ, แอดมินเอ" maxLength={100}/>
           </div>
+
           <div>
             <Label>บทบาท</Label>
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
