@@ -592,7 +592,7 @@ export default function Chats() {
                   </span>}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-snug [overflow-wrap:anywhere]">
-                  {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : (c.last_message_snippet || "—")}
+                  {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : formatSnippet(c.last_message_snippet)}
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
