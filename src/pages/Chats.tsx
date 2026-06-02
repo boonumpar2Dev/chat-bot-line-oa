@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
@@ -165,6 +167,7 @@ export default function Chats() {
   const [showQuick, setShowQuick] = useState(false);
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [msgSearch, setMsgSearch] = useState("");
+  const [showMsgSearch, setShowMsgSearch] = useState(false);
   const [trainText, setTrainText] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -534,14 +537,14 @@ export default function Chats() {
             <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
           {!isSearching && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-nowrap gap-1.5 overflow-x-auto -mx-3 px-3 pb-1 scrollbar-thin [&::-webkit-scrollbar]:h-1">
               {FILTER_PILLS.map(p => {
                 const active = filter === p.key;
                 const count = p.countKey ? filterCounts[p.countKey] : 0;
                 return (
                   <button key={p.key} onClick={() => setFilter(p.key)}
                     className={cn(
-                      "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1",
+                      "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1 shrink-0 whitespace-nowrap",
                       active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent border-border"
                     )}>
                     {p.label}
@@ -553,7 +556,7 @@ export default function Chats() {
               })}
               <Select value={filter.startsWith("status:") ? filter : "__none"} onValueChange={(v) => v !== "__none" && setFilter(v as FilterKind)}>
                 <SelectTrigger className={cn(
-                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1",
+                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1 shrink-0 whitespace-nowrap",
                   filter.startsWith("status:") ? "bg-primary text-primary-foreground border-primary" : "bg-background"
                 )}>
                   <SelectValue placeholder="สถานะ ▾">
@@ -648,13 +651,17 @@ export default function Chats() {
                   {selected.phone && <span className="text-xs text-muted-foreground">{selected.phone}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
                 <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
               </div>
+              <Button size="icon" variant="ghost" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
+                <Search className="w-4 h-4"/>
+              </Button>
+              {/* Desktop: eraser inline */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" title="ล้างประวัติแชทของลูกค้านี้" disabled={clearingChat}>
+                  <Button size="icon" variant="ghost" className="hidden sm:inline-flex" title="ล้างประวัติแชทของลูกค้านี้" disabled={clearingChat}>
                     {clearingChat ? <Loader2 className="w-4 h-4 animate-spin"/> : <Eraser className="w-4 h-4"/>}
                   </Button>
                 </AlertDialogTrigger>
@@ -679,6 +686,35 @@ export default function Chats() {
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
                 </SheetContent>
               </Sheet>
+              {/* Mobile: kebab with destructive action */}
+              <AlertDialog>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="icon" variant="ghost" className="sm:hidden" title="เพิ่มเติม">
+                      <MoreVertical className="w-4 h-4"/>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
+                        <Eraser className="w-4 h-4 mr-2"/>ล้างประวัติแชท
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>ล้างประวัติแชทของลูกค้านี้?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      จะลบข้อความทั้งหมดของ <b>{selected.nickname || selected.display_name}</b> และรีเซ็ต context ที่ AI จำไว้
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearThisChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">ล้างเลย</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <Dialog open={pausePickerOpen} onOpenChange={setPausePickerOpen}>
                 <DialogContent className="max-w-xs">
                   <DialogHeader>
@@ -700,16 +736,18 @@ export default function Chats() {
             {/* Manual timer */}
             <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
 
-            {/* Message search */}
-            <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-2">
-              <Search className="w-4 h-4 text-muted-foreground shrink-0"/>
-              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท (ลูกค้า + AI)…" className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"/>
-              {msgSearch && <span className="text-xs text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
-              {msgSearch && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>setMsgSearch("")}><X className="w-4 h-4"/></Button>}
-            </div>
+            {/* Message search (toggleable) */}
+            {showMsgSearch && (
+              <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-2">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0"/>
+                <Input autoFocus value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท (ลูกค้า + AI)…" className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"/>
+                {msgSearch && <span className="text-xs text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>{ setMsgSearch(""); setShowMsgSearch(false); }}><X className="w-4 h-4"/></Button>
+              </div>
+            )}
 
             {/* Messages */}
-            <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef as any}>
+            <ScrollArea className="flex-1 px-3 sm:px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
                 {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}/>)}
               </div>
@@ -721,19 +759,40 @@ export default function Chats() {
               onClearAll={() => setStagedFiles([])}/>
 
             {/* Composer */}
-            <div className="border-t bg-card p-3 relative">
+            <div className="border-t bg-card p-3 relative pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <QuickResponsePopup show={showQuick} filter={reply.startsWith("/") ? reply.slice(1) : ""}
                 onSelect={onSelectQuick} onClose={() => setShowQuick(false)}/>
               <div className="max-w-3xl mx-auto flex gap-2 items-end">
                 <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
-                <Button size="icon" variant="ghost" type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {/* Mobile: single "+" popover */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="icon" variant="ghost" type="button" className="sm:hidden shrink-0" disabled={uploading} title="เพิ่มเติม">
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-5 h-5"/>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-44 p-1">
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <Paperclip className="w-4 h-4 text-muted-foreground"/>แนบไฟล์
+                    </button>
+                    <button onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
+                    </button>
+                    <button onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
+                    </button>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Desktop: 3 inline buttons */}
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="แนบไฟล์">
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Paperclip className="w-4 h-4"/>}
                 </Button>
-                <Button size="icon" variant="ghost" type="button" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
                   <MessageSquareText className="w-4 h-4"/>
                 </Button>
-                <Button size="icon" variant="ghost" type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
                   <FileText className="w-4 h-4"/>
                 </Button>
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
@@ -742,12 +801,12 @@ export default function Chats() {
                     const files = Array.from(e.clipboardData?.files || []);
                     if (files.length) { e.preventDefault(); uploadFiles(files); }
                   }}
-                  placeholder="พิมพ์ข้อความ หรือลาก/วางไฟล์ได้เลย (Enter ส่ง, /ค้นหาคำตอบสำเร็จรูป)" rows={2} className="resize-none flex-1"/>
-                <Button onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)}>
+                  placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2} className="resize-none flex-1 min-w-0"/>
+                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1 text-center">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
+              <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
             </div>
           </>
         )}
@@ -950,7 +1009,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
       </span>
       {imgUrls.length > 0 && (
         <div className={cn(
-          "grid gap-1.5 max-w-[320px]",
+          "grid gap-1.5 max-w-[75vw] sm:max-w-[320px]",
           imgUrls.length === 1 ? "grid-cols-1" : "grid-cols-2"
         )}>
           {imgUrls.map((u: string) => (
@@ -960,14 +1019,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
         </div>
       )}
       {videoUrls.length > 0 && (
-        <div className="flex flex-col gap-1.5 max-w-[320px]">
+        <div className="flex flex-col gap-1.5 max-w-[75vw] sm:max-w-[320px]">
           {videoUrls.map((u: string) => (
             <video key={u} src={u} controls className="w-full rounded-lg border bg-black"/>
           ))}
         </div>
       )}
       {fileUrls.length > 0 && (
-        <div className="flex flex-col gap-1.5 max-w-[320px]">
+        <div className="flex flex-col gap-1.5 max-w-[75vw] sm:max-w-[320px]">
           {fileUrls.map((u: string) => {
             const name = fileLabel || decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์");
             return (
@@ -988,7 +1047,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
       )}
       {/* OCR text is internal AI context only — not shown to admin (LINE-like display) */}
       {cleaned && (
-        <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
+        <div className={cn("max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
           {renderText(cleaned)}
         </div>
       )}
