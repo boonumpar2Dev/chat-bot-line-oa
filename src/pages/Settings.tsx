@@ -109,6 +109,7 @@ export default function Settings() {
       out_of_hours_message_enabled: s.out_of_hours_message_enabled,
       unable_to_reply_message: s.unable_to_reply_message,
       unable_to_reply_enabled: s.unable_to_reply_enabled,
+      followup_instruction: s.followup_instruction,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
