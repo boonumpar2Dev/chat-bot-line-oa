@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
 
     if (display_name !== undefined || email) {
       const profilePatch: any = {};
-      if (display_name !== undefined) profilePatch.display_name = display_name || null;
+      if (display_name !== undefined) profilePatch.display_name = display_name.trim();
       if (email) profilePatch.email = email.trim();
       if (Object.keys(profilePatch).length > 0) {
         await admin.from("profiles").update(profilePatch).eq("id", user_id);
