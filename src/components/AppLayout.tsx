@@ -131,8 +131,8 @@ export default function AppLayout() {
         <header className="lg:hidden h-14 border-b flex items-center px-3 gap-2 bg-card">
           <Button size="icon" variant="ghost" onClick={() => setMobileOpen(true)}><Menu /></Button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-brand-gradient flex items-center justify-center"><ChefHat className="w-4 h-4 text-primary-foreground" /></div>
-            <span className="font-display font-semibold">Catering Bot</span>
+            <img src={boonumparLogo.url} alt="Boonumpar" className="h-7 w-auto object-contain" />
+            <span className="font-display font-semibold">Boonumpar Chat</span>
           </div>
         </header>
         <main className="flex-1 overflow-auto"><Outlet /></main>
