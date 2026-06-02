@@ -350,7 +350,14 @@ export default function Chats() {
 
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+    // Radix ScrollArea: ตัว scroll จริงคือ Viewport ข้างใน Root
+    const root = scrollRef.current;
+    const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
+    if (!viewport) return;
+    // ใช้ rAF ให้ DOM render ข้อความใหม่ก่อนค่อยเลื่อน
+    requestAnimationFrame(() => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+    });
   }, [messages]);
 
   // Customers found by searching inside message content
