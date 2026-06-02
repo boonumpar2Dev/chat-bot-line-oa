@@ -33,10 +33,10 @@ export default function Auth() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between p-12 bg-brand-gradient text-primary-foreground relative overflow-hidden">
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-            <ChefHat className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-xl bg-white/95 backdrop-blur flex items-center justify-center p-2">
+            <img src={boonumparLogo.url} alt="Boonumpar" className="h-full w-auto object-contain" />
           </div>
-          <span className="font-display text-xl font-semibold">Catering Bot</span>
+          <span className="font-display text-xl font-semibold">Boonumpar Chat</span>
         </div>
         <div className="relative z-10 space-y-4">
           <h1 className="font-display text-4xl font-semibold leading-tight">
