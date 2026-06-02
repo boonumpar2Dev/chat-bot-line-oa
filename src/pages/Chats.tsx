@@ -596,7 +596,16 @@ export default function Chats() {
       </aside>
 
       {/* Chat thread */}
-      <main className={cn("flex-1 flex flex-col bg-background min-w-0", !selectedId && "hidden lg:flex")}>
+      <main className={cn("flex-1 flex flex-col bg-background min-w-0 relative", !selectedId && "hidden lg:flex")}
+        onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
+        {isDragging && selected && (
+          <div className="absolute inset-0 z-50 bg-primary/10 border-4 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
+            <div className="bg-card px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+              <Paperclip className="w-6 h-6 text-primary"/>
+              <span className="text-sm font-medium">วางไฟล์ที่นี่เพื่อแนบ</span>
+            </div>
+          </div>
+        )}
         {!selected ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <p className="text-sm">เลือกลูกค้าจากรายการเพื่อดูแชท</p>
