@@ -377,13 +377,6 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="fallback" className="mt-4">
-          <Card className="p-6 shadow-soft border-border/60">
-            <div className="flex items-center gap-2 mb-4"><MessageSquare className="text-primary" /><h2 className="font-display text-lg font-semibold">ข้อความ Fallback</h2></div>
-            <Textarea value={s.fallback_message ?? ""} onChange={e => upd("fallback_message", e.target.value)} rows={4} />
-            <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
