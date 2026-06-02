@@ -736,16 +736,18 @@ export default function Chats() {
             {/* Manual timer */}
             <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
 
-            {/* Message search */}
-            <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-2">
-              <Search className="w-4 h-4 text-muted-foreground shrink-0"/>
-              <Input value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท (ลูกค้า + AI)…" className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"/>
-              {msgSearch && <span className="text-xs text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
-              {msgSearch && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>setMsgSearch("")}><X className="w-4 h-4"/></Button>}
-            </div>
+            {/* Message search (toggleable) */}
+            {showMsgSearch && (
+              <div className="border-b bg-muted/40 px-3 py-2 flex items-center gap-2">
+                <Search className="w-4 h-4 text-muted-foreground shrink-0"/>
+                <Input autoFocus value={msgSearch} onChange={e=>setMsgSearch(e.target.value)} placeholder="ค้นหาในประวัติแชท (ลูกค้า + AI)…" className="h-8 text-sm border-0 bg-transparent focus-visible:ring-0 px-1"/>
+                {msgSearch && <span className="text-xs text-muted-foreground shrink-0">{messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())).length} ผลลัพธ์</span>}
+                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={()=>{ setMsgSearch(""); setShowMsgSearch(false); }}><X className="w-4 h-4"/></Button>
+              </div>
+            )}
 
             {/* Messages */}
-            <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef as any}>
+            <ScrollArea className="flex-1 px-3 sm:px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
                 {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}/>)}
               </div>
@@ -757,19 +759,40 @@ export default function Chats() {
               onClearAll={() => setStagedFiles([])}/>
 
             {/* Composer */}
-            <div className="border-t bg-card p-3 relative">
+            <div className="border-t bg-card p-3 relative pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <QuickResponsePopup show={showQuick} filter={reply.startsWith("/") ? reply.slice(1) : ""}
                 onSelect={onSelectQuick} onClose={() => setShowQuick(false)}/>
               <div className="max-w-3xl mx-auto flex gap-2 items-end">
                 <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
-                <Button size="icon" variant="ghost" type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                {/* Mobile: single "+" popover */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="icon" variant="ghost" type="button" className="sm:hidden shrink-0" disabled={uploading} title="เพิ่มเติม">
+                      {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-5 h-5"/>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-44 p-1">
+                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <Paperclip className="w-4 h-4 text-muted-foreground"/>แนบไฟล์
+                    </button>
+                    <button onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
+                    </button>
+                    <button onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
+                    </button>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Desktop: 3 inline buttons */}
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="แนบไฟล์">
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Paperclip className="w-4 h-4"/>}
                 </Button>
-                <Button size="icon" variant="ghost" type="button" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
                   <MessageSquareText className="w-4 h-4"/>
                 </Button>
-                <Button size="icon" variant="ghost" type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
                   <FileText className="w-4 h-4"/>
                 </Button>
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
@@ -778,12 +801,12 @@ export default function Chats() {
                     const files = Array.from(e.clipboardData?.files || []);
                     if (files.length) { e.preventDefault(); uploadFiles(files); }
                   }}
-                  placeholder="พิมพ์ข้อความ หรือลาก/วางไฟล์ได้เลย (Enter ส่ง, /ค้นหาคำตอบสำเร็จรูป)" rows={2} className="resize-none flex-1"/>
-                <Button onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)}>
+                  placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2} className="resize-none flex-1 min-w-0"/>
+                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1 text-center">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
+              <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
             </div>
           </>
         )}
