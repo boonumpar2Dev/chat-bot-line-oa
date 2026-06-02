@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ChefHat, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import boonumparLogo from "@/assets/boonumpar-logo.png.asset.json";
 
 export default function Auth() {
   const nav = useNavigate();
@@ -32,10 +33,10 @@ export default function Auth() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between p-12 bg-brand-gradient text-primary-foreground relative overflow-hidden">
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-            <ChefHat className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-xl bg-white/95 backdrop-blur flex items-center justify-center p-2">
+            <img src={boonumparLogo.url} alt="Boonumpar" className="h-full w-auto object-contain" />
           </div>
-          <span className="font-display text-xl font-semibold">Catering Bot</span>
+          <span className="font-display text-xl font-semibold">Boonumpar Chat</span>
         </div>
         <div className="relative z-10 space-y-4">
           <h1 className="font-display text-4xl font-semibold leading-tight">
@@ -52,10 +53,8 @@ export default function Auth() {
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-8 shadow-elevated border-border/60">
           <div className="lg:hidden flex items-center gap-2 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-brand-gradient flex items-center justify-center">
-              <ChefHat className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display text-lg font-semibold">Catering Bot</span>
+            <img src={boonumparLogo.url} alt="Boonumpar" className="h-9 w-auto object-contain" />
+            <span className="font-display text-lg font-semibold">Boonumpar Chat</span>
           </div>
           <h2 className="font-display text-2xl font-semibold mb-1">ยินดีต้อนรับ</h2>
           <p className="text-sm text-muted-foreground mb-6">เข้าสู่ระบบเพื่อจัดการแชทบอท</p>

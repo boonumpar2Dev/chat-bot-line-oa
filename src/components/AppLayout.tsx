@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { ChefHat, LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon } from "lucide-react";
+import boonumparLogo from "@/assets/boonumpar-logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
 import { Button } from "@/components/ui/button";
@@ -80,10 +81,8 @@ function SidebarInner({ collapsed, setCollapsed, onNav }: { collapsed: boolean; 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       <div className={cn("flex items-center gap-2.5 px-4 h-16 border-b border-sidebar-border", collapsed && "justify-center px-0")}>
-        <div className="w-9 h-9 rounded-lg bg-brand-gradient flex items-center justify-center shrink-0">
-          <ChefHat className="w-5 h-5 text-primary-foreground" />
-        </div>
-        {!collapsed && <span className="font-display font-semibold text-lg">Catering Bot</span>}
+        <img src={boonumparLogo.url} alt="Boonumpar" className="h-9 w-auto object-contain shrink-0" />
+        {!collapsed && <span className="font-display font-semibold text-lg">Boonumpar Chat</span>}
       </div>
       <NavItems collapsed={collapsed} onNav={onNav} />
       <div className="p-3 border-t border-sidebar-border">
@@ -132,8 +131,8 @@ export default function AppLayout() {
         <header className="lg:hidden h-14 border-b flex items-center px-3 gap-2 bg-card">
           <Button size="icon" variant="ghost" onClick={() => setMobileOpen(true)}><Menu /></Button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-md bg-brand-gradient flex items-center justify-center"><ChefHat className="w-4 h-4 text-primary-foreground" /></div>
-            <span className="font-display font-semibold">Catering Bot</span>
+            <img src={boonumparLogo.url} alt="Boonumpar" className="h-7 w-auto object-contain" />
+            <span className="font-display font-semibold">Boonumpar Chat</span>
           </div>
         </header>
         <main className="flex-1 overflow-auto"><Outlet /></main>
