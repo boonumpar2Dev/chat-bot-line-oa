@@ -27,6 +27,8 @@ import StagedMessageBar from "@/components/chats/StagedMessageBar";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
+import { formatSnippet } from "@/lib/snippet";
+
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
 
