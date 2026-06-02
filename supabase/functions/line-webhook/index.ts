@@ -278,11 +278,20 @@ async function sendAndSave(supabase: any, customerId: string, lineUserId: string
 }
 
 async function processEvent(event: any, supabase: any) {
-  const lineUserId = event.source?.userId;
+  const src = event.source || {};
+  // รองรับทั้ง 1-1, group และ room — ใช้ ID ที่ใช้ push กลับได้ตรงๆ
+  const sourceType: "user" | "group" | "room" =
+    src.type === "group" ? "group" : src.type === "room" ? "room" : "user";
+  const sourceId: string | undefined =
+    sourceType === "group" ? src.groupId : sourceType === "room" ? src.roomId : src.userId;
+  const lineUserId = sourceId;
+  // เก็บ userId ของผู้ส่งจริงในกรุ๊ป (ถ้ามี) — ใช้ดึงโปรไฟล์คนที่พูด
+  const senderUserId: string | undefined = src.userId;
   if (!lineUserId) return;
   if (event.deliveryContext?.isRedelivery) return;
 
-  console.log(`[Event] type=${event.type} mode=${event.mode} userId=${lineUserId}`);
+  console.log(`[Event] type=${event.type} mode=${event.mode} source=${sourceType} id=${lineUserId}`);
+
 
   // Standby mode = admin took over
   if (event.mode === "standby") {
