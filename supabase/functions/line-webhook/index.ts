@@ -183,19 +183,57 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
   return { ...parsed, _usage: data.usage, _model: model };
 }
 
-async function uploadLineMedia(messageId: string, msgType: string, supabase: any): Promise<string | null> {
+function extFromMime(mime: string, fallback: string): string {
+  const m = (mime || "").toLowerCase();
+  if (m.includes("pdf")) return "pdf";
+  if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
+  if (m.includes("png")) return "png";
+  if (m.includes("webp")) return "webp";
+  if (m.includes("gif")) return "gif";
+  if (m.includes("mp4")) return "mp4";
+  if (m.includes("quicktime")) return "mov";
+  if (m.includes("m4a") || m.includes("mp4a")) return "m4a";
+  if (m.includes("mpeg") && m.startsWith("audio")) return "mp3";
+  if (m.includes("wav")) return "wav";
+  if (m.includes("wordprocessingml")) return "docx";
+  if (m.includes("msword")) return "doc";
+  if (m.includes("spreadsheetml")) return "xlsx";
+  if (m.includes("ms-excel")) return "xls";
+  if (m.includes("presentationml")) return "pptx";
+  if (m.includes("ms-powerpoint")) return "ppt";
+  if (m.includes("zip")) return "zip";
+  if (m.includes("plain")) return "txt";
+  if (m.includes("csv")) return "csv";
+  return fallback;
+}
+
+async function uploadLineMedia(
+  messageId: string,
+  msgType: string,
+  supabase: any,
+  originalFileName?: string,
+): Promise<{ url: string; ext: string; mime: string } | null> {
   try {
-    const ext = msgType === "image" ? "jpg" : msgType === "video" ? "mp4" : msgType === "audio" ? "m4a" : "bin";
-    const fileName = `${msgType}_${messageId}.${ext}`;
+    const fallback = msgType === "image" ? "jpg" : msgType === "video" ? "mp4" : msgType === "audio" ? "m4a" : "bin";
     const r = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
       headers: { Authorization: `Bearer ${LINE_TOKEN}` },
     });
     if (!r.ok) return null;
+    const mime = r.headers.get("content-type") || "";
     const blob = await r.blob();
-    const { data, error } = await supabase.storage.from("line-media").upload(fileName, blob, { upsert: true, contentType: blob.type });
+    // Prefer extension from original file name → mime → fallback
+    let ext = fallback;
+    if (originalFileName && originalFileName.includes(".")) {
+      const e = originalFileName.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (e && e.length <= 5) ext = e;
+    } else {
+      ext = extFromMime(mime || blob.type, fallback);
+    }
+    const fileName = `${msgType}_${messageId}.${ext}`;
+    const { data, error } = await supabase.storage.from("line-media").upload(fileName, blob, { upsert: true, contentType: mime || blob.type || undefined });
     if (error) { console.error("upload error", error); return null; }
     const { data: pub } = supabase.storage.from("line-media").getPublicUrl(data.path);
-    return pub.publicUrl;
+    return { url: pub.publicUrl, ext, mime: mime || blob.type || "" };
   } catch (e) {
     console.error("media upload failed", e);
     return null;
@@ -262,9 +300,15 @@ async function processEvent(event: any, supabase: any) {
       if (event.message.type === "text") text = event.message.text;
       else if (event.message.type === "sticker") text = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
       else if (event.message.type === "location") text = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
-      else {
-        const label = event.message.type === "image" ? "รูปภาพ" : event.message.type === "video" ? "วิดีโอ" : event.message.type === "audio" ? "เสียง" : "ไฟล์";
-        text = `[${label}]`;
+      else if (["image","video","audio","file"].includes(event.message.type)) {
+        const mt = event.message.type;
+        const label = mt === "image" ? "รูปภาพ" : mt === "video" ? "วิดีโอ" : mt === "audio" ? "เสียง" : "ไฟล์";
+        const origName: string | undefined = event.message?.fileName;
+        const uploaded = await uploadLineMedia(event.message.id, mt, supabase, origName);
+        const displayLabel = mt === "file" && origName ? `ไฟล์: ${origName}` : label;
+        text = uploaded?.url ? `[${displayLabel}]\n📎 ${uploaded.url}` : `[${displayLabel}]`;
+      } else {
+        text = `[${event.message.type || "ไม่ทราบ"}]`;
       }
       await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id });
       const snippet = text.replace(/\[.*?\]\n?/, "").trim().slice(0, 60) || text.slice(0, 60);
@@ -288,13 +332,16 @@ async function processEvent(event: any, supabase: any) {
     isText = true;
   } else if (["image", "video", "audio", "file"].includes(msgType)) {
     const label = msgType === "image" ? "รูปภาพ" : msgType === "video" ? "วิดีโอ" : msgType === "audio" ? "เสียง" : "ไฟล์";
-    const fileUrl = await uploadLineMedia(event.message.id, msgType, supabase);
-    messageText = fileUrl ? `[${label}]\n📎 ${fileUrl}` : `[${label}]`;
+    const origName: string | undefined = event.message?.fileName;
+    const uploaded = await uploadLineMedia(event.message.id, msgType, supabase, origName);
+    const fileUrl = uploaded?.url || null;
+    const displayLabel = msgType === "file" && origName ? `ไฟล์: ${origName}` : label;
+    messageText = fileUrl ? `[${displayLabel}]\n📎 ${fileUrl}` : `[${displayLabel}]`;
     // 📄 OCR: อ่านข้อความในรูป (เช่น แคปแชทจากที่อื่น) แล้วใส่เป็น context ให้ AI ตอบต่อได้
     if (msgType === "image" && fileUrl) {
-      const ocr = await ocrImage(fileUrl);
+      const ocr = await ocrImage(fileUrl, supabase);
       if (ocr) {
-        messageText = `[${label}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
+        messageText = `[${displayLabel}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
         isText = true;
       }
     }
