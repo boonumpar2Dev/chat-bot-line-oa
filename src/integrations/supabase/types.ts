@@ -93,6 +93,7 @@ export type Database = {
           ai_whitelist_user_ids: string[]
           allowed_service_types: string[]
           auto_tag_settings: Json
+          bot_mode: string
           comparison_instruction: string
           comparison_kb_category: string | null
           comparison_phase_enabled: boolean
@@ -126,6 +127,8 @@ export type Database = {
           manual_chat_hours: number
           max_images_per_reply: number
           menu_request_keywords: string[]
+          out_of_hours_message: string
+          out_of_hours_message_enabled: boolean
           phase2_instruction: string
           phone_mute_hours: number
           post_phone_max_replies: number
@@ -141,6 +144,8 @@ export type Database = {
           tier_list: Json
           tier_special_rules: string
           trivial_replies: string[]
+          unable_to_reply_enabled: boolean
+          unable_to_reply_message: string
           updated_at: string
         }
         Insert: {
@@ -150,6 +155,7 @@ export type Database = {
           ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
           auto_tag_settings?: Json
+          bot_mode?: string
           comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
@@ -183,6 +189,8 @@ export type Database = {
           manual_chat_hours?: number
           max_images_per_reply?: number
           menu_request_keywords?: string[]
+          out_of_hours_message?: string
+          out_of_hours_message_enabled?: boolean
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
@@ -198,6 +206,8 @@ export type Database = {
           tier_list?: Json
           tier_special_rules?: string
           trivial_replies?: string[]
+          unable_to_reply_enabled?: boolean
+          unable_to_reply_message?: string
           updated_at?: string
         }
         Update: {
@@ -207,6 +217,7 @@ export type Database = {
           ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
           auto_tag_settings?: Json
+          bot_mode?: string
           comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
@@ -240,6 +251,8 @@ export type Database = {
           manual_chat_hours?: number
           max_images_per_reply?: number
           menu_request_keywords?: string[]
+          out_of_hours_message?: string
+          out_of_hours_message_enabled?: boolean
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
@@ -255,6 +268,8 @@ export type Database = {
           tier_list?: Json
           tier_special_rules?: string
           trivial_replies?: string[]
+          unable_to_reply_enabled?: boolean
+          unable_to_reply_message?: string
           updated_at?: string
         }
         Relationships: []
