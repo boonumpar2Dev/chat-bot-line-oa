@@ -326,13 +326,16 @@ async function processEvent(event: any, supabase: any) {
     isText = true;
   } else if (["image", "video", "audio", "file"].includes(msgType)) {
     const label = msgType === "image" ? "รูปภาพ" : msgType === "video" ? "วิดีโอ" : msgType === "audio" ? "เสียง" : "ไฟล์";
-    const fileUrl = await uploadLineMedia(event.message.id, msgType, supabase);
-    messageText = fileUrl ? `[${label}]\n📎 ${fileUrl}` : `[${label}]`;
+    const origName: string | undefined = event.message?.fileName;
+    const uploaded = await uploadLineMedia(event.message.id, msgType, supabase, origName);
+    const fileUrl = uploaded?.url || null;
+    const displayLabel = msgType === "file" && origName ? `ไฟล์: ${origName}` : label;
+    messageText = fileUrl ? `[${displayLabel}]\n📎 ${fileUrl}` : `[${displayLabel}]`;
     // 📄 OCR: อ่านข้อความในรูป (เช่น แคปแชทจากที่อื่น) แล้วใส่เป็น context ให้ AI ตอบต่อได้
     if (msgType === "image" && fileUrl) {
-      const ocr = await ocrImage(fileUrl);
+      const ocr = await ocrImage(fileUrl, supabase);
       if (ocr) {
-        messageText = `[${label}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
+        messageText = `[${displayLabel}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
         isText = true;
       }
     }
