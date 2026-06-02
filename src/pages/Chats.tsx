@@ -485,11 +485,46 @@ export default function Chats() {
     <div className="h-full flex">
       {/* Customer list */}
       <aside className={cn("w-full lg:w-80 border-r flex flex-col bg-card", selectedId && "hidden lg:flex")}>
-        <div className="p-3 border-b">
+        <div className="p-3 border-b space-y-2">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
             <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
+          {!isSearching && (
+            <div className="flex flex-wrap gap-1.5">
+              {FILTER_PILLS.map(p => {
+                const active = filter === p.key;
+                const count = p.countKey ? filterCounts[p.countKey] : 0;
+                return (
+                  <button key={p.key} onClick={() => setFilter(p.key)}
+                    className={cn(
+                      "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1",
+                      active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent border-border"
+                    )}>
+                    {p.label}
+                    {p.countKey && count > 0 && (
+                      <span className={cn("text-[10px] px-1 rounded-full leading-tight", active ? "bg-primary-foreground/20" : "bg-muted")}>{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+              <Select value={filter.startsWith("status:") ? filter : "__none"} onValueChange={(v) => v !== "__none" && setFilter(v as FilterKind)}>
+                <SelectTrigger className={cn(
+                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1",
+                  filter.startsWith("status:") ? "bg-primary text-primary-foreground border-primary" : "bg-background"
+                )}>
+                  <SelectValue placeholder="สถานะ ▾">
+                    {filter.startsWith("status:") ? `${STATUS_LABEL[filter.slice(7)] || filter.slice(7)}` : "สถานะ ▾"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                    <SelectItem key={k} value={`status:${k}`}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <ScrollArea className="flex-1">
           {loading && <div className="p-6 flex justify-center"><Loader2 className="animate-spin"/></div>}
