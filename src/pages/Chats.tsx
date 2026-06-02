@@ -997,16 +997,22 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
     if (idx < 0) return txt;
     return <>{txt.slice(0, idx)}<mark className="bg-yellow-300/70 rounded px-0.5">{txt.slice(idx, idx + highlight.length)}</mark>{txt.slice(idx + highlight.length)}</>;
   };
+  const d = new Date(m.created_at);
+  const timeShort = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  const fullTime = d.toLocaleString("th-TH");
+  const showLabel = !isCustomer; // hide "ลูกค้า" label — left-align is enough
   return (
-    <div className={cn("flex flex-col gap-1 group", align)}>
-      <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
-        {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
-        {m.sender === "ai" && cleaned && onTrainAI && (
-          <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
-            <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
-          </button>
-        )}
-      </span>
+    <div className={cn("flex flex-col gap-0.5 group", align)}>
+      {showLabel && (
+        <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
+          {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
+          {m.sender === "ai" && cleaned && onTrainAI && (
+            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
+              <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
+            </button>
+          )}
+        </span>
+      )}
       {imgUrls.length > 0 && (
         <div className={cn(
           "grid gap-1.5 max-w-[75vw] sm:max-w-[320px]",
@@ -1045,13 +1051,17 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
           })}
         </div>
       )}
-      {/* OCR text is internal AI context only — not shown to admin (LINE-like display) */}
       {cleaned && (
-        <div className={cn("max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
+        <div className={cn(
+          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words shadow-sm",
+          isCustomer && "rounded-tl-md",
+          (isAdmin || !isCustomer) && "rounded-tr-md",
+          bg
+        )} title={fullTime}>
           {renderText(cleaned)}
         </div>
       )}
-      <span className="text-[10px] text-muted-foreground px-2">{new Date(m.created_at).toLocaleString("th-TH")}</span>
+      <span className="text-[10px] text-muted-foreground/70 px-2 opacity-0 group-hover:opacity-100 transition" title={fullTime}>{timeShort}</span>
     </div>
   );
 }
