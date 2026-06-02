@@ -35,6 +35,7 @@ type Settings = {
   out_of_hours_message_enabled: boolean;
   unable_to_reply_message: string;
   unable_to_reply_enabled: boolean;
+  followup_instruction: string;
 };
 
 const MODES: { value: BotMode; label: string; desc: string; icon: any; color: string }[] = [
