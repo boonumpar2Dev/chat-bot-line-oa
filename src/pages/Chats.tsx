@@ -107,12 +107,53 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
+type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | `status:${string}`;
+
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" }[] = [
+  { key: "all", label: "ทั้งหมด" },
+  { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
+  { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
+  { key: "manual", label: "🤖 Manual", countKey: "manual" },
+  { key: "no_phone", label: "📞 ไม่มีเบอร์", countKey: "no_phone" },
+  { key: "read", label: "อ่านแล้ว" },
+];
+
+function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
+  if (filter === "unread") return q.gt("unread_count", 0);
+  if (filter === "read") return q.eq("unread_count", 0);
+  if (filter === "manual") return q.eq("ai_active", false);
+  if (filter === "no_phone") return q.is("phone", null);
+  if (filter === "sla" && slaCutoffIso) {
+    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)");
+  }
+  if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
+  return q;
+}
+
+function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): boolean {
+  if (filter === "all") return true;
+  if (filter === "unread") return (c.unread_count || 0) > 0;
+  if (filter === "read") return (c.unread_count || 0) === 0;
+  if (filter === "manual") return c.ai_active === false;
+  if (filter === "no_phone") return !c.phone;
+  if (filter === "sla" && slaCutoffMs && c.last_message_at) {
+    return (c.unread_count || 0) > 0
+      && new Date(c.last_message_at).getTime() < slaCutoffMs
+      && !["confirmed", "cancelled"].includes(c.status);
+  }
+  if (filter.startsWith("status:")) return c.status === filter.slice(7);
+  return true;
+}
+
 export default function Chats() {
   const [sp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(sp.get("customer"));
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterKind>("all");
+  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
+  const [slaHours, setSlaHours] = useState<number>(24);
   const [reply, setReply] = useState("");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -141,22 +182,33 @@ export default function Chats() {
 
   const isSearching = debouncedSearch.length >= 2;
 
+  // Fetch sla_hours once
+  useEffect(() => {
+    supabase.from("app_settings").select("sla_hours").limit(1).maybeSingle().then(({ data }) => {
+      if (data?.sla_hours) setSlaHours(Number(data.sla_hours));
+    });
+  }, []);
+
+  const slaCutoffIso = useMemo(() => new Date(Date.now() - slaHours * 3600_000).toISOString(), [slaHours]);
+  const slaCutoffMs = useMemo(() => Date.now() - slaHours * 3600_000, [slaHours]);
+
+
   const selected = customers.find(c => c.id === selectedId);
 
-  // Initial load + reload when search changes
+  // Initial load + reload when search/filter changes
   useEffect(() => {
     let active = true;
     setLoading(true);
     setPage(0);
     setHasMore(true);
     (async () => {
-      let q = supabase.from("customers").select("*")
+      let q: any = supabase.from("customers").select("*")
         .order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
         const s = debouncedSearch.replace(/[%,]/g, "");
         q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
-        q = q.range(0, PAGE_SIZE - 1);
+        q = applyFilter(q, filter, slaCutoffIso).range(0, PAGE_SIZE - 1);
       }
       const { data } = await q;
       if (!active) return;
@@ -165,7 +217,20 @@ export default function Chats() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debouncedSearch, isSearching]);
+  }, [debouncedSearch, isSearching, filter, slaCutoffIso]);
+
+  // Fetch counts for filter pills
+  const refreshCounts = async () => {
+    const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
+    const [u, s, m, n] = await Promise.all([
+      base().gt("unread_count", 0),
+      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)"),
+      base().eq("ai_active", false),
+      base().is("phone", null),
+    ]);
+    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0 });
+  };
+  useEffect(() => { refreshCounts(); }, [slaCutoffIso]);
 
   // Ensure deep-linked customer (?customer=id) is loaded
   useEffect(() => {
@@ -179,7 +244,7 @@ export default function Chats() {
     })();
   }, [sp, customers.length]);
 
-  // Realtime: patch in place (no full reload)
+  // Realtime: patch in place + drop rows that no longer match active filter
   useEffect(() => {
     const ch = supabase.channel("customers-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, (payload: any) => {
@@ -190,22 +255,27 @@ export default function Chats() {
           return;
         }
         if (!newRow?.id) return;
+        // Refresh counts (debounced via microtask is overkill; cheap enough)
+        refreshCounts();
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === newRow.id);
+          const merged = idx >= 0 ? { ...prev[idx], ...newRow } : newRow;
+          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
           if (idx >= 0) {
+            if (!stillMatches) return prev.filter(c => c.id !== newRow.id);
             const next = [...prev];
-            next[idx] = { ...next[idx], ...newRow };
+            next[idx] = merged;
             return next.sort((a, b) =>
               new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
             );
           }
-          if (payload.eventType === "INSERT" && !isSearching) return [newRow, ...prev];
+          if (payload.eventType === "INSERT" && !isSearching && stillMatches) return [newRow, ...prev];
           return prev;
         });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching]);
+  }, [isSearching, filter, slaCutoffMs, slaCutoffIso]);
 
   // Infinite scroll
   const loadMore = async () => {
@@ -214,9 +284,10 @@ export default function Chats() {
     const nextPage = page + 1;
     const from = nextPage * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const { data } = await supabase.from("customers").select("*")
-      .order("last_message_at", { ascending: false, nullsFirst: false })
-      .range(from, to);
+    let q: any = supabase.from("customers").select("*")
+      .order("last_message_at", { ascending: false, nullsFirst: false });
+    q = applyFilter(q, filter, slaCutoffIso).range(from, to);
+    const { data } = await q;
     setCustomers(prev => {
       const ids = new Set(prev.map(c => c.id));
       return [...prev, ...(data || []).filter((c: any) => !ids.has(c.id))];
@@ -234,6 +305,7 @@ export default function Chats() {
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
   }, [page, hasMore, loadingMore, isSearching, customers.length]);
+
 
 
   // Messages + realtime
@@ -413,11 +485,46 @@ export default function Chats() {
     <div className="h-full flex">
       {/* Customer list */}
       <aside className={cn("w-full lg:w-80 border-r flex flex-col bg-card", selectedId && "hidden lg:flex")}>
-        <div className="p-3 border-b">
+        <div className="p-3 border-b space-y-2">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
             <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
+          {!isSearching && (
+            <div className="flex flex-wrap gap-1.5">
+              {FILTER_PILLS.map(p => {
+                const active = filter === p.key;
+                const count = p.countKey ? filterCounts[p.countKey] : 0;
+                return (
+                  <button key={p.key} onClick={() => setFilter(p.key)}
+                    className={cn(
+                      "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1",
+                      active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent border-border"
+                    )}>
+                    {p.label}
+                    {p.countKey && count > 0 && (
+                      <span className={cn("text-[10px] px-1 rounded-full leading-tight", active ? "bg-primary-foreground/20" : "bg-muted")}>{count}</span>
+                    )}
+                  </button>
+                );
+              })}
+              <Select value={filter.startsWith("status:") ? filter : "__none"} onValueChange={(v) => v !== "__none" && setFilter(v as FilterKind)}>
+                <SelectTrigger className={cn(
+                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1",
+                  filter.startsWith("status:") ? "bg-primary text-primary-foreground border-primary" : "bg-background"
+                )}>
+                  <SelectValue placeholder="สถานะ ▾">
+                    {filter.startsWith("status:") ? `${STATUS_LABEL[filter.slice(7)] || filter.slice(7)}` : "สถานะ ▾"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                    <SelectItem key={k} value={`status:${k}`}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <ScrollArea className="flex-1">
           {loading && <div className="p-6 flex justify-center"><Loader2 className="animate-spin"/></div>}
