@@ -107,12 +107,53 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
+type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | `status:${string}`;
+
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" }[] = [
+  { key: "all", label: "ทั้งหมด" },
+  { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
+  { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
+  { key: "manual", label: "🤖 Manual", countKey: "manual" },
+  { key: "no_phone", label: "📞 ไม่มีเบอร์", countKey: "no_phone" },
+  { key: "read", label: "อ่านแล้ว" },
+];
+
+function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
+  if (filter === "unread") return q.gt("unread_count", 0);
+  if (filter === "read") return q.eq("unread_count", 0);
+  if (filter === "manual") return q.eq("ai_active", false);
+  if (filter === "no_phone") return q.is("phone", null);
+  if (filter === "sla" && slaCutoffIso) {
+    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)");
+  }
+  if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
+  return q;
+}
+
+function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): boolean {
+  if (filter === "all") return true;
+  if (filter === "unread") return (c.unread_count || 0) > 0;
+  if (filter === "read") return (c.unread_count || 0) === 0;
+  if (filter === "manual") return c.ai_active === false;
+  if (filter === "no_phone") return !c.phone;
+  if (filter === "sla" && slaCutoffMs && c.last_message_at) {
+    return (c.unread_count || 0) > 0
+      && new Date(c.last_message_at).getTime() < slaCutoffMs
+      && !["confirmed", "cancelled"].includes(c.status);
+  }
+  if (filter.startsWith("status:")) return c.status === filter.slice(7);
+  return true;
+}
+
 export default function Chats() {
   const [sp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(sp.get("customer"));
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterKind>("all");
+  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
+  const [slaHours, setSlaHours] = useState<number>(24);
   const [reply, setReply] = useState("");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -140,6 +181,17 @@ export default function Chats() {
   }, [search]);
 
   const isSearching = debouncedSearch.length >= 2;
+
+  // Fetch sla_hours once
+  useEffect(() => {
+    supabase.from("app_settings").select("sla_hours").limit(1).maybeSingle().then(({ data }) => {
+      if (data?.sla_hours) setSlaHours(Number(data.sla_hours));
+    });
+  }, []);
+
+  const slaCutoffIso = useMemo(() => new Date(Date.now() - slaHours * 3600_000).toISOString(), [slaHours]);
+  const slaCutoffMs = useMemo(() => Date.now() - slaHours * 3600_000, [slaHours]);
+
 
   const selected = customers.find(c => c.id === selectedId);
 
