@@ -80,6 +80,7 @@ export default function Tags() {
   const [savingAuto, setSavingAuto] = useState(false);
   const [rescanning, setRescanning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -213,7 +214,7 @@ export default function Tags() {
             <div className="text-xs text-muted-foreground">
               {selected.size > 0
                 ? <span className="font-medium text-foreground">เลือก {selected.size} แท็ก</span>
-                : <>มี {tags.length} แท็ก · กด checkbox เพื่อเลือกหลายแท็ก</>}
+                : <>มี {tags.length} แท็ก{search.trim() ? ` · ค้นพบ ${tags.filter(t => t.name.toLowerCase().includes(search.trim().toLowerCase())).length}` : ""} · กด checkbox เพื่อเลือกหลายแท็ก</>}
             </div>
             <div className="flex gap-2 flex-wrap">
               {selected.size > 0 && (
@@ -230,12 +231,24 @@ export default function Tags() {
               <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-8 gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
             </div>
           </div>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="🔍 ค้นหาแท็ก (พิมพ์ชื่อแท็ก เช่น VIP, 2569, บริษัท)"
+            className="h-9"
+          />
           {loading ? <div className="text-center text-muted-foreground py-10">กำลังโหลด...</div>
             : tags.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-muted-foreground">ยังไม่มีแท็ก — กดปุ่ม "เพิ่มแท็ก" เพื่อเริ่ม</CardContent></Card>
-            ) : (
+            ) : (() => {
+              const q = search.trim().toLowerCase();
+              const filtered = q ? tags.filter(t => t.name.toLowerCase().includes(q)) : tags;
+              if (filtered.length === 0) {
+                return <Card><CardContent className="py-12 text-center text-muted-foreground">ไม่พบแท็กที่ตรงกับ "{search}"</CardContent></Card>;
+              }
+              return (
               <div className="grid gap-3 sm:grid-cols-2">
-                {tags.map((t) => {
+                {filtered.map((t) => {
                   const isSelected = selected.has(t.id);
                   const count = counts[t.name] || 0;
                   return (
@@ -274,7 +287,9 @@ export default function Tags() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
+
         </TabsContent>
 
         {/* AI instructions */}
