@@ -53,10 +53,8 @@ export default function Auth() {
       <div className="flex items-center justify-center p-6">
         <Card className="w-full max-w-md p-8 shadow-elevated border-border/60">
           <div className="lg:hidden flex items-center gap-2 mb-6">
-            <div className="w-9 h-9 rounded-lg bg-brand-gradient flex items-center justify-center">
-              <ChefHat className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display text-lg font-semibold">Catering Bot</span>
+            <img src={boonumparLogo.url} alt="Boonumpar" className="h-9 w-auto object-contain" />
+            <span className="font-display text-lg font-semibold">Boonumpar Chat</span>
           </div>
           <h2 className="font-display text-2xl font-semibold mb-1">ยินดีต้อนรับ</h2>
           <p className="text-sm text-muted-foreground mb-6">เข้าสู่ระบบเพื่อจัดการแชทบอท</p>
