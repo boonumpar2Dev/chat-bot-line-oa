@@ -408,14 +408,39 @@ export default function Chats() {
     }
   };
 
-  const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const uploadFiles = async (files: File[]) => {
     if (!files.length) return;
     setUploading(true);
     const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
     setStagedFiles(p => [...p, ...results]);
     setUploading(false);
+  };
+  const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await uploadFiles(Array.from(e.target.files || []));
     e.target.value = "";
+  };
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!selected) return;
+    if (!Array.from(e.dataTransfer.types || []).includes("Files")) return;
+    e.preventDefault();
+    dragCounter.current++;
+    setIsDragging(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current <= 0) { dragCounter.current = 0; setIsDragging(false); }
+  };
+  const onDragOver = (e: React.DragEvent) => { if (Array.from(e.dataTransfer.types || []).includes("Files")) e.preventDefault(); };
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+    if (!selected) return;
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length) await uploadFiles(files);
   };
 
   const sendReply = async () => {
