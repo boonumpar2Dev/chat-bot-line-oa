@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSnippet } from "@/lib/snippet";
+
 import { Card } from "@/components/ui/card";
 import { MessageSquare, Users, Clock, TrendingUp, Bot, AlertCircle, AlertTriangle, DollarSign, Phone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
@@ -156,7 +158,8 @@ export default function Dashboard() {
                   <Badge variant="outline" className="h-5 px-1.5">{STATUS_LABELS[r.status] || r.status}</Badge>
                   {r.phone && <Badge variant="secondary" className="h-5 px-1.5"><Phone className="w-3 h-3 mr-1"/>{r.phone}</Badge>}
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">{r.last_message_snippet || "—"}</p>
+                <p className="text-xs text-muted-foreground truncate mt-0.5">{formatSnippet(r.last_message_snippet)}</p>
+
               </div>
               <span className="text-xs text-destructive shrink-0 font-medium">
                 เกิน {formatDistanceToNow(new Date(r._sla_deadline), { locale: th })}
@@ -189,7 +192,7 @@ export default function Dashboard() {
                     {r.unread_count > 0 && <Badge variant="destructive" className="h-5 px-1.5">{r.unread_count}</Badge>}
                     {!r.ai_active && <Badge variant="secondary" className="h-5 px-1.5"><Bot className="w-3 h-3 mr-1"/>Manual</Badge>}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{r.last_message_snippet || "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{formatSnippet(r.last_message_snippet)}</p>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">
                   {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : ""}
