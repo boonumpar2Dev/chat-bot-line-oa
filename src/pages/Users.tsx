@@ -194,9 +194,10 @@ function AddUserDialog({ onCreated, isOwner }: { onCreated: () => void; isOwner:
             <Input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="กำหนด password เริ่มต้น" />
           </div>
           <div>
-            <Label>ชื่อแสดง</Label>
-            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="ชื่อที่จะแสดง" />
+            <Label>ชื่อแสดง * <span className="text-xs text-muted-foreground font-normal">(ใช้แสดงเวลาตอบลูกค้าในแชท)</span></Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="เช่น tualek, น้องบุญ, แอดมินเอ" maxLength={100}/>
           </div>
+
           <div>
             <Label>บทบาท</Label>
             <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
