@@ -81,10 +81,8 @@ function SidebarInner({ collapsed, setCollapsed, onNav }: { collapsed: boolean; 
   return (
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       <div className={cn("flex items-center gap-2.5 px-4 h-16 border-b border-sidebar-border", collapsed && "justify-center px-0")}>
-        <div className="w-9 h-9 rounded-lg bg-brand-gradient flex items-center justify-center shrink-0">
-          <ChefHat className="w-5 h-5 text-primary-foreground" />
-        </div>
-        {!collapsed && <span className="font-display font-semibold text-lg">Catering Bot</span>}
+        <img src={boonumparLogo.url} alt="Boonumpar" className="h-9 w-auto object-contain shrink-0" />
+        {!collapsed && <span className="font-display font-semibold text-lg">Boonumpar Chat</span>}
       </div>
       <NavItems collapsed={collapsed} onNav={onNav} />
       <div className="p-3 border-t border-sidebar-border">
