@@ -183,19 +183,57 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
   return { ...parsed, _usage: data.usage, _model: model };
 }
 
-async function uploadLineMedia(messageId: string, msgType: string, supabase: any): Promise<string | null> {
+function extFromMime(mime: string, fallback: string): string {
+  const m = (mime || "").toLowerCase();
+  if (m.includes("pdf")) return "pdf";
+  if (m.includes("jpeg") || m.includes("jpg")) return "jpg";
+  if (m.includes("png")) return "png";
+  if (m.includes("webp")) return "webp";
+  if (m.includes("gif")) return "gif";
+  if (m.includes("mp4")) return "mp4";
+  if (m.includes("quicktime")) return "mov";
+  if (m.includes("m4a") || m.includes("mp4a")) return "m4a";
+  if (m.includes("mpeg") && m.startsWith("audio")) return "mp3";
+  if (m.includes("wav")) return "wav";
+  if (m.includes("wordprocessingml")) return "docx";
+  if (m.includes("msword")) return "doc";
+  if (m.includes("spreadsheetml")) return "xlsx";
+  if (m.includes("ms-excel")) return "xls";
+  if (m.includes("presentationml")) return "pptx";
+  if (m.includes("ms-powerpoint")) return "ppt";
+  if (m.includes("zip")) return "zip";
+  if (m.includes("plain")) return "txt";
+  if (m.includes("csv")) return "csv";
+  return fallback;
+}
+
+async function uploadLineMedia(
+  messageId: string,
+  msgType: string,
+  supabase: any,
+  originalFileName?: string,
+): Promise<{ url: string; ext: string; mime: string } | null> {
   try {
-    const ext = msgType === "image" ? "jpg" : msgType === "video" ? "mp4" : msgType === "audio" ? "m4a" : "bin";
-    const fileName = `${msgType}_${messageId}.${ext}`;
+    const fallback = msgType === "image" ? "jpg" : msgType === "video" ? "mp4" : msgType === "audio" ? "m4a" : "bin";
     const r = await fetch(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
       headers: { Authorization: `Bearer ${LINE_TOKEN}` },
     });
     if (!r.ok) return null;
+    const mime = r.headers.get("content-type") || "";
     const blob = await r.blob();
-    const { data, error } = await supabase.storage.from("line-media").upload(fileName, blob, { upsert: true, contentType: blob.type });
+    // Prefer extension from original file name → mime → fallback
+    let ext = fallback;
+    if (originalFileName && originalFileName.includes(".")) {
+      const e = originalFileName.split(".").pop()!.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (e && e.length <= 5) ext = e;
+    } else {
+      ext = extFromMime(mime || blob.type, fallback);
+    }
+    const fileName = `${msgType}_${messageId}.${ext}`;
+    const { data, error } = await supabase.storage.from("line-media").upload(fileName, blob, { upsert: true, contentType: mime || blob.type || undefined });
     if (error) { console.error("upload error", error); return null; }
     const { data: pub } = supabase.storage.from("line-media").getPublicUrl(data.path);
-    return pub.publicUrl;
+    return { url: pub.publicUrl, ext, mime: mime || blob.type || "" };
   } catch (e) {
     console.error("media upload failed", e);
     return null;
