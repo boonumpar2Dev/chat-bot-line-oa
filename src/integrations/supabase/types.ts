@@ -107,6 +107,7 @@ export type Database = {
           fallback_mute_hours: number
           followup_enabled: boolean
           followup_hours: number
+          followup_instruction: string | null
           forbidden_pronouns: string[]
           forbidden_terms: string[]
           handover_intro_phone: string
@@ -169,6 +170,7 @@ export type Database = {
           fallback_mute_hours?: number
           followup_enabled?: boolean
           followup_hours?: number
+          followup_instruction?: string | null
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
           handover_intro_phone?: string
@@ -231,6 +233,7 @@ export type Database = {
           fallback_mute_hours?: number
           followup_enabled?: boolean
           followup_hours?: number
+          followup_instruction?: string | null
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
           handover_intro_phone?: string

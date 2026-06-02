@@ -49,7 +49,7 @@ export default function AiSettings() {
       kb_menu_title_keywords: s.kb_menu_title_keywords,
       service_area_kb_title: s.service_area_kb_title,
       location_keywords: s.location_keywords,
-      fallback_message: s.fallback_message,
+      
       image_rule_no_extra: s.image_rule_no_extra,
       image_rule_no_format: s.image_rule_no_format,
       image_rule_no_repeat: s.image_rule_no_repeat,
@@ -79,14 +79,13 @@ export default function AiSettings() {
       </div>
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
           <TabsTrigger value="intent" className="gap-1.5"><Database className="w-4 h-4" />ข้อมูลที่เก็บ</TabsTrigger>
           <TabsTrigger value="handover" className="gap-1.5"><ClipboardList className="w-4 h-4" />ฟอร์มส่งต่อ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
-          <TabsTrigger value="fallback" className="gap-1.5"><MessageSquare className="w-4 h-4" />Fallback</TabsTrigger>
         </TabsList>
 
         <TabsContent value="persona" className="mt-4">
@@ -377,13 +376,6 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="fallback" className="mt-4">
-          <Card className="p-6 shadow-soft border-border/60">
-            <div className="flex items-center gap-2 mb-4"><MessageSquare className="text-primary" /><h2 className="font-display text-lg font-semibold">ข้อความ Fallback</h2></div>
-            <Textarea value={s.fallback_message ?? ""} onChange={e => upd("fallback_message", e.target.value)} rows={4} />
-            <p className="text-xs text-muted-foreground mt-2">ข้อความที่ส่งเมื่อ AI ตอบไม่ได้ หรือนอกเวลาทำการ</p>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
