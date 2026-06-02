@@ -634,28 +634,28 @@ export default function Chats() {
         ) : (
           <>
             {/* Header */}
-            <div className="border-b bg-card p-3 flex items-center gap-3">
-              <Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setSelectedId(null)}>
+            <div className="border-b bg-card p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+              <Button size="icon" variant="ghost" className="lg:hidden shrink-0 h-9 w-9" onClick={() => setSelectedId(null)}>
                 <ArrowLeft className="w-4 h-4"/>
               </Button>
-              <Avatar>
+              <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                 {selected.picture_url && <AvatarImage src={selected.picture_url}/>}
                 <AvatarFallback className="bg-brand-gradient text-primary-foreground">
                   {(selected.nickname || selected.display_name || "?")[0]}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{selected.nickname || selected.display_name}</p>
+                <p className="font-semibold truncate text-sm sm:text-base leading-tight">{selected.nickname || selected.display_name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <StatusSelector customer={selected} onUpdate={updateLocalCustomer}/>
-                  {selected.phone && <span className="text-xs text-muted-foreground">{selected.phone}</span>}
+                  {selected.phone && <span className="text-xs text-muted-foreground hidden sm:inline">{selected.phone}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
                 <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
+              <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
                 <Search className="w-4 h-4"/>
               </Button>
               {/* Desktop: eraser inline */}
@@ -680,7 +680,7 @@ export default function Chats() {
               </AlertDialog>
               <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
                 <SheetTrigger asChild>
-                  <Button size="icon" variant="ghost"><Info className="w-4 h-4"/></Button>
+                  <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9"><Info className="w-4 h-4"/></Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:w-[380px] overflow-y-auto">
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
@@ -690,11 +690,17 @@ export default function Chats() {
               <AlertDialog>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="sm:hidden" title="เพิ่มเติม">
+                    <Button size="icon" variant="ghost" className="sm:hidden h-9 w-9" title="เพิ่มเติม">
                       <MoreVertical className="w-4 h-4"/>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setShowMsgSearch(s => !s)}>
+                      <Search className="w-4 h-4 mr-2"/>ค้นหาในแชท
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setInfoOpen(true)}>
+                      <Info className="w-4 h-4 mr-2"/>ข้อมูลลูกค้า
+                    </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                         <Eraser className="w-4 h-4 mr-2"/>ล้างประวัติแชท
@@ -801,8 +807,9 @@ export default function Chats() {
                     const files = Array.from(e.clipboardData?.files || []);
                     if (files.length) { e.preventDefault(); uploadFiles(files); }
                   }}
-                  placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2} className="resize-none flex-1 min-w-0"/>
-                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0">
+                  placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2}
+                  className="resize-none flex-1 min-w-0 rounded-2xl bg-muted/40 border-muted-foreground/15 focus-visible:ring-1 focus-visible:ring-muted-foreground/30 focus-visible:border-muted-foreground/30 focus-visible:ring-offset-0"/>
+                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0 rounded-full">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
               </div>
@@ -997,16 +1004,22 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
     if (idx < 0) return txt;
     return <>{txt.slice(0, idx)}<mark className="bg-yellow-300/70 rounded px-0.5">{txt.slice(idx, idx + highlight.length)}</mark>{txt.slice(idx + highlight.length)}</>;
   };
+  const d = new Date(m.created_at);
+  const timeShort = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+  const fullTime = d.toLocaleString("th-TH");
+  const showLabel = !isCustomer; // hide "ลูกค้า" label — left-align is enough
   return (
-    <div className={cn("flex flex-col gap-1 group", align)}>
-      <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
-        {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
-        {m.sender === "ai" && cleaned && onTrainAI && (
-          <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
-            <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
-          </button>
-        )}
-      </span>
+    <div className={cn("flex flex-col gap-0.5 group", align)}>
+      {showLabel && (
+        <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
+          {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
+          {m.sender === "ai" && cleaned && onTrainAI && (
+            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
+              <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
+            </button>
+          )}
+        </span>
+      )}
       {imgUrls.length > 0 && (
         <div className={cn(
           "grid gap-1.5 max-w-[75vw] sm:max-w-[320px]",
@@ -1045,13 +1058,17 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
           })}
         </div>
       )}
-      {/* OCR text is internal AI context only — not shown to admin (LINE-like display) */}
       {cleaned && (
-        <div className={cn("max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
+        <div className={cn(
+          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words shadow-sm",
+          isCustomer && "rounded-tl-md",
+          (isAdmin || !isCustomer) && "rounded-tr-md",
+          bg
+        )} title={fullTime}>
           {renderText(cleaned)}
         </div>
       )}
-      <span className="text-[10px] text-muted-foreground px-2">{new Date(m.created_at).toLocaleString("th-TH")}</span>
+      <span className="text-[10px] text-muted-foreground/70 px-2 opacity-0 group-hover:opacity-100 transition" title={fullTime}>{timeShort}</span>
     </div>
   );
 }
