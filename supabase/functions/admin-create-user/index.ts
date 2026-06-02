@@ -29,6 +29,11 @@ Deno.serve(async (req) => {
     const { email, password, display_name, role, menu_keys } = body || {};
     if (!email || !password || !role) return json({ error: "email, password, role required" }, 400);
     if (typeof password !== "string" || password.length < 6) return json({ error: "password ≥ 6 chars" }, 400);
+    // บังคับให้กรอกชื่อแสดง — ใช้แสดงในแชทเวลาแอดมินคนนี้ตอบลูกค้า
+    if (typeof display_name !== "string" || display_name.trim().length === 0) {
+      return json({ error: "กรุณากรอกชื่อแสดง (display_name)" }, 400);
+    }
+    if (display_name.length > 100) return json({ error: "ชื่อแสดงยาวเกิน 100 ตัวอักษร" }, 400);
     if (!["owner", "admin", "manager", "staff"].includes(role)) return json({ error: "invalid role" }, 400);
     if (role === "owner" && !isOwner) return json({ error: "only owner can create owner" }, 403);
 
@@ -37,8 +42,9 @@ Deno.serve(async (req) => {
       email,
       password,
       email_confirm: true,
-      user_metadata: { display_name: display_name || email.split("@")[0] },
+      user_metadata: { display_name: display_name.trim() },
     });
+
     if (createErr || !created.user) return json({ error: createErr?.message || "create failed" }, 400);
     const newId = created.user.id;
 
