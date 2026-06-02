@@ -300,9 +300,15 @@ async function processEvent(event: any, supabase: any) {
       if (event.message.type === "text") text = event.message.text;
       else if (event.message.type === "sticker") text = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
       else if (event.message.type === "location") text = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
-      else {
-        const label = event.message.type === "image" ? "รูปภาพ" : event.message.type === "video" ? "วิดีโอ" : event.message.type === "audio" ? "เสียง" : "ไฟล์";
-        text = `[${label}]`;
+      else if (["image","video","audio","file"].includes(event.message.type)) {
+        const mt = event.message.type;
+        const label = mt === "image" ? "รูปภาพ" : mt === "video" ? "วิดีโอ" : mt === "audio" ? "เสียง" : "ไฟล์";
+        const origName: string | undefined = event.message?.fileName;
+        const uploaded = await uploadLineMedia(event.message.id, mt, supabase, origName);
+        const displayLabel = mt === "file" && origName ? `ไฟล์: ${origName}` : label;
+        text = uploaded?.url ? `[${displayLabel}]\n📎 ${uploaded.url}` : `[${displayLabel}]`;
+      } else {
+        text = `[${event.message.type || "ไม่ทราบ"}]`;
       }
       await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id });
       const snippet = text.replace(/\[.*?\]\n?/, "").trim().slice(0, 60) || text.slice(0, 60);
