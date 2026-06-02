@@ -720,7 +720,11 @@ export default function Chats() {
                 </Button>
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
-                  placeholder="พิมพ์ข้อความ… (Enter ส่ง, /ค้นหาคำตอบสำเร็จรูป)" rows={2} className="resize-none flex-1"/>
+                  onPaste={e => {
+                    const files = Array.from(e.clipboardData?.files || []);
+                    if (files.length) { e.preventDefault(); uploadFiles(files); }
+                  }}
+                  placeholder="พิมพ์ข้อความ หรือลาก/วางไฟล์ได้เลย (Enter ส่ง, /ค้นหาคำตอบสำเร็จรูป)" rows={2} className="resize-none flex-1"/>
                 <Button onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)}>
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
