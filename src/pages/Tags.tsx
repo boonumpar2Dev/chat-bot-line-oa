@@ -80,6 +80,7 @@ export default function Tags() {
   const [savingAuto, setSavingAuto] = useState(false);
   const [rescanning, setRescanning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
