@@ -408,7 +408,11 @@ async function processEvent(event: any, supabase: any) {
     last_message_snippet: snippet,
   }).eq("id", customer.id);
 
+  // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
+  if (sourceType !== "user") return;
+
   if (!isText) return;
+
 
   // 🕐 Debounce: รอให้ลูกค้าพิมพ์เสร็จก่อนตอบ (กันพิมพ์หลายบรรทัดติดกัน)
   // อ่านค่า debounce_seconds จาก app_settings (ตั้งค่าได้จากหน้า Settings)
