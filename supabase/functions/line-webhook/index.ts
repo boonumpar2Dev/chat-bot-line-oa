@@ -952,31 +952,44 @@ ${pastLines}
   // Log token usage (เพื่อ monitor การประหยัด)
   console.log(`[Tokens] prompt≈${countTokens(systemPrompt) + countTokens(userPrompt)} | kb=${countTokens(kbContext)} pkg=${countTokens(pkgContext)} promo=${countTokens(promoContext)} hist=${countTokens(recentMsgs)} | filter=${evType ? "ON" : "OFF"} cache=${cacheRows?.length || 0}/3`);
 
+  // Helper: ส่งข้อความ "AI ตอบไม่ได้ / ส่งต่อผู้เชี่ยวชาญ" (ถ้าเปิดสวิตช์ไว้)
+  const sendUnableToReply = async (reason: string) => {
+    if (!cfg.unable_to_reply_enabled) {
+      console.log(`[UnableToReply] ${reason} — switch OFF, silent`);
+      return;
+    }
+    const fbText = String(cfg.unable_to_reply_message || "ขอบคุณที่สอบถามนะคะ 🙏 ขอส่งเรื่องให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับโดยเร็วที่สุดค่ะ").trim();
+    const muteH = cfg.fallback_mute_hours ?? 1;
+    const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+    await pushLine(lineUserId, [{ type: "text", text: fbText }]);
+    await supabase.from("conversations").insert({ customer_id: customer.id, message: fbText, sender: "ai", is_fallback: true });
+    await supabase.from("customers").update({
+      ai_active: false, manual_chat_until: muteUntil,
+      last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${fbText.slice(0, 60)}`,
+    }).eq("id", customer.id);
+    console.log(`[UnableToReply] ${reason} → sent handover message + mute ${muteH}h`);
+  };
+
   let aiResp: any;
   try {
     aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-3-flash-preview");
   } catch (e: any) {
     console.warn(`[LLM] gemini-3-flash failed: ${e.message} — fallback to gemini-2.5-flash`);
     try { aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-2.5-flash"); }
-    catch (e2: any) { console.error("AI failed:", e2.message); return; }
+    catch (e2: any) {
+      console.error("AI failed:", e2.message);
+      await sendUnableToReply(`both LLM models failed: ${e2.message}`);
+      return;
+    }
   }
   if (aiResp?._usage) {
     logTokenUsage(supabase, { model: aiResp._model, source: "webhook", apiResponse: { usage: aiResp._usage }, customerId: customer.id });
   }
 
-  const confidence = typeof aiResp.confidence === "number" ? aiResp.confidence : 85;
-  const threshold = cfg.confidence_threshold || 75;
-
-  if (confidence < threshold) {
-    const fbText = cfg.fallback_message || "ขอบคุณที่ติดต่อมาค่ะ เจ้าหน้าที่จะรีบติดต่อกลับนะคะ 🙏";
-    const muteH = cfg.fallback_mute_hours ?? 1;
-    const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await pushLine(lineUserId, [{ type: "text", text: fbText }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: fbText, sender: "ai", confidence_score: confidence, is_fallback: true });
-    await supabase.from("customers").update({
-      ai_active: false, manual_chat_until: muteUntil,
-      last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${fbText.slice(0, 60)}`,
-    }).eq("id", customer.id);
+  // AI ตอบ empty / สั้นผิดปกติ → ส่ง unable_to_reply แทน
+  const rawAnswer = String(aiResp?.answer || "").trim();
+  if (!rawAnswer || rawAnswer.length < 2) {
+    await sendUnableToReply("AI returned empty answer");
     return;
   }
 
