@@ -408,14 +408,39 @@ export default function Chats() {
     }
   };
 
-  const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const uploadFiles = async (files: File[]) => {
     if (!files.length) return;
     setUploading(true);
     const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
     setStagedFiles(p => [...p, ...results]);
     setUploading(false);
+  };
+  const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await uploadFiles(Array.from(e.target.files || []));
     e.target.value = "";
+  };
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = useRef(0);
+  const onDragEnter = (e: React.DragEvent) => {
+    if (!selected) return;
+    if (!Array.from(e.dataTransfer.types || []).includes("Files")) return;
+    e.preventDefault();
+    dragCounter.current++;
+    setIsDragging(true);
+  };
+  const onDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current <= 0) { dragCounter.current = 0; setIsDragging(false); }
+  };
+  const onDragOver = (e: React.DragEvent) => { if (Array.from(e.dataTransfer.types || []).includes("Files")) e.preventDefault(); };
+  const onDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setIsDragging(false);
+    if (!selected) return;
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length) await uploadFiles(files);
   };
 
   const sendReply = async () => {
@@ -571,7 +596,16 @@ export default function Chats() {
       </aside>
 
       {/* Chat thread */}
-      <main className={cn("flex-1 flex flex-col bg-background min-w-0", !selectedId && "hidden lg:flex")}>
+      <main className={cn("flex-1 flex flex-col bg-background min-w-0 relative", !selectedId && "hidden lg:flex")}
+        onDragEnter={onDragEnter} onDragLeave={onDragLeave} onDragOver={onDragOver} onDrop={onDrop}>
+        {isDragging && selected && (
+          <div className="absolute inset-0 z-50 bg-primary/10 border-4 border-dashed border-primary rounded-lg flex items-center justify-center pointer-events-none">
+            <div className="bg-card px-6 py-4 rounded-xl shadow-lg flex items-center gap-3">
+              <Paperclip className="w-6 h-6 text-primary"/>
+              <span className="text-sm font-medium">วางไฟล์ที่นี่เพื่อแนบ</span>
+            </div>
+          </div>
+        )}
         {!selected ? (
           <div className="flex-1 flex items-center justify-center text-muted-foreground">
             <p className="text-sm">เลือกลูกค้าจากรายการเพื่อดูแชท</p>
@@ -686,7 +720,11 @@ export default function Chats() {
                 </Button>
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
-                  placeholder="พิมพ์ข้อความ… (Enter ส่ง, /ค้นหาคำตอบสำเร็จรูป)" rows={2} className="resize-none flex-1"/>
+                  onPaste={e => {
+                    const files = Array.from(e.clipboardData?.files || []);
+                    if (files.length) { e.preventDefault(); uploadFiles(files); }
+                  }}
+                  placeholder="พิมพ์ข้อความ หรือลาก/วางไฟล์ได้เลย (Enter ส่ง, /ค้นหาคำตอบสำเร็จรูป)" rows={2} className="resize-none flex-1"/>
                 <Button onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)}>
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
@@ -928,14 +966,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
           })}
         </div>
       )}
-      {ocrText && (
-        <div className="max-w-[80%] rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 px-3 py-2 text-xs whitespace-pre-wrap break-words text-muted-foreground">
-          <div className="flex items-center gap-1 mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
-            📄 เนื้อหาในรูป (OCR)
-          </div>
-          {renderText(ocrText)}
-        </div>
-      )}
+      {/* OCR text is internal AI context only — not shown to admin (LINE-like display) */}
       {cleaned && (
         <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
           {renderText(cleaned)}
