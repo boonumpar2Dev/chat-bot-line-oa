@@ -680,7 +680,7 @@ export default function Chats() {
               </AlertDialog>
               <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
                 <SheetTrigger asChild>
-                  <Button size="icon" variant="ghost"><Info className="w-4 h-4"/></Button>
+                  <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9"><Info className="w-4 h-4"/></Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-full sm:w-[380px] overflow-y-auto">
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
@@ -690,11 +690,17 @@ export default function Chats() {
               <AlertDialog>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="sm:hidden" title="เพิ่มเติม">
+                    <Button size="icon" variant="ghost" className="sm:hidden h-9 w-9" title="เพิ่มเติม">
                       <MoreVertical className="w-4 h-4"/>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onSelect={() => setShowMsgSearch(s => !s)}>
+                      <Search className="w-4 h-4 mr-2"/>ค้นหาในแชท
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setInfoOpen(true)}>
+                      <Info className="w-4 h-4 mr-2"/>ข้อมูลลูกค้า
+                    </DropdownMenuItem>
                     <AlertDialogTrigger asChild>
                       <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
                         <Eraser className="w-4 h-4 mr-2"/>ล้างประวัติแชท
