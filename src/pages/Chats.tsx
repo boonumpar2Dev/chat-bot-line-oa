@@ -807,8 +807,9 @@ export default function Chats() {
                     const files = Array.from(e.clipboardData?.files || []);
                     if (files.length) { e.preventDefault(); uploadFiles(files); }
                   }}
-                  placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2} className="resize-none flex-1 min-w-0"/>
-                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0">
+                  placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2}
+                  className="resize-none flex-1 min-w-0 rounded-2xl bg-muted/40 border-muted-foreground/15 focus-visible:ring-1 focus-visible:ring-muted-foreground/30 focus-visible:border-muted-foreground/30 focus-visible:ring-offset-0"/>
+                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0 rounded-full">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
               </div>
