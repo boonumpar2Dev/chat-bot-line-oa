@@ -306,10 +306,11 @@ function EditUserDialog({ user, onSaved, disabled }: { user: any; onSaved: () =>
 
   const submit = async () => {
     if (password && password.length < 6) { toast.error("password อย่างน้อย 6 ตัวอักษร"); return; }
+    if (!displayName.trim()) { toast.error("กรอกชื่อแสดง (จะใช้แสดงเวลาตอบลูกค้าในแชท)"); return; }
     setBusy(true);
     const body: any = { user_id: user.id };
     if (email.trim() !== (user.email || "")) body.email = email.trim();
-    if (displayName !== (user.display_name || "")) body.display_name = displayName;
+    if (displayName.trim() !== (user.display_name || "")) body.display_name = displayName.trim();
     if (password) body.password = password;
     const { data, error } = await supabase.functions.invoke("admin-update-user", { body });
     setBusy(false);
