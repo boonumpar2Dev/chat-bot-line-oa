@@ -1009,7 +1009,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
       </span>
       {imgUrls.length > 0 && (
         <div className={cn(
-          "grid gap-1.5 max-w-[320px]",
+          "grid gap-1.5 max-w-[75vw] sm:max-w-[320px]",
           imgUrls.length === 1 ? "grid-cols-1" : "grid-cols-2"
         )}>
           {imgUrls.map((u: string) => (
@@ -1019,14 +1019,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
         </div>
       )}
       {videoUrls.length > 0 && (
-        <div className="flex flex-col gap-1.5 max-w-[320px]">
+        <div className="flex flex-col gap-1.5 max-w-[75vw] sm:max-w-[320px]">
           {videoUrls.map((u: string) => (
             <video key={u} src={u} controls className="w-full rounded-lg border bg-black"/>
           ))}
         </div>
       )}
       {fileUrls.length > 0 && (
-        <div className="flex flex-col gap-1.5 max-w-[320px]">
+        <div className="flex flex-col gap-1.5 max-w-[75vw] sm:max-w-[320px]">
           {fileUrls.map((u: string) => {
             const name = fileLabel || decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์");
             return (
@@ -1047,7 +1047,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
       )}
       {/* OCR text is internal AI context only — not shown to admin (LINE-like display) */}
       {cleaned && (
-        <div className={cn("max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
+        <div className={cn("max-w-[85%] sm:max-w-[80%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap break-words", bg)}>
           {renderText(cleaned)}
         </div>
       )}
