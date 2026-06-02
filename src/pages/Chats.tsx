@@ -901,6 +901,33 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
           ))}
         </div>
       )}
+      {videoUrls.length > 0 && (
+        <div className="flex flex-col gap-1.5 max-w-[320px]">
+          {videoUrls.map((u: string) => (
+            <video key={u} src={u} controls className="w-full rounded-lg border bg-black"/>
+          ))}
+        </div>
+      )}
+      {fileUrls.length > 0 && (
+        <div className="flex flex-col gap-1.5 max-w-[320px]">
+          {fileUrls.map((u: string) => {
+            const name = fileLabel || decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์");
+            return (
+              <a key={u} href={u} target="_blank" rel="noreferrer" download
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-card hover:bg-accent transition group">
+                <div className="w-9 h-9 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4"/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate text-foreground">{name}</div>
+                  <div className="text-[10px] text-muted-foreground">คลิกเพื่อเปิด / ดาวน์โหลด</div>
+                </div>
+                <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0"/>
+              </a>
+            );
+          })}
+        </div>
+      )}
       {ocrText && (
         <div className="max-w-[80%] rounded-lg border border-dashed border-muted-foreground/40 bg-muted/40 px-3 py-2 text-xs whitespace-pre-wrap break-words text-muted-foreground">
           <div className="flex items-center gap-1 mb-1 text-[10px] font-medium uppercase tracking-wide opacity-70">
