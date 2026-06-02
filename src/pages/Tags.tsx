@@ -287,7 +287,9 @@ export default function Tags() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
+
         </TabsContent>
 
         {/* AI instructions */}
