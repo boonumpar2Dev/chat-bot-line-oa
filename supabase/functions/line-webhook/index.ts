@@ -464,8 +464,9 @@ async function processEvent(event: any, supabase: any) {
 
 
 
-  // 🕐 Schedule gate (บนสุด): นอกช่วงเวลาทำการ → เงียบสนิท ไม่ตอบอะไรเลย
-  // ไม่ส่งข้อความตอบรับเบอร์/Tax ID/handover ใดๆ ทั้งสิ้น
+  // 🕐 Schedule gate (บนสุด): นอกช่วงเวลาทำการ
+  // - ถ้าเปิด out_of_hours_message_enabled → ส่งข้อความครั้งเดียวแล้ว mute
+  // - ถ้าปิด → เงียบสนิท
   if (cfg.schedule_enabled) {
     const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
     const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
@@ -474,7 +475,19 @@ async function processEvent(event: any, supabase: any) {
     const start = sh * 60 + sm, end = eh * 60 + em;
     const inWindow = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
     if (!inWindow) {
-      console.log(`[Schedule] outside ${cfg.start_time}-${cfg.end_time} (now ${bkk.getHours()}:${String(bkk.getMinutes()).padStart(2,"0")}) → silent`);
+      console.log(`[Schedule] outside ${cfg.start_time}-${cfg.end_time} (now ${bkk.getHours()}:${String(bkk.getMinutes()).padStart(2,"0")})`);
+      if (cfg.out_of_hours_message_enabled && cfg.out_of_hours_message) {
+        const oohText = String(cfg.out_of_hours_message).trim();
+        const muteH = cfg.fallback_mute_hours ?? 1;
+        const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+        await pushLine(lineUserId, [{ type: "text", text: oohText }]);
+        await supabase.from("conversations").insert({ customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
+        await supabase.from("customers").update({
+          ai_active: false, manual_chat_until: muteUntil,
+          last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
+        }).eq("id", customer.id);
+        console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h`);
+      }
       return;
     }
   }
