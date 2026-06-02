@@ -537,14 +537,14 @@ export default function Chats() {
             <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
           </div>
           {!isSearching && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-nowrap gap-1.5 overflow-x-auto -mx-3 px-3 pb-1 scrollbar-thin [&::-webkit-scrollbar]:h-1">
               {FILTER_PILLS.map(p => {
                 const active = filter === p.key;
                 const count = p.countKey ? filterCounts[p.countKey] : 0;
                 return (
                   <button key={p.key} onClick={() => setFilter(p.key)}
                     className={cn(
-                      "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1",
+                      "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1 shrink-0 whitespace-nowrap",
                       active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent border-border"
                     )}>
                     {p.label}
@@ -556,7 +556,7 @@ export default function Chats() {
               })}
               <Select value={filter.startsWith("status:") ? filter : "__none"} onValueChange={(v) => v !== "__none" && setFilter(v as FilterKind)}>
                 <SelectTrigger className={cn(
-                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1",
+                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1 shrink-0 whitespace-nowrap",
                   filter.startsWith("status:") ? "bg-primary text-primary-foreground border-primary" : "bg-background"
                 )}>
                   <SelectValue placeholder="สถานะ ▾">
