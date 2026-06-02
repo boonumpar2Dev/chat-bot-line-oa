@@ -634,28 +634,28 @@ export default function Chats() {
         ) : (
           <>
             {/* Header */}
-            <div className="border-b bg-card p-3 flex items-center gap-3">
-              <Button size="icon" variant="ghost" className="lg:hidden" onClick={() => setSelectedId(null)}>
+            <div className="border-b bg-card p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+              <Button size="icon" variant="ghost" className="lg:hidden shrink-0 h-9 w-9" onClick={() => setSelectedId(null)}>
                 <ArrowLeft className="w-4 h-4"/>
               </Button>
-              <Avatar>
+              <Avatar className="h-9 w-9 sm:h-10 sm:w-10 shrink-0">
                 {selected.picture_url && <AvatarImage src={selected.picture_url}/>}
                 <AvatarFallback className="bg-brand-gradient text-primary-foreground">
                   {(selected.nickname || selected.display_name || "?")[0]}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{selected.nickname || selected.display_name}</p>
+                <p className="font-semibold truncate text-sm sm:text-base leading-tight">{selected.nickname || selected.display_name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <StatusSelector customer={selected} onUpdate={updateLocalCustomer}/>
-                  {selected.phone && <span className="text-xs text-muted-foreground">{selected.phone}</span>}
+                  {selected.phone && <span className="text-xs text-muted-foreground hidden sm:inline">{selected.phone}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
                 <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
               </div>
-              <Button size="icon" variant="ghost" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
+              <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
                 <Search className="w-4 h-4"/>
               </Button>
               {/* Desktop: eraser inline */}
