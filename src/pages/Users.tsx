@@ -338,8 +338,8 @@ function EditUserDialog({ user, onSaved, disabled }: { user: any; onSaved: () =>
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div>
-            <Label>ชื่อแสดง</Label>
-            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} />
+            <Label>ชื่อแสดง * <span className="text-xs text-muted-foreground font-normal">(ใช้แสดงเวลาตอบลูกค้าในแชท)</span></Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={100} />
           </div>
           <div>
             <Label className="flex items-center gap-1"><KeyRound className="w-3.5 h-3.5"/>รีเซ็ตรหัสผ่าน (เว้นว่างถ้าไม่เปลี่ยน)</Label>
