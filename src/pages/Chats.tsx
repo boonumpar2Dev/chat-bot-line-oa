@@ -150,9 +150,17 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
 }
 
 export default function Chats() {
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(sp.get("customer"));
+  const selectedId = sp.get("customer");
+  const setSelectedId = (id: string | null) => {
+    setSp(prev => {
+      const next = new URLSearchParams(prev);
+      if (id) next.set("customer", id);
+      else next.delete("customer");
+      return next;
+    }, { replace: true });
+  };
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [adminNames, setAdminNames] = useState<Record<string, string>>({});
 
