@@ -638,19 +638,8 @@ async function processEvent(event: any, supabase: any) {
   }
 
 
+  // (Whitelist + ai_enabled gates ย้ายไปอยู่บนสุดแล้ว — ดู block "Whitelist" หลังโหลด cfg)
 
-  // 🧪 Whitelist (โหมดทดสอบ) เป็น override — ถ้าเปิด ให้ทำงานเฉพาะคนใน list โดยไม่สนใจ ai_enabled
-  if (cfg.ai_whitelist_enabled === true) {
-    const wl: string[] = Array.isArray(cfg.ai_whitelist_user_ids) ? cfg.ai_whitelist_user_ids : [];
-    if (!wl.includes(lineUserId)) {
-      console.log(`[Whitelist] Skip AI reply for ${lineUserId} (not in whitelist)`);
-      return;
-    }
-    // ผ่าน whitelist → ตอบได้เลย ไม่ต้องเช็ค ai_enabled
-  } else {
-    // โหมดปกติ — ต้องเปิด master switch
-    if (cfg.ai_enabled === false) return;
-  }
 
   // 📞 Post-phone reply cap: ถ้าลูกค้ามีเบอร์ในระบบแล้ว → AI ตอบได้แค่ N รอบ (default 3) แล้วปิด handover ให้แอดมิน
   const maxPostPhone = cfg.post_phone_max_replies ?? 3;
