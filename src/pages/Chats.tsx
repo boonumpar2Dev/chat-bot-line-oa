@@ -195,20 +195,20 @@ export default function Chats() {
 
   const selected = customers.find(c => c.id === selectedId);
 
-  // Initial load + reload when search changes
+  // Initial load + reload when search/filter changes
   useEffect(() => {
     let active = true;
     setLoading(true);
     setPage(0);
     setHasMore(true);
     (async () => {
-      let q = supabase.from("customers").select("*")
+      let q: any = supabase.from("customers").select("*")
         .order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
         const s = debouncedSearch.replace(/[%,]/g, "");
         q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
-        q = q.range(0, PAGE_SIZE - 1);
+        q = applyFilter(q, filter, slaCutoffIso).range(0, PAGE_SIZE - 1);
       }
       const { data } = await q;
       if (!active) return;
@@ -217,7 +217,20 @@ export default function Chats() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debouncedSearch, isSearching]);
+  }, [debouncedSearch, isSearching, filter, slaCutoffIso]);
+
+  // Fetch counts for filter pills
+  const refreshCounts = async () => {
+    const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
+    const [u, s, m, n] = await Promise.all([
+      base().gt("unread_count", 0),
+      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)"),
+      base().eq("ai_active", false),
+      base().is("phone", null),
+    ]);
+    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0 });
+  };
+  useEffect(() => { refreshCounts(); }, [slaCutoffIso]);
 
   // Ensure deep-linked customer (?customer=id) is loaded
   useEffect(() => {
@@ -231,7 +244,7 @@ export default function Chats() {
     })();
   }, [sp, customers.length]);
 
-  // Realtime: patch in place (no full reload)
+  // Realtime: patch in place + drop rows that no longer match active filter
   useEffect(() => {
     const ch = supabase.channel("customers-rt")
       .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, (payload: any) => {
@@ -242,22 +255,27 @@ export default function Chats() {
           return;
         }
         if (!newRow?.id) return;
+        // Refresh counts (debounced via microtask is overkill; cheap enough)
+        refreshCounts();
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === newRow.id);
+          const merged = idx >= 0 ? { ...prev[idx], ...newRow } : newRow;
+          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
           if (idx >= 0) {
+            if (!stillMatches) return prev.filter(c => c.id !== newRow.id);
             const next = [...prev];
-            next[idx] = { ...next[idx], ...newRow };
+            next[idx] = merged;
             return next.sort((a, b) =>
               new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
             );
           }
-          if (payload.eventType === "INSERT" && !isSearching) return [newRow, ...prev];
+          if (payload.eventType === "INSERT" && !isSearching && stillMatches) return [newRow, ...prev];
           return prev;
         });
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching]);
+  }, [isSearching, filter, slaCutoffMs, slaCutoffIso]);
 
   // Infinite scroll
   const loadMore = async () => {
@@ -266,9 +284,10 @@ export default function Chats() {
     const nextPage = page + 1;
     const from = nextPage * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const { data } = await supabase.from("customers").select("*")
-      .order("last_message_at", { ascending: false, nullsFirst: false })
-      .range(from, to);
+    let q: any = supabase.from("customers").select("*")
+      .order("last_message_at", { ascending: false, nullsFirst: false });
+    q = applyFilter(q, filter, slaCutoffIso).range(from, to);
+    const { data } = await q;
     setCustomers(prev => {
       const ids = new Set(prev.map(c => c.id));
       return [...prev, ...(data || []).filter((c: any) => !ids.has(c.id))];
@@ -286,6 +305,7 @@ export default function Chats() {
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
   }, [page, hasMore, loadingMore, isSearching, customers.length]);
+
 
 
   // Messages + realtime
