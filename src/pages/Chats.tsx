@@ -859,12 +859,18 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []);
+  const videoUrls = (m.message.match(/https?:\/\/\S+\.(?:mp4|mov|webm|m4v)/gi) || []);
+  const allUrls = (m.message.match(/https?:\/\/\S+/gi) || []).map((u: string) => u.replace(/[)\].,;]+$/, ""));
+  const fileUrls = allUrls.filter((u: string) => !imgUrls.includes(u) && !videoUrls.includes(u));
+  const fileLabelMatch = m.message.match(/\[ไฟล์(?::\s*([^\]]+))?\]/);
+  const fileLabel = fileLabelMatch?.[1]?.trim() || "";
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
-    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)(?::[^\]]*)?\]/g, "")
     .replace(/\n{2,}/g, "\n")
     .trim();
   // highlight matching text
