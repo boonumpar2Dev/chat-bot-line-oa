@@ -269,7 +269,20 @@ export default function Settings() {
           <div><Label className="font-medium">เปิดใช้งาน Follow-up</Label><p className="text-xs text-muted-foreground mt-1">ติดตามลูกค้าที่ไม่ตอบกลับ</p></div>
           <Switch checked={s.followup_enabled} onCheckedChange={v=>upd("followup_enabled", v)} />
         </div>
-        <div className="space-y-1.5"><Label>ติดตามหลังเงียบ (ชม.)</Label><Input type="number" value={s.followup_hours} onChange={e=>upd("followup_hours", +e.target.value)} /></div>
+        <div className="space-y-4">
+          <div className="space-y-1.5"><Label>ติดตามหลังเงียบ (ชม.)</Label><Input type="number" value={s.followup_hours} onChange={e=>upd("followup_hours", +e.target.value)} /></div>
+
+          <div className="space-y-1.5">
+            <Label>แนวทางให้ AI เขียนข้อความติดตาม</Label>
+            <Textarea
+              rows={5}
+              value={s.followup_instruction ?? ""}
+              onChange={e=>upd("followup_instruction", e.target.value)}
+              placeholder="เช่น ทักลูกค้าแบบสุภาพ สั้น อ้างอิงสิ่งที่คุยไว้ (วันจัดงาน/ประเภทงาน) สอบถามว่ายังสนใจไหมและขอเบอร์ ห้ามตื๊อ"
+            />
+            <p className="text-xs text-muted-foreground">AI จะใช้แนวทางนี้ + ประวัติแชท + ข้อมูลลูกค้า สร้างข้อความติดตามแบบเฉพาะคน (ไม่ใช่ template ตายตัว) — ต่างจาก Fallback ตรงที่ตัวนี้ AI เขียนเองตามบริบท</p>
+          </div>
+        </div>
       </Card>
 
       {/* Linked pages */}
