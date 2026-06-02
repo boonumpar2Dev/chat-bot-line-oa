@@ -711,7 +711,7 @@ export default function Chats() {
             {/* Messages */}
             <ScrollArea className="flex-1 px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
-                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)}/>)}
+                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}/>)}
               </div>
             </ScrollArea>
 
