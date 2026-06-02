@@ -306,10 +306,11 @@ function EditUserDialog({ user, onSaved, disabled }: { user: any; onSaved: () =>
 
   const submit = async () => {
     if (password && password.length < 6) { toast.error("password อย่างน้อย 6 ตัวอักษร"); return; }
+    if (!displayName.trim()) { toast.error("กรอกชื่อแสดง (จะใช้แสดงเวลาตอบลูกค้าในแชท)"); return; }
     setBusy(true);
     const body: any = { user_id: user.id };
     if (email.trim() !== (user.email || "")) body.email = email.trim();
-    if (displayName !== (user.display_name || "")) body.display_name = displayName;
+    if (displayName.trim() !== (user.display_name || "")) body.display_name = displayName.trim();
     if (password) body.password = password;
     const { data, error } = await supabase.functions.invoke("admin-update-user", { body });
     setBusy(false);
@@ -337,8 +338,8 @@ function EditUserDialog({ user, onSaved, disabled }: { user: any; onSaved: () =>
             <Input type="email" value={email} onChange={e => setEmail(e.target.value)} />
           </div>
           <div>
-            <Label>ชื่อแสดง</Label>
-            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} />
+            <Label>ชื่อแสดง * <span className="text-xs text-muted-foreground font-normal">(ใช้แสดงเวลาตอบลูกค้าในแชท)</span></Label>
+            <Input value={displayName} onChange={e => setDisplayName(e.target.value)} maxLength={100} />
           </div>
           <div>
             <Label className="flex items-center gap-1"><KeyRound className="w-3.5 h-3.5"/>รีเซ็ตรหัสผ่าน (เว้นว่างถ้าไม่เปลี่ยน)</Label>

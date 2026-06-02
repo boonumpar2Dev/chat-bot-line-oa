@@ -40,7 +40,11 @@ Deno.serve(async (req) => {
       updates.password = password;
     }
     if (display_name !== undefined) {
-      updates.user_metadata = { display_name: display_name || "" };
+      if (typeof display_name !== "string" || display_name.trim().length === 0) {
+        return json({ error: "กรุณากรอกชื่อแสดง (display_name)" }, 400);
+      }
+      if (display_name.length > 100) return json({ error: "ชื่อแสดงยาวเกิน 100 ตัวอักษร" }, 400);
+      updates.user_metadata = { display_name: display_name.trim() };
     }
 
     if (Object.keys(updates).length > 0) {
@@ -50,7 +54,7 @@ Deno.serve(async (req) => {
 
     if (display_name !== undefined || email) {
       const profilePatch: any = {};
-      if (display_name !== undefined) profilePatch.display_name = display_name || null;
+      if (display_name !== undefined) profilePatch.display_name = display_name.trim();
       if (email) profilePatch.email = email.trim();
       if (Object.keys(profilePatch).length > 0) {
         await admin.from("profiles").update(profilePatch).eq("id", user_id);
