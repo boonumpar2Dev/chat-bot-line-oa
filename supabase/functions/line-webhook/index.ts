@@ -278,11 +278,20 @@ async function sendAndSave(supabase: any, customerId: string, lineUserId: string
 }
 
 async function processEvent(event: any, supabase: any) {
-  const lineUserId = event.source?.userId;
+  const src = event.source || {};
+  // รองรับทั้ง 1-1, group และ room — ใช้ ID ที่ใช้ push กลับได้ตรงๆ
+  const sourceType: "user" | "group" | "room" =
+    src.type === "group" ? "group" : src.type === "room" ? "room" : "user";
+  const sourceId: string | undefined =
+    sourceType === "group" ? src.groupId : sourceType === "room" ? src.roomId : src.userId;
+  const lineUserId = sourceId;
+  // เก็บ userId ของผู้ส่งจริงในกรุ๊ป (ถ้ามี) — ใช้ดึงโปรไฟล์คนที่พูด
+  const senderUserId: string | undefined = src.userId;
   if (!lineUserId) return;
   if (event.deliveryContext?.isRedelivery) return;
 
-  console.log(`[Event] type=${event.type} mode=${event.mode} userId=${lineUserId}`);
+  console.log(`[Event] type=${event.type} mode=${event.mode} source=${sourceType} id=${lineUserId}`);
+
 
   // Standby mode = admin took over
   if (event.mode === "standby") {
@@ -357,19 +366,31 @@ async function processEvent(event: any, supabase: any) {
   const { data: existing } = await supabase.from("customers").select("*").eq("line_user_id", lineUserId).limit(1);
   let customer = existing?.[0];
   if (!customer) {
-    const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, {
-      headers: { Authorization: `Bearer ${LINE_TOKEN}` },
-    });
-    const profile = profileRes.ok ? await profileRes.json() : {};
+    let displayName = "ลูกค้าใหม่";
+    let pictureUrl = "";
+    if (sourceType === "group") {
+      const r = await fetch(`https://api.line.me/v2/bot/group/${lineUserId}/summary`, { headers: { Authorization: `Bearer ${LINE_TOKEN}` } });
+      if (r.ok) { const g = await r.json(); displayName = `[กรุ๊ป] ${g.groupName || "ไม่ระบุชื่อ"}`; pictureUrl = g.pictureUrl || ""; }
+      else displayName = "[กรุ๊ป LINE]";
+    } else if (sourceType === "room") {
+      displayName = "[ห้องแชทหลายคน]";
+    } else {
+      const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, { headers: { Authorization: `Bearer ${LINE_TOKEN}` } });
+      const profile = profileRes.ok ? await profileRes.json() : {};
+      displayName = profile.displayName || "ลูกค้าใหม่";
+      pictureUrl = profile.pictureUrl || "";
+    }
     const { data: created } = await supabase.from("customers").insert({
       line_user_id: lineUserId,
-      display_name: profile.displayName || "ลูกค้าใหม่",
-      picture_url: profile.pictureUrl || "",
+      display_name: displayName,
+      picture_url: pictureUrl,
       status: "new",
-      ai_active: true,
+      // กรุ๊ป/ห้อง: ปิด AI auto-reply เสมอ — แอดมินตอบเองในหน้า /chats
+      ai_active: sourceType === "user",
     }).select().single();
     customer = created;
   }
+
 
   // Dedup
   const lineMsgId = event.message?.id;
@@ -387,7 +408,11 @@ async function processEvent(event: any, supabase: any) {
     last_message_snippet: snippet,
   }).eq("id", customer.id);
 
+  // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
+  if (sourceType !== "user") return;
+
   if (!isText) return;
+
 
   // 🕐 Debounce: รอให้ลูกค้าพิมพ์เสร็จก่อนตอบ (กันพิมพ์หลายบรรทัดติดกัน)
   // อ่านค่า debounce_seconds จาก app_settings (ตั้งค่าได้จากหน้า Settings)
