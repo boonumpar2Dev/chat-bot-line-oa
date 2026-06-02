@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSnippet } from "@/lib/snippet";
+
 import { Card } from "@/components/ui/card";
 import { MessageSquare, Users, Clock, TrendingUp, Bot, AlertCircle, AlertTriangle, DollarSign, Phone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
