@@ -328,6 +328,22 @@ export default function Chats() {
     return () => { active = false; supabase.removeChannel(ch); };
   }, [selectedId]);
 
+  // โหลดชื่อแสดงของแอดมินทุกคน (ใช้แทนคำว่า "แอดมิน" ในบับเบิลข้อความ)
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase.from("profiles").select("id, display_name, email");
+      if (!active || !data) return;
+      const map: Record<string, string> = {};
+      for (const p of data as any[]) {
+        map[p.id] = (p.display_name?.trim()) || (p.email?.split("@")[0]) || "แอดมิน";
+      }
+      setAdminNames(map);
+    })();
+    return () => { active = false; };
+  }, []);
+
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
