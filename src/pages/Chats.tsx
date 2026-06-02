@@ -247,17 +247,15 @@ export default function Chats() {
   };
   useEffect(() => { refreshCounts(); }, [slaCutoffIso]);
 
-  // Ensure deep-linked customer (?customer=id) is loaded
+  // Ensure deep-linked customer (?customer=id) row is loaded into list
   useEffect(() => {
-    const id = sp.get("customer");
-    if (!id) return;
-    setSelectedId(id);
-    if (customers.some(c => c.id === id)) return;
+    if (!selectedId) return;
+    if (customers.some(c => c.id === selectedId)) return;
     (async () => {
-      const { data } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+      const { data } = await supabase.from("customers").select("*").eq("id", selectedId).maybeSingle();
       if (data) setCustomers(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
     })();
-  }, [sp, customers.length]);
+  }, [selectedId, customers.length]);
 
   // Realtime: patch in place + drop rows that no longer match active filter
   useEffect(() => {
