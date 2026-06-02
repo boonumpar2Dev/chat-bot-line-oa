@@ -192,7 +192,7 @@ export default function Dashboard() {
                     {r.unread_count > 0 && <Badge variant="destructive" className="h-5 px-1.5">{r.unread_count}</Badge>}
                     {!r.ai_active && <Badge variant="secondary" className="h-5 px-1.5"><Bot className="w-3 h-3 mr-1"/>Manual</Badge>}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{r.last_message_snippet || "—"}</p>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{formatSnippet(r.last_message_snippet)}</p>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">
                   {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : ""}
