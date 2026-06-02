@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
@@ -859,12 +859,18 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
   const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? "👤 แอดมิน" : "🤖 AI";
   const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []);
+  const videoUrls = (m.message.match(/https?:\/\/\S+\.(?:mp4|mov|webm|m4v)/gi) || []);
+  const allUrls = (m.message.match(/https?:\/\/\S+/gi) || []).map((u: string) => u.replace(/[)\].,;]+$/, ""));
+  const fileUrls = allUrls.filter((u: string) => !imgUrls.includes(u) && !videoUrls.includes(u));
+  const fileLabelMatch = m.message.match(/\[ไฟล์(?::\s*([^\]]+))?\]/);
+  const fileLabel = fileLabelMatch?.[1]?.trim() || "";
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
-    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)\]/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)(?::[^\]]*)?\]/g, "")
     .replace(/\n{2,}/g, "\n")
     .trim();
   // highlight matching text
@@ -893,6 +899,33 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI }: { m: any; onIm
             <img key={u} src={u} alt="" loading="lazy" onClick={() => onImageClick(u)}
               className="w-full aspect-square object-cover rounded-lg border cursor-pointer hover:opacity-90"/>
           ))}
+        </div>
+      )}
+      {videoUrls.length > 0 && (
+        <div className="flex flex-col gap-1.5 max-w-[320px]">
+          {videoUrls.map((u: string) => (
+            <video key={u} src={u} controls className="w-full rounded-lg border bg-black"/>
+          ))}
+        </div>
+      )}
+      {fileUrls.length > 0 && (
+        <div className="flex flex-col gap-1.5 max-w-[320px]">
+          {fileUrls.map((u: string) => {
+            const name = fileLabel || decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์");
+            return (
+              <a key={u} href={u} target="_blank" rel="noreferrer" download
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-card hover:bg-accent transition group">
+                <div className="w-9 h-9 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4"/>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate text-foreground">{name}</div>
+                  <div className="text-[10px] text-muted-foreground">คลิกเพื่อเปิด / ดาวน์โหลด</div>
+                </div>
+                <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0"/>
+              </a>
+            );
+          })}
         </div>
       )}
       {ocrText && (
