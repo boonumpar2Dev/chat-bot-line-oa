@@ -1,0 +1,2 @@
+ALTER TABLE public.conversations ADD COLUMN IF NOT EXISTS admin_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_conversations_admin_user_id ON public.conversations(admin_user_id);

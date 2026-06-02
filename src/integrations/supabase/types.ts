@@ -348,6 +348,7 @@ export type Database = {
       }
       conversations: {
         Row: {
+          admin_user_id: string | null
           confidence_score: number | null
           created_at: string
           customer_id: string
@@ -358,6 +359,7 @@ export type Database = {
           sender: Database["public"]["Enums"]["message_sender"]
         }
         Insert: {
+          admin_user_id?: string | null
           confidence_score?: number | null
           created_at?: string
           customer_id: string
@@ -368,6 +370,7 @@ export type Database = {
           sender?: Database["public"]["Enums"]["message_sender"]
         }
         Update: {
+          admin_user_id?: string | null
           confidence_score?: number | null
           created_at?: string
           customer_id?: string
