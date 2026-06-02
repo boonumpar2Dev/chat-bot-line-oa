@@ -366,19 +366,31 @@ async function processEvent(event: any, supabase: any) {
   const { data: existing } = await supabase.from("customers").select("*").eq("line_user_id", lineUserId).limit(1);
   let customer = existing?.[0];
   if (!customer) {
-    const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, {
-      headers: { Authorization: `Bearer ${LINE_TOKEN}` },
-    });
-    const profile = profileRes.ok ? await profileRes.json() : {};
+    let displayName = "ลูกค้าใหม่";
+    let pictureUrl = "";
+    if (sourceType === "group") {
+      const r = await fetch(`https://api.line.me/v2/bot/group/${lineUserId}/summary`, { headers: { Authorization: `Bearer ${LINE_TOKEN}` } });
+      if (r.ok) { const g = await r.json(); displayName = `[กรุ๊ป] ${g.groupName || "ไม่ระบุชื่อ"}`; pictureUrl = g.pictureUrl || ""; }
+      else displayName = "[กรุ๊ป LINE]";
+    } else if (sourceType === "room") {
+      displayName = "[ห้องแชทหลายคน]";
+    } else {
+      const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, { headers: { Authorization: `Bearer ${LINE_TOKEN}` } });
+      const profile = profileRes.ok ? await profileRes.json() : {};
+      displayName = profile.displayName || "ลูกค้าใหม่";
+      pictureUrl = profile.pictureUrl || "";
+    }
     const { data: created } = await supabase.from("customers").insert({
       line_user_id: lineUserId,
-      display_name: profile.displayName || "ลูกค้าใหม่",
-      picture_url: profile.pictureUrl || "",
+      display_name: displayName,
+      picture_url: pictureUrl,
       status: "new",
-      ai_active: true,
+      // กรุ๊ป/ห้อง: ปิด AI auto-reply เสมอ — แอดมินตอบเองในหน้า /chats
+      ai_active: sourceType === "user",
     }).select().single();
     customer = created;
   }
+
 
   // Dedup
   const lineMsgId = event.message?.id;
