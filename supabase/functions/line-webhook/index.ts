@@ -89,6 +89,32 @@ async function pushLine(to: string, messages: any[]) {
   return r;
 }
 
+// Insert AI conversation row FIRST, then push to LINE. Rollback row if push fails.
+// Returns true if both succeeded (so caller can proceed with side-effects like customers.update).
+async function saveAndPushAi(
+  supabase: any,
+  to: string,
+  messages: any[],
+  convRow: Record<string, any>,
+): Promise<boolean> {
+  const { data: inserted, error: insErr } = await supabase
+    .from("conversations")
+    .insert(convRow)
+    .select("id")
+    .single();
+  if (insErr) {
+    console.error(`[SaveAiFailed-pre-push]`, insErr.message);
+    return false;
+  }
+  const r = await pushLine(to, messages);
+  if (!r.ok) {
+    await supabase.from("conversations").delete().eq("id", inserted.id);
+    console.error(`[Rollback] removed conv ${inserted.id} due to LINE push failure`);
+    return false;
+  }
+  return true;
+}
+
 function getItemImages(item: any): string[] {
   return Array.isArray(item.image_urls) ? [...item.image_urls] : [];
 }
@@ -269,8 +295,7 @@ async function ocrImage(imageUrl: string, supabase: any, customerId?: string): P
 }
 
 async function sendAndSave(supabase: any, customerId: string, lineUserId: string, text: string, extra: Record<string, any> = {}) {
-  await pushLine(lineUserId, [{ type: "text", text }]);
-  await supabase.from("conversations").insert({ customer_id: customerId, message: text, sender: "ai", ...extra });
+  await saveAndPushAi(supabase, lineUserId, [{ type: "text", text }], { customer_id: customerId, message: text, sender: "ai", ...extra });
   await supabase.from("customers").update({
     last_message_at: new Date().toISOString(),
     last_message_snippet: `🤖 ${text.slice(0, 60)}`,
@@ -486,8 +511,7 @@ async function processEvent(event: any, supabase: any) {
           const oohText = String(cfg.out_of_hours_message).trim();
           const muteH = cfg.fallback_mute_hours ?? 1;
           const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-          await pushLine(lineUserId, [{ type: "text", text: oohText }]);
-          await supabase.from("conversations").insert({ customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
+          await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: oohText }], { customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
           await supabase.from("customers").update({
             ai_active: false, manual_chat_until: muteUntil,
             last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
@@ -959,8 +983,7 @@ ${pastLines}
     const fbText = String(cfg.unable_to_reply_message || "ขอบคุณที่สอบถามนะคะ 🙏 ขอส่งเรื่องให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับโดยเร็วที่สุดค่ะ").trim();
     const muteH = cfg.fallback_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await pushLine(lineUserId, [{ type: "text", text: fbText }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: fbText, sender: "ai", is_fallback: true });
+    await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: fbText }], { customer_id: customer.id, message: fbText, sender: "ai", is_fallback: true });
     await supabase.from("customers").update({
       ai_active: false, manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${fbText.slice(0, 60)}`,
@@ -1106,8 +1129,7 @@ ${pastLines}
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await pushLine(lineUserId, [{ type: "text", text: finalAnswer }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
+    await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: finalAnswer }], { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
     await supabase.from("customers").update({
       ai_active: false, manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
@@ -1189,16 +1211,42 @@ ${pastLines}
   for (; mediaIdx < Math.min(firstSlots, mediaToSend.length); mediaIdx++) {
     firstBatch.push(toLineMsg(mediaToSend[mediaIdx]));
   }
-  await pushLine(lineUserId, firstBatch);
-  while (mediaIdx < mediaToSend.length) {
-    const chunk = mediaToSend.slice(mediaIdx, mediaIdx + 5).map(toLineMsg);
-    mediaIdx += chunk.length;
-    await pushLine(lineUserId, chunk);
-  }
 
   const savedMsg = mediaToSend.length > 0
     ? `${finalAnswer}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
     : finalAnswer;
+
+  // 1) Insert AI conversation row FIRST (so admin sees what bot will send, even if LINE push fails mid-way)
+  const { data: insertedConv, error: convErr } = await supabase
+    .from("conversations")
+    .insert({ customer_id: customer.id, message: savedMsg, sender: "ai", confidence_score: confidence })
+    .select("id")
+    .single();
+  if (convErr) {
+    console.error(`[SaveAiFailed-pre-push multi-batch]`, convErr.message);
+    return;
+  }
+
+  // 2) Push first batch — if fails, rollback DB row and abort (don't send images either)
+  const firstRes = await pushLine(lineUserId, firstBatch);
+  if (!firstRes.ok) {
+    await supabase.from("conversations").delete().eq("id", insertedConv.id);
+    console.error(`[Rollback] removed conv ${insertedConv.id} — first batch push failed`);
+    return;
+  }
+
+  // 3) Push remaining media chunks — if any fails, keep the DB row (text already delivered)
+  //    but log so admin knows some images may be missing
+  while (mediaIdx < mediaToSend.length) {
+    const chunk = mediaToSend.slice(mediaIdx, mediaIdx + 5).map(toLineMsg);
+    mediaIdx += chunk.length;
+    const r = await pushLine(lineUserId, chunk);
+    if (!r.ok) {
+      console.error(`[PartialPushFail] conv ${insertedConv.id} — some media chunks failed to deliver`);
+      break;
+    }
+  }
+
   const update: any = {
     last_message_at: new Date().toISOString(),
     last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
@@ -1216,7 +1264,6 @@ ${pastLines}
     console.log(`[Handover] AI promised staff handover → ai_active=false`);
   }
 
-  await supabase.from("conversations").insert({ customer_id: customer.id, message: savedMsg, sender: "ai", confidence_score: confidence });
   await supabase.from("customers").update(update).eq("id", customer.id);
 }
 
