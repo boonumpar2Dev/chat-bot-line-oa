@@ -203,8 +203,8 @@ export default function Chats() {
   const [filter, setFilter] = useState<FilterKind>("all");
   const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
   const [slaHours, setSlaHours] = useState<number>(24);
-  const [reply, setReply] = useState("");
-  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>([]);
+  const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
+  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
