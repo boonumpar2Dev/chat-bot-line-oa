@@ -18,6 +18,7 @@ import AiSettings from "./pages/AiSettings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
 import AiTokens from "./pages/AiTokens";
+import AiDelivery from "./pages/AiDelivery";
 import LineConnection from "./pages/LineConnection";
 import Tags from "./pages/Tags";
 import Broadcast from "./pages/Broadcast";
