@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon, Megaphone } from "lucide-react";
 import boonumparLogo from "@/assets/boonumpar-logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
