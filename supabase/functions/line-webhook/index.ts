@@ -295,8 +295,7 @@ async function ocrImage(imageUrl: string, supabase: any, customerId?: string): P
 }
 
 async function sendAndSave(supabase: any, customerId: string, lineUserId: string, text: string, extra: Record<string, any> = {}) {
-  await pushLine(lineUserId, [{ type: "text", text }]);
-  await supabase.from("conversations").insert({ customer_id: customerId, message: text, sender: "ai", ...extra });
+  await saveAndPushAi(supabase, lineUserId, [{ type: "text", text }], { customer_id: customerId, message: text, sender: "ai", ...extra });
   await supabase.from("customers").update({
     last_message_at: new Date().toISOString(),
     last_message_snippet: `🤖 ${text.slice(0, 60)}`,
@@ -512,8 +511,7 @@ async function processEvent(event: any, supabase: any) {
           const oohText = String(cfg.out_of_hours_message).trim();
           const muteH = cfg.fallback_mute_hours ?? 1;
           const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-          await pushLine(lineUserId, [{ type: "text", text: oohText }]);
-          await supabase.from("conversations").insert({ customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
+          await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: oohText }], { customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
           await supabase.from("customers").update({
             ai_active: false, manual_chat_until: muteUntil,
             last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
@@ -985,8 +983,7 @@ ${pastLines}
     const fbText = String(cfg.unable_to_reply_message || "ขอบคุณที่สอบถามนะคะ 🙏 ขอส่งเรื่องให้เจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับโดยเร็วที่สุดค่ะ").trim();
     const muteH = cfg.fallback_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await pushLine(lineUserId, [{ type: "text", text: fbText }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: fbText, sender: "ai", is_fallback: true });
+    await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: fbText }], { customer_id: customer.id, message: fbText, sender: "ai", is_fallback: true });
     await supabase.from("customers").update({
       ai_active: false, manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${fbText.slice(0, 60)}`,
@@ -1132,8 +1129,7 @@ ${pastLines}
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await pushLine(lineUserId, [{ type: "text", text: finalAnswer }]);
-    await supabase.from("conversations").insert({ customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
+    await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: finalAnswer }], { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
     await supabase.from("customers").update({
       ai_active: false, manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
