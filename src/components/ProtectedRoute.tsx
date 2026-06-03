@@ -15,10 +15,10 @@ export default function ProtectedRoute({
   ownerOnly?: boolean;
   menuKey?: MenuKey;
 }) {
-  const { user, role, loading } = useAuth();
+  const { user, role, loading, roleLoading } = useAuth();
   const { menus, loading: permsLoading } = useMenuPermissions();
 
-  if (loading || (menuKey && permsLoading))
+  if (loading || (user && roleLoading) || (menuKey && permsLoading))
     return <div className="h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary"/></div>;
   if (!user) return <Navigate to="/auth" replace />;
   if (ownerOnly && role !== "owner") return <Navigate to="/" replace />;
