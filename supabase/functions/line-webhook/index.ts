@@ -79,13 +79,13 @@ async function runHandoverExtract(
   supabase: any,
   customer: any,
   cfg: any,
-  trigger: "phone" | "tax_id" | "postcap",
+  trigger: "phone" | "tax_id",
 ): Promise<any> {
   try {
     if (cfg?.handover_extract_enabled === false) return customer;
     const triggers: string[] = Array.isArray(cfg?.handover_extract_triggers)
       ? cfg.handover_extract_triggers
-      : ["phone", "tax_id", "postcap"];
+      : ["phone", "tax_id"];
     if (!triggers.includes(trigger)) return customer;
 
     const timeoutMs = Math.max(500, Number(cfg?.handover_extract_timeout_ms) || 3000);
