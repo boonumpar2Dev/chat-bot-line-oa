@@ -328,8 +328,8 @@ export default function AiSettings() {
             <div className="flex items-center gap-2"><ClipboardList className="text-primary" /><h2 className="font-display text-lg font-semibold">ฟอร์มส่งต่อแอดมิน</h2></div>
             <p className="text-xs text-muted-foreground -mt-3">ปรับแต่งข้อความตอบลูกค้า + ฟอร์มสรุปข้อมูลที่บอทส่งให้ลูกค้าตอนได้เบอร์/Tax ID/ครบโควต้าตอบ — ใช้ <code className="bg-muted px-1 rounded">{'{phone}'}</code>, <code className="bg-muted px-1 rounded">{'{tax_id}'}</code> เป็น placeholder ได้</p>
 
-            <div className="space-y-1.5">
             <div className="rounded-lg border border-border/60 bg-muted/30 p-4 space-y-4">
+
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <Label className="font-medium">🤖 AI วิเคราะห์บทสนทนาก่อนสรุป</Label>
