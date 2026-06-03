@@ -149,6 +149,10 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   return true;
 }
 
+const LAST_CUSTOMER_KEY = "chats:lastCustomer";
+const draftKey = (id: string) => `chats:draft:${id}`;
+type Draft = { text?: string; files?: { url: string; name: string; size: number }[] };
+
 export default function Chats() {
   const [sp, setSp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -160,7 +164,27 @@ export default function Chats() {
       else next.delete("customer");
       return next;
     }, { replace: true });
+    try {
+      if (id) sessionStorage.setItem(LAST_CUSTOMER_KEY, id);
+      else sessionStorage.removeItem(LAST_CUSTOMER_KEY);
+    } catch {}
   };
+
+  // Restore last opened customer on mount if URL has no ?customer=
+  useEffect(() => {
+    if (sp.get("customer")) return;
+    try {
+      const last = sessionStorage.getItem(LAST_CUSTOMER_KEY);
+      if (last) {
+        setSp(prev => {
+          const next = new URLSearchParams(prev);
+          next.set("customer", last);
+          return next;
+        }, { replace: true });
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [adminNames, setAdminNames] = useState<Record<string, string>>({});
 
