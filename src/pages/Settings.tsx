@@ -94,15 +94,16 @@ export default function Settings() {
   const save = async () => {
     if (!s) return;
     setSaving(true);
-    // Derive flag เดิมจาก bot_mode (เพื่อ backward compat กับ webhook)
-    const derived = {
-      ai_enabled: s.bot_mode !== "off",
-      schedule_enabled: s.bot_mode === "scheduled",
-      ai_whitelist_enabled: s.bot_mode === "whitelist",
-    };
+    // bot_mode เก็บเป็น display label สำหรับ backward compat — แต่ webhook ใช้ flag ตรง ๆ
+    const displayMode: BotMode =
+      !s.ai_enabled ? "off"
+      : (s.schedule_enabled || s.ai_whitelist_enabled) ? (s.schedule_enabled ? "scheduled" : "whitelist")
+      : "full";
     const { error } = await supabase.from("app_settings").update({
-      bot_mode: s.bot_mode,
-      ...derived,
+      bot_mode: displayMode,
+      ai_enabled: s.ai_enabled,
+      schedule_enabled: s.schedule_enabled,
+      ai_whitelist_enabled: s.ai_whitelist_enabled,
       ai_whitelist_user_ids: s.ai_whitelist_user_ids,
       cooldown_minutes: s.cooldown_minutes,
       manual_chat_hours: s.manual_chat_hours,
@@ -127,9 +128,49 @@ export default function Settings() {
 
   const upd = (k: keyof Settings, v: any) => setS(prev => prev ? { ...prev, [k]: v } : prev);
 
+  // คลิกการ์ดโหมด — full/off = exclusive, scheduled/whitelist = toggle ติ๊กพร้อมกันได้
+  const toggleMode = (mode: BotMode) => {
+    setS(prev => {
+      if (!prev) return prev;
+      if (mode === "off") {
+        return { ...prev, ai_enabled: false, schedule_enabled: false, ai_whitelist_enabled: false };
+      }
+      if (mode === "full") {
+        return { ...prev, ai_enabled: true, schedule_enabled: false, ai_whitelist_enabled: false };
+      }
+      const next = { ...prev, ai_enabled: true };
+      if (mode === "scheduled") next.schedule_enabled = !prev.schedule_enabled;
+      if (mode === "whitelist") next.ai_whitelist_enabled = !prev.ai_whitelist_enabled;
+      return next;
+    });
+  };
+
   if (loading || !s) return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-primary"/></div>;
 
-  const currentMode = MODES.find(m => m.value === s.bot_mode) ?? MODES[0];
+  const activeModes = deriveActive(s);
+  const isActive = (v: BotMode) => activeModes.has(v);
+  const bannerLabel =
+    isActive("off") ? "ปิด"
+    : isActive("scheduled") && isActive("whitelist") ? "ตามเวลา + ทดสอบ"
+    : isActive("scheduled") ? "ตามเวลา"
+    : isActive("whitelist") ? "ทดสอบ"
+    : "เปิดเต็ม";
+  const bannerDesc =
+    isActive("off") ? "บอทไม่ตอบเลย"
+    : isActive("scheduled") && isActive("whitelist") ? "ลูกค้าทั่วไป: ตอบเฉพาะในเวลาทำการ • ทีมทดสอบ (whitelist): ตอบได้ทุกเวลา"
+    : isActive("scheduled") ? "บอทตอบเฉพาะช่วงเวลาที่กำหนด"
+    : isActive("whitelist") ? "บอทตอบเฉพาะ LINE user ID ที่อนุญาต"
+    : "บอทตอบลูกค้าทุกคน 24 ชม.";
+  const bannerColor =
+    isActive("off") ? "text-rose-600 bg-rose-500/10 border-rose-500/40"
+    : (isActive("scheduled") || isActive("whitelist")) ? "text-blue-600 bg-blue-500/10 border-blue-500/40"
+    : "text-green-600 bg-green-500/10 border-green-500/40";
+  const BannerIcon =
+    isActive("off") ? PowerOff
+    : isActive("scheduled") && isActive("whitelist") ? FlaskConical
+    : isActive("scheduled") ? CalendarClock
+    : isActive("whitelist") ? FlaskConical
+    : Power;
 
   return (
     <div className="p-6 lg:p-8 space-y-6 max-w-4xl mx-auto pb-24">
@@ -144,35 +185,37 @@ export default function Settings() {
       </div>
 
       {/* Current status banner */}
-      <Card className={`p-5 border-2 ${currentMode.color}`}>
+      <Card className={`p-5 border-2 ${bannerColor}`}>
         <div className="flex items-center gap-3">
-          <currentMode.icon className="w-7 h-7" />
+          <BannerIcon className="w-7 h-7" />
           <div>
             <div className="text-xs uppercase tracking-wide opacity-70">สถานะปัจจุบัน</div>
-            <div className="font-display text-xl font-semibold">โหมด: {currentMode.label}</div>
-            <div className="text-sm opacity-80 mt-0.5">{currentMode.desc}</div>
+            <div className="font-display text-xl font-semibold">โหมด: {bannerLabel}</div>
+            <div className="text-sm opacity-80 mt-0.5">{bannerDesc}</div>
           </div>
         </div>
       </Card>
 
       {/* Mode selector */}
       <Card className="p-6 shadow-soft border-border/60">
-        <div className="flex items-center gap-2 mb-4"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">โหมดการทำงานของบอท</h2></div>
+        <div className="flex items-center gap-2 mb-1"><Bot className="text-primary"/><h2 className="font-display text-lg font-semibold">โหมดการทำงานของบอท</h2></div>
+        <p className="text-xs text-muted-foreground mb-4">"ตามเวลา" และ "ทดสอบ" เปิดพร้อมกันได้ — ทีมทดสอบจะตอบได้ทุกเวลา ลูกค้าทั่วไปยังจำกัดตามเวลาทำการ</p>
         <div className="grid sm:grid-cols-2 gap-3">
           {MODES.map(m => {
-            const active = s.bot_mode === m.value;
+            const active = isActive(m.value);
             const Icon = m.icon;
             return (
               <button
                 key={m.value}
                 type="button"
-                onClick={() => upd("bot_mode", m.value)}
+                onClick={() => toggleMode(m.value)}
                 className={`text-left p-4 rounded-lg border-2 transition-all ${active ? m.color + " shadow-md" : "border-border/60 bg-card hover:border-primary/40"}`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{m.label}</span>
-                  {active && <span className="ml-auto text-[10px] uppercase font-semibold opacity-70">เลือกอยู่</span>}
+                  {m.combinable && <span className="text-[9px] px-1.5 py-0.5 rounded bg-foreground/10 uppercase tracking-wide">รวมได้</span>}
+                  {active && <span className="ml-auto text-[10px] uppercase font-semibold opacity-70">เปิดอยู่</span>}
                 </div>
                 <p className="text-xs text-muted-foreground">{m.desc}</p>
               </button>
@@ -181,18 +224,18 @@ export default function Settings() {
         </div>
 
         {/* Mode-specific config */}
-        {s.bot_mode === "scheduled" && (
+        {isActive("scheduled") && (
           <div className="mt-5 p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 space-y-3">
             <Label className="font-medium flex items-center gap-2"><Clock className="w-4 h-4"/> ช่วงเวลาที่บอททำงาน</Label>
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label className="text-xs">บอทเริ่มตอบ</Label><Input type="time" value={s.start_time} onChange={e=>upd("start_time", e.target.value)} /></div>
               <div className="space-y-1.5"><Label className="text-xs">บอทหยุดตอบ</Label><Input type="time" value={s.end_time} onChange={e=>upd("end_time", e.target.value)} /></div>
             </div>
-            <p className="text-xs text-muted-foreground">นอกเวลานี้ บอทจะเงียบ (หรือส่งข้อความ "นอกเวลาทำการ" ถ้าเปิดไว้ในการ์ดด้านล่าง)</p>
+            <p className="text-xs text-muted-foreground">นอกเวลานี้ บอทจะเงียบสำหรับลูกค้าทั่วไป (ถ้าเปิด "ทดสอบ" ร่วม คนใน whitelist จะตอบได้ทุกเวลา)</p>
           </div>
         )}
 
-        {s.bot_mode === "whitelist" && (
+        {isActive("whitelist") && (
           <div className="mt-5 p-4 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2">
             <Label className="font-medium">LINE user ID ที่อนุญาต (หนึ่ง ID ต่อบรรทัด)</Label>
             <Textarea
@@ -202,10 +245,11 @@ export default function Settings() {
               value={(s.ai_whitelist_user_ids ?? []).join("\n")}
               onChange={e=>upd("ai_whitelist_user_ids", e.target.value.split("\n").map(x=>x.trim()).filter(Boolean))}
             />
-            <p className="text-[11px] text-muted-foreground">ID เริ่มต้นด้วย U ตามด้วยตัวอักษร/ตัวเลข 32 ตัว — หาได้จากหน้า Chats หรือตาราง customers</p>
+            <p className="text-[11px] text-muted-foreground">ID เริ่มต้นด้วย U ตามด้วยตัวอักษร/ตัวเลข 32 ตัว — คนใน list นี้บอทจะตอบเสมอ ไม่สนใจ schedule</p>
           </div>
         )}
       </Card>
+
 
       {/* Auto reply messages */}
       <Card className="p-6 shadow-soft border-border/60">
