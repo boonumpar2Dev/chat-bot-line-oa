@@ -363,6 +363,55 @@ export default function Chats() {
     return () => { active = false; supabase.removeChannel(ch); };
   }, [selectedId]);
 
+  // Draft persistence: save outgoing typed message + staged files per customer in sessionStorage
+  const prevDraftIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Save draft of previous customer before switching
+    const prev = prevDraftIdRef.current;
+    if (prev && prev !== selectedId) {
+      try {
+        const draft: Draft = { text: reply, files: stagedFiles };
+        if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
+          sessionStorage.setItem(draftKey(prev), JSON.stringify(draft));
+        } else {
+          sessionStorage.removeItem(draftKey(prev));
+        }
+      } catch {}
+    }
+    // Load draft for the newly selected customer
+    if (selectedId) {
+      try {
+        const raw = sessionStorage.getItem(draftKey(selectedId));
+        const d: Draft = raw ? JSON.parse(raw) : {};
+        setReply(d.text || "");
+        setStagedFiles(d.files || []);
+      } catch {
+        setReply(""); setStagedFiles([]);
+      }
+    } else {
+      setReply(""); setStagedFiles([]);
+    }
+    prevDraftIdRef.current = selectedId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // Persist current draft (debounced) so refresh / unmount keeps it
+  useEffect(() => {
+    if (!selectedId) return;
+    const t = setTimeout(() => {
+      try {
+        if (reply.length || stagedFiles.length) {
+          sessionStorage.setItem(draftKey(selectedId), JSON.stringify({ text: reply, files: stagedFiles }));
+        } else {
+          sessionStorage.removeItem(draftKey(selectedId));
+        }
+      } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, [reply, stagedFiles, selectedId]);
+
+
+
   // โหลดชื่อแสดงของแอดมินทุกคน (ใช้แทนคำว่า "แอดมิน" ในบับเบิลข้อความ)
   useEffect(() => {
     let active = true;
