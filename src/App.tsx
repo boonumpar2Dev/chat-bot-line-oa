@@ -18,6 +18,7 @@ import AiSettings from "./pages/AiSettings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
 import AiTokens from "./pages/AiTokens";
+import AiDelivery from "./pages/AiDelivery";
 import LineConnection from "./pages/LineConnection";
 import Tags from "./pages/Tags";
 import Broadcast from "./pages/Broadcast";
@@ -48,6 +49,7 @@ const App = () => (
                 <Route path="/broadcast" element={<ProtectedRoute menuKey="broadcast"><Broadcast /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
                 <Route path="/ai-tokens" element={<ProtectedRoute ownerOnly><AiTokens /></ProtectedRoute>} />
+                <Route path="/ai-delivery" element={<ProtectedRoute ownerOnly><AiDelivery /></ProtectedRoute>} />
                 <Route path="/line-connection" element={<ProtectedRoute adminOnly><LineConnection /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<NotFound />} />
