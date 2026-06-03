@@ -38,6 +38,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_delivery_logs: {
+        Row: {
+          conv_id: string | null
+          created_at: string
+          customer_id: string | null
+          details: Json
+          event_type: string
+          id: string
+          line_user_id: string | null
+          message: string | null
+          severity: string
+        }
+        Insert: {
+          conv_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          details?: Json
+          event_type: string
+          id?: string
+          line_user_id?: string | null
+          message?: string | null
+          severity?: string
+        }
+        Update: {
+          conv_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          details?: Json
+          event_type?: string
+          id?: string
+          line_user_id?: string | null
+          message?: string | null
+          severity?: string
+        }
+        Relationships: []
+      }
       ai_token_usage: {
         Row: {
           completion_tokens: number
