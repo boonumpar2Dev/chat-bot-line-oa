@@ -1211,16 +1211,42 @@ ${pastLines}
   for (; mediaIdx < Math.min(firstSlots, mediaToSend.length); mediaIdx++) {
     firstBatch.push(toLineMsg(mediaToSend[mediaIdx]));
   }
-  await pushLine(lineUserId, firstBatch);
-  while (mediaIdx < mediaToSend.length) {
-    const chunk = mediaToSend.slice(mediaIdx, mediaIdx + 5).map(toLineMsg);
-    mediaIdx += chunk.length;
-    await pushLine(lineUserId, chunk);
-  }
 
   const savedMsg = mediaToSend.length > 0
     ? `${finalAnswer}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
     : finalAnswer;
+
+  // 1) Insert AI conversation row FIRST (so admin sees what bot will send, even if LINE push fails mid-way)
+  const { data: insertedConv, error: convErr } = await supabase
+    .from("conversations")
+    .insert({ customer_id: customer.id, message: savedMsg, sender: "ai", confidence_score: confidence })
+    .select("id")
+    .single();
+  if (convErr) {
+    console.error(`[SaveAiFailed-pre-push multi-batch]`, convErr.message);
+    return;
+  }
+
+  // 2) Push first batch — if fails, rollback DB row and abort (don't send images either)
+  const firstRes = await pushLine(lineUserId, firstBatch);
+  if (!firstRes.ok) {
+    await supabase.from("conversations").delete().eq("id", insertedConv.id);
+    console.error(`[Rollback] removed conv ${insertedConv.id} — first batch push failed`);
+    return;
+  }
+
+  // 3) Push remaining media chunks — if any fails, keep the DB row (text already delivered)
+  //    but log so admin knows some images may be missing
+  while (mediaIdx < mediaToSend.length) {
+    const chunk = mediaToSend.slice(mediaIdx, mediaIdx + 5).map(toLineMsg);
+    mediaIdx += chunk.length;
+    const r = await pushLine(lineUserId, chunk);
+    if (!r.ok) {
+      console.error(`[PartialPushFail] conv ${insertedConv.id} — some media chunks failed to deliver`);
+      break;
+    }
+  }
+
   const update: any = {
     last_message_at: new Date().toISOString(),
     last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
@@ -1238,7 +1264,6 @@ ${pastLines}
     console.log(`[Handover] AI promised staff handover → ai_active=false`);
   }
 
-  await supabase.from("conversations").insert({ customer_id: customer.id, message: savedMsg, sender: "ai", confidence_score: confidence });
   await supabase.from("customers").update(update).eq("id", customer.id);
 }
 
