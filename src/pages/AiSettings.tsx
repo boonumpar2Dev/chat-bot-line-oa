@@ -355,9 +355,8 @@ export default function AiSettings() {
                     {[
                       { key: "phone", label: "ลูกค้าให้เบอร์โทร" },
                       { key: "tax_id", label: "ลูกค้าให้ Tax ID" },
-                      { key: "postcap", label: "AI คุยถึงจำนวนรอบที่กำหนด" },
                     ].map(t => {
-                      const arr: string[] = Array.isArray(s.handover_extract_triggers) ? s.handover_extract_triggers : ["phone","tax_id","postcap"];
+                      const arr: string[] = Array.isArray(s.handover_extract_triggers) ? s.handover_extract_triggers : ["phone","tax_id"];
                       const on = arr.includes(t.key);
                       return (
                         <button
@@ -463,10 +462,6 @@ export default function AiSettings() {
               <Textarea rows={3} value={s.handover_intro_tax ?? ""} onChange={e => upd("handover_intro_tax", e.target.value)} placeholder="ใช้ {tax_id} เพื่อแทนเลข Tax ID" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>ข้อความตอน AI ตอบครบโควต้าหลังได้เบอร์</Label>
-              <Textarea rows={3} value={s.handover_intro_postcap ?? ""} onChange={e => upd("handover_intro_postcap", e.target.value)} />
-            </div>
           </Card>
         </TabsContent>
 
