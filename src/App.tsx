@@ -49,6 +49,7 @@ const App = () => (
                 <Route path="/broadcast" element={<ProtectedRoute menuKey="broadcast"><Broadcast /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
                 <Route path="/ai-tokens" element={<ProtectedRoute ownerOnly><AiTokens /></ProtectedRoute>} />
+                <Route path="/ai-delivery" element={<ProtectedRoute ownerOnly><AiDelivery /></ProtectedRoute>} />
                 <Route path="/line-connection" element={<ProtectedRoute adminOnly><LineConnection /></ProtectedRoute>} />
               </Route>
               <Route path="*" element={<NotFound />} />
