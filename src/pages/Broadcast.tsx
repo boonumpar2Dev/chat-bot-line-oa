@@ -254,9 +254,9 @@ export default function Broadcast() {
 // Composer
 // ============================================================
 function ComposerDialog({
-  open, onOpenChange, editing, onSaved,
+  open, onOpenChange, editing, duplicating, onSaved,
 }: {
-  open: boolean; onOpenChange: (v: boolean) => void; editing: Campaign | null; onSaved: () => void;
+  open: boolean; onOpenChange: (v: boolean) => void; editing: Campaign | null; duplicating?: Campaign | null; onSaved: () => void;
 }) {
   const [name, setName] = useState("");
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -278,24 +278,26 @@ function ComposerDialog({
     supabase.from("tags").select("name").order("sort_order").then(({ data }) => {
       setAllTags((data || []).map((t: any) => t.name));
     });
-    if (editing) {
-      setName(editing.name || "");
-      setBubbles((editing.messages as any) || []);
-      setTags(editing.target_tags || []);
-      setStatuses(editing.target_statuses || []);
-      setMatchMode((editing.target_match_mode as any) || "any");
-      if (editing.scheduled_at) {
+    const source = editing || duplicating;
+    if (source) {
+      setName(duplicating ? `${source.name} (สำเนา)` : (source.name || ""));
+      setBubbles((source.messages as any) || []);
+      setTags(source.target_tags || []);
+      setStatuses(source.target_statuses || []);
+      setMatchMode((source.target_match_mode as any) || "any");
+      if (editing && editing.scheduled_at) {
         setScheduleMode("later");
         setScheduledAt(toLocalInput(new Date(editing.scheduled_at)));
       } else {
         setScheduleMode("now");
+        setScheduledAt(toLocalInput(new Date(Date.now() + 30 * 60_000)));
       }
     } else {
       setName(""); setBubbles([]); setTags([]); setStatuses([]); setMatchMode("any"); setScheduleMode("now");
       setScheduledAt(toLocalInput(new Date(Date.now() + 30 * 60_000)));
     }
     setRecipientCount(null);
-  }, [open, editing]);
+  }, [open, editing, duplicating]);
 
   // Recipient preview
   useEffect(() => {
