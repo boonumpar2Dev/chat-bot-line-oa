@@ -765,9 +765,11 @@ async function processEvent(event: any, supabase: any) {
     }).eq("id", customer.id);
     const fmtList = validPhones.map(fmtOne);
     const fmtStr = fmtList.length === 1 ? fmtList[0] : fmtList.join(", ");
-    const summary = buildCustomerSummary({ ...freshCustomer, phone: fmtStr }, cfg);
+    const enriched = await runHandoverExtract(supabase, { ...freshCustomer, phone: phoneStr }, cfg, "phone");
+    const summary = buildCustomerSummary({ ...enriched, phone: fmtStr }, cfg);
     const introTpl = cfg.handover_intro_phone || `ขอบคุณสำหรับข้อมูลค่ะ บันทึกเบอร์โทร {phone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยนะคะ`;
     const intro = renderTemplate(introTpl, { phone: fmtStr, phone_count: String(validPhones.length) });
+
     await sendAndSave(supabase, customer.id, lineUserId, [intro, "", ...summary].join("\n"));
     return;
   }
