@@ -428,16 +428,29 @@ export default function Chats() {
   }, []);
 
 
+  const lastScrolledIdRef = useRef<string | null>(null);
   useEffect(() => {
-    // Radix ScrollArea: ตัว scroll จริงคือ Viewport ข้างใน Root
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
-    if (!viewport) return;
-    // ใช้ rAF ให้ DOM render ข้อความใหม่ก่อนค่อยเลื่อน
+    if (!viewport || messages.length === 0) return;
+    // ถ้าเพิ่งเปลี่ยนห้อง → เลื่อนแบบ instant และยิงซ้ำหลังรูปโหลด
+    const isRoomSwitch = lastScrolledIdRef.current !== selectedId;
+    lastScrolledIdRef.current = selectedId;
+    const scrollToBottom = (behavior: ScrollBehavior) => {
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+    };
     requestAnimationFrame(() => {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
+      scrollToBottom(isRoomSwitch ? "auto" : "smooth");
+      if (isRoomSwitch) {
+        // เผื่อรูป/มีเดียโหลดเสร็จทีหลัง ทำให้ scrollHeight เพิ่ม
+        const timers = [80, 250, 600, 1200].map(ms =>
+          setTimeout(() => scrollToBottom("auto"), ms)
+        );
+        // cleanup ครั้งถัดไป
+        return () => timers.forEach(clearTimeout);
+      }
     });
-  }, [messages]);
+  }, [messages, selectedId]);
 
   // Customers found by searching inside message content
   const [msgMatchIds, setMsgMatchIds] = useState<Set<string>>(new Set());
