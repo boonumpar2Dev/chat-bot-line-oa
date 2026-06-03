@@ -87,7 +87,9 @@ export default function Broadcast() {
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editing, setEditing] = useState<Campaign | null>(null);
+  const [duplicating, setDuplicating] = useState<Campaign | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("active");
 
   const loadCampaigns = async () => {
     setLoading(true);
@@ -95,12 +97,82 @@ export default function Broadcast() {
       .from("broadcast_campaigns")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
     setCampaigns((data as any) || []);
     setLoading(false);
   };
 
   useEffect(() => { loadCampaigns(); }, []);
+
+  const groups = useMemo(() => ({
+    active: campaigns.filter((c) => c.status === "sending" || c.status === "scheduled"),
+    sent: campaigns.filter((c) => c.status === "sent"),
+    failed: campaigns.filter((c) => c.status === "failed"),
+    draft: campaigns.filter((c) => c.status === "draft" || c.status === "canceled"),
+  }), [campaigns]);
+
+  const handleDuplicate = (c: Campaign) => {
+    setEditing(null);
+    setDuplicating(c);
+    setComposerOpen(true);
+  };
+
+  const renderRow = (c: Campaign) => (
+    <tr key={c.id} className="border-b hover:bg-accent/30 transition">
+      <td className="py-2.5 pr-3 font-medium">{c.name || "(ไม่มีชื่อ)"}</td>
+      <td className="py-2.5 px-3">
+        <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", STATUS_COLOR[c.status] || "bg-muted")}>
+          {STATUS_LABEL[c.status] || c.status}
+        </span>
+      </td>
+      <td className="py-2.5 px-3 text-right tabular-nums">{c.total_recipients}</td>
+      <td className="py-2.5 px-3 text-right tabular-nums">
+        <span className="text-emerald-600">{c.success_count}</span>
+        {c.failed_count > 0 && <span className="text-red-600"> / {c.failed_count}</span>}
+      </td>
+      <td className="py-2.5 px-3 text-xs text-muted-foreground whitespace-nowrap">
+        {c.status === "scheduled" ? `📅 ${formatDateTime(c.scheduled_at)}` :
+         c.status === "sent" || c.status === "failed" ? formatDateTime(c.sent_at) :
+         formatDateTime(c.created_at)}
+      </td>
+      <td className="py-2.5 pl-3 text-right whitespace-nowrap">
+        <Button size="sm" variant="ghost" onClick={() => setDetailId(c.id)} title="ดูรายละเอียด">
+          <Eye className="w-4 h-4" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => handleDuplicate(c)} title="ทำสำเนา">
+          <Copy className="w-4 h-4" />
+        </Button>
+        {(c.status === "draft" || c.status === "scheduled" || c.status === "failed") && (
+          <Button size="sm" variant="ghost" onClick={() => { setDuplicating(null); setEditing(c); setComposerOpen(true); }}>
+            แก้ไข
+          </Button>
+        )}
+      </td>
+    </tr>
+  );
+
+  const renderTable = (rows: Campaign[], emptyText: string) => {
+    if (rows.length === 0) {
+      return <div className="py-10 text-center text-muted-foreground text-sm">{emptyText}</div>;
+    }
+    return (
+      <div className="overflow-x-auto -mx-6 px-6">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-xs text-muted-foreground">
+              <th className="text-left py-2 pr-3 font-medium">ชื่อ</th>
+              <th className="text-left py-2 px-3 font-medium">สถานะ</th>
+              <th className="text-right py-2 px-3 font-medium">ผู้รับ</th>
+              <th className="text-right py-2 px-3 font-medium">สำเร็จ/ล้มเหลว</th>
+              <th className="text-left py-2 px-3 font-medium">เวลา</th>
+              <th className="text-right py-2 pl-3 font-medium">การกระทำ</th>
+            </tr>
+          </thead>
+          <tbody>{rows.map(renderRow)}</tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
@@ -118,7 +190,7 @@ export default function Broadcast() {
           <Button variant="outline" size="icon" onClick={loadCampaigns} title="รีโหลด">
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button onClick={() => { setEditing(null); setComposerOpen(true); }}>
+          <Button onClick={() => { setEditing(null); setDuplicating(null); setComposerOpen(true); }}>
             <Plus className="w-4 h-4 mr-1" /> สร้างแคมเปญใหม่
           </Button>
         </div>
@@ -127,7 +199,7 @@ export default function Broadcast() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">ประวัติแคมเปญ</CardTitle>
-          <CardDescription>{campaigns.length} แคมเปญ</CardDescription>
+          <CardDescription>ทั้งหมด {campaigns.length} แคมเปญ</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -137,52 +209,26 @@ export default function Broadcast() {
               ยังไม่มีแคมเปญ — กด "สร้างแคมเปญใหม่" เพื่อเริ่มต้น
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-xs text-muted-foreground">
-                    <th className="text-left py-2 pr-3 font-medium">ชื่อ</th>
-                    <th className="text-left py-2 px-3 font-medium">สถานะ</th>
-                    <th className="text-right py-2 px-3 font-medium">ผู้รับ</th>
-                    <th className="text-right py-2 px-3 font-medium">สำเร็จ/ล้มเหลว</th>
-                    <th className="text-left py-2 px-3 font-medium">เวลา</th>
-                    <th className="text-right py-2 pl-3 font-medium">การกระทำ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaigns.map((c) => (
-                    <tr key={c.id} className="border-b hover:bg-accent/30 transition">
-                      <td className="py-2.5 pr-3 font-medium">{c.name || "(ไม่มีชื่อ)"}</td>
-                      <td className="py-2.5 px-3">
-                        <span className={cn("inline-block px-2 py-0.5 rounded-full text-xs font-medium", STATUS_COLOR[c.status] || "bg-muted")}>
-                          {STATUS_LABEL[c.status] || c.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">{c.total_recipients}</td>
-                      <td className="py-2.5 px-3 text-right tabular-nums">
-                        <span className="text-emerald-600">{c.success_count}</span>
-                        {c.failed_count > 0 && <span className="text-red-600"> / {c.failed_count}</span>}
-                      </td>
-                      <td className="py-2.5 px-3 text-xs text-muted-foreground">
-                        {c.status === "scheduled" ? `📅 ${formatDateTime(c.scheduled_at)}` :
-                         c.status === "sent" || c.status === "failed" ? formatDateTime(c.sent_at) :
-                         formatDateTime(c.created_at)}
-                      </td>
-                      <td className="py-2.5 pl-3 text-right">
-                        <Button size="sm" variant="ghost" onClick={() => setDetailId(c.id)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        {(c.status === "draft" || c.status === "scheduled" || c.status === "failed") && (
-                          <Button size="sm" variant="ghost" onClick={() => { setEditing(c); setComposerOpen(true); }}>
-                            แก้ไข
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid grid-cols-4 w-full sm:w-auto sm:inline-grid">
+                <TabsTrigger value="active" className="gap-1.5">
+                  📤 กำลังส่ง <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="sent" className="gap-1.5">
+                  ✅ สำเร็จ <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="failed" className="gap-1.5">
+                  ❌ ล้มเหลว <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="draft" className="gap-1.5">
+                  📝 ร่าง <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="active">{renderTable(groups.active, "ไม่มีแคมเปญที่กำลังส่งหรือตั้งเวลาไว้")}</TabsContent>
+              <TabsContent value="sent">{renderTable(groups.sent, "ยังไม่มีแคมเปญที่ส่งสำเร็จ")}</TabsContent>
+              <TabsContent value="failed">{renderTable(groups.failed, "ไม่มีแคมเปญที่ล้มเหลว")}</TabsContent>
+              <TabsContent value="draft">{renderTable(groups.draft, "ไม่มีฉบับร่าง")}</TabsContent>
+            </Tabs>
           )}
         </CardContent>
       </Card>
@@ -191,7 +237,8 @@ export default function Broadcast() {
         open={composerOpen}
         onOpenChange={setComposerOpen}
         editing={editing}
-        onSaved={() => { setComposerOpen(false); setEditing(null); loadCampaigns(); }}
+        duplicating={duplicating}
+        onSaved={() => { setComposerOpen(false); setEditing(null); setDuplicating(null); loadCampaigns(); }}
       />
 
       <CampaignDetail
