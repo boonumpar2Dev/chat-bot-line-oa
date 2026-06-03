@@ -748,13 +748,12 @@ function CampaignDetail({
     if (!campaign) return;
     if (!confirm("ส่งซ้ำ? จะส่งหาทุกคนตามเงื่อนไขเดิม")) return;
     await supabase.from("broadcast_campaigns").update({ status: "scheduled" }).eq("id", campaign.id);
-    toast.success("กำลังส่งซ้ำ...");
-    supabase.functions.invoke("broadcast-send", { body: { campaign_id: campaign.id } })
-      .then(({ data, error }) => {
-        if (error) toast.error(error.message);
-        else toast.success(`ส่งเสร็จ — สำเร็จ ${data?.success || 0} / ล้มเหลว ${data?.failed || 0}`);
-        onClose(); onReload();
-      });
+    toast.loading("กำลังส่งซ้ำ...", { id: "bcast-resend" });
+    const { data, error } = await supabase.functions.invoke("broadcast-send", { body: { campaign_id: campaign.id } });
+    toast.dismiss("bcast-resend");
+    if (error) toast.error(error.message);
+    else toast.success(`ส่งเสร็จ — สำเร็จ ${data?.success || 0} / ล้มเหลว ${data?.failed || 0}`);
+    onClose(); onReload();
   };
 
   return (
