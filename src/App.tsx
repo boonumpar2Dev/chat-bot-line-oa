@@ -20,6 +20,7 @@ import LiffPanel from "./pages/LiffPanel";
 import AiTokens from "./pages/AiTokens";
 import LineConnection from "./pages/LineConnection";
 import Tags from "./pages/Tags";
+import Broadcast from "./pages/Broadcast";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
