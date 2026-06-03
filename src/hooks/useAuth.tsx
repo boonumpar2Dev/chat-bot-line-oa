@@ -19,6 +19,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoading, setRoleLoading] = useState(true);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
@@ -27,20 +28,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // skip role re-fetch on TOKEN_REFRESHED / USER_UPDATED to avoid flicker
       if (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") return;
       if (s?.user) {
+        setRoleLoading(true);
         setTimeout(() => {
           supabase.from("user_roles").select("role").eq("user_id", s.user.id).maybeSingle()
-            .then(({ data }) => setRole((data?.role as AppRole) ?? "staff"));
+            .then(({ data }) => { setRole((data?.role as AppRole) ?? "staff"); setRoleLoading(false); });
         }, 0);
       } else {
         setRole(null);
+        setRoleLoading(false);
       }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
+        setRoleLoading(true);
         supabase.from("user_roles").select("role").eq("user_id", session.user.id).maybeSingle()
-          .then(({ data }) => setRole((data?.role as AppRole) ?? "staff"));
+          .then(({ data }) => { setRole((data?.role as AppRole) ?? "staff"); setRoleLoading(false); });
+      } else {
+        setRoleLoading(false);
       }
       setLoading(false);
     });
