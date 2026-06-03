@@ -462,10 +462,6 @@ export default function AiSettings() {
               <Textarea rows={3} value={s.handover_intro_tax ?? ""} onChange={e => upd("handover_intro_tax", e.target.value)} placeholder="ใช้ {tax_id} เพื่อแทนเลข Tax ID" />
             </div>
 
-            <div className="space-y-1.5">
-              <Label>ข้อความตอน AI ตอบครบโควต้าหลังได้เบอร์</Label>
-              <Textarea rows={3} value={s.handover_intro_postcap ?? ""} onChange={e => upd("handover_intro_postcap", e.target.value)} />
-            </div>
           </Card>
         </TabsContent>
 
