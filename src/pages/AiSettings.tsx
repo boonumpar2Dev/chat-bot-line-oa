@@ -328,56 +328,94 @@ export default function AiSettings() {
             <div className="flex items-center gap-2"><ClipboardList className="text-primary" /><h2 className="font-display text-lg font-semibold">ฟอร์มส่งต่อแอดมิน</h2></div>
             <p className="text-xs text-muted-foreground -mt-3">ปรับแต่งข้อความตอบลูกค้า + ฟอร์มสรุปข้อมูลที่บอทส่งให้ลูกค้าตอนได้เบอร์/Tax ID/ครบโควต้าตอบ — ใช้ <code className="bg-muted px-1 rounded">{'{phone}'}</code>, <code className="bg-muted px-1 rounded">{'{tax_id}'}</code> เป็น placeholder ได้</p>
 
-            <div className="rounded-lg border border-border/60 bg-muted/30 p-4 space-y-4">
-
+            <div className="rounded-xl border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-5 space-y-4">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <Label className="font-medium">🤖 AI วิเคราะห์บทสนทนาก่อนสรุป</Label>
-                  <p className="text-xs text-muted-foreground mt-1">เปิดไว้ → ตอนได้เบอร์/Tax/ครบโควต้า บอทจะเรียก AI สแกนแชตทั้งหมดเพื่อเก็บ ประเภทงาน/จำนวน/วันจัด/สถานที่ ก่อนส่งสรุป (เพิ่ม latency ~1-2s, ~0.001฿/ครั้ง)</p>
+                <div className="flex-1">
+                  <Label className="font-semibold text-base">🤖 ให้ AI ช่วยอ่านแชต แล้วเติมข้อมูลในสรุปอัตโนมัติ</Label>
+                  <p className="text-xs text-muted-foreground mt-1.5">ลูกค้าเคยพิมพ์ "จัดงานบวช 80 คน วันที่ 21 มิย" ไว้ในแชตเก่า แต่ระบบยังไม่ได้บันทึก → เปิดไว้ AI จะอ่านย้อนหลังให้ แล้วเติมในสรุปทันทีตอนได้เบอร์</p>
                 </div>
                 <Switch checked={s.handover_extract_enabled !== false} onCheckedChange={v => upd("handover_extract_enabled", v)} />
               </div>
 
-              <div className={s.handover_extract_enabled === false ? "opacity-50 pointer-events-none space-y-4" : "space-y-4"}>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Timeout (ms)</Label>
-                    <Input type="number" min={500} max={15000} step={500} value={s.handover_extract_timeout_ms ?? 3000} onChange={e => upd("handover_extract_timeout_ms", Math.max(500, Math.min(15000, parseInt(e.target.value) || 3000)))} />
-                    <p className="text-[11px] text-muted-foreground">ถ้า AI ตอบช้ากว่านี้ → ข้าม ส่งสรุปด้วยข้อมูลเดิม</p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">โหมดทับค่า</Label>
-                    <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={s.handover_extract_overwrite_mode ?? "fill_only"} onChange={e => upd("handover_extract_overwrite_mode", e.target.value)}>
-                      <option value="fill_only">เติมเฉพาะช่องว่าง (ปลอดภัย — แนะนำ)</option>
-                      <option value="overwrite">ทับค่าเดิมเสมอ (เอาล่าสุดทุกครั้ง)</option>
-                    </select>
-                    <p className="text-[11px] text-muted-foreground">fill_only: ไม่แตะข้อมูลที่แอดมินใส่ไว้แล้ว</p>
-                  </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-1">
+                  <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">❌ ปิดไว้ — สรุปได้แค่นี้</div>
+                  <pre className="text-[11px] whitespace-pre-wrap font-sans text-foreground/80 leading-relaxed">📋 สรุปข้อมูลที่ได้รับ:{"\n"}- ชื่อ: คุณอร{"\n"}- เบอร์โทร: 084-xxx-xxxx</pre>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">เปิดใช้ตอนไหน</Label>
-                  <div className="flex flex-wrap gap-3">
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-1">
+                  <div className="text-[11px] font-medium text-primary uppercase tracking-wide">✅ เปิด — AI เติมให้</div>
+                  <pre className="text-[11px] whitespace-pre-wrap font-sans text-foreground/90 leading-relaxed">📋 สรุปข้อมูลที่ได้รับ:{"\n"}- ชื่อ: คุณอร{"\n"}- เบอร์โทร: 084-xxx-xxxx{"\n"}- ประเภทงาน: งานบวช{"\n"}- วันจัดงาน: 2026-06-21{"\n"}- จำนวนคน: 80 ท่าน</pre>
+                </div>
+              </div>
+
+              <div className={s.handover_extract_enabled === false ? "opacity-50 pointer-events-none space-y-4" : "space-y-4"}>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">เปิดใช้งานเมื่อ</Label>
+                  <div className="flex flex-wrap gap-2">
                     {[
-                      { key: "phone", label: "ได้เบอร์โทร" },
-                      { key: "tax_id", label: "ได้ Tax ID" },
-                      { key: "postcap", label: "AI ตอบครบโควต้า" },
+                      { key: "phone", label: "ลูกค้าให้เบอร์โทร" },
+                      { key: "tax_id", label: "ลูกค้าให้ Tax ID" },
+                      { key: "postcap", label: "AI คุยถึงจำนวนรอบที่กำหนด" },
                     ].map(t => {
                       const arr: string[] = Array.isArray(s.handover_extract_triggers) ? s.handover_extract_triggers : ["phone","tax_id","postcap"];
                       const on = arr.includes(t.key);
                       return (
-                        <label key={t.key} className="flex items-center gap-2 px-3 py-2 rounded-md border bg-background cursor-pointer">
-                          <Switch checked={on} onCheckedChange={v => {
-                            const next = v ? Array.from(new Set([...arr, t.key])) : arr.filter(x => x !== t.key);
+                        <button
+                          type="button"
+                          key={t.key}
+                          onClick={() => {
+                            const next = on ? arr.filter(x => x !== t.key) : Array.from(new Set([...arr, t.key]));
                             upd("handover_extract_triggers", next);
-                          }} />
-                          <span className="text-sm">{t.label}</span>
-                        </label>
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-colors ${on ? "border-primary bg-primary/10 text-primary font-medium" : "border-border bg-background text-muted-foreground hover:bg-muted/50"}`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>
+                            {on && "✓"}
+                          </span>
+                          {t.label}
+                        </button>
                       );
                     })}
                   </div>
                 </div>
+
+                <Accordion type="single" collapsible>
+                  <AccordionItem value="adv-extract" className="border-0">
+                    <AccordionTrigger className="hover:no-underline py-2 text-xs text-muted-foreground">⚙️ ตั้งค่าขั้นสูง</AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">ถ้าลูกค้าเคยให้ข้อมูลแล้ว แล้ว AI อ่านเจอใหม่อีก</Label>
+                        <div className="grid sm:grid-cols-2 gap-2">
+                          {[
+                            { v: "fill_only", title: "เก็บของเดิมไว้", desc: "AI เติมเฉพาะช่องที่ยังว่าง (แนะนำ — ปลอดภัยกว่า ไม่ทับข้อมูลที่แอดมินใส่)" },
+                            { v: "overwrite", title: "เอาที่ AI อ่านล่าสุด", desc: "ถ้าลูกค้าเปลี่ยนใจกลางคัน เช่น เปลี่ยนวันจัด AI จะอัปเดตให้" },
+                          ].map(opt => {
+                            const active = (s.handover_extract_overwrite_mode ?? "fill_only") === opt.v;
+                            return (
+                              <button
+                                type="button"
+                                key={opt.v}
+                                onClick={() => upd("handover_extract_overwrite_mode", opt.v)}
+                                className={`text-left p-3 rounded-lg border transition-colors ${active ? "border-primary bg-primary/5" : "border-border bg-background hover:bg-muted/30"}`}
+                              >
+                                <div className={`text-sm font-medium ${active ? "text-primary" : "text-foreground"}`}>{active ? "● " : ""}{opt.title}</div>
+                                <div className="text-[11px] text-muted-foreground mt-0.5">{opt.desc}</div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">รอ AI ตอบไม่เกิน (วินาที)</Label>
+                        <Input type="number" min={1} max={15} step={1} value={Math.round((s.handover_extract_timeout_ms ?? 3000)/1000)} onChange={e => upd("handover_extract_timeout_ms", Math.max(1, Math.min(15, parseInt(e.target.value) || 3)) * 1000)} className="max-w-[120px]" />
+                        <p className="text-[11px] text-muted-foreground">ถ้า AI อืดเกินกำหนด → ข้ามไป ส่งสรุปด้วยข้อมูลเท่าที่มี (ไม่ทำให้ลูกค้ารอ)</p>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </div>
             </div>
+
 
             <div className="space-y-1.5">
               <Label>หัวข้อสรุป</Label>
