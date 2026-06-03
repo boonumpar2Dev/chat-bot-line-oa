@@ -575,6 +575,8 @@ export default function Chats() {
       if (error) throw error;
       setReply("");
       setStagedFiles([]);
+      try { sessionStorage.removeItem(draftKey(selected.id)); } catch {}
+
     } catch (e: any) {
       toast.error("ส่งข้อความไม่สำเร็จ: " + e.message);
     } finally { setSending(false); }
