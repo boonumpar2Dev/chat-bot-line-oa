@@ -45,6 +45,7 @@ const App = () => (
                 <Route path="/ai-settings" element={<ProtectedRoute menuKey="ai_settings"><AiSettings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
                 <Route path="/tags" element={<ProtectedRoute menuKey="tags"><Tags /></ProtectedRoute>} />
+                <Route path="/broadcast" element={<ProtectedRoute menuKey="broadcast"><Broadcast /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />
                 <Route path="/ai-tokens" element={<ProtectedRoute ownerOnly><AiTokens /></ProtectedRoute>} />
                 <Route path="/line-connection" element={<ProtectedRoute adminOnly><LineConnection /></ProtectedRoute>} />
