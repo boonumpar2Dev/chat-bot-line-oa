@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export type MenuKey = "dashboard" | "chats" | "knowledge" | "ai_settings" | "tags" | "users" | "ai_tokens" | "settings";
+export type MenuKey = "dashboard" | "chats" | "knowledge" | "ai_settings" | "tags" | "users" | "ai_tokens" | "settings" | "broadcast";
 
 export const ALL_MENUS: { key: MenuKey; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { key: "dashboard", label: "Dashboard" },
@@ -10,15 +10,16 @@ export const ALL_MENUS: { key: MenuKey; label: string; adminOnly?: boolean; owne
   { key: "knowledge", label: "สอน AI" },
   { key: "ai_settings", label: "ตั้งค่า AI" },
   { key: "tags", label: "แท็กลูกค้า" },
+  { key: "broadcast", label: "Broadcast" },
   { key: "settings", label: "ตั้งค่า" },
   { key: "users", label: "จัดการผู้ใช้", adminOnly: true },
   { key: "ai_tokens", label: "AI Tokens", ownerOnly: true },
 ];
 
 export const ROLE_DEFAULTS: Record<"owner" | "admin" | "manager" | "staff", MenuKey[]> = {
-  owner: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings", "users", "ai_tokens"],
-  admin: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings", "users"],
-  manager: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "settings"],
+  owner: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "broadcast", "settings", "users", "ai_tokens"],
+  admin: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "broadcast", "settings", "users"],
+  manager: ["dashboard", "chats", "knowledge", "ai_settings", "tags", "broadcast", "settings"],
   staff: ["chats"],
 };
 
