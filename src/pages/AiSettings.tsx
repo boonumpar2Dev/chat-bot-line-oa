@@ -329,6 +329,57 @@ export default function AiSettings() {
             <p className="text-xs text-muted-foreground -mt-3">ปรับแต่งข้อความตอบลูกค้า + ฟอร์มสรุปข้อมูลที่บอทส่งให้ลูกค้าตอนได้เบอร์/Tax ID/ครบโควต้าตอบ — ใช้ <code className="bg-muted px-1 rounded">{'{phone}'}</code>, <code className="bg-muted px-1 rounded">{'{tax_id}'}</code> เป็น placeholder ได้</p>
 
             <div className="space-y-1.5">
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label className="font-medium">🤖 AI วิเคราะห์บทสนทนาก่อนสรุป</Label>
+                  <p className="text-xs text-muted-foreground mt-1">เปิดไว้ → ตอนได้เบอร์/Tax/ครบโควต้า บอทจะเรียก AI สแกนแชตทั้งหมดเพื่อเก็บ ประเภทงาน/จำนวน/วันจัด/สถานที่ ก่อนส่งสรุป (เพิ่ม latency ~1-2s, ~0.001฿/ครั้ง)</p>
+                </div>
+                <Switch checked={s.handover_extract_enabled !== false} onCheckedChange={v => upd("handover_extract_enabled", v)} />
+              </div>
+
+              <div className={s.handover_extract_enabled === false ? "opacity-50 pointer-events-none space-y-4" : "space-y-4"}>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Timeout (ms)</Label>
+                    <Input type="number" min={500} max={15000} step={500} value={s.handover_extract_timeout_ms ?? 3000} onChange={e => upd("handover_extract_timeout_ms", Math.max(500, Math.min(15000, parseInt(e.target.value) || 3000)))} />
+                    <p className="text-[11px] text-muted-foreground">ถ้า AI ตอบช้ากว่านี้ → ข้าม ส่งสรุปด้วยข้อมูลเดิม</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">โหมดทับค่า</Label>
+                    <select className="w-full h-10 rounded-md border bg-background px-3 text-sm" value={s.handover_extract_overwrite_mode ?? "fill_only"} onChange={e => upd("handover_extract_overwrite_mode", e.target.value)}>
+                      <option value="fill_only">เติมเฉพาะช่องว่าง (ปลอดภัย — แนะนำ)</option>
+                      <option value="overwrite">ทับค่าเดิมเสมอ (เอาล่าสุดทุกครั้ง)</option>
+                    </select>
+                    <p className="text-[11px] text-muted-foreground">fill_only: ไม่แตะข้อมูลที่แอดมินใส่ไว้แล้ว</p>
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">เปิดใช้ตอนไหน</Label>
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { key: "phone", label: "ได้เบอร์โทร" },
+                      { key: "tax_id", label: "ได้ Tax ID" },
+                      { key: "postcap", label: "AI ตอบครบโควต้า" },
+                    ].map(t => {
+                      const arr: string[] = Array.isArray(s.handover_extract_triggers) ? s.handover_extract_triggers : ["phone","tax_id","postcap"];
+                      const on = arr.includes(t.key);
+                      return (
+                        <label key={t.key} className="flex items-center gap-2 px-3 py-2 rounded-md border bg-background cursor-pointer">
+                          <Switch checked={on} onCheckedChange={v => {
+                            const next = v ? Array.from(new Set([...arr, t.key])) : arr.filter(x => x !== t.key);
+                            upd("handover_extract_triggers", next);
+                          }} />
+                          <span className="text-sm">{t.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
               <Label>หัวข้อสรุป</Label>
               <Input value={s.handover_summary_header ?? ""} onChange={e => upd("handover_summary_header", e.target.value)} placeholder="📋 สรุปข้อมูลที่ได้รับ:" />
             </div>
@@ -336,6 +387,7 @@ export default function AiSettings() {
             <div className="space-y-2">
               <Label>ฟิลด์ในสรุป (ลำดับ + label + เปิด/ปิด)</Label>
               <div className="space-y-2">
+
                 {((s.handover_summary_fields ?? []) as any[]).map((f: any, i: number) => {
                   const arr = [...((s.handover_summary_fields ?? []) as any[])];
                   const move = (d: number) => {
