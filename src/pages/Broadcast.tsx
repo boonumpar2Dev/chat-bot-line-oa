@@ -399,23 +399,10 @@ function ComposerDialog({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Tags</Label>
-              <div className="flex flex-wrap gap-1.5">
-                {allTags.length === 0 && <span className="text-xs text-muted-foreground">ไม่มี tag</span>}
-                {allTags.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTags(tags.includes(t) ? tags.filter(x => x !== t) : [...tags, t])}
-                    className={cn(
-                      "px-2.5 py-1 rounded-full text-xs border transition",
-                      tags.includes(t) ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-accent"
-                    )}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+              <Label className="text-xs text-muted-foreground">Tags ({tags.length} เลือกแล้ว · {allTags.length} ทั้งหมด)</Label>
+              <TagPicker allTags={allTags} selected={tags} onChange={setTags} />
             </div>
+
 
             <div className="space-y-2">
               <Label className="text-xs text-muted-foreground">สถานะ</Label>
