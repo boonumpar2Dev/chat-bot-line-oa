@@ -355,9 +355,8 @@ export default function AiSettings() {
                     {[
                       { key: "phone", label: "ลูกค้าให้เบอร์โทร" },
                       { key: "tax_id", label: "ลูกค้าให้ Tax ID" },
-                      { key: "postcap", label: "AI คุยถึงจำนวนรอบที่กำหนด" },
                     ].map(t => {
-                      const arr: string[] = Array.isArray(s.handover_extract_triggers) ? s.handover_extract_triggers : ["phone","tax_id","postcap"];
+                      const arr: string[] = Array.isArray(s.handover_extract_triggers) ? s.handover_extract_triggers : ["phone","tax_id"];
                       const on = arr.includes(t.key);
                       return (
                         <button
