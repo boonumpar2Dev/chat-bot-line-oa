@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => { await supabase.auth.signOut(); };
 
-  return <Ctx.Provider value={{ user, session, role, loading, signOut }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ user, session, role, loading, roleLoading, signOut }}>{children}</Ctx.Provider>;
 };
 
 export const useAuth = () => useContext(Ctx);
