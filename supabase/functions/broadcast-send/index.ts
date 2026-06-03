@@ -189,8 +189,8 @@ Deno.serve(async (req) => {
       failed_count: 0,
     }).eq("id", campaignId);
 
-    const { channel_access_token } = await getLineConfig();
     const messageText = lineMessages.map(bubbleToText).join("\n");
+
 
     let success = 0;
     let failed = 0;
