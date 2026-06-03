@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Megaphone, Plus, Trash2, Image as ImageIcon, Video, Type, FileJson, ChevronUp, ChevronDown, Send, Clock, Loader2, Eye, RefreshCw, X, Search, Smartphone, FlaskConical, Check } from "lucide-react";
+import { Megaphone, Plus, Trash2, Image as ImageIcon, Video, Type, FileJson, ChevronUp, ChevronDown, Send, Clock, Loader2, Eye, RefreshCw, X, Search, Smartphone, FlaskConical, Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
