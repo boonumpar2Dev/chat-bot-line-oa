@@ -72,6 +72,81 @@ function renderTemplate(tpl: string, vars: Record<string, string>): string {
   return String(tpl || "").replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? "");
 }
 
+// Call extract-event-from-chat (best-effort, with timeout) → merge into customer + persist
+// Returns the (possibly enriched) customer object to use for buildCustomerSummary.
+// Controlled by app_settings: handover_extract_enabled / _timeout_ms / _triggers / _overwrite_mode
+async function runHandoverExtract(
+  supabase: any,
+  customer: any,
+  cfg: any,
+  trigger: "phone" | "tax_id" | "postcap",
+): Promise<any> {
+  try {
+    if (cfg?.handover_extract_enabled === false) return customer;
+    const triggers: string[] = Array.isArray(cfg?.handover_extract_triggers)
+      ? cfg.handover_extract_triggers
+      : ["phone", "tax_id", "postcap"];
+    if (!triggers.includes(trigger)) return customer;
+
+    const timeoutMs = Math.max(500, Number(cfg?.handover_extract_timeout_ms) || 3000);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    let extracted: any = {};
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/extract-event-from-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+        body: JSON.stringify({ customer_id: customer.id }),
+        signal: ctrl.signal,
+      });
+      if (r.ok) {
+        const j = await r.json();
+        extracted = j?.extracted || {};
+      } else {
+        console.warn(`[HandoverExtract] non-200: ${r.status}`);
+      }
+    } catch (e: any) {
+      console.warn(`[HandoverExtract] failed/timeout (${trigger}): ${e?.message || e}`);
+      return customer;
+    } finally {
+      clearTimeout(t);
+    }
+
+    const mode = String(cfg?.handover_extract_overwrite_mode || "fill_only");
+    const fields = ["event_type", "guest_count", "event_date", "venue"] as const;
+    const update: Record<string, any> = {};
+    const merged: Record<string, any> = { ...customer };
+    for (const f of fields) {
+      const newVal = (extracted as any)[f];
+      if (newVal === null || newVal === undefined || newVal === "") continue;
+      const existing = (customer as any)[f];
+      const isEmpty = existing === null || existing === undefined || existing === "";
+      if (mode === "overwrite" || isEmpty) {
+        update[f] = newVal;
+        merged[f] = newVal;
+      }
+    }
+    // clv_amount: ทับเฉพาะเมื่อ extract ได้ค่า > 0 และ (mode=overwrite หรือ ปัจจุบัน=0)
+    if (Number(extracted.total_amount) > 0) {
+      const cur = Number(customer?.clv_amount) || 0;
+      if (mode === "overwrite" || cur === 0) {
+        update.clv_amount = Number(extracted.total_amount);
+        merged.clv_amount = Number(extracted.total_amount);
+      }
+    }
+    if (Object.keys(update).length > 0) {
+      await supabase.from("customers").update(update).eq("id", customer.id);
+      console.log(`[HandoverExtract:${trigger}] mode=${mode} updated:`, Object.keys(update).join(","));
+    }
+    return merged;
+  } catch (e: any) {
+    console.warn(`[HandoverExtract] unexpected error: ${e?.message || e}`);
+    return customer;
+  }
+}
+
+
 async function verifySignature(body: string, signature: string, secret: string) {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -615,7 +690,8 @@ async function processEvent(event: any, supabase: any) {
     await supabase.from("customers").update({
       tax_id: taxId, ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
     }).eq("id", customer.id);
-    const summary = buildCustomerSummary({ ...freshCustomer, tax_id: taxId }, cfg);
+    const enrichedTax = await runHandoverExtract(supabase, { ...freshCustomer, tax_id: taxId }, cfg, "tax_id");
+    const summary = buildCustomerSummary(enrichedTax, cfg);
     const intro = renderTemplate(cfg.handover_intro_tax || `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag {tax_id} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`, { tax_id: taxId });
     const msg = [intro, "", ...summary].join("\n");
     await sendAndSave(supabase, customer.id, lineUserId, msg);
@@ -690,9 +766,11 @@ async function processEvent(event: any, supabase: any) {
     }).eq("id", customer.id);
     const fmtList = validPhones.map(fmtOne);
     const fmtStr = fmtList.length === 1 ? fmtList[0] : fmtList.join(", ");
-    const summary = buildCustomerSummary({ ...freshCustomer, phone: fmtStr }, cfg);
+    const enriched = await runHandoverExtract(supabase, { ...freshCustomer, phone: phoneStr }, cfg, "phone");
+    const summary = buildCustomerSummary({ ...enriched, phone: fmtStr }, cfg);
     const introTpl = cfg.handover_intro_phone || `ขอบคุณสำหรับข้อมูลค่ะ บันทึกเบอร์โทร {phone} เรียบร้อยแล้ว\n\nจะประสานงานเจ้าหน้าที่ผู้เชี่ยวชาญติดต่อกลับไปแจ้งรายละเอียดคิวงานและแพ็กเกจโดยตรงเลยนะคะ`;
     const intro = renderTemplate(introTpl, { phone: fmtStr, phone_count: String(validPhones.length) });
+
     await sendAndSave(supabase, customer.id, lineUserId, [intro, "", ...summary].join("\n"));
     return;
   }
@@ -727,7 +805,8 @@ async function processEvent(event: any, supabase: any) {
         await supabase.from("customers").update({
           ai_active: false, manual_chat_until: muteUntil, status: "pending_quote",
         }).eq("id", customer.id);
-        const summary = buildCustomerSummary(freshCustomer, cfg);
+        const enrichedPost = await runHandoverExtract(supabase, freshCustomer, cfg, "postcap");
+        const summary = buildCustomerSummary(enrichedPost, cfg);
         const intro = cfg.handover_intro_postcap || "ขอบคุณที่สอบถามนะคะ 🙏 เดี๋ยวเจ้าหน้าที่ติดต่อกลับไปสรุปรายละเอียดให้ค่ะ";
         await sendAndSave(supabase, customer.id, lineUserId, [intro, "", ...summary].join("\n"));
         console.log(`[PostPhoneCap] AI replied ${aiReplies}/${maxPostPhone} after phone saved → handover`);

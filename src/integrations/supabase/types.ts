@@ -146,6 +146,10 @@ export type Database = {
           followup_instruction: string | null
           forbidden_pronouns: string[]
           forbidden_terms: string[]
+          handover_extract_enabled: boolean
+          handover_extract_overwrite_mode: string
+          handover_extract_timeout_ms: number
+          handover_extract_triggers: Json
           handover_intro_phone: string
           handover_intro_postcap: string
           handover_intro_tax: string
@@ -209,6 +213,10 @@ export type Database = {
           followup_instruction?: string | null
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
+          handover_extract_enabled?: boolean
+          handover_extract_overwrite_mode?: string
+          handover_extract_timeout_ms?: number
+          handover_extract_triggers?: Json
           handover_intro_phone?: string
           handover_intro_postcap?: string
           handover_intro_tax?: string
@@ -272,6 +280,10 @@ export type Database = {
           followup_instruction?: string | null
           forbidden_pronouns?: string[]
           forbidden_terms?: string[]
+          handover_extract_enabled?: boolean
+          handover_extract_overwrite_mode?: string
+          handover_extract_timeout_ms?: number
+          handover_extract_triggers?: Json
           handover_intro_phone?: string
           handover_intro_postcap?: string
           handover_intro_tax?: string
