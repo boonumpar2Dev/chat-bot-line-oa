@@ -58,15 +58,49 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const campaignId: string | undefined = body.campaign_id;
-    if (!campaignId) {
-      return Response.json({ error: "Missing campaign_id" }, { status: 400, headers: corsHeaders });
-    }
-
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    const { channel_access_token } = await getLineConfig();
+
+    // ============ TEST SEND MODE ============
+    // body: { test: true, test_user_ids: string[], messages: Bubble[] }
+    if (body.test === true) {
+      const testIds: string[] = Array.isArray(body.test_user_ids) ? body.test_user_ids.filter((x: any) => typeof x === "string" && x.trim()) : [];
+      const testMsgs = normalizeMessages(body.messages || []);
+      if (testIds.length === 0) return Response.json({ error: "ต้องใส่ LINE User ID อย่างน้อย 1" }, { status: 400, headers: corsHeaders });
+      if (testMsgs.length === 0) return Response.json({ error: "ไม่มีข้อความที่จะส่ง" }, { status: 400, headers: corsHeaders });
+
+      let success = 0, failed = 0;
+      const errors: { id: string; error: string }[] = [];
+      for (const uid of testIds) {
+        try {
+          const chunks: any[][] = [];
+          for (let i = 0; i < testMsgs.length; i += 5) chunks.push(testMsgs.slice(i, i + 5));
+          let ok = true, lastErr = "";
+          for (const ch of chunks) {
+            const res = await fetch("https://api.line.me/v2/bot/message/push", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${channel_access_token}` },
+              body: JSON.stringify({ to: uid.trim(), messages: ch }),
+            });
+            if (!res.ok) { ok = false; lastErr = (await res.text()).slice(0, 500); break; }
+          }
+          if (ok) success++; else { failed++; errors.push({ id: uid, error: lastErr }); }
+        } catch (e: any) {
+          failed++; errors.push({ id: uid, error: String(e?.message || e).slice(0, 500) });
+        }
+        await sleep(RATE_DELAY_MS);
+      }
+      return Response.json({ ok: true, test: true, success, failed, errors }, { headers: corsHeaders });
+    }
+
+    // ============ REAL BROADCAST ============
+    const campaignId: string | undefined = body.campaign_id;
+    if (!campaignId) {
+      return Response.json({ error: "Missing campaign_id" }, { status: 400, headers: corsHeaders });
+    }
 
     // Load campaign
     const { data: campaign, error: cErr } = await admin
@@ -74,7 +108,8 @@ Deno.serve(async (req) => {
     if (cErr || !campaign) {
       return Response.json({ error: "Campaign not found" }, { status: 404, headers: corsHeaders });
     }
-    if (!["scheduled", "draft", "failed"].includes(campaign.status)) {
+    // Allow re-trigger from sending (stuck) too
+    if (!["scheduled", "draft", "failed", "sending"].includes(campaign.status)) {
       return Response.json({
         error: `Campaign is in status '${campaign.status}', cannot send`,
       }, { status: 400, headers: corsHeaders });
@@ -84,6 +119,7 @@ Deno.serve(async (req) => {
     if (lineMessages.length === 0) {
       return Response.json({ error: "No valid messages" }, { status: 400, headers: corsHeaders });
     }
+
 
     // Build target query
     const tags: string[] = campaign.target_tags || [];
@@ -153,8 +189,8 @@ Deno.serve(async (req) => {
       failed_count: 0,
     }).eq("id", campaignId);
 
-    const { channel_access_token } = await getLineConfig();
     const messageText = lineMessages.map(bubbleToText).join("\n");
+
 
     let success = 0;
     let failed = 0;
