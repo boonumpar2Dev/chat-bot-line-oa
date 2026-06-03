@@ -809,3 +809,214 @@ function CampaignDetail({
     </Dialog>
   );
 }
+
+// ============================================================
+// TagPicker — search + scrollable list + selected chips
+// ============================================================
+function TagPicker({ allTags, selected, onChange }: { allTags: string[]; selected: string[]; onChange: (v: string[]) => void }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return allTags;
+    return allTags.filter((t) => t.toLowerCase().includes(term));
+  }, [allTags, q]);
+
+  const toggle = (t: string) => {
+    onChange(selected.includes(t) ? selected.filter((x) => x !== t) : [...selected, t]);
+  };
+
+  return (
+    <div className="space-y-2">
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 p-2 rounded-md border bg-background">
+          {selected.map((t) => (
+            <Badge key={t} variant="default" className="gap-1 pr-1">
+              {t}
+              <button onClick={() => toggle(t)} className="hover:bg-primary-foreground/20 rounded-full p-0.5">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+          <button onClick={() => onChange([])} className="text-xs text-muted-foreground hover:text-foreground underline ml-1">
+            ล้างทั้งหมด
+          </button>
+        </div>
+      )}
+
+      {/* Picker */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full justify-start text-xs h-9">
+            <Search className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+            {selected.length === 0 ? "เลือก tag..." : `เพิ่ม/ลด tag (เลือกแล้ว ${selected.length})`}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="ค้นหา tag..."
+                className="h-8 pl-7 text-xs"
+                autoFocus
+              />
+            </div>
+          </div>
+          <ScrollArea className="max-h-64">
+            {allTags.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">ยังไม่มี tag ในระบบ</div>
+            ) : filtered.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground">ไม่พบ "{q}"</div>
+            ) : (
+              <div className="p-1">
+                {filtered.map((t) => {
+                  const on = selected.includes(t);
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => toggle(t)}
+                      className={cn(
+                        "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs hover:bg-accent transition text-left",
+                        on && "bg-primary/10"
+                      )}
+                    >
+                      <span>{t}</span>
+                      {on && <Check className="w-3.5 h-3.5 text-primary" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+          <div className="p-2 border-t flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>{filtered.length} จาก {allTags.length}</span>
+            <button onClick={() => setOpen(false)} className="hover:text-foreground">เสร็จ</button>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+// ============================================================
+// PreviewPhone — LINE-style mockup
+// ============================================================
+function PreviewPhone({ bubbles }: { bubbles: Bubble[] }) {
+  return (
+    <div className="mx-auto max-w-[300px] rounded-[2rem] border-4 border-foreground/80 bg-[#8cabd9] p-3 shadow-lg">
+      {/* Status bar */}
+      <div className="flex items-center justify-between text-[10px] text-white/90 px-2 pb-2">
+        <span>9:41</span>
+        <span>LINE</span>
+      </div>
+      {/* Chat area */}
+      <div className="rounded-2xl bg-[#8cabd9] min-h-[200px] py-3 space-y-2">
+        {bubbles.map((b, i) => (
+          <div key={i} className="flex items-end gap-1.5 px-2">
+            {/* Avatar */}
+            <div className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center text-[10px] shrink-0">
+              OA
+            </div>
+            <div className="max-w-[75%]">
+              {b.type === "text" && (
+                <div className="bg-white rounded-2xl rounded-bl-md px-3 py-2 text-[12px] text-gray-800 whitespace-pre-wrap break-words shadow-sm">
+                  {b.text || <span className="text-gray-400 italic">(ข้อความว่าง)</span>}
+                </div>
+              )}
+              {b.type === "image" && (
+                b.url ? (
+                  <img src={b.url} className="rounded-lg max-h-40 shadow-sm" />
+                ) : (
+                  <div className="bg-white/60 rounded-lg w-32 h-24 flex items-center justify-center text-[10px] text-gray-500">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                )
+              )}
+              {b.type === "video" && (
+                b.url ? (
+                  <video src={b.url} className="rounded-lg max-h-40 shadow-sm" controls />
+                ) : (
+                  <div className="bg-white/60 rounded-lg w-32 h-24 flex items-center justify-center text-[10px] text-gray-500">
+                    <Video className="w-5 h-5" />
+                  </div>
+                )
+              )}
+              {b.type === "flex" && (
+                <div className="bg-white rounded-lg p-2 shadow-sm">
+                  <div className="text-[10px] text-muted-foreground mb-1 flex items-center gap-1">
+                    <FileJson className="w-3 h-3" /> Flex Message
+                  </div>
+                  <div className="text-[11px] text-gray-700 line-clamp-2">{b.alt_text || "(ไม่มี alt text)"}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {bubbles.length === 0 && (
+          <div className="text-center text-white/70 text-xs py-10">ยังไม่มีข้อความ</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// TestSendPanel — send to specific LINE user IDs
+// ============================================================
+function TestSendPanel({ bubbles }: { bubbles: Bubble[] }) {
+  const [ids, setIds] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const handleTest = async () => {
+    if (bubbles.length === 0) { toast.error("ยังไม่มีข้อความที่จะส่ง"); return; }
+    const list = ids.split(/[\s,\n]+/).map((s) => s.trim()).filter(Boolean);
+    if (list.length === 0) { toast.error("กรุณาใส่ LINE User ID อย่างน้อย 1"); return; }
+    // Validate bubble content
+    for (const b of bubbles) {
+      if (b.type === "text" && !b.text.trim()) { toast.error("บับเบิลข้อความว่าง"); return; }
+      if ((b.type === "image" || b.type === "video") && !b.url) { toast.error("ยังไม่ได้อัปโหลดสื่อ"); return; }
+    }
+
+    setSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("broadcast-send", {
+        body: { test: true, test_user_ids: list, messages: bubbles },
+      });
+      if (error) throw error;
+      const s = data?.success || 0, f = data?.failed || 0;
+      if (f === 0) toast.success(`ส่งทดสอบสำเร็จทั้ง ${s} คน`);
+      else toast.error(`สำเร็จ ${s} · ล้มเหลว ${f}: ${data?.errors?.[0]?.error || "ดู logs"}`);
+    } catch (e: any) {
+      toast.error("ทดสอบไม่สำเร็จ: " + e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Textarea
+        value={ids}
+        onChange={(e) => setIds(e.target.value)}
+        placeholder="LINE User ID (U... 33 ตัว) — ใส่ได้หลายอันคั่นด้วย comma หรือบรรทัดใหม่&#10;ตัวอย่าง: U1234567890abcdef..."
+        rows={2}
+        className="text-xs font-mono"
+      />
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] text-muted-foreground">
+          ส่งข้อความทดสอบจริงผ่าน LINE — ไม่กระทบสถิติแคมเปญ
+        </p>
+        <Button size="sm" variant="outline" onClick={handleTest} disabled={sending}>
+          {sending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5 mr-1" />}
+          ส่งทดสอบ
+        </Button>
+      </div>
+    </div>
+  );
+}
+
