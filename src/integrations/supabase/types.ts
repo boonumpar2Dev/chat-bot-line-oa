@@ -313,6 +313,101 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcast_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          messages: Json
+          name: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          success_count: number
+          target_match_mode: string
+          target_statuses: string[]
+          target_tags: string[]
+          total_recipients: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          messages?: Json
+          name: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          success_count?: number
+          target_match_mode?: string
+          target_statuses?: string[]
+          target_tags?: string[]
+          total_recipients?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          messages?: Json
+          name?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          success_count?: number
+          target_match_mode?: string
+          target_statuses?: string[]
+          target_tags?: string[]
+          total_recipients?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      broadcast_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          customer_id: string | null
+          error_message: string | null
+          id: string
+          line_user_id: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          customer_id?: string | null
+          error_message?: string | null
+          id?: string
+          line_user_id: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          customer_id?: string | null
+          error_message?: string | null
+          id?: string
+          line_user_id?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "broadcast_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catering_packages: {
         Row: {
           ai_instruction: string | null

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon } from "lucide-react";
+import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon, Megaphone } from "lucide-react";
 import boonumparLogo from "@/assets/boonumpar-logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
@@ -20,6 +20,7 @@ const navGroups: NavGroup[] = [
     { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
     { to: "/customers", label: "รายชื่อลูกค้า", icon: UserCircle2, key: "chats" },
     { to: "/tags", label: "แท็กลูกค้า", icon: TagIcon, key: "tags" },
+    { to: "/broadcast", label: "Broadcast", icon: Megaphone, key: "broadcast" },
   ]},
   { label: "AI", items: [
     { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
