@@ -394,14 +394,12 @@ function ComposerDialog({
       }
 
       if (action === "send" && scheduleMode === "now" && campaignId) {
-        // Fire broadcast-send
-        toast.success("กำลังส่ง...");
-        supabase.functions.invoke("broadcast-send", { body: { campaign_id: campaignId } })
-          .then(({ data, error }) => {
-            if (error) toast.error("ส่งล้มเหลว: " + error.message);
-            else toast.success(`ส่งเสร็จ — สำเร็จ ${data?.success || 0} / ล้มเหลว ${data?.failed || 0}`);
-            onSaved();
-          });
+        // CRITICAL: must await — otherwise component unmounts and fetch is aborted
+        toast.loading("กำลังส่ง broadcast...", { id: "bcast-send" });
+        const { data, error } = await supabase.functions.invoke("broadcast-send", { body: { campaign_id: campaignId } });
+        toast.dismiss("bcast-send");
+        if (error) toast.error("ส่งล้มเหลว: " + error.message);
+        else toast.success(`ส่งเสร็จ — สำเร็จ ${data?.success || 0} / ล้มเหลว ${data?.failed || 0}`);
       } else {
         toast.success(
           action === "draft" ? "บันทึก draft แล้ว" :
