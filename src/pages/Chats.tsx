@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -150,10 +151,20 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
 }
 
 const LAST_CUSTOMER_KEY = "chats:lastCustomer";
-const draftKey = (id: string) => `chats:draft:${id}`;
+const draftKey = (userId: string | undefined, customerId: string) =>
+  `chats:draft:${userId || "anon"}:${customerId}`;
 type Draft = { text?: string; files?: { url: string; name: string; size: number }[] };
+const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
+  if (!customerId) return {};
+  try {
+    const raw = localStorage.getItem(draftKey(userId, customerId));
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+};
 
 export default function Chats() {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [sp, setSp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const selectedId = sp.get("customer");
@@ -192,8 +203,8 @@ export default function Chats() {
   const [filter, setFilter] = useState<FilterKind>("all");
   const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
   const [slaHours, setSlaHours] = useState<number>(24);
-  const [reply, setReply] = useState("");
-  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>([]);
+  const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
+  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -363,37 +374,35 @@ export default function Chats() {
     return () => { active = false; supabase.removeChannel(ch); };
   }, [selectedId]);
 
-  // Draft persistence: save outgoing typed message + staged files per customer in sessionStorage
+  // Draft persistence: save outgoing typed message + staged files per (userId, customer) in localStorage
   const prevDraftIdRef = useRef<string | null>(null);
-  useEffect(() => {
+  // Use layout effect so draft swap happens before paint → no flash of empty composer
+  useLayoutEffect(() => {
     // Save draft of previous customer before switching
     const prev = prevDraftIdRef.current;
     if (prev && prev !== selectedId) {
       try {
         const draft: Draft = { text: reply, files: stagedFiles };
         if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
-          sessionStorage.setItem(draftKey(prev), JSON.stringify(draft));
+          localStorage.setItem(draftKey(userId, prev), JSON.stringify(draft));
         } else {
-          sessionStorage.removeItem(draftKey(prev));
+          localStorage.removeItem(draftKey(userId, prev));
         }
       } catch {}
     }
-    // Load draft for the newly selected customer
-    if (selectedId) {
-      try {
-        const raw = sessionStorage.getItem(draftKey(selectedId));
-        const d: Draft = raw ? JSON.parse(raw) : {};
+    // Load draft for the newly selected customer (only when actually switching)
+    if (prev !== selectedId) {
+      if (selectedId) {
+        const d = readDraft(userId, selectedId);
         setReply(d.text || "");
         setStagedFiles(d.files || []);
-      } catch {
+      } else {
         setReply(""); setStagedFiles([]);
       }
-    } else {
-      setReply(""); setStagedFiles([]);
     }
     prevDraftIdRef.current = selectedId;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }, [selectedId, userId]);
 
   // Persist current draft (debounced) so refresh / unmount keeps it
   useEffect(() => {
@@ -401,14 +410,14 @@ export default function Chats() {
     const t = setTimeout(() => {
       try {
         if (reply.length || stagedFiles.length) {
-          sessionStorage.setItem(draftKey(selectedId), JSON.stringify({ text: reply, files: stagedFiles }));
+          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: stagedFiles }));
         } else {
-          sessionStorage.removeItem(draftKey(selectedId));
+          localStorage.removeItem(draftKey(userId, selectedId));
         }
       } catch {}
     }, 300);
     return () => clearTimeout(t);
-  }, [reply, stagedFiles, selectedId]);
+  }, [reply, stagedFiles, selectedId, userId]);
 
 
 
@@ -565,6 +574,19 @@ export default function Chats() {
     if (files.length) await uploadFiles(files);
   };
 
+  // Global guard: prevent browser from opening dropped file when user misses the drop zone
+  useEffect(() => {
+    const block = (e: DragEvent) => {
+      if (Array.from(e.dataTransfer?.types || []).includes("Files")) e.preventDefault();
+    };
+    window.addEventListener("dragover", block);
+    window.addEventListener("drop", block);
+    return () => {
+      window.removeEventListener("dragover", block);
+      window.removeEventListener("drop", block);
+    };
+  }, []);
+
   const sendReply = async () => {
     if ((!reply.trim() && stagedFiles.length === 0) || !selected) return;
     setSending(true);
@@ -588,7 +610,7 @@ export default function Chats() {
       if (error) throw error;
       setReply("");
       setStagedFiles([]);
-      try { sessionStorage.removeItem(draftKey(selected.id)); } catch {}
+      try { localStorage.removeItem(draftKey(userId, selected.id)); } catch {}
 
     } catch (e: any) {
       toast.error("ส่งข้อความไม่สำเร็จ: " + e.message);
@@ -882,13 +904,13 @@ export default function Chats() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent side="top" align="start" className="w-44 p-1">
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <Paperclip className="w-4 h-4 text-muted-foreground"/>แนบไฟล์
                     </button>
-                    <button onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <button type="button" onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
                     </button>
-                    <button onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <button type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
                     </button>
                   </PopoverContent>
