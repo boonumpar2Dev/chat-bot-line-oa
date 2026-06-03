@@ -165,6 +165,7 @@ const readDraft = (userId: string | undefined, customerId: string | null): Draft
 export default function Chats() {
   const { user } = useAuth();
   const userId = user?.id;
+  const [sp, setSp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const selectedId = sp.get("customer");
   const setSelectedId = (id: string | null) => {
