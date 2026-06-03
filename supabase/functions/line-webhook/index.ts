@@ -89,6 +89,32 @@ async function pushLine(to: string, messages: any[]) {
   return r;
 }
 
+// Insert AI conversation row FIRST, then push to LINE. Rollback row if push fails.
+// Returns true if both succeeded (so caller can proceed with side-effects like customers.update).
+async function saveAndPushAi(
+  supabase: any,
+  to: string,
+  messages: any[],
+  convRow: Record<string, any>,
+): Promise<boolean> {
+  const { data: inserted, error: insErr } = await supabase
+    .from("conversations")
+    .insert(convRow)
+    .select("id")
+    .single();
+  if (insErr) {
+    console.error(`[SaveAiFailed-pre-push]`, insErr.message);
+    return false;
+  }
+  const r = await pushLine(to, messages);
+  if (!r.ok) {
+    await supabase.from("conversations").delete().eq("id", inserted.id);
+    console.error(`[Rollback] removed conv ${inserted.id} due to LINE push failure`);
+    return false;
+  }
+  return true;
+}
+
 function getItemImages(item: any): string[] {
   return Array.isArray(item.image_urls) ? [...item.image_urls] : [];
 }
