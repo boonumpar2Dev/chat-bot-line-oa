@@ -1268,6 +1268,11 @@ ${pastLines}
     .single();
   if (convErr) {
     console.error(`[SaveAiFailed-pre-push multi-batch]`, convErr.message);
+    await logDelivery(supabase, {
+      event_type: "save_failed_pre_push", severity: "error",
+      customer_id: customer.id, line_user_id: lineUserId,
+      message: savedMsg, details: { error: convErr.message, multi_batch: true },
+    });
     return;
   }
 
@@ -1276,19 +1281,41 @@ ${pastLines}
   if (!firstRes.ok) {
     await supabase.from("conversations").delete().eq("id", insertedConv.id);
     console.error(`[Rollback] removed conv ${insertedConv.id} — first batch push failed`);
+    await logDelivery(supabase, {
+      event_type: "rollback_push_failed", severity: "error",
+      customer_id: customer.id, line_user_id: lineUserId,
+      conv_id: insertedConv.id, message: savedMsg,
+      details: { status: firstRes.status, batch: "first" },
+    });
     return;
   }
 
   // 3) Push remaining media chunks — if any fails, keep the DB row (text already delivered)
-  //    but log so admin knows some images may be missing
+  let partialFail = false;
   while (mediaIdx < mediaToSend.length) {
     const chunk = mediaToSend.slice(mediaIdx, mediaIdx + 5).map(toLineMsg);
     mediaIdx += chunk.length;
     const r = await pushLine(lineUserId, chunk);
     if (!r.ok) {
       console.error(`[PartialPushFail] conv ${insertedConv.id} — some media chunks failed to deliver`);
+      partialFail = true;
+      await logDelivery(supabase, {
+        event_type: "partial_push_fail", severity: "warn",
+        customer_id: customer.id, line_user_id: lineUserId,
+        conv_id: insertedConv.id, message: savedMsg,
+        details: { status: r.status, media_total: mediaToSend.length, media_sent: mediaIdx - chunk.length },
+      });
       break;
     }
+  }
+
+  if (!partialFail) {
+    await logDelivery(supabase, {
+      event_type: "ai_reply_sent", severity: "info",
+      customer_id: customer.id, line_user_id: lineUserId,
+      conv_id: insertedConv.id, message: savedMsg,
+      details: { bubbles: textBubbles.length, media: mediaToSend.length, multi_batch: true },
+    });
   }
 
   const update: any = {
