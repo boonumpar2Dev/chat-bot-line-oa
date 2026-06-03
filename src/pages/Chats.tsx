@@ -904,13 +904,13 @@ export default function Chats() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent side="top" align="start" className="w-44 p-1">
-                    <button onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <Paperclip className="w-4 h-4 text-muted-foreground"/>แนบไฟล์
                     </button>
-                    <button onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <button type="button" onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
                     </button>
-                    <button onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <button type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
                     </button>
                   </PopoverContent>
