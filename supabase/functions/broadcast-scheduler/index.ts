@@ -1,4 +1,4 @@
-// Cron: trigger scheduled broadcast campaigns
+// Cron: trigger scheduled broadcast campaigns + retry stuck "sending" ones
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -16,20 +16,32 @@ Deno.serve(async (req) => {
     );
 
     const nowIso = new Date().toISOString();
-    const { data: due, error } = await admin
+    const staleIso = new Date(Date.now() - 90_000).toISOString(); // stuck > 90s
+
+    // 1) due scheduled
+    const { data: due } = await admin
       .from("broadcast_campaigns")
-      .select("id, name, scheduled_at")
+      .select("id")
       .eq("status", "scheduled")
       .lte("scheduled_at", nowIso)
       .limit(20);
 
-    if (error) {
-      return Response.json({ error: error.message }, { status: 500, headers: corsHeaders });
-    }
+    // 2) stuck "sending" with 0 recipients (invoke was aborted/never reached)
+    const { data: stuck } = await admin
+      .from("broadcast_campaigns")
+      .select("id, updated_at, total_recipients")
+      .eq("status", "sending")
+      .eq("total_recipients", 0)
+      .lt("updated_at", staleIso)
+      .limit(10);
+
+    const ids = [
+      ...((due || []).map((c) => c.id)),
+      ...((stuck || []).map((c) => c.id)),
+    ];
 
     const triggered: string[] = [];
-    for (const c of (due || [])) {
-      // Invoke broadcast-send (fire and forget)
+    for (const id of ids) {
       const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/broadcast-send`;
       fetch(url, {
         method: "POST",
@@ -37,9 +49,9 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
         },
-        body: JSON.stringify({ campaign_id: c.id }),
-      }).catch((e) => console.error("[scheduler] invoke fail:", c.id, e));
-      triggered.push(c.id);
+        body: JSON.stringify({ campaign_id: id }),
+      }).catch((e) => console.error("[scheduler] invoke fail:", id, e));
+      triggered.push(id);
     }
 
     return Response.json({ ok: true, triggered: triggered.length, ids: triggered }, { headers: corsHeaders });
