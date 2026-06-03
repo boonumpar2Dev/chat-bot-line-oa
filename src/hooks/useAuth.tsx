@@ -45,19 +45,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    // When tab regains focus, force refresh session to avoid stale/expired tokens
-    const onVisible = () => {
-      if (document.visibilityState === "visible") {
-        supabase.auth.refreshSession().catch(() => {});
-      }
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
-
     return () => {
       sub.subscription.unsubscribe();
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
     };
   }, []);
 
