@@ -18,7 +18,13 @@ export default function Auth() {
   const [pw, setPw] = useState("");
   const [name, setName] = useState("");
 
-  useEffect(() => { if (!loading && user) nav("/", { replace: true }); }, [user, loading, nav]);
+  useEffect(() => {
+    if (!loading && user) {
+      const returnTo = sessionStorage.getItem("returnTo");
+      sessionStorage.removeItem("returnTo");
+      nav(returnTo || "/", { replace: true });
+    }
+  }, [user, loading, nav]);
 
   const signIn = async (e: FormEvent) => {
     e.preventDefault(); setBusy(true);

@@ -20,7 +20,13 @@ export default function ProtectedRoute({
 
   if (loading || (user && roleLoading) || (menuKey && permsLoading))
     return <div className="h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary"/></div>;
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    const path = window.location.pathname + window.location.search;
+    if (path && path !== "/" && path !== "/auth") {
+      sessionStorage.setItem("returnTo", path);
+    }
+    return <Navigate to="/auth" replace />;
+  }
   if (ownerOnly && role !== "owner") return <Navigate to="/" replace />;
   if (adminOnly && role !== "admin" && role !== "owner") return <Navigate to="/" replace />;
   if (menuKey && role && role !== "admin" && role !== "owner" && !menus.includes(menuKey)) {
