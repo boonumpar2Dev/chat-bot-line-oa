@@ -149,6 +149,10 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   return true;
 }
 
+const LAST_CUSTOMER_KEY = "chats:lastCustomer";
+const draftKey = (id: string) => `chats:draft:${id}`;
+type Draft = { text?: string; files?: { url: string; name: string; size: number }[] };
+
 export default function Chats() {
   const [sp, setSp] = useSearchParams();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -160,7 +164,27 @@ export default function Chats() {
       else next.delete("customer");
       return next;
     }, { replace: true });
+    try {
+      if (id) sessionStorage.setItem(LAST_CUSTOMER_KEY, id);
+      else sessionStorage.removeItem(LAST_CUSTOMER_KEY);
+    } catch {}
   };
+
+  // Restore last opened customer on mount if URL has no ?customer=
+  useEffect(() => {
+    if (sp.get("customer")) return;
+    try {
+      const last = sessionStorage.getItem(LAST_CUSTOMER_KEY);
+      if (last) {
+        setSp(prev => {
+          const next = new URLSearchParams(prev);
+          next.set("customer", last);
+          return next;
+        }, { replace: true });
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [messages, setMessages] = useState<Conversation[]>([]);
   const [adminNames, setAdminNames] = useState<Record<string, string>>({});
 
@@ -339,6 +363,55 @@ export default function Chats() {
     return () => { active = false; supabase.removeChannel(ch); };
   }, [selectedId]);
 
+  // Draft persistence: save outgoing typed message + staged files per customer in sessionStorage
+  const prevDraftIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Save draft of previous customer before switching
+    const prev = prevDraftIdRef.current;
+    if (prev && prev !== selectedId) {
+      try {
+        const draft: Draft = { text: reply, files: stagedFiles };
+        if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
+          sessionStorage.setItem(draftKey(prev), JSON.stringify(draft));
+        } else {
+          sessionStorage.removeItem(draftKey(prev));
+        }
+      } catch {}
+    }
+    // Load draft for the newly selected customer
+    if (selectedId) {
+      try {
+        const raw = sessionStorage.getItem(draftKey(selectedId));
+        const d: Draft = raw ? JSON.parse(raw) : {};
+        setReply(d.text || "");
+        setStagedFiles(d.files || []);
+      } catch {
+        setReply(""); setStagedFiles([]);
+      }
+    } else {
+      setReply(""); setStagedFiles([]);
+    }
+    prevDraftIdRef.current = selectedId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // Persist current draft (debounced) so refresh / unmount keeps it
+  useEffect(() => {
+    if (!selectedId) return;
+    const t = setTimeout(() => {
+      try {
+        if (reply.length || stagedFiles.length) {
+          sessionStorage.setItem(draftKey(selectedId), JSON.stringify({ text: reply, files: stagedFiles }));
+        } else {
+          sessionStorage.removeItem(draftKey(selectedId));
+        }
+      } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, [reply, stagedFiles, selectedId]);
+
+
+
   // โหลดชื่อแสดงของแอดมินทุกคน (ใช้แทนคำว่า "แอดมิน" ในบับเบิลข้อความ)
   useEffect(() => {
     let active = true;
@@ -502,6 +575,8 @@ export default function Chats() {
       if (error) throw error;
       setReply("");
       setStagedFiles([]);
+      try { sessionStorage.removeItem(draftKey(selected.id)); } catch {}
+
     } catch (e: any) {
       toast.error("ส่งข้อความไม่สำเร็จ: " + e.message);
     } finally { setSending(false); }
