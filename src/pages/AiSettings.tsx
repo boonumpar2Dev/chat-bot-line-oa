@@ -59,6 +59,10 @@ export default function AiSettings() {
       handover_intro_phone: s.handover_intro_phone,
       handover_intro_tax: s.handover_intro_tax,
       handover_intro_postcap: s.handover_intro_postcap,
+      handover_extract_enabled: s.handover_extract_enabled,
+      handover_extract_timeout_ms: s.handover_extract_timeout_ms,
+      handover_extract_triggers: s.handover_extract_triggers,
+      handover_extract_overwrite_mode: s.handover_extract_overwrite_mode,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
