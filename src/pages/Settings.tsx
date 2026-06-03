@@ -38,12 +38,22 @@ type Settings = {
   followup_instruction: string;
 };
 
-const MODES: { value: BotMode; label: string; desc: string; icon: any; color: string }[] = [
+const MODES: { value: BotMode; label: string; desc: string; icon: any; color: string; combinable?: boolean }[] = [
   { value: "full", label: "เปิดเต็ม", desc: "บอทตอบลูกค้าทุกคน 24 ชม.", icon: Power, color: "text-green-600 bg-green-500/10 border-green-500/40" },
-  { value: "scheduled", label: "ตามเวลา", desc: "บอทตอบเฉพาะช่วงเวลาที่กำหนด", icon: CalendarClock, color: "text-blue-600 bg-blue-500/10 border-blue-500/40" },
-  { value: "whitelist", label: "ทดสอบ", desc: "บอทตอบเฉพาะ LINE user ID ที่อนุญาต", icon: FlaskConical, color: "text-amber-600 bg-amber-500/10 border-amber-500/40" },
+  { value: "scheduled", label: "ตามเวลา", desc: "บอทตอบเฉพาะช่วงเวลาที่กำหนด", icon: CalendarClock, color: "text-blue-600 bg-blue-500/10 border-blue-500/40", combinable: true },
+  { value: "whitelist", label: "ทดสอบ", desc: "บอทตอบเฉพาะ LINE user ID ที่อนุญาต (เปิดร่วมกับ 'ตามเวลา' ได้ — ทีมทดสอบจะตอบได้ทุกเวลา)", icon: FlaskConical, color: "text-amber-600 bg-amber-500/10 border-amber-500/40", combinable: true },
   { value: "off", label: "ปิด", desc: "บอทไม่ตอบเลย ให้คนตอบเอง", icon: PowerOff, color: "text-rose-600 bg-rose-500/10 border-rose-500/40" },
 ];
+
+// คำนวณโหมดจาก flags (source of truth) — รองรับ scheduled+whitelist พร้อมกัน
+function deriveActive(s: { bot_mode: BotMode; schedule_enabled: boolean; ai_whitelist_enabled: boolean; ai_enabled: boolean }): Set<BotMode> {
+  const set = new Set<BotMode>();
+  if (!s.ai_enabled) { set.add("off"); return set; }
+  if (s.schedule_enabled) set.add("scheduled");
+  if (s.ai_whitelist_enabled) set.add("whitelist");
+  if (set.size === 0) set.add("full");
+  return set;
+}
 
 export default function Settings() {
   const { role } = useAuth();
