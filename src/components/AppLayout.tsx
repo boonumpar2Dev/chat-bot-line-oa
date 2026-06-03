@@ -29,6 +29,7 @@ const navGroups: NavGroup[] = [
   { label: "ระบบ", items: [
     { to: "/users", label: "จัดการผู้ใช้", icon: Users, key: "users", adminOnly: true },
     { to: "/ai-tokens", label: "AI Tokens", icon: Zap, key: "ai_tokens", ownerOnly: true },
+    { to: "/ai-delivery", label: "สถานะส่ง AI", icon: Activity, key: "ai_tokens", ownerOnly: true },
     { to: "/line-connection", label: "เชื่อมต่อ LINE", icon: Plug, key: "ai_tokens", adminOnly: true },
     { to: "/settings", label: "ตั้งค่าระบบ", icon: Settings, key: "settings" },
   ]},
