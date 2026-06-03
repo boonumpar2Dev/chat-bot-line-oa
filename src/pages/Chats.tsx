@@ -574,6 +574,19 @@ export default function Chats() {
     if (files.length) await uploadFiles(files);
   };
 
+  // Global guard: prevent browser from opening dropped file when user misses the drop zone
+  useEffect(() => {
+    const block = (e: DragEvent) => {
+      if (Array.from(e.dataTransfer?.types || []).includes("Files")) e.preventDefault();
+    };
+    window.addEventListener("dragover", block);
+    window.addEventListener("drop", block);
+    return () => {
+      window.removeEventListener("dragover", block);
+      window.removeEventListener("drop", block);
+    };
+  }, []);
+
   const sendReply = async () => {
     if ((!reply.trim() && stagedFiles.length === 0) || !selected) return;
     setSending(true);
