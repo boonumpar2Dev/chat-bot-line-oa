@@ -32,7 +32,7 @@ interface Ctx {
 const C = createContext<Ctx>({ menus: [], loading: true, reload: async () => {} });
 
 export const MenuPermissionsProvider = ({ children }: { children: ReactNode }) => {
-  const { user, role } = useAuth();
+  const { user, role, roleLoading } = useAuth();
   const [menus, setMenus] = useState<MenuKey[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,9 +63,15 @@ export const MenuPermissionsProvider = ({ children }: { children: ReactNode }) =
     setLoading(false);
   }, [user, role]);
 
+  // mark loading immediately when auth/role is still resolving,
+  // so ProtectedRoute won't redirect before reload() finishes
+  useEffect(() => {
+    if (roleLoading) setLoading(true);
+  }, [roleLoading, user?.id, role]);
+
   useEffect(() => { reload(); }, [reload]);
 
-  return <C.Provider value={{ menus, loading, reload }}>{children}</C.Provider>;
+  return <C.Provider value={{ menus, loading: loading || roleLoading, reload }}>{children}</C.Provider>;
 };
 
 export const useMenuPermissions = () => useContext(C);
