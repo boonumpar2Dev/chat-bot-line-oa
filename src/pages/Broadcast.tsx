@@ -475,6 +475,27 @@ function ComposerDialog({
             </div>
           </div>
 
+          {/* Preview */}
+          {bubbles.length > 0 && (
+            <div className="space-y-3 p-4 rounded-lg border bg-card/50">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-primary" />
+                <Label className="text-sm font-semibold">ตัวอย่างที่ลูกค้าจะเห็น</Label>
+              </div>
+              <PreviewPhone bubbles={bubbles} />
+            </div>
+          )}
+
+          {/* Test Send */}
+          <div className="space-y-3 p-4 rounded-lg border bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900">
+            <div className="flex items-center gap-2">
+              <FlaskConical className="w-4 h-4 text-amber-600" />
+              <Label className="text-sm font-semibold">ทดสอบส่งก่อน (แนะนำ)</Label>
+            </div>
+            <TestSendPanel bubbles={bubbles} />
+          </div>
+
+
           {/* Schedule */}
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
             <Label className="text-sm font-semibold">เวลาส่ง</Label>
