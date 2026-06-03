@@ -796,9 +796,9 @@ function CampaignDetail({
               {campaign.status === "scheduled" && (
                 <Button variant="outline" onClick={cancelScheduled}>ยกเลิกการส่ง</Button>
               )}
-              {(campaign.status === "sent" || campaign.status === "failed") && (
+              {(campaign.status === "sent" || campaign.status === "failed" || campaign.status === "sending") && (
                 <Button variant="outline" onClick={resend}>
-                  <RefreshCw className="w-4 h-4 mr-1" /> ส่งซ้ำ
+                  <RefreshCw className="w-4 h-4 mr-1" /> {campaign.status === "sending" ? "บังคับส่งใหม่" : "ส่งซ้ำ"}
                 </Button>
               )}
               <Button onClick={onClose}>ปิด</Button>
