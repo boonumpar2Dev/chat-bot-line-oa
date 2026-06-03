@@ -151,8 +151,16 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
 }
 
 const LAST_CUSTOMER_KEY = "chats:lastCustomer";
-const draftKey = (id: string) => `chats:draft:${id}`;
+const draftKey = (userId: string | undefined, customerId: string) =>
+  `chats:draft:${userId || "anon"}:${customerId}`;
 type Draft = { text?: string; files?: { url: string; name: string; size: number }[] };
+const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
+  if (!customerId) return {};
+  try {
+    const raw = localStorage.getItem(draftKey(userId, customerId));
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+};
 
 export default function Chats() {
   const [sp, setSp] = useSearchParams();
