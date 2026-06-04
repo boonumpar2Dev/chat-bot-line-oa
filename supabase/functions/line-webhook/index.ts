@@ -544,7 +544,7 @@ async function processEvent(event: any, supabase: any) {
     setTimeout(() => processingIds.delete(lineMsgId), 60000);
   }
 
-  const snippet = messageText.replace(/\[.*?\]\n?/, "").replace(/📎\s*\S+/g, "").trim().slice(0, 60) || messageText.slice(0, 60);
+  const snippet = messageText.slice(0, 120);
   await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId });
   await supabase.from("customers").update({
     unread_count: (customer.unread_count || 0) + 1,
