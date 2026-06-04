@@ -260,44 +260,31 @@ export default function Customers() {
               className="pl-9"
             />
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}>
-            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="สถานะ"/></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกสถานะ</SelectItem>
-              {Object.entries(STATUS_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={tierFilter} onValueChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}>
-            <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="ระดับ"/></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">ทุกระดับ</SelectItem>
-              {tierList.map(t => (
-                <SelectItem key={t.name} value={t.name}>
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                    {t.name}
-                  </span>
-                </SelectItem>
-              ))}
-              <SelectItem value="__none__">ยังไม่กำหนด</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={tagFilter || "all"} onValueChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}>
-            <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder="แท็ก" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              <SelectItem value="all">ทุกแท็ก</SelectItem>
-              {masterTags.map(t => (
-                <SelectItem key={t.id} value={t.name}>
-                  <span className="inline-flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                    {t.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterCombobox
+            className="w-full sm:w-44"
+            placeholder="สถานะ"
+            value={statusFilter}
+            onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
+            options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
+          />
+          <FilterCombobox
+            className="w-full sm:w-40"
+            placeholder="ระดับ"
+            value={tierFilter}
+            onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
+            options={[
+              { value: "all", label: "ทุกระดับ" },
+              ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
+              { value: "__none__", label: "ยังไม่กำหนด" },
+            ]}
+          />
+          <FilterCombobox
+            className="w-full sm:w-44"
+            placeholder="แท็ก"
+            value={tagFilter || "all"}
+            onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+            options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
+          />
           <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
             <Settings2 className="w-4 h-4" />
           </Button>
