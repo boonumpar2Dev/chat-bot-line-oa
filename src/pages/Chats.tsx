@@ -951,18 +951,18 @@ export default function Chats() {
                 </Button>
 
                 {/* Sticker picker (มือถือ + เดสก์ท็อป) */}
-                <Popover>
+                <Popover open={stickerPickerOpen} onOpenChange={setStickerPickerOpen}>
                   <PopoverTrigger asChild>
-                    <Button size="icon" variant="ghost" type="button" className="shrink-0" disabled={sending} title="ส่งสติกเกอร์">
+                    <Button size="icon" variant="ghost" type="button" className="shrink-0" disabled={sending} title="เลือกสติกเกอร์">
                       <Smile className="w-5 h-5"/>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent side="top" align="start" className="w-72 p-2">
-                    <div className="text-[11px] text-muted-foreground mb-2 px-1">เลือกสติกเกอร์ — กดเพื่อส่งทันที</div>
+                    <div className="text-[11px] text-muted-foreground mb-2 px-1">เลือกสติกเกอร์ — แล้วกดปุ่มส่ง</div>
                     <div className="grid grid-cols-5 gap-1 max-h-64 overflow-y-auto">
                       {STICKER_IDS.map(sid => (
                         <button key={sid} type="button" disabled={sending}
-                          onClick={()=>sendSticker(sid)}
+                          onClick={()=>{ setStagedSticker({ packageId: STICKER_PACK_ID, stickerId: sid }); setStickerPickerOpen(false); }}
                           className="aspect-square rounded-md hover:bg-accent transition-colors p-1 disabled:opacity-50">
                           <img src={stickerPreviewUrl(sid)} alt="sticker" loading="lazy"
                             className="w-full h-full object-contain"/>
@@ -980,10 +980,11 @@ export default function Chats() {
                   }}
                   placeholder="พิมพ์ข้อความ… (Enter ส่ง)" rows={2}
                   className="resize-none flex-1 min-w-0 rounded-2xl bg-muted/40 border-muted-foreground/15 focus-visible:ring-1 focus-visible:ring-muted-foreground/30 focus-visible:border-muted-foreground/30 focus-visible:ring-offset-0"/>
-                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0)} className="shrink-0 rounded-full">
+                <Button size="icon" onClick={sendReply} disabled={sending || (!reply.trim() && stagedFiles.length === 0 && !stagedSticker)} className="shrink-0 rounded-full">
                   {sending ? <Loader2 className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
                 </Button>
               </div>
+
               <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
             </div>
           </>
