@@ -517,6 +517,8 @@ export type Database = {
           is_fallback: boolean
           line_message_id: string | null
           message: string
+          quote_token: string | null
+          quoted_message_id: string | null
           sender: Database["public"]["Enums"]["message_sender"]
         }
         Insert: {
@@ -528,6 +530,8 @@ export type Database = {
           is_fallback?: boolean
           line_message_id?: string | null
           message: string
+          quote_token?: string | null
+          quoted_message_id?: string | null
           sender?: Database["public"]["Enums"]["message_sender"]
         }
         Update: {
@@ -539,6 +543,8 @@ export type Database = {
           is_fallback?: boolean
           line_message_id?: string | null
           message?: string
+          quote_token?: string | null
+          quoted_message_id?: string | null
           sender?: Database["public"]["Enums"]["message_sender"]
         }
         Relationships: [
@@ -547,6 +553,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_quoted_message_id_fkey"
+            columns: ["quoted_message_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
