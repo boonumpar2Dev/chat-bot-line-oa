@@ -37,8 +37,9 @@ Deno.serve(async (req) => {
     const chunks: any[][] = [];
     for (let i = 0; i < lineMessages.length; i += 5) chunks.push(lineMessages.slice(i, i + 5));
 
-    // เก็บ quoteToken จาก response ของ LINE (Push API คืน sentMessages[].quoteToken สำหรับ text/sticker)
+    // เก็บ quoteToken + line message id ของแอดมิน — ใช้ทั้ง reply ต่อ และให้ลูกค้า quote-reply ได้
     const sentQuoteTokens: (string | null)[] = [];
+    let firstSentMessageId: string | null = null;
 
     for (let idx = 0; idx < chunks.length; idx++) {
       const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -60,7 +61,10 @@ Deno.serve(async (req) => {
       try {
         const body = await res.json();
         if (Array.isArray(body?.sentMessages)) {
-          for (const sm of body.sentMessages) sentQuoteTokens.push(sm.quoteToken || null);
+          for (const sm of body.sentMessages) {
+            sentQuoteTokens.push(sm.quoteToken || null);
+            if (!firstSentMessageId && sm.id) firstSentMessageId = sm.id;
+          }
         }
       } catch {}
     }
@@ -94,6 +98,7 @@ Deno.serve(async (req) => {
         admin_user_id: user.id,
         quote_token: firstQuoteToken,
         quoted_message_id: quoted_message_id || null,
+        line_message_id: firstSentMessageId,
       });
       await admin.from("customers").update({
         ai_active: false,

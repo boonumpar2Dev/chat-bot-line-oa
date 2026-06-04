@@ -154,14 +154,31 @@ async function verifySignature(body: string, signature: string, secret: string) 
   return btoa(String.fromCharCode(...new Uint8Array(sig))) === signature;
 }
 
-async function pushLine(to: string, messages: any[]) {
+async function pushLine(to: string, messages: any[]): Promise<{ ok: boolean; status: number; sentMessages: any[] }> {
   const r = await fetch("https://api.line.me/v2/bot/message/push", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LINE_TOKEN}` },
     body: JSON.stringify({ to, messages }),
   });
-  if (!r.ok) console.error(`[PushFailed] ${r.status}: ${await r.text()}`);
-  return r;
+  if (!r.ok) {
+    console.error(`[PushFailed] ${r.status}: ${await r.text()}`);
+    return { ok: false, status: r.status, sentMessages: [] };
+  }
+  let sentMessages: any[] = [];
+  try { const body = await r.json(); if (Array.isArray(body?.sentMessages)) sentMessages = body.sentMessages; } catch {}
+  return { ok: true, status: r.status, sentMessages };
+}
+
+// Lookup our outgoing conv row by LINE's quotedMessageId (customer quote-reply to admin/AI)
+async function lookupQuotedConvId(supabase: any, customerId: string, quotedMessageId?: string | null): Promise<string | null> {
+  if (!quotedMessageId) return null;
+  const { data } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("customer_id", customerId)
+    .eq("line_message_id", quotedMessageId)
+    .maybeSingle();
+  return data?.id || null;
 }
 
 // Fire-and-forget delivery log (owner-only dashboard)
@@ -225,6 +242,9 @@ async function saveAndPushAi(
     });
     return false;
   }
+  // Save line_message_id of first sentMessage so customer can quote-reply this message later
+  const firstId = r.sentMessages?.[0]?.id;
+  if (firstId) await supabase.from("conversations").update({ line_message_id: firstId }).eq("id", inserted.id);
   await logDelivery(supabase, {
     event_type: "ai_reply_sent", severity: "info",
     customer_id: convRow.customer_id ?? null, line_user_id: to,
@@ -463,7 +483,8 @@ async function processEvent(event: any, supabase: any) {
       } else {
         text = `[${event.message.type || "ไม่ทราบ"}]`;
       }
-      await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id, quote_token: event.message.quoteToken || null });
+      const quotedConvId = await lookupQuotedConvId(supabase, customer.id, event.message?.quotedMessageId);
+      await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id, quote_token: event.message.quoteToken || null, quoted_message_id: quotedConvId });
       const snippet = text.slice(0, 120);
       await supabase.from("customers").update({
         unread_count: (customer.unread_count || 0) + 1,
@@ -545,7 +566,8 @@ async function processEvent(event: any, supabase: any) {
   }
 
   const snippet = messageText.slice(0, 120);
-  await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId, quote_token: event.message?.quoteToken || null });
+  const quotedConvId = await lookupQuotedConvId(supabase, customer.id, event.message?.quotedMessageId);
+  await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId, quote_token: event.message?.quoteToken || null, quoted_message_id: quotedConvId });
   await supabase.from("customers").update({
     unread_count: (customer.unread_count || 0) + 1,
     last_message_at: new Date().toISOString(),
@@ -1346,6 +1368,9 @@ ${pastLines}
     });
     return;
   }
+  // Save line_message_id of first text bubble so customer quote-replies link back
+  const firstSentId = firstRes.sentMessages?.[0]?.id;
+  if (firstSentId) await supabase.from("conversations").update({ line_message_id: firstSentId }).eq("id", insertedConv.id);
 
   // 3) Push remaining media chunks — if any fails, keep the DB row (text already delivered)
   let partialFail = false;

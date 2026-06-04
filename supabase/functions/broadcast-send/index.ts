@@ -204,6 +204,7 @@ Deno.serve(async (req) => {
 
       let ok = true;
       let lastErr = "";
+      let firstSentId: string | null = null;
       for (const ch of chunks) {
         try {
           const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -218,6 +219,13 @@ Deno.serve(async (req) => {
             ok = false;
             lastErr = (await res.text()).slice(0, 500);
             break;
+          }
+          if (!firstSentId) {
+            try {
+              const body = await res.json();
+              const sm = body?.sentMessages?.[0];
+              if (sm?.id) firstSentId = sm.id;
+            } catch {}
           }
         } catch (e: any) {
           ok = false;
@@ -239,6 +247,7 @@ Deno.serve(async (req) => {
             customer_id: r.id,
             message: `📣 [Broadcast]\n${messageText}`,
             sender: "admin",
+            line_message_id: firstSentId,
           });
           await admin.from("customers").update({
             last_message_at: now,

@@ -140,7 +140,9 @@ Deno.serve(async (req) => {
       });
 
       if (pushRes.ok) {
-        await admin.from("conversations").insert({ customer_id: cust.id, message: text, sender: "ai" });
+        let firstSentId: string | null = null;
+        try { const body = await pushRes.json(); firstSentId = body?.sentMessages?.[0]?.id || null; } catch {}
+        await admin.from("conversations").insert({ customer_id: cust.id, message: text, sender: "ai", line_message_id: firstSentId });
         await admin.from("customers").update({
           last_message_at: new Date().toISOString(),
           last_message_snippet: `🤖 ${text.slice(0, 60)}`,
