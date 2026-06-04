@@ -242,6 +242,9 @@ async function saveAndPushAi(
     });
     return false;
   }
+  // Save line_message_id of first sentMessage so customer can quote-reply this message later
+  const firstId = r.sentMessages?.[0]?.id;
+  if (firstId) await supabase.from("conversations").update({ line_message_id: firstId }).eq("id", inserted.id);
   await logDelivery(supabase, {
     event_type: "ai_reply_sent", severity: "info",
     customer_id: convRow.customer_id ?? null, line_user_id: to,
