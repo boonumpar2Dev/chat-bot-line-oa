@@ -591,7 +591,7 @@ export default function Chats() {
   }, []);
 
   const sendReply = async () => {
-    if ((!reply.trim() && stagedFiles.length === 0) || !selected) return;
+    if ((!reply.trim() && stagedFiles.length === 0 && !stagedSticker) || !selected) return;
     setSending(true);
     try {
       const lineMessages: any[] = [];
@@ -606,6 +606,7 @@ export default function Chats() {
         }
       }
       if (reply.trim()) lineMessages.push({ type: "text", text: reply.trim() });
+      if (stagedSticker) lineMessages.push({ type: "sticker", packageId: stagedSticker.packageId, stickerId: stagedSticker.stickerId });
 
       const { error } = await supabase.functions.invoke("line-send-message", {
         body: { line_user_id: selected.line_user_id, messages: lineMessages, customer_id: selected.id },
@@ -613,6 +614,7 @@ export default function Chats() {
       if (error) throw error;
       setReply("");
       setStagedFiles([]);
+      setStagedSticker(null);
       try { localStorage.removeItem(draftKey(userId, selected.id)); } catch {}
 
     } catch (e: any) {
@@ -620,22 +622,7 @@ export default function Chats() {
     } finally { setSending(false); }
   };
 
-  const sendSticker = async (stickerId: string) => {
-    if (!selected) return;
-    setSending(true);
-    try {
-      const { error } = await supabase.functions.invoke("line-send-message", {
-        body: {
-          line_user_id: selected.line_user_id,
-          customer_id: selected.id,
-          messages: [{ type: "sticker", packageId: STICKER_PACK_ID, stickerId }],
-        },
-      });
-      if (error) throw error;
-    } catch (e: any) {
-      toast.error("ส่งสติกเกอร์ไม่สำเร็จ: " + e.message);
-    } finally { setSending(false); }
-  };
+
 
   const [pausePickerOpen, setPausePickerOpen] = useState(false);
 
