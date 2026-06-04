@@ -566,7 +566,8 @@ async function processEvent(event: any, supabase: any) {
   }
 
   const snippet = messageText.slice(0, 120);
-  await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId, quote_token: event.message?.quoteToken || null });
+  const quotedConvId = await lookupQuotedConvId(supabase, customer.id, event.message?.quotedMessageId);
+  await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId, quote_token: event.message?.quoteToken || null, quoted_message_id: quotedConvId });
   await supabase.from("customers").update({
     unread_count: (customer.unread_count || 0) + 1,
     last_message_at: new Date().toISOString(),
