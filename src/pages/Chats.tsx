@@ -1313,14 +1313,15 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
           {renderText(cleaned)}
         </div>
       )}
-      {canReply && (
-        <div className={cn("flex items-center gap-1.5 px-2 opacity-0 group-hover:opacity-100 transition", isCustomer ? "flex-row" : "flex-row-reverse")}>
+      <div className={cn("flex items-center gap-1.5 px-2", isCustomer ? "flex-row" : "flex-row-reverse")}>
+        <span className="text-[10px] text-muted-foreground/70" title={fullTime}>{timeShort}</span>
+        {canReply && (
           <button onClick={()=>onReply!(m)} title="ตอบกลับข้อความนี้"
-            className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+            className="text-[10px] text-primary hover:underline flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
             <Reply className="w-3 h-3"/>ตอบกลับ
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
