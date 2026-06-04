@@ -1106,7 +1106,8 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
       </DialogContent>
     </Dialog>
   );
-}
+});
+
 
 function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string> }) {
   const isCustomer = m.sender === "customer";
