@@ -1048,14 +1048,18 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
           <div className="space-y-1.5">
             <Label className="text-xs">บอกเหมือนคุยกับเพื่อน ว่าอยากให้ AI ปรับยังไง</Label>
             <Textarea
+              ref={feedbackRef}
               rows={3}
-              value={feedback}
-              onChange={e=>setFeedback(e.target.value)}
+              defaultValue=""
+              onChange={e => {
+                const has = e.target.value.trim().length > 0;
+                if (has !== hasFeedback) setHasFeedback(has);
+              }}
               placeholder={`เช่น\n• อย่าพูดว่า "3 รูปแบบ" โดยไม่บอกชื่อ ต้องระบุ บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน\n• ตอบสั้นลงอีก ไม่เกิน 2 ประโยค\n• ค่าส่งกรุงเทพฟรี ต่างจังหวัด 15 บ./กม.`}
               disabled={analyzing}
             />
             <div className="flex justify-end">
-              <Button size="sm" onClick={analyze} disabled={analyzing || !feedback.trim()}>
+              <Button size="sm" onClick={analyze} disabled={analyzing || !hasFeedback}>
                 {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
                 {analyzing ? "AI กำลังวิเคราะห์…" : "ให้ AI ช่วยจัด"}
               </Button>
