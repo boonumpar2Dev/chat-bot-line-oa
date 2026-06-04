@@ -622,3 +622,43 @@ function TierManagerDialog({
 
 function Trash2Icon() { return <X className="w-4 h-4"/>; }
 
+type FilterOption = { value: string; label: string; color?: string };
+function FilterCombobox({ value, onChange, options, placeholder, className }: {
+  value: string; onChange: (v: string) => void; options: FilterOption[]; placeholder?: string; className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = options.find(o => o.value === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className={cn("justify-between font-normal", className)}>
+          <span className="inline-flex items-center gap-2 truncate">
+            {current?.color && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: current.color }} />}
+            <span className="truncate">{current?.label || placeholder}</span>
+          </span>
+          <TagIcon className="w-3.5 h-3.5 opacity-50 shrink-0 ml-2" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0 w-[260px]" align="start">
+        <Command>
+          <CommandInput placeholder="ค้นหา..." />
+          <CommandList className="max-h-72">
+            <CommandEmpty>ไม่พบ</CommandEmpty>
+            <CommandGroup>
+              {options.map(o => (
+                <CommandItem key={o.value} value={o.label} onSelect={() => { onChange(o.value); setOpen(false); }}>
+                  <span className="inline-flex items-center gap-2">
+                    {o.color && <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: o.color }} />}
+                    {o.label}
+                  </span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
