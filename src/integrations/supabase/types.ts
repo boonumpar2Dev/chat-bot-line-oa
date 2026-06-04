@@ -1001,10 +1001,20 @@ export type Database = {
         Args: { _names: string[]; _strip_from_customers?: boolean }
         Returns: number
       }
-      compute_auto_tags: {
-        Args: { _cfg: Json; _nickname: string; _status: string }
-        Returns: string[]
-      }
+      compute_auto_tags:
+        | {
+            Args: { _cfg: Json; _nickname: string; _status: string }
+            Returns: string[]
+          }
+        | {
+            Args: {
+              _cfg: Json
+              _nickname: string
+              _status: string
+              _tax_id?: string
+            }
+            Returns: string[]
+          }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
