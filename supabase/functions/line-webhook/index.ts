@@ -1113,6 +1113,8 @@ ${pastLines}
     return;
   }
 
+  const confidence = typeof aiResp?.confidence === "number" ? aiResp.confidence : null;
+
   const answerText = String(aiResp.answer || "ขออภัย ไม่สามารถตอบได้")
     .replace(/\\n/g, "\n").replace(/\\r/g, "")
     .replace(/\n{3,}/g, "\n\n").trim().slice(0, 5000);
