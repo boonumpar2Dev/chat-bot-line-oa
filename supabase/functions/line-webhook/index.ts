@@ -1368,6 +1368,9 @@ ${pastLines}
     });
     return;
   }
+  // Save line_message_id of first text bubble so customer quote-replies link back
+  const firstSentId = firstRes.sentMessages?.[0]?.id;
+  if (firstSentId) await supabase.from("conversations").update({ line_message_id: firstSentId }).eq("id", insertedConv.id);
 
   // 3) Push remaining media chunks — if any fails, keep the DB row (text already delivered)
   let partialFail = false;
