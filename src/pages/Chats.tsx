@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,6 +23,7 @@ import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import StatusSelector from "@/components/chats/StatusSelector";
+import { STICKER_PACK_ID, STICKER_IDS, stickerPreviewUrl } from "@/lib/line-stickers";
 import ManualTimerBanner from "@/components/chats/ManualTimerBanner";
 import StagedMessageBar from "@/components/chats/StagedMessageBar";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
@@ -617,6 +618,23 @@ export default function Chats() {
     } finally { setSending(false); }
   };
 
+  const sendSticker = async (stickerId: string) => {
+    if (!selected) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("line-send-message", {
+        body: {
+          line_user_id: selected.line_user_id,
+          customer_id: selected.id,
+          messages: [{ type: "sticker", packageId: STICKER_PACK_ID, stickerId }],
+        },
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      toast.error("ส่งสติกเกอร์ไม่สำเร็จ: " + e.message);
+    } finally { setSending(false); }
+  };
+
   const [pausePickerOpen, setPausePickerOpen] = useState(false);
 
   const toggleAi = async (active: boolean) => {
@@ -926,6 +944,29 @@ export default function Chats() {
                 <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
                   <FileText className="w-4 h-4"/>
                 </Button>
+
+                {/* Sticker picker (มือถือ + เดสก์ท็อป) */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="icon" variant="ghost" type="button" className="shrink-0" disabled={sending} title="ส่งสติกเกอร์">
+                      <Smile className="w-5 h-5"/>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-72 p-2">
+                    <div className="text-[11px] text-muted-foreground mb-2 px-1">เลือกสติกเกอร์ — กดเพื่อส่งทันที</div>
+                    <div className="grid grid-cols-5 gap-1 max-h-64 overflow-y-auto">
+                      {STICKER_IDS.map(sid => (
+                        <button key={sid} type="button" disabled={sending}
+                          onClick={()=>sendSticker(sid)}
+                          className="aspect-square rounded-md hover:bg-accent transition-colors p-1 disabled:opacity-50">
+                          <img src={stickerPreviewUrl(sid)} alt="sticker" loading="lazy"
+                            className="w-full h-full object-contain"/>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
                   onPaste={e => {

@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
         if (m.type === "image") return `[รูปภาพ]\n📎 ${m.originalContentUrl || m.previewImageUrl || ""}`;
         if (m.type === "video") return `[วิดีโอ]\n📎 ${m.originalContentUrl || ""}`;
         if (m.type === "file") return `[ไฟล์]\n📎 ${m.originalContentUrl || ""}`;
+        if (m.type === "sticker") return `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${m.stickerId}/android/sticker.png`;
         // Flex/template: ใช้ altText เป็นข้อความที่อ่านได้ (เช่น "📄 ไฟล์: name.pdf") แทน "[flex]"
         if (m.type === "flex" || m.type === "template") {
           const alt = (m.altText || "").trim();
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
         ai_active: false,
         manual_chat_until: until,
         last_message_at: new Date().toISOString(),
-        last_message_snippet: `👤 ${text.slice(0, 60)}`,
+        last_message_snippet: `👤 ${text.slice(0, 120)}`,
       }).eq("id", customer_id);
     }
 
