@@ -483,7 +483,8 @@ async function processEvent(event: any, supabase: any) {
       } else {
         text = `[${event.message.type || "ไม่ทราบ"}]`;
       }
-      await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id, quote_token: event.message.quoteToken || null });
+      const quotedConvId = await lookupQuotedConvId(supabase, customer.id, event.message?.quotedMessageId);
+      await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id, quote_token: event.message.quoteToken || null, quoted_message_id: quotedConvId });
       const snippet = text.slice(0, 120);
       await supabase.from("customers").update({
         unread_count: (customer.unread_count || 0) + 1,
