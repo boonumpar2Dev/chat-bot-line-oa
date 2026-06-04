@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -208,6 +208,7 @@ export default function Chats() {
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; quoteToken: string; sender: string; snippet: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -609,12 +610,19 @@ export default function Chats() {
       if (stagedSticker) lineMessages.push({ type: "sticker", packageId: stagedSticker.packageId, stickerId: stagedSticker.stickerId });
 
       const { error } = await supabase.functions.invoke("line-send-message", {
-        body: { line_user_id: selected.line_user_id, messages: lineMessages, customer_id: selected.id },
+        body: {
+          line_user_id: selected.line_user_id,
+          messages: lineMessages,
+          customer_id: selected.id,
+          quote_token: replyingTo?.quoteToken || null,
+          quoted_message_id: replyingTo?.id || null,
+        },
       });
       if (error) throw error;
       setReply("");
       setStagedFiles([]);
       setStagedSticker(null);
+      setReplyingTo(null);
       try { localStorage.removeItem(draftKey(userId, selected.id)); } catch {}
 
     } catch (e: any) {
@@ -887,7 +895,19 @@ export default function Chats() {
             {/* Messages */}
             <ScrollArea className="flex-1 px-3 sm:px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
-                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}/>)}
+                {(() => {
+                  const list = msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages;
+                  const byId: Record<string, any> = {};
+                  for (const m of messages) byId[m.id] = m;
+                  return list.map(m => (
+                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}
+                      quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
+                      onReply={(msg)=>{
+                        if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
+                        setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
+                      }}/>
+                  ));
+                })()}
               </div>
             </ScrollArea>
 
@@ -910,6 +930,24 @@ export default function Chats() {
                 <span className="text-[11px] text-muted-foreground">สติกเกอร์ที่จะส่ง — กดปุ่ม <Send className="inline w-3 h-3"/> เพื่อส่ง</span>
               </div>
             )}
+
+            {/* Replying to preview */}
+            {replyingTo && (
+              <div className="px-4 py-2 border-b bg-primary/5 flex items-center gap-2">
+                <CornerUpLeft className="w-4 h-4 text-primary shrink-0"/>
+                <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
+                  <div className="text-[10px] text-primary font-medium">
+                    ตอบกลับ {replyingTo.sender === "customer" ? "ลูกค้า" : replyingTo.sender === "admin" ? "แอดมิน" : "AI"}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">{replyingTo.snippet}</div>
+                </div>
+                <button onClick={()=>setReplyingTo(null)}
+                  className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center shrink-0" title="ยกเลิก">
+                  <X className="w-3.5 h-3.5"/>
+                </button>
+              </div>
+            )}
+
 
 
             {/* Composer */}
@@ -1156,7 +1194,7 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
 });
 
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string> }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
@@ -1194,6 +1232,11 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
   const timeShort = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
   const fullTime = d.toLocaleString("th-TH");
   const showLabel = !isCustomer; // hide "ลูกค้า" label — left-align is enough
+  const canReply = !!m.quote_token && !!onReply;
+  const quotedSenderLabel = quotedMessage
+    ? (quotedMessage.sender === "customer" ? "ลูกค้า" : quotedMessage.sender === "admin" ? "แอดมิน" : "AI")
+    : "";
+  const quotedSnippet = quotedMessage ? formatSnippet(quotedMessage.message) : "";
   return (
     <div className={cn("flex flex-col gap-0.5 group", align)}>
       {showLabel && (
@@ -1205,6 +1248,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
             </button>
           )}
         </span>
+      )}
+      {quotedMessage && (
+        <div className={cn(
+          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground"
+        )}>
+          <div className="font-medium text-primary mb-0.5">↩ {quotedSenderLabel}</div>
+          <div className="truncate">{quotedSnippet}</div>
+        </div>
       )}
       {stickerUrls.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -1262,7 +1313,15 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
           {renderText(cleaned)}
         </div>
       )}
-      <span className="text-[10px] text-muted-foreground/70 px-2 opacity-0 group-hover:opacity-100 transition" title={fullTime}>{timeShort}</span>
+      <div className={cn("flex items-center gap-1.5 px-2 opacity-0 group-hover:opacity-100 transition", isCustomer ? "flex-row" : "flex-row-reverse")}>
+        <span className="text-[10px] text-muted-foreground/70" title={fullTime}>{timeShort}</span>
+        {canReply && (
+          <button onClick={()=>onReply!(m)} title="ตอบกลับข้อความนี้"
+            className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+            <Reply className="w-3 h-3"/>ตอบกลับ
+          </button>
+        )}
+      </div>
     </div>
   );
 }

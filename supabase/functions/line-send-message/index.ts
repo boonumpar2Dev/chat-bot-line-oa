@@ -21,16 +21,24 @@ Deno.serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
 
-    const { line_user_id, message, messages, customer_id } = await req.json();
+    const { line_user_id, message, messages, customer_id, quote_token, quoted_message_id } = await req.json();
     if (!line_user_id) return Response.json({ error: "Missing line_user_id" }, { status: 400, headers: corsHeaders });
 
     const lineMessages = messages || (message ? [{ type: "text", text: message }] : null);
     if (!lineMessages) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
+    // แนบ quoteToken กับ message แรกที่เป็น text หรือ sticker (LINE รองรับแค่ 2 types นี้)
+    if (quote_token) {
+      const idx = lineMessages.findIndex((m: any) => m.type === "text" || m.type === "sticker");
+      if (idx >= 0) lineMessages[idx] = { ...lineMessages[idx], quoteToken: quote_token };
+    }
+
     const { channel_access_token } = await getLineConfig();
-    // LINE Push API จำกัด 5 messages ต่อ request — แบ่งเป็น chunk
     const chunks: any[][] = [];
     for (let i = 0; i < lineMessages.length; i += 5) chunks.push(lineMessages.slice(i, i + 5));
+
+    // เก็บ quoteToken จาก response ของ LINE (Push API คืน sentMessages[].quoteToken สำหรับ text/sticker)
+    const sentQuoteTokens: (string | null)[] = [];
 
     for (let idx = 0; idx < chunks.length; idx++) {
       const res = await fetch("https://api.line.me/v2/bot/message/push", {
@@ -49,6 +57,12 @@ Deno.serve(async (req) => {
           partial: idx > 0 ? `ส่งสำเร็จ ${idx * 5} ข้อความก่อนเกิดข้อผิดพลาด` : undefined,
         }, { status: 400, headers: corsHeaders });
       }
+      try {
+        const body = await res.json();
+        if (Array.isArray(body?.sentMessages)) {
+          for (const sm of body.sentMessages) sentQuoteTokens.push(sm.quoteToken || null);
+        }
+      } catch {}
     }
 
     // Save admin message + start manual chat timer
@@ -60,7 +74,6 @@ Deno.serve(async (req) => {
         if (m.type === "video") return `[วิดีโอ]\n📎 ${m.originalContentUrl || ""}`;
         if (m.type === "file") return `[ไฟล์]\n📎 ${m.originalContentUrl || ""}`;
         if (m.type === "sticker") return `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${m.stickerId}/android/sticker.png`;
-        // Flex/template: ใช้ altText เป็นข้อความที่อ่านได้ (เช่น "📄 ไฟล์: name.pdf") แทน "[flex]"
         if (m.type === "flex" || m.type === "template") {
           const alt = (m.altText || "").trim();
           return alt || `[${m.type}]`;
@@ -71,7 +84,17 @@ Deno.serve(async (req) => {
       const manualHours = cfgArr?.[0]?.manual_chat_hours || 360;
       const until = new Date(Date.now() + manualHours * 3600000).toISOString();
 
-      await admin.from("conversations").insert({ customer_id, message: text, sender: "admin", admin_user_id: user.id });
+      // ใช้ quoteToken แรกที่ได้กลับมา (สำหรับ reply ต่อ admin message นี้ในอนาคต)
+      const firstQuoteToken = sentQuoteTokens.find((t) => !!t) || null;
+
+      await admin.from("conversations").insert({
+        customer_id,
+        message: text,
+        sender: "admin",
+        admin_user_id: user.id,
+        quote_token: firstQuoteToken,
+        quoted_message_id: quoted_message_id || null,
+      });
       await admin.from("customers").update({
         ai_active: false,
         manual_chat_until: until,
