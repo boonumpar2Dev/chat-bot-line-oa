@@ -37,8 +37,9 @@ Deno.serve(async (req) => {
     const chunks: any[][] = [];
     for (let i = 0; i < lineMessages.length; i += 5) chunks.push(lineMessages.slice(i, i + 5));
 
-    // เก็บ quoteToken จาก response ของ LINE (Push API คืน sentMessages[].quoteToken สำหรับ text/sticker)
+    // เก็บ quoteToken + line message id ของแอดมิน — ใช้ทั้ง reply ต่อ และให้ลูกค้า quote-reply ได้
     const sentQuoteTokens: (string | null)[] = [];
+    let firstSentMessageId: string | null = null;
 
     for (let idx = 0; idx < chunks.length; idx++) {
       const res = await fetch("https://api.line.me/v2/bot/message/push", {
