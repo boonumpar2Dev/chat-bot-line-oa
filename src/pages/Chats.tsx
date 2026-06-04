@@ -1206,6 +1206,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
           )}
         </span>
       )}
+      {stickerUrls.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {stickerUrls.map((u: string) => (
+            <img key={u} src={u} alt="sticker" loading="lazy"
+              className="w-32 h-32 object-contain"/>
+          ))}
+        </div>
+      )}
       {imgUrls.length > 0 && (
         <div className={cn(
           "grid gap-1.5 max-w-[75vw] sm:max-w-[320px]",
