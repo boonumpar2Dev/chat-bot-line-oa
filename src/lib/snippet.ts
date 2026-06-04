@@ -4,6 +4,9 @@ export function formatSnippet(raw?: string | null): string {
   if (!raw) return "—";
   let s = raw.trim();
 
+  // ตรวจของเก่า: legacy snippet ที่เป็น URL ดิบ (สติกเกอร์/รูป) ไม่มี bracket
+  if (/stickershop\.line-scdn\.net/i.test(s) || /^🎭/.test(s)) return "😄 สติกเกอร์";
+
   // ตัด URL แนบ (📎 https://...) ทิ้ง
   s = s.replace(/📎\s*\S+/g, "").trim();
   // ตัดส่วน OCR ที่ AI ใช้ (📄 เนื้อหาในรูป: ...) ทิ้ง
@@ -27,6 +30,12 @@ export function formatSnippet(raw?: string | null): string {
     return `📌 ${b}`;
   }
 
+  // ถ้าตัด URL/OCR แล้วเหลือเปล่า — น่าจะเป็นรูป
+  if (!s) return "🖼️ ส่งรูปภาพ";
+
+  // ตัดส่วนยาวเกิน
+  if (s.length > 60) s = s.slice(0, 60) + "…";
+
   // ข้อความปกติ (รวม prefix 🤖/👤 ของ AI/แอดมิน)
-  return s || "—";
+  return s;
 }
