@@ -154,14 +154,31 @@ async function verifySignature(body: string, signature: string, secret: string) 
   return btoa(String.fromCharCode(...new Uint8Array(sig))) === signature;
 }
 
-async function pushLine(to: string, messages: any[]) {
+async function pushLine(to: string, messages: any[]): Promise<{ ok: boolean; status: number; sentMessages: any[] }> {
   const r = await fetch("https://api.line.me/v2/bot/message/push", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LINE_TOKEN}` },
     body: JSON.stringify({ to, messages }),
   });
-  if (!r.ok) console.error(`[PushFailed] ${r.status}: ${await r.text()}`);
-  return r;
+  if (!r.ok) {
+    console.error(`[PushFailed] ${r.status}: ${await r.text()}`);
+    return { ok: false, status: r.status, sentMessages: [] };
+  }
+  let sentMessages: any[] = [];
+  try { const body = await r.json(); if (Array.isArray(body?.sentMessages)) sentMessages = body.sentMessages; } catch {}
+  return { ok: true, status: r.status, sentMessages };
+}
+
+// Lookup our outgoing conv row by LINE's quotedMessageId (customer quote-reply to admin/AI)
+async function lookupQuotedConvId(supabase: any, customerId: string, quotedMessageId?: string | null): Promise<string | null> {
+  if (!quotedMessageId) return null;
+  const { data } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("customer_id", customerId)
+    .eq("line_message_id", quotedMessageId)
+    .maybeSingle();
+  return data?.id || null;
 }
 
 // Fire-and-forget delivery log (owner-only dashboard)
