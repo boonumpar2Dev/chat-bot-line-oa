@@ -895,7 +895,19 @@ export default function Chats() {
             {/* Messages */}
             <ScrollArea className="flex-1 px-3 sm:px-4 py-4" ref={scrollRef as any}>
               <div className="max-w-3xl mx-auto space-y-3">
-                {(msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages).map(m => <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}/>)}
+                {(() => {
+                  const list = msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages;
+                  const byId: Record<string, any> = {};
+                  for (const m of messages) byId[m.id] = m;
+                  return list.map(m => (
+                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}
+                      quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
+                      onReply={(msg)=>{
+                        if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
+                        setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
+                      }}/>
+                  ));
+                })()}
               </div>
             </ScrollArea>
 
@@ -918,6 +930,24 @@ export default function Chats() {
                 <span className="text-[11px] text-muted-foreground">สติกเกอร์ที่จะส่ง — กดปุ่ม <Send className="inline w-3 h-3"/> เพื่อส่ง</span>
               </div>
             )}
+
+            {/* Replying to preview */}
+            {replyingTo && (
+              <div className="px-4 py-2 border-b bg-primary/5 flex items-center gap-2">
+                <CornerUpLeft className="w-4 h-4 text-primary shrink-0"/>
+                <div className="flex-1 min-w-0 border-l-2 border-primary pl-2">
+                  <div className="text-[10px] text-primary font-medium">
+                    ตอบกลับ {replyingTo.sender === "customer" ? "ลูกค้า" : replyingTo.sender === "admin" ? "แอดมิน" : "AI"}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">{replyingTo.snippet}</div>
+                </div>
+                <button onClick={()=>setReplyingTo(null)}
+                  className="w-6 h-6 rounded-full hover:bg-muted flex items-center justify-center shrink-0" title="ยกเลิก">
+                  <X className="w-3.5 h-3.5"/>
+                </button>
+              </div>
+            )}
+
 
 
             {/* Composer */}
