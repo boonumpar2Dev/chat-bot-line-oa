@@ -206,6 +206,8 @@ export default function Chats() {
   const [slaHours, setSlaHours] = useState<number>(24);
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
+  const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
