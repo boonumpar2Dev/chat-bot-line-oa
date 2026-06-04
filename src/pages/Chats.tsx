@@ -941,9 +941,45 @@ export default function Chats() {
                 <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
                   <MessageSquareText className="w-4 h-4"/>
                 </Button>
+                    <button type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                      <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
+                    </button>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Desktop: 3 inline buttons */}
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="แนบไฟล์">
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Paperclip className="w-4 h-4"/>}
+                </Button>
+                <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => setShowQuick(s => !s)} title="คำตอบสำเร็จรูป">
+                  <MessageSquareText className="w-4 h-4"/>
+                </Button>
                 <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} title="แทรกฟอร์มขอข้อมูลใบเสนอราคา">
                   <FileText className="w-4 h-4"/>
                 </Button>
+
+                {/* Sticker picker (มือถือ + เดสก์ท็อป) */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button size="icon" variant="ghost" type="button" className="shrink-0" disabled={sending} title="ส่งสติกเกอร์">
+                      <Smile className="w-5 h-5"/>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-72 p-2">
+                    <div className="text-[11px] text-muted-foreground mb-2 px-1">เลือกสติกเกอร์ — กดเพื่อส่งทันที</div>
+                    <div className="grid grid-cols-5 gap-1 max-h-64 overflow-y-auto">
+                      {STICKER_IDS.map(sid => (
+                        <button key={sid} type="button" disabled={sending}
+                          onClick={()=>sendSticker(sid)}
+                          className="aspect-square rounded-md hover:bg-accent transition-colors p-1 disabled:opacity-50">
+                          <img src={stickerPreviewUrl(sid)} alt="sticker" loading="lazy"
+                            className="w-full h-full object-contain"/>
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
                 <Textarea value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
                   onPaste={e => {
