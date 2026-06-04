@@ -463,7 +463,7 @@ async function processEvent(event: any, supabase: any) {
       } else {
         text = `[${event.message.type || "ไม่ทราบ"}]`;
       }
-      await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id });
+      await supabase.from("conversations").insert({ customer_id: customer.id, message: text, sender: "customer", line_message_id: event.message.id, quote_token: event.message.quoteToken || null });
       const snippet = text.slice(0, 120);
       await supabase.from("customers").update({
         unread_count: (customer.unread_count || 0) + 1,
@@ -545,7 +545,7 @@ async function processEvent(event: any, supabase: any) {
   }
 
   const snippet = messageText.slice(0, 120);
-  await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId });
+  await supabase.from("conversations").insert({ customer_id: customer.id, message: messageText, sender: "customer", line_message_id: lineMsgId, quote_token: event.message?.quoteToken || null });
   await supabase.from("customers").update({
     unread_count: (customer.unread_count || 0) + 1,
     last_message_at: new Date().toISOString(),
