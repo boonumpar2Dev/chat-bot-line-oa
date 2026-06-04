@@ -58,7 +58,7 @@ export default function AiSettings() {
       handover_summary_fields: s.handover_summary_fields,
       handover_intro_phone: s.handover_intro_phone,
       handover_intro_tax: s.handover_intro_tax,
-      handover_intro_postcap: s.handover_intro_postcap,
+      
       handover_extract_enabled: s.handover_extract_enabled,
       handover_extract_timeout_ms: s.handover_extract_timeout_ms,
       handover_extract_triggers: s.handover_extract_triggers,
@@ -326,7 +326,7 @@ export default function AiSettings() {
         <TabsContent value="handover" className="mt-4">
           <Card className="p-6 shadow-soft border-border/60 space-y-6">
             <div className="flex items-center gap-2"><ClipboardList className="text-primary" /><h2 className="font-display text-lg font-semibold">ฟอร์มส่งต่อแอดมิน</h2></div>
-            <p className="text-xs text-muted-foreground -mt-3">ปรับแต่งข้อความตอบลูกค้า + ฟอร์มสรุปข้อมูลที่บอทส่งให้ลูกค้าตอนได้เบอร์/Tax ID/ครบโควต้าตอบ — ใช้ <code className="bg-muted px-1 rounded">{'{phone}'}</code>, <code className="bg-muted px-1 rounded">{'{tax_id}'}</code> เป็น placeholder ได้</p>
+            <p className="text-xs text-muted-foreground -mt-3">ปรับแต่งข้อความตอบลูกค้า + ฟอร์มสรุปข้อมูลที่บอทส่งให้ลูกค้าตอนได้เบอร์/Tax ID — ใช้ <code className="bg-muted px-1 rounded">{'{phone}'}</code>, <code className="bg-muted px-1 rounded">{'{tax_id}'}</code> เป็น placeholder ได้</p>
 
             <div className="rounded-xl border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-5 space-y-4">
               <div className="flex items-start justify-between gap-3">
