@@ -958,18 +958,23 @@ type ClassifiedItem = {
   reasoning?: string;
 };
 
-function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
-  const [feedback, setFeedback] = useState("");
+const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
+  const feedbackRef = useRef<HTMLTextAreaElement>(null);
+  const [hasFeedback, setHasFeedback] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState<ClassifiedItem[]>([]);
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    if (text) { setFeedback(""); setItems([]); }
+    if (text) {
+      setItems([]);
+      setHasFeedback(false);
+      if (feedbackRef.current) feedbackRef.current.value = "";
+    }
   }, [text]);
 
   const analyze = async () => {
-    const fb = feedback.trim();
+    const fb = (feedbackRef.current?.value || "").trim();
     if (!fb || !text) return;
     setAnalyzing(true);
     setItems([]);
