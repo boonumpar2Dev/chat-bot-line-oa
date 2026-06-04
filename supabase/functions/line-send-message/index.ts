@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
         admin_user_id: user.id,
         quote_token: firstQuoteToken,
         quoted_message_id: quoted_message_id || null,
+        line_message_id: firstSentMessageId,
       });
       await admin.from("customers").update({
         ai_active: false,
