@@ -1164,10 +1164,12 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
   const adminName = isAdmin ? (m.admin_user_id && adminNames?.[m.admin_user_id]) || "แอดมิน" : "";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? `👤 ${adminName}` : "🤖 AI";
 
-  const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || []);
+  const stickerUrls = (m.message.match(/https?:\/\/stickershop\.line-scdn\.net\/\S+?\.png/gi) || []);
+  const imgUrls = (m.message.match(/https?:\/\/\S+\.(?:jpg|jpeg|png|gif|webp)/gi) || [])
+    .filter((u: string) => !stickerUrls.includes(u));
   const videoUrls = (m.message.match(/https?:\/\/\S+\.(?:mp4|mov|webm|m4v)/gi) || []);
   const allUrls = (m.message.match(/https?:\/\/\S+/gi) || []).map((u: string) => u.replace(/[)\].,;]+$/, ""));
-  const fileUrls = allUrls.filter((u: string) => !imgUrls.includes(u) && !videoUrls.includes(u));
+  const fileUrls = allUrls.filter((u: string) => !imgUrls.includes(u) && !videoUrls.includes(u) && !stickerUrls.includes(u));
   const fileLabelMatch = m.message.match(/\[ไฟล์(?::\s*([^\]]+))?\]/);
   const fileLabel = fileLabelMatch?.[1]?.trim() || "";
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
@@ -1175,10 +1177,12 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
+    .replace(/🎭\s*https?:\/\/\S+/g, "")
     .replace(/https?:\/\/\S+/g, "")
-    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง)(?::[^\]]*)?\]/g, "")
+    .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง|สติกเกอร์)(?::[^\]]*)?\]/g, "")
     .replace(/\n{2,}/g, "\n")
     .trim();
+
   // highlight matching text
   const renderText = (txt: string) => {
     if (!highlight) return txt;
