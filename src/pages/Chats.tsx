@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -958,18 +958,23 @@ type ClassifiedItem = {
   reasoning?: string;
 };
 
-function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
-  const [feedback, setFeedback] = useState("");
+const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
+  const feedbackRef = useRef<HTMLTextAreaElement>(null);
+  const [hasFeedback, setHasFeedback] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState<ClassifiedItem[]>([]);
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
 
   useEffect(() => {
-    if (text) { setFeedback(""); setItems([]); }
+    if (text) {
+      setItems([]);
+      setHasFeedback(false);
+      if (feedbackRef.current) feedbackRef.current.value = "";
+    }
   }, [text]);
 
   const analyze = async () => {
-    const fb = feedback.trim();
+    const fb = (feedbackRef.current?.value || "").trim();
     if (!fb || !text) return;
     setAnalyzing(true);
     setItems([]);
@@ -1043,14 +1048,18 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
           <div className="space-y-1.5">
             <Label className="text-xs">บอกเหมือนคุยกับเพื่อน ว่าอยากให้ AI ปรับยังไง</Label>
             <Textarea
+              ref={feedbackRef}
               rows={3}
-              value={feedback}
-              onChange={e=>setFeedback(e.target.value)}
+              defaultValue=""
+              onChange={e => {
+                const has = e.target.value.trim().length > 0;
+                if (has !== hasFeedback) setHasFeedback(has);
+              }}
               placeholder={`เช่น\n• อย่าพูดว่า "3 รูปแบบ" โดยไม่บอกชื่อ ต้องระบุ บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน\n• ตอบสั้นลงอีก ไม่เกิน 2 ประโยค\n• ค่าส่งกรุงเทพฟรี ต่างจังหวัด 15 บ./กม.`}
               disabled={analyzing}
             />
             <div className="flex justify-end">
-              <Button size="sm" onClick={analyze} disabled={analyzing || !feedback.trim()}>
+              <Button size="sm" onClick={analyze} disabled={analyzing || !hasFeedback}>
                 {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
                 {analyzing ? "AI กำลังวิเคราะห์…" : "ให้ AI ช่วยจัด"}
               </Button>
@@ -1097,7 +1106,8 @@ function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>vo
       </DialogContent>
     </Dialog>
   );
-}
+});
+
 
 function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string> }) {
   const isCustomer = m.sender === "customer";
