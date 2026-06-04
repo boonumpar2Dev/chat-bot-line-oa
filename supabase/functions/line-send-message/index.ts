@@ -61,7 +61,10 @@ Deno.serve(async (req) => {
       try {
         const body = await res.json();
         if (Array.isArray(body?.sentMessages)) {
-          for (const sm of body.sentMessages) sentQuoteTokens.push(sm.quoteToken || null);
+          for (const sm of body.sentMessages) {
+            sentQuoteTokens.push(sm.quoteToken || null);
+            if (!firstSentMessageId && sm.id) firstSentMessageId = sm.id;
+          }
         }
       } catch {}
     }
