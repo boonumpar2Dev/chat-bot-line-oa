@@ -896,6 +896,22 @@ export default function Chats() {
               onRemoveFile={(u) => setStagedFiles(p => p.filter(x => x.url !== u))}
               onClearAll={() => setStagedFiles([])}/>
 
+            {/* Staged sticker */}
+            {stagedSticker && (
+              <div className="px-4 py-2 border-b bg-amber-50/60 flex items-center gap-2">
+                <div className="relative group shrink-0">
+                  <img src={stickerPreviewUrl(stagedSticker.stickerId)} alt="sticker"
+                    className="w-14 h-14 object-contain rounded-lg border border-amber-200 bg-white p-1"/>
+                  <button onClick={() => setStagedSticker(null)}
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center">
+                    <X className="w-2.5 h-2.5"/>
+                  </button>
+                </div>
+                <span className="text-[11px] text-muted-foreground">สติกเกอร์ที่จะส่ง — กดปุ่ม <Send className="inline w-3 h-3"/> เพื่อส่ง</span>
+              </div>
+            )}
+
+
             {/* Composer */}
             <div className="border-t bg-card p-3 relative pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <QuickResponsePopup show={showQuick} filter={reply.startsWith("/") ? reply.slice(1) : ""}
