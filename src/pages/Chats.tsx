@@ -1194,7 +1194,7 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
 });
 
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string> }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
@@ -1232,6 +1232,11 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
   const timeShort = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
   const fullTime = d.toLocaleString("th-TH");
   const showLabel = !isCustomer; // hide "ลูกค้า" label — left-align is enough
+  const canReply = !!m.quote_token && !!onReply;
+  const quotedSenderLabel = quotedMessage
+    ? (quotedMessage.sender === "customer" ? "ลูกค้า" : quotedMessage.sender === "admin" ? "แอดมิน" : "AI")
+    : "";
+  const quotedSnippet = quotedMessage ? formatSnippet(quotedMessage.message) : "";
   return (
     <div className={cn("flex flex-col gap-0.5 group", align)}>
       {showLabel && (
@@ -1243,6 +1248,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
             </button>
           )}
         </span>
+      )}
+      {quotedMessage && (
+        <div className={cn(
+          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground"
+        )}>
+          <div className="font-medium text-primary mb-0.5">↩ {quotedSenderLabel}</div>
+          <div className="truncate">{quotedSnippet}</div>
+        </div>
       )}
       {stickerUrls.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -1300,7 +1313,15 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames }: { 
           {renderText(cleaned)}
         </div>
       )}
-      <span className="text-[10px] text-muted-foreground/70 px-2 opacity-0 group-hover:opacity-100 transition" title={fullTime}>{timeShort}</span>
+      <div className={cn("flex items-center gap-1.5 px-2 opacity-0 group-hover:opacity-100 transition", isCustomer ? "flex-row" : "flex-row-reverse")}>
+        <span className="text-[10px] text-muted-foreground/70" title={fullTime}>{timeShort}</span>
+        {canReply && (
+          <button onClick={()=>onReply!(m)} title="ตอบกลับข้อความนี้"
+            className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+            <Reply className="w-3 h-3"/>ตอบกลับ
+          </button>
+        )}
+      </div>
     </div>
   );
 }
