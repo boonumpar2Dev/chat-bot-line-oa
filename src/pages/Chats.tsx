@@ -618,6 +618,23 @@ export default function Chats() {
     } finally { setSending(false); }
   };
 
+  const sendSticker = async (stickerId: string) => {
+    if (!selected) return;
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("line-send-message", {
+        body: {
+          line_user_id: selected.line_user_id,
+          customer_id: selected.id,
+          messages: [{ type: "sticker", packageId: STICKER_PACK_ID, stickerId }],
+        },
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      toast.error("ส่งสติกเกอร์ไม่สำเร็จ: " + e.message);
+    } finally { setSending(false); }
+  };
+
   const [pausePickerOpen, setPausePickerOpen] = useState(false);
 
   const toggleAi = async (active: boolean) => {
