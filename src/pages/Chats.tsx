@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -208,6 +208,7 @@ export default function Chats() {
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; quoteToken: string; sender: string; snippet: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -609,12 +610,19 @@ export default function Chats() {
       if (stagedSticker) lineMessages.push({ type: "sticker", packageId: stagedSticker.packageId, stickerId: stagedSticker.stickerId });
 
       const { error } = await supabase.functions.invoke("line-send-message", {
-        body: { line_user_id: selected.line_user_id, messages: lineMessages, customer_id: selected.id },
+        body: {
+          line_user_id: selected.line_user_id,
+          messages: lineMessages,
+          customer_id: selected.id,
+          quote_token: replyingTo?.quoteToken || null,
+          quoted_message_id: replyingTo?.id || null,
+        },
       });
       if (error) throw error;
       setReply("");
       setStagedFiles([]);
       setStagedSticker(null);
+      setReplyingTo(null);
       try { localStorage.removeItem(draftKey(userId, selected.id)); } catch {}
 
     } catch (e: any) {
