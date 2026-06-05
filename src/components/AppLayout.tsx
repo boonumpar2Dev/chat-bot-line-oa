@@ -77,7 +77,7 @@ function NavItems({ collapsed, onNav }: { collapsed: boolean; onNav?: () => void
   );
 }
 
-function SidebarInner({ collapsed, setCollapsed, onNav }: { collapsed: boolean; setCollapsed?: (v: boolean)=>void; onNav?: () => void }) {
+function SidebarInner({ collapsed, setCollapsed, onNav, hideBrandText }: { collapsed: boolean; setCollapsed?: (v: boolean)=>void; onNav?: () => void; hideBrandText?: boolean }) {
   const { user, signOut } = useAuth();
   const nav = useNavigate();
   const initial = (user?.email || "?")[0].toUpperCase();
@@ -85,7 +85,8 @@ function SidebarInner({ collapsed, setCollapsed, onNav }: { collapsed: boolean; 
     <div className="h-full flex flex-col bg-sidebar text-sidebar-foreground">
       <div className={cn("flex items-center gap-2.5 px-4 h-16 border-b border-sidebar-border", collapsed && "justify-center px-0")}>
         <img src={boonumparLogo.url} alt="Boonumpar" className="h-9 w-auto object-contain shrink-0" />
-        {!collapsed && <span className="font-display font-semibold text-lg">Boonumpar Chat</span>}
+        {!collapsed && !hideBrandText && <span className="font-display font-semibold text-lg">Boonumpar Chat</span>}
+
       </div>
       <NavItems collapsed={collapsed} onNav={onNav} />
       <div className="p-3 border-t border-sidebar-border">
