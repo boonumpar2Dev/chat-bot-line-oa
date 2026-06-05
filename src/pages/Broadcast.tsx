@@ -210,18 +210,18 @@ export default function Broadcast() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="flex w-full sm:w-auto sm:inline-flex justify-start sm:justify-center">
-                <TabsTrigger value="active" className="gap-1.5 flex-1 sm:flex-none">
-                  📤 <span className="hidden sm:inline">กำลังส่ง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
+              <TabsList>
+                <TabsTrigger value="active" className="gap-1.5">
+                  📤 <span>กำลังส่ง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="sent" className="gap-1.5 flex-1 sm:flex-none">
-                  ✅ <span className="hidden sm:inline">สำเร็จ</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
+                <TabsTrigger value="sent" className="gap-1.5">
+                  ✅ <span>สำเร็จ</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="failed" className="gap-1.5 flex-1 sm:flex-none">
-                  ❌ <span className="hidden sm:inline">ล้มเหลว</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
+                <TabsTrigger value="failed" className="gap-1.5">
+                  ❌ <span>ล้มเหลว</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="draft" className="gap-1.5 flex-1 sm:flex-none">
-                  📝 <span className="hidden sm:inline">ร่าง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
+                <TabsTrigger value="draft" className="gap-1.5">
+                  📝 <span>ร่าง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
                 </TabsTrigger>
               </TabsList>
 
@@ -484,9 +484,9 @@ function ComposerDialog({
 
           {/* Messages */}
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-semibold">เนื้อหาข้อความ ({bubbles.length}/5)</Label>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 <Button size="sm" variant="outline" onClick={() => addBubble("text")} disabled={bubbles.length >= 5}>
                   <Type className="w-3.5 h-3.5 mr-1" /> ข้อความ
                 </Button>
