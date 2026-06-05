@@ -212,16 +212,16 @@ export default function Broadcast() {
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex w-full sm:w-auto sm:inline-flex justify-start sm:justify-center">
                 <TabsTrigger value="active" className="gap-1.5 flex-1 sm:flex-none">
-                  📤 <span className="hidden xs:inline">กำลังส่ง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
+                  📤 <span className="hidden sm:inline">กำลังส่ง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="sent" className="gap-1.5 flex-1 sm:flex-none">
-                  ✅ <span className="hidden xs:inline">สำเร็จ</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
+                  ✅ <span className="hidden sm:inline">สำเร็จ</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="failed" className="gap-1.5 flex-1 sm:flex-none">
-                  ❌ <span className="hidden xs:inline">ล้มเหลว</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
+                  ❌ <span className="hidden sm:inline">ล้มเหลว</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="draft" className="gap-1.5 flex-1 sm:flex-none">
-                  📝 <span className="hidden xs:inline">ร่าง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
+                  📝 <span className="hidden sm:inline">ร่าง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
                 </TabsTrigger>
               </TabsList>
 
