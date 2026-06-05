@@ -118,6 +118,14 @@ function SidebarInner({ collapsed, setCollapsed, onNav, hideBrandText }: { colla
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { pathname } = useLocation();
+  const { menus } = useMenuPermissions();
+
+  const bottomNavItems = [
+    { to: "/chats", label: "แชท", icon: MessageSquare, key: "chats" as MenuKey },
+    { to: "/customers", label: "ลูกค้า", icon: UserCircle2, key: "chats" as MenuKey },
+    { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" as MenuKey },
+  ].filter(i => menus.includes(i.key));
 
   return (
     <div className="h-screen flex bg-background overflow-hidden">
@@ -127,7 +135,7 @@ export default function AppLayout() {
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0 w-64 bg-sidebar border-sidebar-border">
-          <SidebarInner collapsed={false} onNav={() => setMobileOpen(false)} />
+          <SidebarInner collapsed={false} onNav={() => setMobileOpen(false)} hideBrandText />
         </SheetContent>
       </Sheet>
 
@@ -136,9 +144,34 @@ export default function AppLayout() {
           <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setMobileOpen(true)}><Menu className="w-5 h-5" /></Button>
           <img src={boonumparLogo.url} alt="Boonumpar" className="h-7 w-auto object-contain" />
         </header>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0"><Outlet /></main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 pb-16 lg:pb-0"><Outlet /></main>
+
+        {/* Bottom nav (mobile only) */}
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 h-16 bg-card/95 backdrop-blur border-t border-border flex items-stretch justify-around px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-2px_8px_-4px_hsl(20_25%_14%/0.08)]">
+          {bottomNavItems.map(item => {
+            const active = pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to));
+            return (
+              <NavLink key={item.to} to={item.to}
+                className={cn(
+                  "flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors",
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                )}>
+                <item.icon className={cn("w-5 h-5", active && "scale-110 transition-transform")} />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <MoreHorizontal className="w-5 h-5" />
+            <span>เพิ่มเติม</span>
+          </button>
+        </nav>
       </div>
 
     </div>
   );
 }
+
