@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS tags_name_lower_unique ON public.tags (lower(name));

@@ -106,16 +106,26 @@ export default function Tags() {
 
   const save = async () => {
     if (!editing?.name?.trim()) { toast.error("กรุณาใส่ชื่อแท็ก"); return; }
+    const name = editing.name.trim();
+    const dup = tags.find(t => t.name.toLowerCase() === name.toLowerCase() && t.id !== editing.id);
+    if (dup) { toast.error(`มีแท็กชื่อ "${dup.name}" อยู่แล้ว`); return; }
     setSaving(true);
     const payload = {
-      name: editing.name.trim(), color: editing.color || "#94a3b8",
+      name, color: editing.color || "#94a3b8",
       description: editing.description || null, sort_order: editing.sort_order ?? 0,
     };
     const { error } = editing.id
       ? await supabase.from("tags").update(payload).eq("id", editing.id)
       : await supabase.from("tags").insert(payload);
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      if ((error as any).code === "23505" || /duplicate key|unique/i.test(error.message)) {
+        toast.error("มีแท็กชื่อนี้อยู่แล้ว");
+      } else {
+        toast.error(error.message);
+      }
+      return;
+    }
     toast.success(editing.id ? "อัปเดตแท็กแล้ว" : "เพิ่มแท็กแล้ว");
     setEditing(null); load();
   };
