@@ -600,6 +600,16 @@ export default function Tags() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {assignTag && (
+        <BulkAssignDialog
+          open={!!assignTag}
+          onOpenChange={(v) => !v && setAssignTag(null)}
+          tagName={assignTag.name}
+          tagColor={assignTag.color}
+          onDone={load}
+        />
+      )}
     </div>
   );
 }
