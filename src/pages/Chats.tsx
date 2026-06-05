@@ -471,22 +471,23 @@ export default function Chats() {
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
     if (!viewport || messages.length === 0) return;
     // ถ้าเพิ่งเปลี่ยนห้อง → เลื่อนแบบ instant และยิงซ้ำหลังรูปโหลด
+    // หมายเหตุ: อัปเดต ref หลังจาก messages โหลดแล้วเท่านั้น (กันกรณี selectedId เปลี่ยนตอน messages ยังว่าง)
     const isRoomSwitch = lastScrolledIdRef.current !== selectedId;
     lastScrolledIdRef.current = selectedId;
     const scrollToBottom = (behavior: ScrollBehavior) => {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior });
     };
+    let timers: ReturnType<typeof setTimeout>[] = [];
     requestAnimationFrame(() => {
       scrollToBottom(isRoomSwitch ? "auto" : "smooth");
       if (isRoomSwitch) {
-        // เผื่อรูป/มีเดียโหลดเสร็จทีหลัง ทำให้ scrollHeight เพิ่ม
-        const timers = [80, 250, 600, 1200].map(ms =>
+        // เผื่อรูป/มีเดีย/บับเบิลขยายตัวหลังเรนเดอร์ → ยิงซ้ำหลายรอบ
+        timers = [50, 150, 350, 700, 1200, 2000].map(ms =>
           setTimeout(() => scrollToBottom("auto"), ms)
         );
-        // cleanup ครั้งถัดไป
-        return () => timers.forEach(clearTimeout);
       }
     });
+    return () => { timers.forEach(clearTimeout); };
   }, [messages, selectedId]);
 
   // Customers found by searching inside message content
