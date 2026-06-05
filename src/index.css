@@ -102,6 +102,7 @@
 @layer base {
   * { @apply border-border; }
   html, body, #root { height: 100%; }
+  html, body { overflow-x: hidden; }
   body {
     @apply bg-background text-foreground;
     font-family: 'IBM Plex Sans Thai', 'Inter', system-ui, sans-serif;
@@ -113,6 +114,7 @@
   }
 }
 
+
 @layer utilities {
   .bg-brand-gradient { background: var(--gradient-brand); }
   .bg-warm-gradient { background: var(--gradient-warm); }
@@ -120,4 +122,7 @@
   .shadow-elevated { box-shadow: var(--shadow-elevated); }
   .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
+

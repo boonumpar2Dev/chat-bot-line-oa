@@ -81,12 +81,13 @@ export default function Knowledge() {
   const { data: cats } = useQuery({ queryKey: ["kb-cats"], queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order")).data ?? [] });
   const catNames = (cats || []).map((c: any) => c.name);
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
-          <p className="text-muted-foreground mt-1">พิมพ์อะไรก็ได้ — AI ช่วยจัดเข้าที่ถูกให้</p>
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold">สอน AI</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">พิมพ์อะไรก็ได้ — AI ช่วยจัดเข้าที่ถูกให้</p>
         </div>
+
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="default" className="shrink-0">
@@ -152,20 +153,21 @@ function PackagesTab() {
       {isLoading && <Loader2 className="animate-spin mx-auto"/>}
       <div className="grid md:grid-cols-2 gap-4">
         {pkgs?.map((p:any)=>(
-          <Card key={p.id} className="p-5 shadow-soft border-border/60">
+          <Card key={p.id} className="p-5 shadow-soft border-border/60 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <h3 className="font-display font-semibold">{p.name}</h3>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display font-semibold break-words">{p.name}</h3>
                 {p.category && <Badge variant="secondary" className="mt-1">{p.category}</Badge>}
                 {!p.is_active && <Badge variant="outline" className="ml-1">ปิดใช้งาน</Badge>}
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 shrink-0">
                 <Button size="icon" variant="ghost" onClick={()=>openEdit(p)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>openDuplicate(p)} title="คัดลอกเป็นแพ็คเกจใหม่"><Copy className="w-4 h-4"/></Button>
                 <Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
-            {p.description && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{p.description}</p>}
+            {p.description && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line break-words">{p.description}</p>}
+
             {p.pricing_tiers?.length > 0 && <p className="text-xs text-muted-foreground mt-3">{p.pricing_tiers.length} ระดับราคา</p>}
             {p.image_urls?.length > 0 && (
               <div className="flex gap-1 mt-3">
@@ -487,7 +489,7 @@ function KnowledgeBaseTab() {
                 <Button size="icon" variant="ghost" onClick={() => del(i.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
-            {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{i.content}</p>}
+            {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line break-words">{i.content}</p>}
             {i.image_urls?.length > 0 && (
               <div className="flex gap-1 mt-3">
                 {i.image_urls.slice(0, 4).map((u: string, k: number) => (

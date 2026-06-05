@@ -111,25 +111,26 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       <div>
-        <h1 className="font-display text-3xl font-semibold">ภาพรวมระบบ</h1>
-        <p className="text-muted-foreground mt-1">ติดตามสถานะแชทบอทและลูกค้า LINE OA</p>
+        <h1 className="font-display text-2xl sm:text-3xl font-semibold">ภาพรวมระบบ</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">ติดตามสถานะแชทบอทและลูกค้า LINE OA</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {cards.map(c => (
-          <Card key={c.label} className="p-5 shadow-soft border-border/60 hover:shadow-elevated transition-shadow">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm text-muted-foreground truncate">{c.label}</p>
-                <p className="font-display text-2xl font-semibold mt-2 truncate">{c.value}</p>
+          <Card key={c.label} className="p-3 sm:p-5 shadow-soft border-border/60 hover:shadow-elevated transition-shadow min-w-0">
+            <div className="flex items-start justify-between gap-2 min-w-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{c.label}</p>
+                <p className="font-display text-lg sm:text-2xl font-semibold mt-1 sm:mt-2 truncate">{c.value}</p>
               </div>
-              <div className={`p-2.5 rounded-lg bg-muted ${c.color} shrink-0`}><c.icon className="w-5 h-5" /></div>
+              <div className={`p-1.5 sm:p-2.5 rounded-lg bg-muted ${c.color} shrink-0`}><c.icon className="w-4 h-4 sm:w-5 sm:h-5" /></div>
             </div>
           </Card>
         ))}
       </div>
+
 
       {/* SLA Breaches */}
       <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive">
