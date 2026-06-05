@@ -219,9 +219,9 @@ export default function Dashboard() {
               <Link to="/chats" key={r.id} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
                 <div className="w-8 text-center font-display text-lg text-muted-foreground">{idx + 1}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
-                    <Badge variant="outline" className="h-5 px-1.5">{STATUS_LABELS[r.status] || r.status}</Badge>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="font-medium truncate min-w-0">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
+                    <Badge variant="outline" className="h-5 px-1.5 shrink-0">{STATUS_LABELS[r.status] || r.status}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {r.event_type || "—"} {r.guest_count ? `· ${r.guest_count} คน` : ""}
