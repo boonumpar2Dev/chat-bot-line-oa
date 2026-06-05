@@ -206,7 +206,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Top CLV */}
-        <Card className="shadow-soft border-border/60">
+        <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
           <div className="p-5 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-success" />
