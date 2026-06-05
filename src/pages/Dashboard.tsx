@@ -187,12 +187,12 @@ export default function Dashboard() {
                 <div className="w-10 h-10 rounded-full bg-brand-gradient flex items-center justify-center text-primary-foreground font-semibold">
                   {(r.nickname || r.display_name || "?")[0]}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium truncate">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
-                    {r.unread_count > 0 && <Badge variant="destructive" className="h-5 px-1.5">{r.unread_count}</Badge>}
-                    {!r.ai_active && <Badge variant="secondary" className="h-5 px-1.5"><Bot className="w-3 h-3 mr-1"/>Manual</Badge>}
-                  </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <p className="font-medium truncate min-w-0">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
+                  {r.unread_count > 0 && <Badge variant="destructive" className="h-5 px-1.5 shrink-0">{r.unread_count}</Badge>}
+                  {!r.ai_active && <Badge variant="secondary" className="h-5 px-1.5 shrink-0"><Bot className="w-3 h-3 mr-1"/>Manual</Badge>}
+                </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">{formatSnippet(r.last_message_snippet)}</p>
                 </div>
                 <span className="text-xs text-muted-foreground shrink-0">
