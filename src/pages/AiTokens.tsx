@@ -74,6 +74,19 @@ export default function AiTokens() {
     load();
   };
 
+  const [busyEmbed, setBusyEmbed] = useState(false);
+  const rebuildEmbeddings = async () => {
+    if (!confirm("Re-generate embedding ของ KB / แพ็กเกจ / โปรโมชั่นทั้งหมด? (ใช้เวลา ~30-60 วินาที)")) return;
+    setBusyEmbed(true);
+    const { data, error } = await supabase.functions.invoke("embed-content", { body: { rebuild: true } });
+    setBusyEmbed(false);
+    if (error) toast.error(error.message);
+    else {
+      const r = (data as any)?.results || {};
+      toast.success(`Embed สำเร็จ: KB ${r.knowledge_base?.ok || 0}/${r.knowledge_base?.total || 0} · Pkg ${r.catering_packages?.ok || 0}/${r.catering_packages?.total || 0} · Promo ${r.promotions?.ok || 0}/${r.promotions?.total || 0}`);
+    }
+  };
+
   const stats = useMemo(() => {
     const now = Date.now();
     const day = 24 * 3600_000;
