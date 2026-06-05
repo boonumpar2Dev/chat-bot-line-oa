@@ -261,34 +261,112 @@ export default function Customers() {
               className="pl-9"
             />
           </div>
-          <FilterCombobox
-            className="w-full sm:w-44"
-            placeholder="สถานะ"
-            value={statusFilter}
-            onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
-            options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
-          />
-          <FilterCombobox
-            className="w-full sm:w-40"
-            placeholder="ระดับ"
-            value={tierFilter}
-            onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
-            options={[
-              { value: "all", label: "ทุกระดับ" },
-              ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
-              { value: "__none__", label: "ยังไม่กำหนด" },
-            ]}
-          />
-          <FilterCombobox
-            className="w-full sm:w-44"
-            placeholder="แท็ก"
-            value={tagFilter || "all"}
-            onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
-            options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
-          />
-          <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
-            <Settings2 className="w-4 h-4" />
-          </Button>
+
+          {/* Mobile: collapse 3 filters into a Sheet */}
+          <div className="flex gap-2 sm:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="flex-1 justify-start gap-2 relative">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  ตัวกรอง
+                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
+                    <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                      {[statusFilter !== "all", tierFilter !== "all", !!tagFilter].filter(Boolean).length}
+                    </Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl">
+                <SheetHeader className="mb-4">
+                  <SheetTitle>ตัวกรองลูกค้า</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3 pb-6">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">สถานะ</p>
+                    <FilterCombobox
+                      className="w-full"
+                      placeholder="สถานะ"
+                      value={statusFilter}
+                      onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
+                      options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">ระดับ</p>
+                    <FilterCombobox
+                      className="w-full"
+                      placeholder="ระดับ"
+                      value={tierFilter}
+                      onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
+                      options={[
+                        { value: "all", label: "ทุกระดับ" },
+                        ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
+                        { value: "__none__", label: "ยังไม่กำหนด" },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">แท็ก</p>
+                    <FilterCombobox
+                      className="w-full"
+                      placeholder="แท็ก"
+                      value={tagFilter || "all"}
+                      onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+                      options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
+                    />
+                  </div>
+                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
+                    <Button
+                      variant="ghost"
+                      className="w-full text-muted-foreground"
+                      onClick={() => {
+                        setStatusFilter("all"); updateFilter("status", "all");
+                        setTierFilter("all"); updateFilter("tier", "all");
+                        setTagFilter(""); updateFilter("tag", "all");
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-1" /> ล้างตัวกรองทั้งหมด
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
+              <Settings2 className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Desktop: original layout */}
+          <div className="hidden sm:flex gap-2">
+            <FilterCombobox
+              className="w-44"
+              placeholder="สถานะ"
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
+              options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
+            />
+            <FilterCombobox
+              className="w-40"
+              placeholder="ระดับ"
+              value={tierFilter}
+              onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
+              options={[
+                { value: "all", label: "ทุกระดับ" },
+                ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
+                { value: "__none__", label: "ยังไม่กำหนด" },
+              ]}
+            />
+            <FilterCombobox
+              className="w-44"
+              placeholder="แท็ก"
+              value={tagFilter || "all"}
+              onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+              options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
+            />
+            <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
+              <Settings2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {tagFilter && (
