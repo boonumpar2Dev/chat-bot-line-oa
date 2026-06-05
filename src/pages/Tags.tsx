@@ -207,13 +207,18 @@ export default function Tags() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
-      <div>
-        <h1 className="text-2xl font-display font-semibold flex items-center gap-2">
-          <TagIcon className="w-6 h-6 text-primary" /> แท็กลูกค้า
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          จัดการแท็ก ตั้งคำสั่ง AI ต่อแท็ก และกฎติด tag อัตโนมัติจากชื่อ/สถานะ
-        </p>
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-display font-semibold flex items-center gap-2">
+            <TagIcon className="w-6 h-6 text-primary" /> แท็กลูกค้า
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            จัดการแท็ก ตั้งคำสั่ง AI ต่อแท็ก และกฎติด tag อัตโนมัติจากชื่อ/สถานะ
+          </p>
+        </div>
+        <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-9 gap-1 shrink-0">
+          <Plus className="w-4 h-4"/> เพิ่มแท็ก
+        </Button>
       </div>
 
       <Tabs defaultValue="manage" className="space-y-4">
@@ -243,15 +248,14 @@ export default function Tags() {
                   </Button>
                 </>
               )}
-              <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-8 gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍 ค้นหาแท็ก (เช่น VIP, 2569, บริษัท)"
-              className="h-9 flex-1"
+              placeholder="🔍 ค้นหาแท็ก..."
+              className="h-9 flex-1 min-w-0"
             />
             <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
               <SelectTrigger className="h-9 w-full sm:w-48">
