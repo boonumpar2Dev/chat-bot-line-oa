@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { triggerEmbed } from "@/lib/embed";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,9 +137,12 @@ function PackagesTab() {
   };
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id ? await supabase.from("catering_packages").update(payload).eq("id", edit.id) : await supabase.from("catering_packages").insert(payload);
+    const res = edit.id
+      ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
+      : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
     toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
+    if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
   };
   const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
 
@@ -301,9 +305,12 @@ function PromotionsTab() {
   const { data: cats } = useQuery({ queryKey:["pkg-cats"], queryFn: async()=>(await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
   const save = async () => {
     const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id ? await supabase.from("promotions").update(payload).eq("id",edit.id) : await supabase.from("promotions").insert(payload);
+    const res = edit.id
+      ? await supabase.from("promotions").update(payload).eq("id",edit.id).select("id").maybeSingle()
+      : await supabase.from("promotions").insert(payload).select("id").maybeSingle();
     if(res.error) return toast.error(res.error.message);
     toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
+    if (res.data?.id) triggerEmbed("promotions", res.data.id);
   };
   const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache(); };
   return (
@@ -405,10 +412,11 @@ function KnowledgeBaseTab() {
     const payload: any = { ...edit, category: noCategory ? null : edit.category };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
     const res = edit.id
-      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
-      : await supabase.from("knowledge_base").insert(payload);
+      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
+      : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
     toast.success("บันทึกแล้ว"); setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+    if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
   };
 
   const handleAlertConfirm = () => {

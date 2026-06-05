@@ -883,10 +883,43 @@ async function processEvent(event: any, supabase: any) {
   else historyForFilter = historyForFilter.slice(-6);
   const recentMsgsForFilter = historyForFilter.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
 
-  // KB ไม่มี filter → ใช้ cache ได้เลย
+  // KB retrieval: ลอง semantic search ก่อน (เข้าใจความหมายภาษาไทย), fallback เป็น keyword ถ้าพลาด
   const mustIncludeIds = kbItems.filter((i: any) => i?.is_always_include).map((i: any) => i.id);
-  const filteredKb = filterRelevantKB(kbItems, messageText, recentMsgsForFilter, 8, mustIncludeIds);
-  let kbContext = cacheMap.get("kb_summary") || buildKbBlock(filteredKb);
+  let filteredKb: any[] = [];
+  try {
+    const queryText = `${messageText}\n${recentMsgsForFilter}`.slice(0, 4000);
+    const embedRes = await fetch(`${SUPABASE_URL}/functions/v1/embed-content`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
+      body: JSON.stringify({ text: queryText }),
+    });
+    if (embedRes.ok) {
+      const { embedding } = await embedRes.json();
+      const { data: matches } = await supabase.rpc("match_knowledge_base", {
+        query_embedding: embedding,
+        match_count: 8,
+        min_similarity: 0.3,
+      });
+      if (matches && matches.length > 0) {
+        const mustSet = new Set(mustIncludeIds);
+        const must = kbItems.filter((i: any) => mustSet.has(i.id));
+        const sorted = matches
+          .map((m: any) => kbItems.find((i: any) => i.id === m.id))
+          .filter(Boolean)
+          .filter((i: any) => !mustSet.has(i.id));
+        filteredKb = [...must, ...sorted];
+        console.log(`[KB semantic] matched ${matches.length} items, top sim=${matches[0]?.similarity?.toFixed(3)}`);
+      }
+    } else {
+      console.warn(`[KB semantic] embed failed ${embedRes.status}, fallback to keyword`);
+    }
+  } catch (e) {
+    console.warn(`[KB semantic] error, fallback to keyword:`, e);
+  }
+  if (filteredKb.length === 0) {
+    filteredKb = filterRelevantKB(kbItems, messageText, recentMsgsForFilter, 8, mustIncludeIds);
+  }
+  let kbContext = buildKbBlock(filteredKb);
   kbContext = truncateToTokens(kbContext, BUDGET_KB);
 
   // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache

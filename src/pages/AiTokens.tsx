@@ -74,6 +74,19 @@ export default function AiTokens() {
     load();
   };
 
+  const [busyEmbed, setBusyEmbed] = useState(false);
+  const rebuildEmbeddings = async () => {
+    if (!confirm("Re-generate embedding ของ KB / แพ็กเกจ / โปรโมชั่นทั้งหมด? (ใช้เวลา ~30-60 วินาที)")) return;
+    setBusyEmbed(true);
+    const { data, error } = await supabase.functions.invoke("embed-content", { body: { rebuild: true } });
+    setBusyEmbed(false);
+    if (error) toast.error(error.message);
+    else {
+      const r = (data as any)?.results || {};
+      toast.success(`Embed สำเร็จ: KB ${r.knowledge_base?.ok || 0}/${r.knowledge_base?.total || 0} · Pkg ${r.catering_packages?.ok || 0}/${r.catering_packages?.total || 0} · Promo ${r.promotions?.ok || 0}/${r.promotions?.total || 0}`);
+    }
+  };
+
   const stats = useMemo(() => {
     const now = Date.now();
     const day = 24 * 3600_000;
@@ -271,10 +284,16 @@ export default function AiTokens() {
             <h2 className="font-display text-lg font-semibold">Context Cache</h2>
             <p className="text-xs text-muted-foreground">ข้อมูลที่ส่งให้ AI ในแต่ละครั้ง (~{cacheTotal.toLocaleString()} tokens รวม)</p>
           </div>
-          <Button onClick={rebuild} disabled={busy} size="sm" variant="outline">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <RefreshCw className="w-4 h-4 mr-1"/>}
-            Rebuild
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={rebuildEmbeddings} disabled={busyEmbed} size="sm" variant="outline" title="สร้าง vector ของ KB/Pkg/Promo ทั้งหมดใหม่ (ใช้เมื่อเปลี่ยนข้อมูลจำนวนมาก)">
+              {busyEmbed ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <RefreshCw className="w-4 h-4 mr-1"/>}
+              Rebuild Embeddings
+            </Button>
+            <Button onClick={rebuild} disabled={busy} size="sm" variant="outline">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <RefreshCw className="w-4 h-4 mr-1"/>}
+              Rebuild
+            </Button>
+          </div>
         </div>
         <div className="space-y-2">
           {cacheRows.map(r => (

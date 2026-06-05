@@ -82,16 +82,20 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
           await supabase.from("knowledge_categories").insert({ name: cat });
           qc.invalidateQueries({ queryKey: ["kb-cats"] });
         }
-        const { error } = await supabase.from("knowledge_base").insert({
+        const { data: ins, error } = await supabase.from("knowledge_base").insert({
           title: it.title.trim(),
           content: it.content.trim(),
           category: cat,
           status: "active",
-        });
+        }).select("id").maybeSingle();
         if (error) throw error;
         toast.success("✅ บันทึกเข้าฐานความรู้แล้ว");
         qc.invalidateQueries({ queryKey: ["kb"] });
         supabase.functions.invoke("rebuild-ai-cache").catch(() => {});
+        if (ins?.id) {
+          const { triggerEmbed } = await import("@/lib/embed");
+          triggerEmbed("knowledge_base", ins.id);
+        }
       }
       removeItem(idx);
       if (items.length === 1) setText("");
