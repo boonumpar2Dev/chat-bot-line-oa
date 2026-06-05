@@ -81,12 +81,13 @@ export default function Knowledge() {
   const { data: cats } = useQuery({ queryKey: ["kb-cats"], queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order")).data ?? [] });
   const catNames = (cats || []).map((c: any) => c.name);
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold">สอน AI</h1>
-          <p className="text-muted-foreground mt-1">พิมพ์อะไรก็ได้ — AI ช่วยจัดเข้าที่ถูกให้</p>
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold">สอน AI</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">พิมพ์อะไรก็ได้ — AI ช่วยจัดเข้าที่ถูกให้</p>
         </div>
+
         <Sheet>
           <SheetTrigger asChild>
             <Button variant="default" className="shrink-0">
