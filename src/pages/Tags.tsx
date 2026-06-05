@@ -248,15 +248,14 @@ export default function Tags() {
                   </Button>
                 </>
               )}
-              <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-8 gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="🔍 ค้นหาแท็ก (เช่น VIP, 2569, บริษัท)"
-              className="h-9 flex-1"
+              placeholder="🔍 ค้นหาแท็ก..."
+              className="h-9 flex-1 min-w-0"
             />
             <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
               <SelectTrigger className="h-9 w-full sm:w-48">
