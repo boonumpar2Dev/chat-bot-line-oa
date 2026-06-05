@@ -210,18 +210,18 @@ export default function Broadcast() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList>
-                <TabsTrigger value="active" className="gap-1.5">
-                  📤 <span>กำลังส่ง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
+              <TabsList className="grid w-full grid-cols-4 h-auto gap-1">
+                <TabsTrigger value="active" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-1.5 px-1 text-xs sm:text-sm">
+                  <span>📤 กำลังส่ง</span> <Badge variant="secondary" className="h-4 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs">{groups.active.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="sent" className="gap-1.5">
-                  ✅ <span>สำเร็จ</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
+                <TabsTrigger value="sent" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-1.5 px-1 text-xs sm:text-sm">
+                  <span>✅ สำเร็จ</span> <Badge variant="secondary" className="h-4 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs">{groups.sent.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="failed" className="gap-1.5">
-                  ❌ <span>ล้มเหลว</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
+                <TabsTrigger value="failed" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-1.5 px-1 text-xs sm:text-sm">
+                  <span>❌ ล้มเหลว</span> <Badge variant="secondary" className="h-4 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs">{groups.failed.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="draft" className="gap-1.5">
-                  📝 <span>ร่าง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
+                <TabsTrigger value="draft" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-1.5 px-1 text-xs sm:text-sm">
+                  <span>📝 ร่าง</span> <Badge variant="secondary" className="h-4 px-1 text-[10px] sm:h-5 sm:px-1.5 sm:text-xs">{groups.draft.length}</Badge>
                 </TabsTrigger>
               </TabsList>
 
