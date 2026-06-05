@@ -628,43 +628,47 @@ async function processEvent(event: any, supabase: any) {
     if (msgMs > 0 && msgMs < new Date(freshCustomer.ai_resumed_at).getTime()) return;
   }
 
-  // 🧪 Whitelist (โหมดทดสอบ) — override ทุก gate: ตอบเฉพาะคนใน list, ไม่สนใจ schedule/ai_enabled
+  // 🕐 Schedule gate มาก่อน — ในเวลาทำการ บอทตอบทุกคน (ไม่สน whitelist)
+  //    นอกเวลาทำการ → whitelist ใช้เป็นโหมดทดสอบ (ตอบเฉพาะคนใน list), คนอื่นได้ OOH/เงียบ
+  let inSchedule = true;
+  if (cfg.schedule_enabled) {
+    const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
+    const [sh, sm] = (cfg.start_time || "18:00").split(":").map(Number);
+    const [eh, em] = (cfg.end_time || "08:00").split(":").map(Number);
+    const start = sh * 60 + sm, end = eh * 60 + em;
+    inSchedule = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
+  }
+
   const whitelistMode = cfg.ai_whitelist_enabled === true || cfg.bot_mode === "whitelist";
-  if (whitelistMode) {
-    const wl: string[] = Array.isArray(cfg.ai_whitelist_user_ids) ? cfg.ai_whitelist_user_ids : [];
-    if (!wl.includes(lineUserId)) {
-      console.log(`[Whitelist] Skip AI reply for ${lineUserId} (not in whitelist)`);
+  const wl: string[] = Array.isArray(cfg.ai_whitelist_user_ids) ? cfg.ai_whitelist_user_ids : [];
+  const inWhitelist = wl.includes(lineUserId);
+
+  if (!inSchedule) {
+    // นอกเวลาทำการ
+    if (whitelistMode && inWhitelist) {
+      console.log(`[Schedule] outside hours, but ${lineUserId} in whitelist — bypass`);
+    } else {
+      console.log(`[Schedule] outside ${cfg.start_time}-${cfg.end_time}`);
+      if (cfg.out_of_hours_message_enabled && cfg.out_of_hours_message) {
+        const oohText = String(cfg.out_of_hours_message).trim();
+        const muteH = cfg.fallback_mute_hours ?? 1;
+        const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+        await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: oohText }], { customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
+        await supabase.from("customers").update({
+          ai_active: false, manual_chat_until: muteUntil,
+          last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
+        }).eq("id", customer.id);
+        console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h`);
+      }
       return;
     }
-    console.log(`[Whitelist] ✅ ${lineUserId} in test whitelist — bypass schedule/ai_enabled gates`);
-  } else {
-    // 🕐 Schedule gate (เฉพาะโหมดปกติ): นอกช่วงเวลาทำการ
-    if (cfg.schedule_enabled) {
-      const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
-      const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
-      const [sh, sm] = (cfg.start_time || "18:00").split(":").map(Number);
-      const [eh, em] = (cfg.end_time || "08:00").split(":").map(Number);
-      const start = sh * 60 + sm, end = eh * 60 + em;
-      const inWindow = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
-      if (!inWindow) {
-        console.log(`[Schedule] outside ${cfg.start_time}-${cfg.end_time} (now ${bkk.getHours()}:${String(bkk.getMinutes()).padStart(2,"0")})`);
-        if (cfg.out_of_hours_message_enabled && cfg.out_of_hours_message) {
-          const oohText = String(cfg.out_of_hours_message).trim();
-          const muteH = cfg.fallback_mute_hours ?? 1;
-          const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-          await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: oohText }], { customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
-          await supabase.from("customers").update({
-            ai_active: false, manual_chat_until: muteUntil,
-            last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
-          }).eq("id", customer.id);
-          console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h`);
-        }
-        return;
-      }
-    }
-    // master switch (เฉพาะโหมดปกติ)
-    if (cfg.ai_enabled === false) return;
   }
+  // ในเวลาทำการ → ตอบทุกคน, whitelist ไม่มีผล
+
+  // master switch
+  if (cfg.ai_enabled === false) return;
+
 
   // Skip pure acknowledgements (อ่านจาก cfg.trivial_replies)
   const trivial: string[] = (cfg.trivial_replies && cfg.trivial_replies.length) ? cfg.trivial_replies : [
