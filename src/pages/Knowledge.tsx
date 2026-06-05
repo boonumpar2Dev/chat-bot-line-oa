@@ -412,10 +412,11 @@ function KnowledgeBaseTab() {
     const payload: any = { ...edit, category: noCategory ? null : edit.category };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
     const res = edit.id
-      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
-      : await supabase.from("knowledge_base").insert(payload);
+      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
+      : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
     toast.success("บันทึกแล้ว"); setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+    if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
   };
 
   const handleAlertConfirm = () => {
