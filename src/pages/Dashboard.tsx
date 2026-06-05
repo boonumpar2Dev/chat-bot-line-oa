@@ -184,20 +184,22 @@ export default function Dashboard() {
             {recent?.length === 0 && <p className="p-8 text-center text-sm text-muted-foreground">ยังไม่มีลูกค้า — เชื่อม LINE OA เพื่อเริ่มรับข้อความ</p>}
             {recent?.map(r => (
               <Link to="/chats" key={r.id} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-                <div className="w-10 h-10 rounded-full bg-brand-gradient flex items-center justify-center text-primary-foreground font-semibold">
+                <div className="w-10 h-10 shrink-0 rounded-full bg-brand-gradient flex items-center justify-center text-primary-foreground font-semibold">
                   {(r.nickname || r.display_name || "?")[0]}
                 </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <p className="font-medium truncate min-w-0">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
-                  {r.unread_count > 0 && <Badge variant="destructive" className="h-5 px-1.5 shrink-0">{r.unread_count}</Badge>}
-                  {!r.ai_active && <Badge variant="secondary" className="h-5 px-1.5 shrink-0"><Bot className="w-3 h-3 mr-1"/>Manual</Badge>}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="font-medium truncate min-w-0 flex-1">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
+                    <span className="text-[11px] text-muted-foreground shrink-0">
+                      {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : ""}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0 mt-0.5">
+                    <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">{formatSnippet(r.last_message_snippet)}</p>
+                    {r.unread_count > 0 && <Badge variant="destructive" className="h-4 px-1 text-[10px] shrink-0">{r.unread_count}</Badge>}
+                    {!r.ai_active && <Badge variant="secondary" className="h-4 px-1 text-[10px] shrink-0"><Bot className="w-2.5 h-2.5 mr-0.5"/>Manual</Badge>}
+                  </div>
                 </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{formatSnippet(r.last_message_snippet)}</p>
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : ""}
-                </span>
               </Link>
             ))}
           </div>
@@ -217,17 +219,19 @@ export default function Dashboard() {
             )}
             {topClv?.map((r: any, idx: number) => (
               <Link to="/chats" key={r.id} className="flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors">
-                <div className="w-8 text-center font-display text-lg text-muted-foreground">{idx + 1}</div>
+                <div className="w-6 shrink-0 text-center font-display text-lg text-muted-foreground">{idx + 1}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <p className="font-medium truncate min-w-0">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
-                    <Badge variant="outline" className="h-5 px-1.5 shrink-0">{STATUS_LABELS[r.status] || r.status}</Badge>
+                    <p className="font-medium truncate min-w-0 flex-1">{r.nickname || r.display_name || "ไม่มีชื่อ"}</p>
+                    <span className="font-display font-semibold text-success text-sm shrink-0">{fmtTHB(Number(r.clv_amount))}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {r.event_type || "—"} {r.guest_count ? `· ${r.guest_count} คน` : ""}
-                  </p>
+                  <div className="flex items-center gap-2 min-w-0 mt-0.5">
+                    <p className="text-xs text-muted-foreground truncate flex-1 min-w-0">
+                      {r.event_type || "—"} {r.guest_count ? `· ${r.guest_count} คน` : ""}
+                    </p>
+                    <Badge variant="outline" className="h-4 px-1 text-[10px] shrink-0">{STATUS_LABELS[r.status] || r.status}</Badge>
+                  </div>
                 </div>
-                <span className="font-display font-semibold text-success shrink-0">{fmtTHB(Number(r.clv_amount))}</span>
               </Link>
             ))}
           </div>

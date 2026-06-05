@@ -105,12 +105,12 @@ export default function Knowledge() {
 
       <SmartTeachBox categories={catNames} />
       <Tabs defaultValue="kb">
-        <TabsList>
-          <TabsTrigger value="kb"><BookOpen className="w-4 h-4 mr-1.5"/>ข้อมูลทั่วไป</TabsTrigger>
-          <TabsTrigger value="categories"><Tag className="w-4 h-4 mr-1.5"/>ประเภท</TabsTrigger>
-          <TabsTrigger value="packages"><Package className="w-4 h-4 mr-1.5"/>แพ็คเกจ</TabsTrigger>
-          <TabsTrigger value="promotions"><Sparkles className="w-4 h-4 mr-1.5"/>โปรโมชั่น</TabsTrigger>
-          <TabsTrigger value="rules"><Shield className="w-4 h-4 mr-1.5"/>กฎ AI</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto gap-1">
+          <TabsTrigger value="kb" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><BookOpen className="w-4 h-4"/><span>ข้อมูลทั่วไป</span></TabsTrigger>
+          <TabsTrigger value="categories" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Tag className="w-4 h-4"/><span>ประเภท</span></TabsTrigger>
+          <TabsTrigger value="packages" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Package className="w-4 h-4"/><span>แพ็คเกจ</span></TabsTrigger>
+          <TabsTrigger value="promotions" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Sparkles className="w-4 h-4"/><span>โปรโมชั่น</span></TabsTrigger>
+          <TabsTrigger value="rules" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Shield className="w-4 h-4"/><span>กฎ AI</span></TabsTrigger>
         </TabsList>
         <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
         <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
