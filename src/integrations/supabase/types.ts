@@ -922,8 +922,6 @@ export type Database = {
       }
       tags: {
         Row: {
-          ai_enabled: boolean
-          ai_instruction: string | null
           ai_tag_instructions: string | null
           color: string
           created_at: string
@@ -934,8 +932,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          ai_enabled?: boolean
-          ai_instruction?: string | null
           ai_tag_instructions?: string | null
           color?: string
           created_at?: string
@@ -946,8 +942,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          ai_enabled?: boolean
-          ai_instruction?: string | null
           ai_tag_instructions?: string | null
           color?: string
           created_at?: string
