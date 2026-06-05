@@ -611,7 +611,7 @@ function KnowledgeBaseTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setAlertOpen(false); }}>ยกเลิก</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAlertConfirm}>บันทึก</AlertDialogAction>
+            <AlertDialogAction onClick={handleAlertConfirm}>{alertType === 'delete' ? "ลบ" : "บันทึก"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
