@@ -484,9 +484,9 @@ function ComposerDialog({
 
           {/* Messages */}
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-semibold">เนื้อหาข้อความ ({bubbles.length}/5)</Label>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 <Button size="sm" variant="outline" onClick={() => addBubble("text")} disabled={bubbles.length >= 5}>
                   <Type className="w-3.5 h-3.5 mr-1" /> ข้อความ
                 </Button>
