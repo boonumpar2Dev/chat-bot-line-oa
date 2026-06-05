@@ -284,10 +284,16 @@ export default function AiTokens() {
             <h2 className="font-display text-lg font-semibold">Context Cache</h2>
             <p className="text-xs text-muted-foreground">ข้อมูลที่ส่งให้ AI ในแต่ละครั้ง (~{cacheTotal.toLocaleString()} tokens รวม)</p>
           </div>
-          <Button onClick={rebuild} disabled={busy} size="sm" variant="outline">
-            {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <RefreshCw className="w-4 h-4 mr-1"/>}
-            Rebuild
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={rebuildEmbeddings} disabled={busyEmbed} size="sm" variant="outline" title="สร้าง vector ของ KB/Pkg/Promo ทั้งหมดใหม่ (ใช้เมื่อเปลี่ยนข้อมูลจำนวนมาก)">
+              {busyEmbed ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <RefreshCw className="w-4 h-4 mr-1"/>}
+              Rebuild Embeddings
+            </Button>
+            <Button onClick={rebuild} disabled={busy} size="sm" variant="outline">
+              {busy ? <Loader2 className="w-4 h-4 animate-spin mr-1"/> : <RefreshCw className="w-4 h-4 mr-1"/>}
+              Rebuild
+            </Button>
+          </div>
         </div>
         <div className="space-y-2">
           {cacheRows.map(r => (
