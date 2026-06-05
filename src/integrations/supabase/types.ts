@@ -997,6 +997,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_add_tag: {
+        Args: { _customer_ids: string[]; _tag_name: string }
+        Returns: number
+      }
       bulk_delete_tags: {
         Args: { _names: string[]; _strip_from_customers?: boolean }
         Returns: number
