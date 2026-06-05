@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown, SlidersHorizontal } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -260,34 +261,112 @@ export default function Customers() {
               className="pl-9"
             />
           </div>
-          <FilterCombobox
-            className="w-full sm:w-44"
-            placeholder="สถานะ"
-            value={statusFilter}
-            onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
-            options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
-          />
-          <FilterCombobox
-            className="w-full sm:w-40"
-            placeholder="ระดับ"
-            value={tierFilter}
-            onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
-            options={[
-              { value: "all", label: "ทุกระดับ" },
-              ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
-              { value: "__none__", label: "ยังไม่กำหนด" },
-            ]}
-          />
-          <FilterCombobox
-            className="w-full sm:w-44"
-            placeholder="แท็ก"
-            value={tagFilter || "all"}
-            onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
-            options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
-          />
-          <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
-            <Settings2 className="w-4 h-4" />
-          </Button>
+
+          {/* Mobile: collapse 3 filters into a Sheet */}
+          <div className="flex gap-2 sm:hidden">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="flex-1 justify-start gap-2 relative">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  ตัวกรอง
+                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
+                    <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
+                      {[statusFilter !== "all", tierFilter !== "all", !!tagFilter].filter(Boolean).length}
+                    </Badge>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl">
+                <SheetHeader className="mb-4">
+                  <SheetTitle>ตัวกรองลูกค้า</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-3 pb-6">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">สถานะ</p>
+                    <FilterCombobox
+                      className="w-full"
+                      placeholder="สถานะ"
+                      value={statusFilter}
+                      onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
+                      options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">ระดับ</p>
+                    <FilterCombobox
+                      className="w-full"
+                      placeholder="ระดับ"
+                      value={tierFilter}
+                      onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
+                      options={[
+                        { value: "all", label: "ทุกระดับ" },
+                        ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
+                        { value: "__none__", label: "ยังไม่กำหนด" },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">แท็ก</p>
+                    <FilterCombobox
+                      className="w-full"
+                      placeholder="แท็ก"
+                      value={tagFilter || "all"}
+                      onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+                      options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
+                    />
+                  </div>
+                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
+                    <Button
+                      variant="ghost"
+                      className="w-full text-muted-foreground"
+                      onClick={() => {
+                        setStatusFilter("all"); updateFilter("status", "all");
+                        setTierFilter("all"); updateFilter("tier", "all");
+                        setTagFilter(""); updateFilter("tag", "all");
+                      }}
+                    >
+                      <X className="w-4 h-4 mr-1" /> ล้างตัวกรองทั้งหมด
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
+              <Settings2 className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Desktop: original layout */}
+          <div className="hidden sm:flex gap-2">
+            <FilterCombobox
+              className="w-44"
+              placeholder="สถานะ"
+              value={statusFilter}
+              onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
+              options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
+            />
+            <FilterCombobox
+              className="w-40"
+              placeholder="ระดับ"
+              value={tierFilter}
+              onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
+              options={[
+                { value: "all", label: "ทุกระดับ" },
+                ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
+                { value: "__none__", label: "ยังไม่กำหนด" },
+              ]}
+            />
+            <FilterCombobox
+              className="w-44"
+              placeholder="แท็ก"
+              value={tagFilter || "all"}
+              onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+              options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
+            />
+            <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
+              <Settings2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {tagFilter && (
@@ -393,65 +472,68 @@ export default function Customers() {
                         <p className="font-semibold truncate">{c.nickname || c.display_name || "ไม่ระบุชื่อ"}</p>
                         {c.tier === "VIP" && <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0"/>}
                       </div>
-                      <div className="flex flex-wrap gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="inline-flex">
-                              {tierDef ? (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-0 text-white cursor-pointer" style={{ backgroundColor: tierDef.color }}>
-                                  {tierDef.name}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-dashed text-muted-foreground cursor-pointer">
-                                  + ระดับ
-                                </Badge>
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="inline-flex">
+                                {tierDef ? (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-0 text-white cursor-pointer" style={{ backgroundColor: tierDef.color }}>
+                                    {tierDef.name}
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 border-dashed text-muted-foreground cursor-pointer">
+                                    + ระดับ
+                                  </Badge>
+                                )}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-1" align="start">
+                              {tierList.map(t => (
+                                <button key={t.name} onClick={() => setCustomerTier(c.id, t.name)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm">
+                                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
+                                  {t.name}
+                                </button>
+                              ))}
+                              {c.tier && (
+                                <button onClick={() => setCustomerTier(c.id, null)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-destructive/10 text-destructive text-left text-xs border-t mt-1 pt-2">
+                                  <X className="w-3 h-3" /> ลบระดับ
+                                </button>
                               )}
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-48 p-1" align="start">
-                            {tierList.map(t => (
-                              <button key={t.name} onClick={() => setCustomerTier(c.id, t.name)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent text-left text-sm">
-                                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                                {t.name}
-                              </button>
-                            ))}
-                            {c.tier && (
-                              <button onClick={() => setCustomerTier(c.id, null)} className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-destructive/10 text-destructive text-left text-xs border-t mt-1 pt-2">
-                                <X className="w-3 h-3" /> ลบระดับ
-                              </button>
-                            )}
-                          </PopoverContent>
-                        </Popover>
-                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", STATUS_COLOR[c.status])}>
-                          {STATUS_LABEL[c.status] || c.status}
-                        </Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mb-2" onClick={(e) => e.stopPropagation()}>
-                        {Array.isArray(c.tags) && c.tags.slice(0, 5).map((t: string) => (
-                          <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
-                            {t}
+                            </PopoverContent>
+                          </Popover>
+                          <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-5", STATUS_COLOR[c.status])}>
+                            {STATUS_LABEL[c.status] || c.status}
                           </Badge>
-                        ))}
-                        {Array.isArray(c.tags) && c.tags.length > 5 && (
-                          <span className="text-[10px] text-muted-foreground self-center">+{c.tags.length - 5}</span>
-                        )}
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0 h-5 rounded-md border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground transition">
-                              <Plus className="w-2.5 h-2.5"/> แท็ก
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-64 p-0" align="start">
-                            <TagChecklist
-                              targets={[c]}
-                              masterTags={masterTags}
-                              busy={bulkBusy}
-                              onApply={(adds, removes) => applyTagChanges([c.id], adds, removes)}
-                            />
-                          </PopoverContent>
-                        </Popover>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          <TagIcon className="w-3 h-3 text-muted-foreground/60 mr-0.5 shrink-0" />
+                          {Array.isArray(c.tags) && c.tags.slice(0, 5).map((t: string) => (
+                            <Badge key={t} className="text-[10px] px-1.5 py-0 h-5 border-0 text-white" style={{ backgroundColor: tagColor(t) }}>
+                              {t}
+                            </Badge>
+                          ))}
+                          {Array.isArray(c.tags) && c.tags.length > 5 && (
+                            <span className="text-[10px] text-muted-foreground self-center">+{c.tags.length - 5}</span>
+                          )}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0 h-5 rounded-md border border-dashed text-muted-foreground hover:bg-accent hover:text-foreground transition">
+                                <Plus className="w-2.5 h-2.5"/> แท็ก
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-0" align="start">
+                              <TagChecklist
+                                targets={[c]}
+                                masterTags={masterTags}
+                                busy={bulkBusy}
+                                onApply={(adds, removes) => applyTagChanges([c.id], adds, removes)}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                       </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
+                      <div className="space-y-1 text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed border-border/60">
                         {c.phone ? (
                           <div className="flex items-center gap-1.5"><Phone className="w-3 h-3"/> {c.phone}</div>
                         ) : (

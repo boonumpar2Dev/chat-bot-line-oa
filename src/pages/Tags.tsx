@@ -83,6 +83,7 @@ export default function Tags() {
   const [rescanning, setRescanning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"default" | "name" | "count_desc" | "count_asc">("default");
 
   const load = async () => {
     setLoading(true);
@@ -245,18 +246,34 @@ export default function Tags() {
               <Button onClick={() => setEditing({ color: "#94a3b8", sort_order: 0 })} size="sm" className="h-8 gap-1"><Plus className="w-4 h-4"/> เพิ่มแท็ก</Button>
             </div>
           </div>
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="🔍 ค้นหาแท็ก (พิมพ์ชื่อแท็ก เช่น VIP, 2569, บริษัท)"
-            className="h-9"
-          />
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="🔍 ค้นหาแท็ก (เช่น VIP, 2569, บริษัท)"
+              className="h-9 flex-1"
+            />
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="h-9 w-full sm:w-48">
+                <SelectValue placeholder="เรียงตาม" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">เรียงเริ่มต้น (ลำดับ)</SelectItem>
+                <SelectItem value="name">ชื่อ A→Z / ก→ฮ</SelectItem>
+                <SelectItem value="count_desc">ลูกค้ามาก → น้อย</SelectItem>
+                <SelectItem value="count_asc">ลูกค้าน้อย → มาก</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {loading ? <div className="text-center text-muted-foreground py-10">กำลังโหลด...</div>
             : tags.length === 0 ? (
               <Card><CardContent className="py-12 text-center text-muted-foreground">ยังไม่มีแท็ก — กดปุ่ม "เพิ่มแท็ก" เพื่อเริ่ม</CardContent></Card>
             ) : (() => {
               const q = search.trim().toLowerCase();
-              const filtered = q ? tags.filter(t => t.name.toLowerCase().includes(q)) : tags;
+              let filtered = q ? tags.filter(t => t.name.toLowerCase().includes(q)) : [...tags];
+              if (sortBy === "name") filtered.sort((a, b) => a.name.localeCompare(b.name, "th"));
+              else if (sortBy === "count_desc") filtered.sort((a, b) => (counts[b.name] || 0) - (counts[a.name] || 0));
+              else if (sortBy === "count_asc") filtered.sort((a, b) => (counts[a.name] || 0) - (counts[b.name] || 0));
               if (filtered.length === 0) {
                 return <Card><CardContent className="py-12 text-center text-muted-foreground">ไม่พบแท็กที่ตรงกับ "{search}"</CardContent></Card>;
               }
