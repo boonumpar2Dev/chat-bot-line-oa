@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon, Megaphone, Activity } from "lucide-react";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon, Megaphone, Activity, MoreHorizontal } from "lucide-react";
 import boonumparLogo from "@/assets/boonumpar-logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+
 
 type NavItem = { to: string; label: string; icon: any; exact?: boolean; key: MenuKey; adminOnly?: boolean; ownerOnly?: boolean };
 type NavGroup = { label?: string; items: NavItem[] };
