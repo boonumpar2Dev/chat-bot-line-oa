@@ -129,16 +129,14 @@ export default function AppLayout() {
         </SheetContent>
       </Sheet>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="lg:hidden h-14 border-b flex items-center px-3 gap-2 bg-card">
-          <Button size="icon" variant="ghost" onClick={() => setMobileOpen(true)}><Menu /></Button>
-          <div className="flex items-center gap-2">
-            <img src={boonumparLogo.url} alt="Boonumpar" className="h-7 w-auto object-contain" />
-            <span className="font-display font-semibold">Boonumpar Chat</span>
-          </div>
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="lg:hidden h-12 border-b flex items-center px-2 gap-2 bg-card shrink-0">
+          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setMobileOpen(true)}><Menu className="w-5 h-5" /></Button>
+          <img src={boonumparLogo.url} alt="Boonumpar" className="h-7 w-auto object-contain" />
         </header>
-        <main className="flex-1 overflow-auto"><Outlet /></main>
+        <main className="flex-1 overflow-auto min-w-0"><Outlet /></main>
       </div>
+
     </div>
   );
 }
