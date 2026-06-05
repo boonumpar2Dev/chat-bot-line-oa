@@ -137,9 +137,12 @@ function PackagesTab() {
   };
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id ? await supabase.from("catering_packages").update(payload).eq("id", edit.id) : await supabase.from("catering_packages").insert(payload);
+    const res = edit.id
+      ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
+      : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
     toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
+    if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
   };
   const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
 
