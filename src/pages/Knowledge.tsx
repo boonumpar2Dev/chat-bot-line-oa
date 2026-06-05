@@ -499,7 +499,7 @@ function KnowledgeBaseTab() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) resetAcks(); setOpen(v); }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{edit.id ? "แก้ไขข้อมูล" : "เพิ่มข้อมูล"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
