@@ -721,7 +721,7 @@ function FilterCombobox({ value, onChange, options, placeholder, className }: {
           <TagIcon className="w-3.5 h-3.5 opacity-50 shrink-0 ml-2" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="p-0 w-[260px]" align="start">
+      <PopoverContent className="p-0 w-[260px]" align="start" side="bottom" sideOffset={4} avoidCollisions={false}>
         <Command>
           <CommandInput placeholder="ค้นหา..." />
           <CommandList className="max-h-72">
