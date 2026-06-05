@@ -133,7 +133,7 @@ export default function Dashboard() {
 
 
       {/* SLA Breaches */}
-      <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive">
+      <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive min-w-0 overflow-hidden">
         <div className="p-5 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-destructive" />
