@@ -122,9 +122,11 @@ export default function Tags() {
 
   const remove = async () => {
     if (!deleting) return;
-    const { error } = await supabase.from("tags").delete().eq("id", deleting.id);
+    const { data, error } = await supabase.rpc("bulk_delete_tags", { _names: [deleting.name], _strip_from_customers: true });
     if (error) { toast.error(error.message); return; }
-    toast.success("ลบแท็กแล้ว"); setDeleting(null); load();
+    const affected = typeof data === "number" ? data : 0;
+    toast.success(affected > 0 ? `ลบแท็กแล้ว (ถอดออกจากลูกค้า ${affected} คน)` : "ลบแท็กแล้ว");
+    setDeleting(null); load();
   };
 
   const saveAi = async (tag: Tag) => {
