@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -10,6 +10,16 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText, Shield } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -355,6 +365,14 @@ function KnowledgeBaseTab() {
   const [filterCat, setFilterCat] = useState<string>("__all");
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertType, setAlertType] = useState<'rule' | 'nocat' | 'delete' | null>(null);
+  const [delTargetId, setDelTargetId] = useState<string | null>(null);
+  const ruleAckedRef = useRef(false);
+  const noCatAckedRef = useRef(false);
+
+  const resetAcks = () => { ruleAckedRef.current = false; noCatAckedRef.current = false; };
+
   const { data: items, isLoading } = useQuery({
     queryKey: ["kb"],
     queryFn: async () => (await supabase.from("knowledge_base").select("*").order("sort_order")).data ?? [],
@@ -364,32 +382,25 @@ function KnowledgeBaseTab() {
     queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order").order("name")).data ?? [],
   });
 
-  const openNew = () => { setEdit(blankKB); setOpen(true); };
-  const openEdit = (i: any) => { setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] }); setOpen(true); };
+  const openNew = () => { resetAcks(); setEdit(blankKB); setOpen(true); };
+  const openEdit = (i: any) => { resetAcks(); setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] }); setOpen(true); };
   const openDuplicate = (i: any) => {
+    resetAcks();
     const { id, created_at, updated_at, ...rest } = i;
     setEdit({ ...rest, title: `${i.title} (สำเนา)`, image_urls: [...(i.image_urls || [])], video_urls: structuredClone(i.video_urls || []), bundle_image_titles: [...(i.bundle_image_titles || [])] });
     setOpen(true);
   };
+
   const save = async () => {
-    // Phase 2 guard: ถ้าเนื้อหาดูเป็น "กฎ" ไม่ใช่ข้อมูลตอบลูกค้า → เตือนก่อนบันทึก
     const c = (edit.content || "").trim();
     const ruleHints = /(^|\n)\s*(ห้าม|ต้อง|อย่า|ใช้คำว่า|ใช้คำ|ไม่ควร|ควรใช้|ต้องตอบ|ห้ามตอบ|ห้ามพูด|ห้ามใช้)/;
     const looksLikeRule = c.length < 400 && ruleHints.test(c);
-    if (looksLikeRule && !(window as any).__kbRuleAck) {
-      const ok = window.confirm(
-        "ดูเหมือนคุณกำลังใส่ 'กฎการตอบ' (ห้าม/ต้อง/ใช้คำว่า…) ไม่ใช่ข้อมูลตอบลูกค้า\n\n" +
-        "กฎควรใส่ที่: ตั้งค่าระบบ → กฎ AI (จะถูกใช้ทุกครั้ง สม่ำเสมอกว่า)\n" +
-        "ฐานความรู้ออกแบบเพื่อ 'ข้อมูลที่ลูกค้าถาม' (เมนู ราคา รีวิว FAQ)\n\n" +
-        "กด OK = บันทึกใส่ KB ต่อ / Cancel = ยกเลิก เพื่อไปใส่ที่ 'กฎ AI' แทน"
-      );
-      if (!ok) return;
+    if (looksLikeRule && !ruleAckedRef.current) {
+      setAlertType('rule'); setAlertOpen(true); return;
     }
-    // เตือนถ้ายังไม่ได้เลือกหมวด → บันทึกเป็น "ไม่มีหมวด"
     const noCategory = !edit.category || String(edit.category).trim() === "";
-    if (noCategory) {
-      const ok = window.confirm("ยังไม่ได้เลือกหมวด จะบันทึกเป็น 'ไม่มีหมวด' ใช่ไหม?\n\nกด OK = บันทึกต่อ / Cancel = กลับไปเลือกหมวด");
-      if (!ok) return;
+    if (noCategory && !noCatAckedRef.current) {
+      setAlertType('nocat'); setAlertOpen(true); return;
     }
     const payload: any = { ...edit, category: noCategory ? null : edit.category };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
@@ -397,13 +408,22 @@ function KnowledgeBaseTab() {
       ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
       : await supabase.from("knowledge_base").insert(payload);
     if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+    toast.success("บันทึกแล้ว"); setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
   };
-  const del = async (id: string) => {
-    if (!confirm("ลบรายการนี้?")) return;
-    await supabase.from("knowledge_base").delete().eq("id", id);
-    toast.success("ลบแล้ว"); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+
+  const handleAlertConfirm = () => {
+    setAlertOpen(false);
+    if (alertType === 'rule') { ruleAckedRef.current = true; save(); return; }
+    if (alertType === 'nocat') { noCatAckedRef.current = true; save(); return; }
+    if (alertType === 'delete' && delTargetId) {
+      supabase.from("knowledge_base").delete().eq("id", delTargetId).then(() => {
+        toast.success("ลบแล้ว"); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+      });
+      return;
+    }
   };
+
+  const del = (id: string) => { setDelTargetId(id); setAlertType('delete'); setAlertOpen(true); };
 
   const addCategory = async () => {
     const name = newCatName.trim();
@@ -479,7 +499,7 @@ function KnowledgeBaseTab() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) resetAcks(); setOpen(v); }}>
         <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{edit.id ? "แก้ไขข้อมูล" : "เพิ่มข้อมูล"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
@@ -569,6 +589,32 @@ function KnowledgeBaseTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {alertType === 'rule' && "ดูเหมือนกำลังใส่ 'กฎการตอบ'"}
+              {alertType === 'nocat' && "ยังไม่ได้เลือกหมวด"}
+              {alertType === 'delete' && "ยืนยันการลบ"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {alertType === 'rule' &&
+                "เนื้อหานี้ดูเหมือน 'กฎการตอบ' (ห้าม/ต้อง/ใช้คำว่า…) ไม่ใช่ข้อมูลตอบลูกค้า\n\n" +
+                "กฎควรใส่ที่: ตั้งค่าระบบ → กฎ AI (จะถูกใช้ทุกครั้ง สม่ำเสมอกว่า)\n" +
+                "ฐานความรู้ออกแบบเพื่อ 'ข้อมูลที่ลูกค้าถาม' (เมนู ราคา รีวิว FAQ)\n\n" +
+                "ต้องการบันทึกใส่ KB ต่อหรือไม่?"}
+              {alertType === 'nocat' &&
+                "ยังไม่ได้เลือกหมวด จะบันทึกเป็น 'ไม่มีหมวด' ใช่ไหม?\n\nกด บันทึก = บันทึกต่อ / กด ยกเลิก = กลับไปเลือกหมวด"}
+              {alertType === 'delete' && "ลบรายการนี้? การลบไม่สามารถเรียกคืนได้"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setAlertOpen(false); }}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAlertConfirm}>{alertType === 'delete' ? "ลบ" : "บันทึก"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
