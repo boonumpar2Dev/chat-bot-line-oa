@@ -210,20 +210,21 @@ export default function Broadcast() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid grid-cols-4 w-full sm:w-auto sm:inline-grid">
-                <TabsTrigger value="active" className="gap-1.5">
-                  📤 กำลังส่ง <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
+              <TabsList className="flex w-full sm:w-auto sm:inline-flex justify-start sm:justify-center">
+                <TabsTrigger value="active" className="gap-1.5 flex-1 sm:flex-none">
+                  📤 <span className="hidden xs:inline">กำลังส่ง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.active.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="sent" className="gap-1.5">
-                  ✅ สำเร็จ <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
+                <TabsTrigger value="sent" className="gap-1.5 flex-1 sm:flex-none">
+                  ✅ <span className="hidden xs:inline">สำเร็จ</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.sent.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="failed" className="gap-1.5">
-                  ❌ ล้มเหลว <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
+                <TabsTrigger value="failed" className="gap-1.5 flex-1 sm:flex-none">
+                  ❌ <span className="hidden xs:inline">ล้มเหลว</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.failed.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="draft" className="gap-1.5">
-                  📝 ร่าง <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
+                <TabsTrigger value="draft" className="gap-1.5 flex-1 sm:flex-none">
+                  📝 <span className="hidden xs:inline">ร่าง</span> <Badge variant="secondary" className="ml-1 h-5 px-1.5">{groups.draft.length}</Badge>
                 </TabsTrigger>
               </TabsList>
+
               <TabsContent value="active">{renderTable(groups.active, "ไม่มีแคมเปญที่กำลังส่งหรือตั้งเวลาไว้")}</TabsContent>
               <TabsContent value="sent">{renderTable(groups.sent, "ยังไม่มีแคมเปญที่ส่งสำเร็จ")}</TabsContent>
               <TabsContent value="failed">{renderTable(groups.failed, "ไม่มีแคมเปญที่ล้มเหลว")}</TabsContent>
