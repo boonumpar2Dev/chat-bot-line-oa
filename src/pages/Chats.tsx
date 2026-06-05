@@ -325,9 +325,33 @@ export default function Chats() {
           return prev;
         });
       })
+      // Fallback: listen to NEW conversations so the list updates even if the customers UPDATE event is missed/throttled
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations" }, async (payload: any) => {
+        const cid = payload.new?.customer_id;
+        if (!cid) return;
+        const { data: fresh } = await supabase.from("customers").select("*").eq("id", cid).maybeSingle();
+        if (!fresh) return;
+        refreshCounts();
+        setCustomers(prev => {
+          const idx = prev.findIndex(c => c.id === cid);
+          const merged = idx >= 0 ? { ...prev[idx], ...fresh } : fresh;
+          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+          if (idx >= 0) {
+            if (!stillMatches) return prev.filter(c => c.id !== cid);
+            const next = [...prev];
+            next[idx] = merged;
+            return next.sort((a, b) =>
+              new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
+            );
+          }
+          if (!isSearching && stillMatches) return [merged, ...prev];
+          return prev;
+        });
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [isSearching, filter, slaCutoffMs, slaCutoffIso]);
+
 
   // Infinite scroll
   const loadMore = async () => {
