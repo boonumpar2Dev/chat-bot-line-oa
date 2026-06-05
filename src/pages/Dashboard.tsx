@@ -170,7 +170,7 @@ export default function Dashboard() {
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 min-w-0">
         {/* Recent */}
         <Card className="shadow-soft border-border/60">
           <div className="p-5 border-b flex items-center justify-between">
