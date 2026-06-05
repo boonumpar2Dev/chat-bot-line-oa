@@ -83,6 +83,7 @@ export default function Tags() {
   const [rescanning, setRescanning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"default" | "name" | "count_desc" | "count_asc">("default");
 
   const load = async () => {
     setLoading(true);
