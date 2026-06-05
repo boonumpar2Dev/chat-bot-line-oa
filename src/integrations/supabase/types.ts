@@ -463,6 +463,9 @@ export type Database = {
           created_at: string
           custom_attributes: Json
           description: string | null
+          embedded_at: string | null
+          embedding: string | null
+          embedding_text: string | null
           id: string
           image_urls: string[]
           is_active: boolean
@@ -479,6 +482,9 @@ export type Database = {
           created_at?: string
           custom_attributes?: Json
           description?: string | null
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_text?: string | null
           id?: string
           image_urls?: string[]
           is_active?: boolean
@@ -495,6 +501,9 @@ export type Database = {
           created_at?: string
           custom_attributes?: Json
           description?: string | null
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_text?: string | null
           id?: string
           image_urls?: string[]
           is_active?: boolean
@@ -728,6 +737,9 @@ export type Database = {
           category: string | null
           content: string
           created_at: string
+          embedded_at: string | null
+          embedding: string | null
+          embedding_text: string | null
           id: string
           image_urls: string[]
           is_always_include: boolean
@@ -742,6 +754,9 @@ export type Database = {
           category?: string | null
           content?: string
           created_at?: string
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_text?: string | null
           id?: string
           image_urls?: string[]
           is_always_include?: boolean
@@ -756,6 +771,9 @@ export type Database = {
           category?: string | null
           content?: string
           created_at?: string
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_text?: string | null
           id?: string
           image_urls?: string[]
           is_always_include?: boolean
@@ -868,6 +886,9 @@ export type Database = {
           applicable_categories: string[]
           created_at: string
           description: string | null
+          embedded_at: string | null
+          embedding: string | null
+          embedding_text: string | null
           id: string
           image_urls: string[]
           is_active: boolean
@@ -880,6 +901,9 @@ export type Database = {
           applicable_categories?: string[]
           created_at?: string
           description?: string | null
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_text?: string | null
           id?: string
           image_urls?: string[]
           is_active?: boolean
@@ -892,6 +916,9 @@ export type Database = {
           applicable_categories?: string[]
           created_at?: string
           description?: string | null
+          embedded_at?: string | null
+          embedding?: string | null
+          embedding_text?: string | null
           id?: string
           image_urls?: string[]
           is_active?: boolean
@@ -1029,6 +1056,39 @@ export type Database = {
       is_admin_or_owner: { Args: { _user_id: string }; Returns: boolean }
       is_staff_member: { Args: { _user_id: string }; Returns: boolean }
       managed_auto_tags: { Args: { _cfg: Json }; Returns: string[] }
+      match_catering_packages: {
+        Args: {
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          similarity: number
+        }[]
+      }
+      match_knowledge_base: {
+        Args: {
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          similarity: number
+        }[]
+      }
+      match_promotions: {
+        Args: {
+          match_count?: number
+          min_similarity?: number
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          similarity: number
+        }[]
+      }
       merge_tags: {
         Args: { _source_names: string[]; _target_name: string }
         Returns: number
