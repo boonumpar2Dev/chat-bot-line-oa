@@ -385,7 +385,13 @@ function KnowledgeBaseTab() {
       );
       if (!ok) return;
     }
-    const payload: any = { ...edit };
+    // เตือนถ้ายังไม่ได้เลือกหมวด → บันทึกเป็น "ไม่มีหมวด"
+    const noCategory = !edit.category || String(edit.category).trim() === "";
+    if (noCategory) {
+      const ok = window.confirm("ยังไม่ได้เลือกหมวด จะบันทึกเป็น 'ไม่มีหมวด' ใช่ไหม?\n\nกด OK = บันทึกต่อ / Cancel = กลับไปเลือกหมวด");
+      if (!ok) return;
+    }
+    const payload: any = { ...edit, category: noCategory ? null : edit.category };
     delete payload.created_at; delete payload.updated_at; delete payload.tags;
     const res = edit.id
       ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id)
