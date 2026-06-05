@@ -74,6 +74,7 @@ export default function Tags() {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeTarget, setMergeTarget] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [assignTag, setAssignTag] = useState<Tag | null>(null);
 
   // Auto-tag settings
   const [auto, setAuto] = useState<AutoTagSettings>(DEFAULT_AUTO);
