@@ -133,7 +133,7 @@ export default function Dashboard() {
 
 
       {/* SLA Breaches */}
-      <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive">
+      <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive min-w-0 overflow-hidden">
         <div className="p-5 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-destructive" />
@@ -170,9 +170,9 @@ export default function Dashboard() {
         </div>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 min-w-0">
         {/* Recent */}
-        <Card className="shadow-soft border-border/60">
+        <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
           <div className="p-5 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-muted-foreground" />
@@ -206,7 +206,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Top CLV */}
-        <Card className="shadow-soft border-border/60">
+        <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
           <div className="p-5 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-success" />

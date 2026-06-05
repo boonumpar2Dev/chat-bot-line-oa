@@ -153,7 +153,7 @@ function PackagesTab() {
       {isLoading && <Loader2 className="animate-spin mx-auto"/>}
       <div className="grid md:grid-cols-2 gap-4">
         {pkgs?.map((p:any)=>(
-          <Card key={p.id} className="p-5 shadow-soft border-border/60 min-w-0">
+          <Card key={p.id} className="p-5 shadow-soft border-border/60 min-w-0 overflow-hidden">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0 flex-1">
                 <h3 className="font-display font-semibold break-words">{p.name}</h3>
@@ -320,7 +320,7 @@ function PromotionsTab() {
       <div className="flex justify-end"><Button onClick={()=>{setEdit(blankPromo);setOpen(true);}}><Plus/>เพิ่มโปรโมชั่น</Button></div>
       <div className="grid md:grid-cols-2 gap-4">
         {promos?.map((p:any)=>(
-          <Card key={p.id} className="p-5 shadow-soft border-border/60">
+          <Card key={p.id} className="p-5 shadow-soft border-border/60 min-w-0 overflow-hidden">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1">
                 <h3 className="font-display font-semibold">{p.name}</h3>
@@ -473,7 +473,7 @@ function KnowledgeBaseTab() {
       {isLoading && <Loader2 className="animate-spin mx-auto"/>}
       <div className="grid md:grid-cols-2 gap-4">
         {filtered.map((i: any) => (
-          <Card key={i.id} className="p-5 shadow-soft border-border/60">
+          <Card key={i.id} className="p-5 shadow-soft border-border/60 min-w-0 overflow-hidden">
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="min-w-0 flex-1">
                 <h3 className="font-display font-semibold truncate">{i.title}</h3>
