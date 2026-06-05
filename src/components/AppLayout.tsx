@@ -134,7 +134,7 @@ export default function AppLayout() {
           <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => setMobileOpen(true)}><Menu className="w-5 h-5" /></Button>
           <img src={boonumparLogo.url} alt="Boonumpar" className="h-7 w-auto object-contain" />
         </header>
-        <main className="flex-1 overflow-auto min-w-0"><Outlet /></main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0"><Outlet /></main>
       </div>
 
     </div>
