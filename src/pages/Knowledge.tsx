@@ -488,7 +488,7 @@ function KnowledgeBaseTab() {
                 <Button size="icon" variant="ghost" onClick={() => del(i.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
               </div>
             </div>
-            {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line">{i.content}</p>}
+            {i.content && <p className="text-sm text-muted-foreground line-clamp-3 whitespace-pre-line break-words">{i.content}</p>}
             {i.image_urls?.length > 0 && (
               <div className="flex gap-1 mt-3">
                 {i.image_urls.slice(0, 4).map((u: string, k: number) => (
