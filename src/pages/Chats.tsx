@@ -740,33 +740,47 @@ export default function Chats() {
         <ScrollArea className="flex-1">
           {loading && <div className="p-6 flex justify-center"><Loader2 className="animate-spin"/></div>}
           {!loading && filtered.length === 0 && <p className="p-6 text-sm text-center text-muted-foreground">ยังไม่มีลูกค้า</p>}
-          {filtered.map(c => (
+          {filtered.map(c => {
+            const isUnread = (c.unread_count || 0) > 0;
+            return (
             <button key={c.id} onClick={() => setSelectedId(c.id)}
-              className={cn("w-full text-left p-3 flex gap-3 border-b hover:bg-accent/50 transition", selectedId === c.id && "bg-accent")}>
-              <Avatar className="w-10 h-10 shrink-0">
-                {c.picture_url && <AvatarImage src={c.picture_url}/>}
-                <AvatarFallback className="bg-brand-gradient text-primary-foreground text-xs">
-                  {(c.nickname || c.display_name || "?")[0]}
-                </AvatarFallback>
-              </Avatar>
+              className={cn(
+                "w-full text-left p-3 flex gap-3 border-b hover:bg-accent/50 transition",
+                selectedId === c.id && "bg-accent",
+                isUnread && selectedId !== c.id && "bg-primary/[0.03]"
+              )}>
+              <div className="relative shrink-0">
+                <Avatar className="w-10 h-10">
+                  {c.picture_url && <AvatarImage src={c.picture_url}/>}
+                  <AvatarFallback className="bg-brand-gradient text-primary-foreground text-xs">
+                    {(c.nickname || c.display_name || "?")[0]}
+                  </AvatarFallback>
+                </Avatar>
+                {isUnread && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-background" aria-label="ยังไม่ได้อ่าน" />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <p className="font-medium text-sm truncate">{c.nickname || c.display_name || "ไม่ระบุ"}</p>
-                  {c.last_message_at && <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">
+                  <p className={cn("text-sm truncate", isUnread ? "font-semibold text-foreground" : "font-medium")}>
+                    {c.nickname || c.display_name || "ไม่ระบุ"}
+                  </p>
+                  {c.last_message_at && <span className={cn("text-[10px] shrink-0 ml-auto", isUnread ? "text-destructive font-medium" : "text-muted-foreground")}>
                     {formatDistanceToNow(new Date(c.last_message_at), { locale: th, addSuffix: false })}
                   </span>}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-snug [overflow-wrap:anywhere]">
+                <p className={cn("text-xs mt-0.5 line-clamp-2 leading-snug [overflow-wrap:anywhere]", isUnread ? "text-foreground/80" : "text-muted-foreground")}>
                   {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : formatSnippet(c.last_message_snippet)}
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
-                  {c.unread_count > 0 && <Badge className="text-[10px] py-0 h-4 ml-auto">{c.unread_count}</Badge>}
+                  {isUnread && <Badge variant="destructive" className="text-[10px] py-0 h-4 ml-auto px-1.5 min-w-[20px] justify-center">{c.unread_count}</Badge>}
                 </div>
               </div>
             </button>
-          ))}
+            );
+          })}
           {!isSearching && hasMore && !loading && (
             <div ref={sentinelRef} className="p-4 flex justify-center">
               {loadingMore ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground"/> : <span className="text-[10px] text-muted-foreground">เลื่อนเพื่อโหลดเพิ่ม…</span>}
