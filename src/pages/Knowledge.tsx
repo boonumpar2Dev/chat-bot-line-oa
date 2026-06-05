@@ -589,6 +589,32 @@ function KnowledgeBaseTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {alertType === 'rule' && "ดูเหมือนกำลังใส่ 'กฎการตอบ'"}
+              {alertType === 'nocat' && "ยังไม่ได้เลือกหมวด"}
+              {alertType === 'delete' && "ยืนยันการลบ"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {alertType === 'rule' &&
+                "เนื้อหานี้ดูเหมือน 'กฎการตอบ' (ห้าม/ต้อง/ใช้คำว่า…) ไม่ใช่ข้อมูลตอบลูกค้า\n\n" +
+                "กฎควรใส่ที่: ตั้งค่าระบบ → กฎ AI (จะถูกใช้ทุกครั้ง สม่ำเสมอกว่า)\n" +
+                "ฐานความรู้ออกแบบเพื่อ 'ข้อมูลที่ลูกค้าถาม' (เมนู ราคา รีวิว FAQ)\n\n" +
+                "ต้องการบันทึกใส่ KB ต่อหรือไม่?"}
+              {alertType === 'nocat' &&
+                "ยังไม่ได้เลือกหมวด จะบันทึกเป็น 'ไม่มีหมวด' ใช่ไหม?\n\nกด บันทึก = บันทึกต่อ / กด ยกเลิก = กลับไปเลือกหมวด"}
+              {alertType === 'delete' && "ลบรายการนี้? การลบไม่สามารถเรียกคืนได้"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setAlertOpen(false); }}>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAlertConfirm}>บันทึก</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
