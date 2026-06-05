@@ -14,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink } from "lucide-react";
+import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import BulkAssignDialog from "@/components/tags/BulkAssignDialog";
 
 type Tag = {
   id: string; name: string; color: string;
