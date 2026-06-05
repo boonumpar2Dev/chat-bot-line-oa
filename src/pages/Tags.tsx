@@ -14,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink } from "lucide-react";
+import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import BulkAssignDialog from "@/components/tags/BulkAssignDialog";
 
 type Tag = {
   id: string; name: string; color: string;
@@ -73,6 +74,7 @@ export default function Tags() {
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeTarget, setMergeTarget] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [assignTag, setAssignTag] = useState<Tag | null>(null);
 
   // Auto-tag settings
   const [auto, setAuto] = useState<AutoTagSettings>(DEFAULT_AUTO);
@@ -271,9 +273,10 @@ export default function Tags() {
                               <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3"/> 0</span>
                             )}
                           </div>
-                          <div className="flex gap-1 shrink-0">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)}><Pencil className="w-3.5 h-3.5"/></Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)}><Trash2 className="w-3.5 h-3.5"/></Button>
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10" onClick={() => setAssignTag(t)} title="ติดแท็กให้ลูกค้า"><UserPlus className="w-3.5 h-3.5"/></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)} title="แก้ไข"><Pencil className="w-3.5 h-3.5"/></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)} title="ลบ"><Trash2 className="w-3.5 h-3.5"/></Button>
                           </div>
                         </div>
                         {t.description && <p className="text-xs text-muted-foreground line-clamp-2 pl-7">{t.description}</p>}
@@ -597,6 +600,16 @@ export default function Tags() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {assignTag && (
+        <BulkAssignDialog
+          open={!!assignTag}
+          onOpenChange={(v) => !v && setAssignTag(null)}
+          tagName={assignTag.name}
+          tagColor={assignTag.color}
+          onDone={load}
+        />
+      )}
     </div>
   );
 }
