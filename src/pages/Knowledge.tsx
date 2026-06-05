@@ -305,9 +305,12 @@ function PromotionsTab() {
   const { data: cats } = useQuery({ queryKey:["pkg-cats"], queryFn: async()=>(await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
   const save = async () => {
     const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id ? await supabase.from("promotions").update(payload).eq("id",edit.id) : await supabase.from("promotions").insert(payload);
+    const res = edit.id
+      ? await supabase.from("promotions").update(payload).eq("id",edit.id).select("id").maybeSingle()
+      : await supabase.from("promotions").insert(payload).select("id").maybeSingle();
     if(res.error) return toast.error(res.error.message);
     toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
+    if (res.data?.id) triggerEmbed("promotions", res.data.id);
   };
   const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache(); };
   return (
