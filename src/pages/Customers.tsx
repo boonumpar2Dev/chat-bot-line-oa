@@ -276,15 +276,15 @@ export default function Customers() {
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="rounded-t-2xl">
-                <SheetHeader className="mb-4">
-                  <SheetTitle>ตัวกรองลูกค้า</SheetTitle>
+              <SheetContent side="bottom" className="rounded-t-2xl p-4 max-h-[55vh] overflow-y-auto">
+                <SheetHeader className="mb-3">
+                  <SheetTitle className="text-base">ตัวกรองลูกค้า</SheetTitle>
                 </SheetHeader>
-                <div className="space-y-3 pb-6">
+                <div className="space-y-2.5 pb-2">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">สถานะ</p>
+                    <p className="text-xs text-muted-foreground mb-1">สถานะ</p>
                     <FilterCombobox
-                      className="w-full"
+                      className="w-full h-9"
                       placeholder="สถานะ"
                       value={statusFilter}
                       onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
@@ -292,9 +292,9 @@ export default function Customers() {
                     />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">ระดับ</p>
+                    <p className="text-xs text-muted-foreground mb-1">ระดับ</p>
                     <FilterCombobox
-                      className="w-full"
+                      className="w-full h-9"
                       placeholder="ระดับ"
                       value={tierFilter}
                       onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
@@ -306,9 +306,9 @@ export default function Customers() {
                     />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">แท็ก</p>
+                    <p className="text-xs text-muted-foreground mb-1">แท็ก</p>
                     <FilterCombobox
-                      className="w-full"
+                      className="w-full h-9"
                       placeholder="แท็ก"
                       value={tagFilter || "all"}
                       onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
@@ -318,7 +318,8 @@ export default function Customers() {
                   {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
                     <Button
                       variant="ghost"
-                      className="w-full text-muted-foreground"
+                      size="sm"
+                      className="w-full text-muted-foreground h-8"
                       onClick={() => {
                         setStatusFilter("all"); updateFilter("status", "all");
                         setTierFilter("all"); updateFilter("tier", "all");
