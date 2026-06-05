@@ -273,9 +273,10 @@ export default function Tags() {
                               <span className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3"/> 0</span>
                             )}
                           </div>
-                          <div className="flex gap-1 shrink-0">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)}><Pencil className="w-3.5 h-3.5"/></Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)}><Trash2 className="w-3.5 h-3.5"/></Button>
+                          <div className="flex gap-0.5 shrink-0">
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10" onClick={() => setAssignTag(t)} title="ติดแท็กให้ลูกค้า"><UserPlus className="w-3.5 h-3.5"/></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(t)} title="แก้ไข"><Pencil className="w-3.5 h-3.5"/></Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleting(t)} title="ลบ"><Trash2 className="w-3.5 h-3.5"/></Button>
                           </div>
                         </div>
                         {t.description && <p className="text-xs text-muted-foreground line-clamp-2 pl-7">{t.description}</p>}
