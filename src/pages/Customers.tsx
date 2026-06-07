@@ -308,15 +308,11 @@ export default function Customers() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">แท็ก</p>
-                    <Select value={tagFilter || "all"} onValueChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}>
-                      <SelectTrigger className="w-full h-9"><SelectValue placeholder="แท็ก" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">ทุกแท็ก</SelectItem>
-                        {masterTags.map(t => (
-                          <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <TagFilterInline
+                      value={tagFilter}
+                      onChange={(nv) => { setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+                      tags={masterTags}
+                    />
                   </div>
                   {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
                     <Button
@@ -746,5 +742,46 @@ function FilterCombobox({ value, onChange, options, placeholder, className }: {
     </Popover>
   );
 }
+
+function TagFilterInline({ value, onChange, tags }: { value: string; onChange: (v: string) => void; tags: { name: string; color: string }[] }) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? tags.filter(t => t.name.toLowerCase().includes(s)) : tags;
+  }, [q, tags]);
+  return (
+    <div className="space-y-2">
+      <Input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="ค้นหาแท็ก..."
+        className="h-9"
+      />
+      <div className="max-h-48 overflow-y-auto rounded-md border border-border p-1 space-y-0.5">
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className={cn("w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent", !value && "bg-accent font-medium")}
+        >
+          ทุกแท็ก
+        </button>
+        {filtered.length === 0 ? (
+          <div className="text-xs text-muted-foreground text-center py-3">ไม่พบ</div>
+        ) : filtered.map(t => (
+          <button
+            key={t.name}
+            type="button"
+            onClick={() => onChange(t.name)}
+            className={cn("w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent flex items-center gap-2", value === t.name && "bg-accent font-medium")}
+          >
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+            <span className="truncate">{t.name}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 
