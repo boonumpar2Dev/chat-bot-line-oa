@@ -283,37 +283,40 @@ export default function Customers() {
                 <div className="space-y-2.5 pb-2">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">สถานะ</p>
-                    <FilterCombobox
-                      className="w-full h-9"
-                      placeholder="สถานะ"
-                      value={statusFilter}
-                      onChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}
-                      options={[{ value: "all", label: "ทุกสถานะ" }, ...Object.entries(STATUS_LABEL).map(([k, v]) => ({ value: k, label: v }))]}
-                    />
+                    <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}>
+                      <SelectTrigger className="w-full h-9"><SelectValue placeholder="สถานะ" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">ทุกสถานะ</SelectItem>
+                        {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>{v}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">ระดับ</p>
-                    <FilterCombobox
-                      className="w-full h-9"
-                      placeholder="ระดับ"
-                      value={tierFilter}
-                      onChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}
-                      options={[
-                        { value: "all", label: "ทุกระดับ" },
-                        ...tierList.map(t => ({ value: t.name, label: t.name, color: t.color })),
-                        { value: "__none__", label: "ยังไม่กำหนด" },
-                      ]}
-                    />
+                    <Select value={tierFilter} onValueChange={(v) => { setTierFilter(v); updateFilter("tier", v); }}>
+                      <SelectTrigger className="w-full h-9"><SelectValue placeholder="ระดับ" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">ทุกระดับ</SelectItem>
+                        {tierList.map(t => (
+                          <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
+                        ))}
+                        <SelectItem value="__none__">ยังไม่กำหนด</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">แท็ก</p>
-                    <FilterCombobox
-                      className="w-full h-9"
-                      placeholder="แท็ก"
-                      value={tagFilter || "all"}
-                      onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
-                      options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
-                    />
+                    <Select value={tagFilter || "all"} onValueChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}>
+                      <SelectTrigger className="w-full h-9"><SelectValue placeholder="แท็ก" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">ทุกแท็ก</SelectItem>
+                        {masterTags.map(t => (
+                          <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
                     <Button
