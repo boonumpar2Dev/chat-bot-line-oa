@@ -124,7 +124,7 @@ export default function AppLayout() {
   const bottomNavItems = [
     { to: "/chats", label: "แชท", icon: MessageSquare, key: "chats" as MenuKey },
     { to: "/customers", label: "ลูกค้า", icon: UserCircle2, key: "chats" as MenuKey },
-    { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" as MenuKey },
+    { to: "/tags", label: "แท็ก", icon: TagIcon, key: "tags" as MenuKey },
   ].filter(i => menus.includes(i.key));
 
   return (
