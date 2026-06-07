@@ -161,13 +161,6 @@ export default function AppLayout() {
               </NavLink>
             );
           })}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <MoreHorizontal className="w-5 h-5" />
-            <span>เพิ่มเติม</span>
-          </button>
         </nav>
       </div>
 
