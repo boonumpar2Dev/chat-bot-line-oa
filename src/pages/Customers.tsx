@@ -308,15 +308,11 @@ export default function Customers() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">แท็ก</p>
-                    <Select value={tagFilter || "all"} onValueChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}>
-                      <SelectTrigger className="w-full h-9"><SelectValue placeholder="แท็ก" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">ทุกแท็ก</SelectItem>
-                        {masterTags.map(t => (
-                          <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <TagFilterInline
+                      value={tagFilter}
+                      onChange={(nv) => { setTagFilter(nv); updateFilter("tag", nv || "all"); }}
+                      tags={masterTags}
+                    />
                   </div>
                   {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
                     <Button
