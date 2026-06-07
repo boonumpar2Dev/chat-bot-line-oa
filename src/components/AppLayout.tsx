@@ -124,7 +124,7 @@ export default function AppLayout() {
   const bottomNavItems = [
     { to: "/chats", label: "แชท", icon: MessageSquare, key: "chats" as MenuKey },
     { to: "/customers", label: "ลูกค้า", icon: UserCircle2, key: "chats" as MenuKey },
-    { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" as MenuKey },
+    { to: "/tags", label: "แท็ก", icon: TagIcon, key: "tags" as MenuKey },
   ].filter(i => menus.includes(i.key));
 
   return (
@@ -161,13 +161,6 @@ export default function AppLayout() {
               </NavLink>
             );
           })}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <MoreHorizontal className="w-5 h-5" />
-            <span>เพิ่มเติม</span>
-          </button>
         </nav>
       </div>
 
