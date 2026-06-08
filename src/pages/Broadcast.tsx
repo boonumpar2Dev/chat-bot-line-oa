@@ -1263,7 +1263,7 @@ function TestSendPanel({ bubbles }: { bubbles: Bubble[] }) {
 // ============================================================
 
 function ActionsEditor({
-  actions, onChange, max = 6, min = 1,
+  actions, onChange, max = 6, min = 0,
 }: { actions: ActionItem[]; onChange: (a: ActionItem[]) => void; max?: number; min?: number }) {
   const update = (i: number, patch: Partial<ActionItem>) =>
     onChange(actions.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
