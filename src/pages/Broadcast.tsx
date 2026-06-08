@@ -807,6 +807,16 @@ function BubbleEditor({
           )}
         </div>
       )}
+
+      {bubble.type === "rich_message" && (
+        <RichMessageEditor bubble={bubble as any} onUpdate={onUpdate} />
+      )}
+      {bubble.type === "rich_video" && (
+        <RichVideoEditor bubble={bubble as any} onUpdate={onUpdate} />
+      )}
+      {bubble.type === "card_message" && (
+        <CardMessageEditor bubble={bubble as any} onUpdate={onUpdate} />
+      )}
     </div>
   );
 }
