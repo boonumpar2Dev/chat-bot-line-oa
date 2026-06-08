@@ -921,8 +921,10 @@ export default function Chats() {
               </Dialog>
             </div>
 
-            {/* Manual timer */}
-            <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
+            {/* Manual timer (ไม่แสดงในกรุ๊ป/ห้อง) */}
+            {!(selected.line_user_id?.startsWith("C") || selected.line_user_id?.startsWith("R")) && (
+              <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
+            )}
 
             {/* Message search (toggleable) */}
             {showMsgSearch && (
