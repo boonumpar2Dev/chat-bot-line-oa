@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 const processingIds = new Set<string>();
-const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed"];
+const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning"];
 let LINE_TOKEN = ""; // loaded per-request from getLineConfig()
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
