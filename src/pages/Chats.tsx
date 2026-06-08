@@ -278,7 +278,7 @@ export default function Chats() {
     const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
     const [u, s, m, n] = await Promise.all([
       base().gt("unread_count", 0),
-      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)"),
+      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().is("phone", null),
     ]);
