@@ -960,6 +960,7 @@ export default function Chats() {
                   for (const m of messages) byId[m.id] = m;
                   return list.map(m => (
                     <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}
+                      customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
                       onReply={(msg)=>{
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
