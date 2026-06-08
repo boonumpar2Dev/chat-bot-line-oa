@@ -960,6 +960,7 @@ export default function Chats() {
                   for (const m of messages) byId[m.id] = m;
                   return list.map(m => (
                     <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}
+                      customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
                       onReply={(msg)=>{
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
@@ -1255,7 +1256,7 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
 });
 
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage, customerPicture, customerName }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any; customerPicture?: string | null; customerName?: string | null }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
@@ -1298,8 +1299,10 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
     ? (quotedMessage.sender === "customer" ? "ลูกค้า" : quotedMessage.sender === "admin" ? "แอดมิน" : "AI")
     : "";
   const quotedSnippet = quotedMessage ? formatSnippet(quotedMessage.message) : "";
-  return (
-    <div className={cn("flex flex-col gap-0.5 group", align)}>
+  const initial = (customerName || "?").trim().charAt(0).toUpperCase();
+  const bubble = (
+    <div className={cn("flex flex-col gap-0.5 group min-w-0 flex-1", align)}>
+
       {showLabel && (
         <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
           {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
@@ -1385,5 +1388,16 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
       </div>
     </div>
   );
+  if (!isCustomer) return bubble;
+  return (
+    <div className="flex items-start gap-2">
+      <Avatar className="w-8 h-8 shrink-0 mt-0.5">
+        {customerPicture && <AvatarImage src={customerPicture}/>}
+        <AvatarFallback className="bg-brand-gradient text-primary-foreground text-[10px]">{initial}</AvatarFallback>
+      </Avatar>
+      {bubble}
+    </div>
+  );
 }
+
 
