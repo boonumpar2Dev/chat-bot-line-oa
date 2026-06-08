@@ -774,7 +774,8 @@ export default function Chats() {
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
-                  {!c.ai_active && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
+                  {!c.ai_active && !(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
+                  {(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">กรุ๊ป</Badge>}
                   {isUnread && <Badge variant="destructive" className="text-[10px] py-0 h-4 ml-auto px-1.5 min-w-[20px] justify-center">{c.unread_count}</Badge>}
                 </div>
               </div>
@@ -830,10 +831,12 @@ export default function Chats() {
                   {selected.phone && <span className="text-xs text-muted-foreground hidden sm:inline">{selected.phone}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
-                <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
-              </div>
+              {!(selected.line_user_id?.startsWith("C") || selected.line_user_id?.startsWith("R")) && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
+                  <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
+                </div>
+              )}
               <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
                 <Search className="w-4 h-4"/>
               </Button>
@@ -918,8 +921,10 @@ export default function Chats() {
               </Dialog>
             </div>
 
-            {/* Manual timer */}
-            <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
+            {/* Manual timer (ไม่แสดงในกรุ๊ป/ห้อง) */}
+            {!(selected.line_user_id?.startsWith("C") || selected.line_user_id?.startsWith("R")) && (
+              <ManualTimerBanner customer={selected} onUpdate={updateLocalCustomer}/>
+            )}
 
             {/* Message search (toggleable) */}
             {showMsgSearch && (
@@ -1062,7 +1067,9 @@ export default function Chats() {
                 </Button>
               </div>
 
-              <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
+              {!(selected.line_user_id?.startsWith("C") || selected.line_user_id?.startsWith("R")) && (
+                <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
+              )}
             </div>
           </>
         )}
