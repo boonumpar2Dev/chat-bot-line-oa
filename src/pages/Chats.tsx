@@ -470,24 +470,39 @@ export default function Chats() {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
     if (!viewport || messages.length === 0) return;
-    // ถ้าเพิ่งเปลี่ยนห้อง → เลื่อนแบบ instant และยิงซ้ำหลังรูปโหลด
-    // หมายเหตุ: อัปเดต ref หลังจาก messages โหลดแล้วเท่านั้น (กันกรณี selectedId เปลี่ยนตอน messages ยังว่าง)
     const isRoomSwitch = lastScrolledIdRef.current !== selectedId;
     lastScrolledIdRef.current = selectedId;
     const scrollToBottom = (behavior: ScrollBehavior) => {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior });
     };
     let timers: ReturnType<typeof setTimeout>[] = [];
+    let observer: ResizeObserver | null = null;
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
     requestAnimationFrame(() => {
       scrollToBottom(isRoomSwitch ? "auto" : "smooth");
       if (isRoomSwitch) {
-        // เผื่อรูป/มีเดีย/บับเบิลขยายตัวหลังเรนเดอร์ → ยิงซ้ำหลายรอบ
+        // ยิงซ้ำตามช่วงเวลาเดิม (กันกรณี layout ขยับเล็กน้อย)
         timers = [50, 150, 350, 700, 1200, 2000].map(ms =>
           setTimeout(() => scrollToBottom("auto"), ms)
         );
+        // เพิ่ม: ฟัง resize ของ content (รูป/วิดีโอโหลดเสร็จ → ความสูงเพิ่ม → เลื่อนลงล่างอีก)
+        // ทำงานสูงสุด 5 วินาทีหลังเปลี่ยนห้อง แล้วหยุด เพื่อไม่รบกวนการ scroll ของผู้ใช้
+        const content = viewport.firstElementChild as HTMLElement | null;
+        if (content && typeof ResizeObserver !== "undefined") {
+          observer = new ResizeObserver(() => scrollToBottom("auto"));
+          observer.observe(content);
+          stopTimer = setTimeout(() => {
+            observer?.disconnect();
+            observer = null;
+          }, 5000);
+        }
       }
     });
-    return () => { timers.forEach(clearTimeout); };
+    return () => {
+      timers.forEach(clearTimeout);
+      if (stopTimer) clearTimeout(stopTimer);
+      observer?.disconnect();
+    };
   }, [messages, selectedId]);
 
   // Customers found by searching inside message content
