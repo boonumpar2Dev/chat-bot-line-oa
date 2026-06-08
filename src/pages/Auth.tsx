@@ -16,6 +16,7 @@ export default function Auth() {
   const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [name, setName] = useState("");
 
   useEffect(() => {
