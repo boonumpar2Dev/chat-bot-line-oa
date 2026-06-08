@@ -12,17 +12,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Megaphone, Plus, Trash2, Image as ImageIcon, Video, Type, FileJson, ChevronUp, ChevronDown, Send, Clock, Loader2, Eye, RefreshCw, X, Search, Smartphone, FlaskConical, Check, Copy } from "lucide-react";
+import { Megaphone, Plus, Trash2, Image as ImageIcon, Video, Type, FileJson, ChevronUp, ChevronDown, Send, Clock, Loader2, Eye, RefreshCw, X, Search, Smartphone, FlaskConical, Check, Copy, Sparkles, Film, LayoutGrid, Link as LinkIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 
-type BubbleType = "text" | "image" | "video" | "flex";
+type BubbleType = "text" | "image" | "video" | "flex" | "rich_message" | "rich_video" | "card_message";
+export type ActionItem = { label: string; type: "uri" | "message"; uri?: string; text?: string };
+export type CardItem = { image_url: string; title: string; description: string; actions: ActionItem[] };
 type Bubble =
   | { type: "text"; text: string }
   | { type: "image"; url: string; preview_url?: string }
   | { type: "video"; url: string; thumb_url?: string }
-  | { type: "flex"; alt_text: string; contents: any };
+  | { type: "flex"; alt_text: string; contents: any }
+  | { type: "rich_message"; image_url: string; alt_text: string; actions: ActionItem[] }
+  | { type: "rich_video"; video_url: string; preview_url: string; alt_text: string; actions: ActionItem[] }
+  | { type: "card_message"; alt_text: string; cards: CardItem[] };
 
 type Campaign = {
   id: string;
@@ -363,6 +368,9 @@ function ComposerDialog({
     if (type === "image") setBubbles([...bubbles, { type: "image", url: "" }]);
     if (type === "video") setBubbles([...bubbles, { type: "video", url: "" }]);
     if (type === "flex") setBubbles([...bubbles, { type: "flex", alt_text: "", contents: {} }]);
+    if (type === "rich_message") setBubbles([...bubbles, { type: "rich_message", image_url: "", alt_text: "Rich Message", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }]);
+    if (type === "rich_video") setBubbles([...bubbles, { type: "rich_video", video_url: "", preview_url: "", alt_text: "Rich Video", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }]);
+    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] }]);
   };
 
   const updateBubble = (i: number, patch: Partial<Bubble>) => {
@@ -390,6 +398,14 @@ function ComposerDialog({
         if (b.type === "flex") {
           if (!b.alt_text.trim()) { toast.error("Flex ต้องมี alt text"); return; }
           if (!b.contents || typeof b.contents !== "object") { toast.error("Flex contents ไม่ถูกต้อง"); return; }
+        }
+        if (b.type === "rich_message" && !b.image_url) { toast.error("Rich Message ต้องมีรูป"); return; }
+        if (b.type === "rich_video" && (!b.video_url || !b.preview_url)) { toast.error("Rich Video ต้องมีวิดีโอ+รูปปก"); return; }
+        if (b.type === "card_message") {
+          if (!b.cards?.length) { toast.error("Card Message ต้องมีอย่างน้อย 1 การ์ด"); return; }
+          for (const c of b.cards) {
+            if (!c.image_url) { toast.error("ทุกการ์ดต้องมีรูป"); return; }
+          }
         }
       }
     }
@@ -549,19 +565,38 @@ function ComposerDialog({
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-semibold">เนื้อหาข้อความ ({bubbles.length}/5)</Label>
-              <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="outline" onClick={() => addBubble("text")} disabled={bubbles.length >= 5}>
-                  <Type className="w-3.5 h-3.5 mr-1" /> ข้อความ
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addBubble("image")} disabled={bubbles.length >= 5}>
-                  <ImageIcon className="w-3.5 h-3.5 mr-1" /> รูป
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addBubble("video")} disabled={bubbles.length >= 5}>
-                  <Video className="w-3.5 h-3.5 mr-1" /> วิดีโอ
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addBubble("flex")} disabled={bubbles.length >= 5}>
-                  <FileJson className="w-3.5 h-3.5 mr-1" /> Flex
-                </Button>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <div className="text-[11px] text-muted-foreground mb-1">ข้อความพื้นฐาน</div>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={() => addBubble("text")} disabled={bubbles.length >= 5}>
+                    <Type className="w-3.5 h-3.5 mr-1" /> ข้อความ
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("image")} disabled={bubbles.length >= 5}>
+                    <ImageIcon className="w-3.5 h-3.5 mr-1" /> รูป
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("video")} disabled={bubbles.length >= 5}>
+                    <Video className="w-3.5 h-3.5 mr-1" /> วิดีโอ
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-muted-foreground mb-1">Rich Content (มีปุ่มกด)</div>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={() => addBubble("rich_message")} disabled={bubbles.length >= 5} className="border-primary/40">
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" /> Rich Message
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("rich_video")} disabled={bubbles.length >= 5} className="border-primary/40">
+                    <Film className="w-3.5 h-3.5 mr-1 text-primary" /> Rich Video
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("card_message")} disabled={bubbles.length >= 5} className="border-primary/40">
+                    <LayoutGrid className="w-3.5 h-3.5 mr-1 text-primary" /> Card (carousel)
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => addBubble("flex")} disabled={bubbles.length >= 5} title="สำหรับ developer">
+                    <FileJson className="w-3.5 h-3.5 mr-1" /> Flex JSON
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -772,6 +807,16 @@ function BubbleEditor({
           )}
         </div>
       )}
+
+      {bubble.type === "rich_message" && (
+        <RichMessageEditor bubble={bubble as any} onUpdate={onUpdate} />
+      )}
+      {bubble.type === "rich_video" && (
+        <RichVideoEditor bubble={bubble as any} onUpdate={onUpdate} />
+      )}
+      {bubble.type === "card_message" && (
+        <CardMessageEditor bubble={bubble as any} onUpdate={onUpdate} />
+      )}
     </div>
   );
 }
@@ -860,6 +905,40 @@ function CampaignDetail({
                           <p className="text-xs text-muted-foreground mb-1">Alt: {b.alt_text}</p>
                           <pre className="text-[10px] bg-background rounded p-2 overflow-x-auto">{JSON.stringify(b.contents, null, 2)}</pre>
                         </>
+                      )}
+                      {b.type === "rich_message" && (
+                        <div className="flex gap-3">
+                          {b.image_url && <img src={b.image_url} className="w-24 h-24 object-cover rounded" />}
+                          <div className="text-xs space-y-1">
+                            <div className="text-muted-foreground">Alt: {b.alt_text}</div>
+                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                          </div>
+                        </div>
+                      )}
+                      {b.type === "rich_video" && (
+                        <div className="flex gap-3">
+                          {b.preview_url && <img src={b.preview_url} className="w-32 h-20 object-cover rounded" />}
+                          <div className="text-xs space-y-1">
+                            <div className="text-muted-foreground">Alt: {b.alt_text}</div>
+                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                          </div>
+                        </div>
+                      )}
+                      {b.type === "card_message" && (
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1.5">Alt: {b.alt_text} · {b.cards.length} การ์ด</div>
+                          <div className="flex gap-2 overflow-x-auto">
+                            {b.cards.map((c, ci) => (
+                              <div key={ci} className="w-32 shrink-0 border rounded bg-background overflow-hidden">
+                                {c.image_url && <img src={c.image_url} className="w-full aspect-video object-cover" />}
+                                <div className="p-1.5 text-[10px]">
+                                  <div className="font-semibold truncate">{c.title}</div>
+                                  <div className="text-muted-foreground line-clamp-2">{c.description}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -1064,6 +1143,54 @@ function PreviewPhone({ bubbles }: { bubbles: Bubble[] }) {
                   <div className="text-[11px] text-gray-700 line-clamp-2">{b.alt_text || "(ไม่มี alt text)"}</div>
                 </div>
               )}
+              {b.type === "rich_message" && (
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm w-[220px]">
+                  {b.image_url
+                    ? <img src={b.image_url} className="w-full aspect-square object-cover" />
+                    : <div className="w-full aspect-square bg-gray-200 flex items-center justify-center"><ImageIcon className="w-6 h-6 text-gray-400" /></div>}
+                  <div className="p-1.5 flex flex-col gap-1">
+                    {b.actions.map((a, ai) => (
+                      <div key={ai} className="text-[11px] text-primary text-center py-1 rounded border border-primary/40 bg-primary/5 truncate">
+                        {a.label || "ปุ่ม"}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {b.type === "rich_video" && (
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm w-[220px]">
+                  {b.preview_url
+                    ? <div className="relative"><img src={b.preview_url} className="w-full aspect-video object-cover" /><div className="absolute inset-0 flex items-center justify-center"><div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center"><div className="w-0 h-0 border-l-[10px] border-l-white border-y-[6px] border-y-transparent ml-1" /></div></div></div>
+                    : <div className="w-full aspect-video bg-gray-200 flex items-center justify-center"><Video className="w-6 h-6 text-gray-400" /></div>}
+                  <div className="p-1.5 flex flex-col gap-1">
+                    {b.actions.map((a, ai) => (
+                      <div key={ai} className="text-[11px] text-primary text-center py-1 rounded border border-primary/40 bg-primary/5 truncate">
+                        {a.label || "ปุ่ม"}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {b.type === "card_message" && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-[260px]">
+                  {b.cards.map((c, ci) => (
+                    <div key={ci} className="bg-white rounded-lg overflow-hidden shadow-sm w-[160px] shrink-0">
+                      {c.image_url
+                        ? <img src={c.image_url} className="w-full aspect-video object-cover" />
+                        : <div className="w-full aspect-video bg-gray-200 flex items-center justify-center"><ImageIcon className="w-5 h-5 text-gray-400" /></div>}
+                      <div className="p-1.5 space-y-1">
+                        <div className="text-[11px] font-semibold text-gray-800 line-clamp-1">{c.title || "หัวข้อ"}</div>
+                        <div className="text-[10px] text-gray-600 line-clamp-2">{c.description}</div>
+                        {c.actions.map((a, ai) => (
+                          <div key={ai} className="text-[10px] text-primary text-center py-0.5 rounded border border-primary/40 truncate">
+                            {a.label || "ปุ่ม"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -1130,3 +1257,222 @@ function TestSendPanel({ bubbles }: { bubbles: Bubble[] }) {
   );
 }
 
+
+// ============================================================
+// Rich Content Editors (Rich Message / Rich Video / Card)
+// ============================================================
+
+function ActionsEditor({
+  actions, onChange, max = 6, min = 1,
+}: { actions: ActionItem[]; onChange: (a: ActionItem[]) => void; max?: number; min?: number }) {
+  const update = (i: number, patch: Partial<ActionItem>) =>
+    onChange(actions.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  const remove = (i: number) => onChange(actions.filter((_, idx) => idx !== i));
+  const add = () => {
+    if (actions.length >= max) { toast.error(`สูงสุด ${max} ปุ่ม`); return; }
+    onChange([...actions, { label: "ปุ่ม", type: "uri", uri: "" }]);
+  };
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground">ปุ่ม ({actions.length}/{max})</Label>
+        <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={add} disabled={actions.length >= max}>
+          <Plus className="w-3 h-3 mr-0.5" /> เพิ่มปุ่ม
+        </Button>
+      </div>
+      {actions.map((a, i) => (
+        <div key={i} className="flex items-center gap-1.5 p-1.5 rounded border bg-background">
+          <Input
+            value={a.label}
+            onChange={(e) => update(i, { label: e.target.value.slice(0, 20) })}
+            placeholder="ข้อความปุ่ม (≤20)"
+            className="h-7 text-xs flex-1"
+            maxLength={20}
+          />
+          <select
+            value={a.type}
+            onChange={(e) => update(i, { type: e.target.value as "uri" | "message" })}
+            className="h-7 rounded border bg-background text-xs px-1"
+          >
+            <option value="uri">เปิด URL</option>
+            <option value="message">ส่งข้อความกลับ</option>
+          </select>
+          {a.type === "uri" ? (
+            <Input
+              value={a.uri || ""}
+              onChange={(e) => update(i, { uri: e.target.value })}
+              placeholder="https://..."
+              className="h-7 text-xs flex-1"
+            />
+          ) : (
+            <Input
+              value={a.text || ""}
+              onChange={(e) => update(i, { text: e.target.value })}
+              placeholder="ข้อความที่ส่งกลับ"
+              className="h-7 text-xs flex-1"
+            />
+          )}
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500"
+            onClick={() => remove(i)} disabled={actions.length <= min}>
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MediaUpload({
+  url, kind, onChange, accept, maxMB,
+}: { url: string; kind: "image" | "video"; onChange: (url: string) => void; accept: string; maxMB: number }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div>
+      {url ? (
+        <div className="relative inline-block">
+          {kind === "image"
+            ? <img src={url} className="max-h-32 rounded border" />
+            : <video src={url} className="max-h-32 rounded border" controls />}
+          <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6" onClick={() => onChange("")}>
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => ref.current?.click()}>
+          {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> :
+            kind === "image" ? <ImageIcon className="w-3.5 h-3.5 mr-1" /> : <Video className="w-3.5 h-3.5 mr-1" />}
+          อัปโหลด{kind === "image" ? "รูป" : "วิดีโอ"} (≤{maxMB}MB)
+        </Button>
+      )}
+      <input ref={ref} type="file" accept={accept} className="hidden" onChange={async (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        if (f.size > maxMB * 1024 * 1024) { toast.error(`ไฟล์ใหญ่เกิน ${maxMB}MB`); return; }
+        setBusy(true);
+        const u = await uploadMedia(f, kind);
+        setBusy(false);
+        if (u) onChange(u);
+      }} />
+    </div>
+  );
+}
+
+function RichMessageEditor({
+  bubble, onUpdate,
+}: { bubble: { type: "rich_message"; image_url: string; alt_text: string; actions: ActionItem[] }; onUpdate: (p: any) => void }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">รูป (แนะนำสี่เหลี่ยมจัตุรัส 1040×1040)</Label>
+        <MediaUpload url={bubble.image_url} kind="image" accept="image/*" maxMB={10}
+          onChange={(u) => onUpdate({ image_url: u } as any)} />
+      </div>
+      <Input
+        value={bubble.alt_text}
+        onChange={(e) => onUpdate({ alt_text: e.target.value } as any)}
+        placeholder="ข้อความแจ้งเตือน (alt text)"
+        className="text-xs"
+      />
+      <ActionsEditor
+        actions={bubble.actions}
+        onChange={(a) => onUpdate({ actions: a } as any)}
+        max={6}
+      />
+    </div>
+  );
+}
+
+function RichVideoEditor({
+  bubble, onUpdate,
+}: { bubble: { type: "rich_video"; video_url: string; preview_url: string; alt_text: string; actions: ActionItem[] }; onUpdate: (p: any) => void }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">วิดีโอ (mp4, ≤200MB)</Label>
+          <MediaUpload url={bubble.video_url} kind="video" accept="video/mp4"
+            maxMB={200} onChange={(u) => onUpdate({ video_url: u } as any)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">รูปปก (preview) <span className="text-red-500">*</span></Label>
+          <MediaUpload url={bubble.preview_url} kind="image" accept="image/*"
+            maxMB={10} onChange={(u) => onUpdate({ preview_url: u } as any)} />
+        </div>
+      </div>
+      <Input
+        value={bubble.alt_text}
+        onChange={(e) => onUpdate({ alt_text: e.target.value } as any)}
+        placeholder="ข้อความแจ้งเตือน (alt text)"
+        className="text-xs"
+      />
+      <ActionsEditor
+        actions={bubble.actions}
+        onChange={(a) => onUpdate({ actions: a } as any)}
+        max={3}
+      />
+    </div>
+  );
+}
+
+function CardMessageEditor({
+  bubble, onUpdate,
+}: { bubble: { type: "card_message"; alt_text: string; cards: CardItem[] }; onUpdate: (p: any) => void }) {
+  const updateCard = (i: number, patch: Partial<CardItem>) =>
+    onUpdate({ cards: bubble.cards.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) } as any);
+  const removeCard = (i: number) =>
+    onUpdate({ cards: bubble.cards.filter((_, idx) => idx !== i) } as any);
+  const addCard = () => {
+    if (bubble.cards.length >= 10) { toast.error("สูงสุด 10 การ์ด"); return; }
+    onUpdate({ cards: [...bubble.cards, { image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] } as any);
+  };
+  return (
+    <div className="space-y-2.5">
+      <Input
+        value={bubble.alt_text}
+        onChange={(e) => onUpdate({ alt_text: e.target.value } as any)}
+        placeholder="ข้อความแจ้งเตือน (alt text)"
+        className="text-xs"
+      />
+      <div className="space-y-2">
+        {bubble.cards.map((c, i) => (
+          <div key={i} className="p-2.5 rounded border bg-background space-y-2">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-[10px]">การ์ด #{i + 1}</Badge>
+              <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500"
+                onClick={() => removeCard(i)} disabled={bubble.cards.length <= 1}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">รูป (16:9 หรือสี่เหลี่ยมจัตุรัส)</Label>
+              <MediaUpload url={c.image_url} kind="image" accept="image/*" maxMB={10}
+                onChange={(u) => updateCard(i, { image_url: u })} />
+            </div>
+            <Input
+              value={c.title}
+              onChange={(e) => updateCard(i, { title: e.target.value.slice(0, 40) })}
+              placeholder="หัวข้อ"
+              className="text-xs font-medium"
+            />
+            <Textarea
+              value={c.description}
+              onChange={(e) => updateCard(i, { description: e.target.value.slice(0, 60) })}
+              placeholder="รายละเอียดสั้นๆ (≤60 ตัว)"
+              rows={2}
+              className="text-xs"
+            />
+            <ActionsEditor
+              actions={c.actions}
+              onChange={(a) => updateCard(i, { actions: a })}
+              max={3}
+              min={0}
+            />
+          </div>
+        ))}
+      </div>
+      <Button size="sm" variant="outline" onClick={addCard} disabled={bubble.cards.length >= 10} className="w-full">
+        <Plus className="w-3.5 h-3.5 mr-1" /> เพิ่มการ์ด ({bubble.cards.length}/10)
+      </Button>
+    </div>
+  );
+}
