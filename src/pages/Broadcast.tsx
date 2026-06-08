@@ -293,6 +293,8 @@ function ComposerDialog({
       setBubbles((source.messages as any) || []);
       setTags(source.target_tags || []);
       setStatuses(source.target_statuses || []);
+      setExcludeTags((source as any).exclude_tags || []);
+      setExcludeStatuses((source as any).exclude_statuses || []);
       setMatchMode((source.target_match_mode as any) || "any");
       if (editing && editing.scheduled_at) {
         setScheduleMode("later");
@@ -302,19 +304,26 @@ function ComposerDialog({
         setScheduledAt(toLocalInput(new Date(Date.now() + 30 * 60_000)));
       }
     } else {
-      setName(""); setBubbles([]); setTags([]); setStatuses([]); setMatchMode("any"); setScheduleMode("now");
+      setName(""); setBubbles([]); setTags([]); setStatuses([]);
+      setExcludeTags([]); setExcludeStatuses([]);
+      setMatchMode("any"); setScheduleMode("now");
       setScheduledAt(toLocalInput(new Date(Date.now() + 30 * 60_000)));
     }
     setRecipientCount(null);
+    setRawCount(null);
+    setExcludedCount(0);
   }, [open, editing, duplicating]);
 
-  // Recipient preview
+  // Recipient preview (with exclude filter)
   useEffect(() => {
     if (!open) return;
-    if (tags.length === 0 && statuses.length === 0) { setRecipientCount(0); return; }
+    if (tags.length === 0 && statuses.length === 0) {
+      setRecipientCount(0); setRawCount(0); setExcludedCount(0); return;
+    }
     setCountLoading(true);
     const t = setTimeout(async () => {
-      let q = supabase.from("customers").select("id", { count: "exact", head: true }).not("line_user_id", "is", null);
+      // Fetch tags + status of matched customers so we can apply exclude in JS
+      let q = supabase.from("customers").select("id, tags, status").not("line_user_id", "is", null);
       if (matchMode === "all") {
         if (tags.length) q = q.contains("tags", tags);
         if (statuses.length) q = q.in("status", statuses as any);
@@ -329,12 +338,24 @@ function ComposerDialog({
           q = q.in("status", statuses as any);
         }
       }
-      const { count } = await q;
-      setRecipientCount(count || 0);
+      const { data } = await q.limit(5000);
+      const rows = (data as any[]) || [];
+      const exTagSet = new Set(excludeTags);
+      const exStatusSet = new Set(excludeStatuses);
+      let excluded = 0;
+      const kept = rows.filter((r) => {
+        const hitStatus = exStatusSet.size > 0 && exStatusSet.has(r.status);
+        const hitTag = exTagSet.size > 0 && Array.isArray(r.tags) && r.tags.some((t: string) => exTagSet.has(t));
+        if (hitStatus || hitTag) { excluded++; return false; }
+        return true;
+      });
+      setRawCount(rows.length);
+      setExcludedCount(excluded);
+      setRecipientCount(kept.length);
       setCountLoading(false);
     }, 400);
     return () => clearTimeout(t);
-  }, [tags, statuses, matchMode, open]);
+  }, [tags, statuses, excludeTags, excludeStatuses, matchMode, open]);
 
   const addBubble = (type: BubbleType) => {
     if (bubbles.length >= 5) { toast.error("ส่งได้สูงสุด 5 บับเบิลต่อแคมเปญ"); return; }
