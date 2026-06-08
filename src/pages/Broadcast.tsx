@@ -405,6 +405,8 @@ function ComposerDialog({
         status,
         target_tags: tags,
         target_statuses: statuses,
+        exclude_tags: excludeTags,
+        exclude_statuses: excludeStatuses,
         target_match_mode: matchMode,
         messages: bubbles,
         scheduled_at: action === "send" && scheduleMode === "later" ? new Date(scheduledAt).toISOString() : null,
