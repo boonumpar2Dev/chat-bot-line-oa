@@ -124,6 +124,8 @@ Deno.serve(async (req) => {
     // Build target query
     const tags: string[] = campaign.target_tags || [];
     const statuses: string[] = campaign.target_statuses || [];
+    const excludeTags: string[] = campaign.exclude_tags || [];
+    const excludeStatuses: string[] = campaign.exclude_statuses || [];
     const matchMode: string = campaign.target_match_mode || "any";
 
     let q = admin.from("customers").select("id, line_user_id, tags, status").not("line_user_id", "is", null);
@@ -154,7 +156,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: tErr.message }, { status: 500, headers: corsHeaders });
     }
 
-    const recipients = (targets || []).filter((c: any) => c.line_user_id);
+    // Apply exclude filter in JS (NOT overlaps tricky in supabase-js)
+    const excludeTagSet = new Set(excludeTags);
+    const excludeStatusSet = new Set(excludeStatuses);
+    const recipients = (targets || []).filter((c: any) => {
+      if (!c.line_user_id) return false;
+      if (excludeStatusSet.size && excludeStatusSet.has(c.status)) return false;
+      if (excludeTagSet.size && Array.isArray(c.tags) && c.tags.some((t: string) => excludeTagSet.has(t))) return false;
+      return true;
+    });
 
     // Clear old recipients (in case of resend) + insert new
     await admin.from("broadcast_recipients").delete().eq("campaign_id", campaignId);

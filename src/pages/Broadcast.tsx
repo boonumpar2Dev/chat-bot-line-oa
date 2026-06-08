@@ -30,6 +30,8 @@ type Campaign = {
   status: string;
   target_tags: string[];
   target_statuses: string[];
+  exclude_tags?: string[];
+  exclude_statuses?: string[];
   target_match_mode: "any" | "all";
   messages: Bubble[];
   scheduled_at: string | null;
@@ -266,12 +268,16 @@ function ComposerDialog({
   const [tags, setTags] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
+  const [excludeTags, setExcludeTags] = useState<string[]>([]);
+  const [excludeStatuses, setExcludeStatuses] = useState<string[]>([]);
   const [matchMode, setMatchMode] = useState<"any" | "all">("any");
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
   const [scheduledAt, setScheduledAt] = useState<string>(() => {
     const d = new Date(Date.now() + 30 * 60_000);
     return toLocalInput(d);
   });
+  const [rawCount, setRawCount] = useState<number | null>(null);
+  const [excludedCount, setExcludedCount] = useState<number>(0);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [countLoading, setCountLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -287,6 +293,8 @@ function ComposerDialog({
       setBubbles((source.messages as any) || []);
       setTags(source.target_tags || []);
       setStatuses(source.target_statuses || []);
+      setExcludeTags((source as any).exclude_tags || []);
+      setExcludeStatuses((source as any).exclude_statuses || []);
       setMatchMode((source.target_match_mode as any) || "any");
       if (editing && editing.scheduled_at) {
         setScheduleMode("later");
@@ -296,19 +304,26 @@ function ComposerDialog({
         setScheduledAt(toLocalInput(new Date(Date.now() + 30 * 60_000)));
       }
     } else {
-      setName(""); setBubbles([]); setTags([]); setStatuses([]); setMatchMode("any"); setScheduleMode("now");
+      setName(""); setBubbles([]); setTags([]); setStatuses([]);
+      setExcludeTags([]); setExcludeStatuses([]);
+      setMatchMode("any"); setScheduleMode("now");
       setScheduledAt(toLocalInput(new Date(Date.now() + 30 * 60_000)));
     }
     setRecipientCount(null);
+    setRawCount(null);
+    setExcludedCount(0);
   }, [open, editing, duplicating]);
 
-  // Recipient preview
+  // Recipient preview (with exclude filter)
   useEffect(() => {
     if (!open) return;
-    if (tags.length === 0 && statuses.length === 0) { setRecipientCount(0); return; }
+    if (tags.length === 0 && statuses.length === 0) {
+      setRecipientCount(0); setRawCount(0); setExcludedCount(0); return;
+    }
     setCountLoading(true);
     const t = setTimeout(async () => {
-      let q = supabase.from("customers").select("id", { count: "exact", head: true }).not("line_user_id", "is", null);
+      // Fetch tags + status of matched customers so we can apply exclude in JS
+      let q = supabase.from("customers").select("id, tags, status").not("line_user_id", "is", null);
       if (matchMode === "all") {
         if (tags.length) q = q.contains("tags", tags);
         if (statuses.length) q = q.in("status", statuses as any);
@@ -323,12 +338,24 @@ function ComposerDialog({
           q = q.in("status", statuses as any);
         }
       }
-      const { count } = await q;
-      setRecipientCount(count || 0);
+      const { data } = await q.limit(5000);
+      const rows = (data as any[]) || [];
+      const exTagSet = new Set(excludeTags);
+      const exStatusSet = new Set(excludeStatuses);
+      let excluded = 0;
+      const kept = rows.filter((r) => {
+        const hitStatus = exStatusSet.size > 0 && exStatusSet.has(r.status);
+        const hitTag = exTagSet.size > 0 && Array.isArray(r.tags) && r.tags.some((t: string) => exTagSet.has(t));
+        if (hitStatus || hitTag) { excluded++; return false; }
+        return true;
+      });
+      setRawCount(rows.length);
+      setExcludedCount(excluded);
+      setRecipientCount(kept.length);
       setCountLoading(false);
     }, 400);
     return () => clearTimeout(t);
-  }, [tags, statuses, matchMode, open]);
+  }, [tags, statuses, excludeTags, excludeStatuses, matchMode, open]);
 
   const addBubble = (type: BubbleType) => {
     if (bubbles.length >= 5) { toast.error("ส่งได้สูงสุด 5 บับเบิลต่อแคมเปญ"); return; }
@@ -378,6 +405,8 @@ function ComposerDialog({
         status,
         target_tags: tags,
         target_statuses: statuses,
+        exclude_tags: excludeTags,
+        exclude_statuses: excludeStatuses,
         target_match_mode: matchMode,
         messages: bubbles,
         scheduled_at: action === "send" && scheduleMode === "later" ? new Date(scheduledAt).toISOString() : null,
@@ -435,27 +464,34 @@ function ComposerDialog({
 
           {/* Target */}
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <Label className="text-sm font-semibold">กลุ่มผู้รับ</Label>
               <div className="text-xs">
                 {countLoading ? (
                   <Loader2 className="w-3 h-3 animate-spin inline" />
                 ) : recipientCount !== null ? (
-                  <span className="font-medium">
-                    พบ <span className="text-primary">{recipientCount}</span> คน
+                  <span className="font-medium flex items-center gap-1.5 flex-wrap">
+                    <span className="text-muted-foreground">รวม</span>
+                    <span className="tabular-nums">{rawCount ?? 0}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">ยกเว้น</span>
+                    <span className="tabular-nums text-amber-600">{excludedCount}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">สุทธิ</span>
+                    <span className="tabular-nums text-primary text-sm font-semibold">{recipientCount}</span>
+                    <span className="text-muted-foreground">คน</span>
                   </span>
                 ) : null}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Tags ({tags.length} เลือกแล้ว · {allTags.length} ทั้งหมด)</Label>
+              <Label className="text-xs text-muted-foreground">Tags ที่ต้องมี ({tags.length} เลือกแล้ว · {allTags.length} ทั้งหมด)</Label>
               <TagPicker allTags={allTags} selected={tags} onChange={setTags} />
             </div>
 
-
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">สถานะ</Label>
+              <Label className="text-xs text-muted-foreground">สถานะที่ต้องมี</Label>
               <div className="flex flex-wrap gap-2">
                 {STATUS_OPTIONS.map((s) => (
                   <label key={s.v} className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -482,6 +518,31 @@ function ComposerDialog({
                 </RadioGroup>
               </div>
             )}
+
+            {/* Exclude */}
+            <div className="pt-3 mt-1 border-t border-dashed space-y-3">
+              <Label className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                ยกเว้น (ไม่ส่งหา)
+              </Label>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Tags ที่จะยกเว้น ({excludeTags.length} เลือกแล้ว)</Label>
+                <TagPicker allTags={allTags} selected={excludeTags} onChange={setExcludeTags} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">สถานะที่จะยกเว้น</Label>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((s) => (
+                    <label key={s.v} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={excludeStatuses.includes(s.v)}
+                        onCheckedChange={(c) => setExcludeStatuses(c ? [...excludeStatuses, s.v] : excludeStatuses.filter(x => x !== s.v))}
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Messages */}
