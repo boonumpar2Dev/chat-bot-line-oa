@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Bot, Clock, MessageCircle, Trash2, AlertTriangle, Power, CalendarClock, FlaskConical, PowerOff, Sparkles } from "lucide-react";
+import { Loader2, Save, Bot, Clock, MessageCircle, Trash2, AlertTriangle, Power, CalendarClock, FlaskConical, PowerOff, Sparkles, Bell, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useNotificationSettings, type SoundType } from "@/hooks/useNotificationSound";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 type BotMode = "full" | "scheduled" | "whitelist" | "off";
 
