@@ -911,7 +911,7 @@ function CampaignDetail({
                           {b.image_url && <img src={b.image_url} className="w-24 h-24 object-cover rounded" />}
                           <div className="text-xs space-y-1">
                             <div className="text-muted-foreground">Alt: {b.alt_text}</div>
-                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                            {b.actions.length > 0 && <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>}
                           </div>
                         </div>
                       )}
