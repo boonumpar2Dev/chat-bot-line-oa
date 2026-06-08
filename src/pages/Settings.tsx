@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save, Bot, Clock, MessageCircle, Trash2, AlertTriangle, Power, CalendarClock, FlaskConical, PowerOff, Sparkles } from "lucide-react";
+import { Loader2, Save, Bot, Clock, MessageCircle, Trash2, AlertTriangle, Power, CalendarClock, FlaskConical, PowerOff, Sparkles, Bell, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useNotificationSettings, type SoundType } from "@/hooks/useNotificationSound";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 type BotMode = "full" | "scheduled" | "whitelist" | "off";
 
@@ -339,6 +342,10 @@ export default function Settings() {
         </div>
       </Card>
 
+      {/* Notification sound */}
+      <NotificationSoundCard />
+
+
       {/* Linked pages */}
       <Card className="p-6 shadow-soft border-border/60 bg-primary/5">
         <h2 className="font-display text-lg font-semibold mb-3">การตั้งค่าอื่นๆ</h2>
@@ -387,5 +394,67 @@ export default function Settings() {
         </div>
       </Card>
     </div>
+  );
+}
+
+const SOUND_OPTIONS: { value: SoundType; label: string; desc: string }[] = [
+  { value: "ding", label: "Ding", desc: "เสียงระฆังสั้นๆ" },
+  { value: "chime", label: "Chime", desc: "เสียงระฆังสองโน้ต" },
+  { value: "pop", label: "Pop", desc: "เสียงเด้งสั้นๆ" },
+];
+
+function NotificationSoundCard() {
+  const { settings, update, test } = useNotificationSettings();
+  return (
+    <Card className="p-6 shadow-soft border-border/60">
+      <div className="flex items-center gap-2 mb-1"><Bell className="text-primary"/><h2 className="font-display text-lg font-semibold">เสียงแจ้งเตือนแชท</h2></div>
+      <p className="text-xs text-muted-foreground mb-5">เล่นเสียงเมื่อมีลูกค้าทักเข้ามาใหม่ (ตั้งค่าเฉพาะเบราว์เซอร์นี้) — ครั้งแรกอาจต้องคลิกที่หน้าเว็บก่อน 1 ครั้งให้เบราว์เซอร์อนุญาตเล่นเสียง</p>
+
+      <div className="space-y-5">
+        <div className="flex items-center justify-between p-4 rounded-lg bg-muted/40">
+          <div>
+            <Label className="font-medium">เปิดเสียงแจ้งเตือน</Label>
+            <p className="text-xs text-muted-foreground mt-1">ไม่เล่นเสียงตอนกำลังเปิดแชทคนนั้นอยู่</p>
+          </div>
+          <Switch checked={settings.enabled} onCheckedChange={v => update({ enabled: v })} />
+        </div>
+
+        {settings.enabled && (
+          <>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>เลือกเสียง</Label>
+                <Select value={settings.sound} onValueChange={(v: SoundType) => update({ sound: v })}>
+                  <SelectTrigger><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {SOUND_OPTIONS.map(o => (
+                      <SelectItem key={o.value} value={o.value}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{o.label}</span>
+                          <span className="text-[11px] text-muted-foreground">{o.desc}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Volume2 className="w-4 h-4"/> ระดับเสียง ({Math.round(settings.volume * 100)}%)</Label>
+                <Slider
+                  value={[Math.round(settings.volume * 100)]}
+                  min={0} max={100} step={5}
+                  onValueChange={([v]) => update({ volume: v / 100 })}
+                />
+              </div>
+            </div>
+
+            <Button type="button" variant="outline" size="sm" onClick={test}>
+              <Volume2 className="w-4 h-4"/> ทดสอบเสียง
+            </Button>
+          </>
+        )}
+      </div>
+    </Card>
   );
 }

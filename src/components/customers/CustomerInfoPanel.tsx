@@ -32,7 +32,8 @@ const DEFAULT_STATUS_LABELS: Record<string, string> = {
   pending_quote: "รอเสนอราคา",
   pending_confirm: "รอคอนเฟิร์ม",
   confirmed: "คอนเฟิร์ม",
-  postponed: "เลื่อนจัดงาน (มัดจำแล้ว)",
+  confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)",
+  postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)",
   cancelled: "ยกเลิก",
 };
 

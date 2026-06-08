@@ -16,7 +16,8 @@ const STATUS_LABELS: Record<string, string> = {
   pending_quote: "รอเสนอราคา",
   pending_confirm: "รอคอนเฟิร์ม",
   confirmed: "คอนเฟิร์ม",
-  postponed: "เลื่อนจัดงาน (มัดจำแล้ว)",
+  confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)",
+  postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)",
   cancelled: "ยกเลิก",
 };
 
@@ -31,7 +32,7 @@ export default function Dashboard() {
         supabase.from("conversations").select("*", { count: "exact", head: true }),
         supabase.from("conversations").select("*", { count: "exact", head: true }).gte("created_at", todayStart),
         supabase.from("customers").select("clv_amount"),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "confirmed"),
+        supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
@@ -62,7 +63,7 @@ export default function Dashboard() {
         .select("*")
         .gt("unread_count", 0)
         .lt("last_message_at", cutoff)
-        .not("status", "in", "(confirmed,postponed,cancelled)")
+        .not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)")
         .order("last_message_at", { ascending: true })
         .limit(10);
       return (data ?? []).map((r: any) => ({

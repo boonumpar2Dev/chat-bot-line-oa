@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 const processingIds = new Set<string>();
-const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed"];
+const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning"];
 let LINE_TOKEN = ""; // loaded per-request from getLineConfig()
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -636,6 +636,37 @@ async function processEvent(event: any, supabase: any) {
     .order("event_date", { ascending: false, nullsFirst: false })
     .limit(5);
   const pastEvents = pastEventsArr || [];
+
+  // 🔁 Auto-flip: ลูกค้าเคยคอนเฟิร์มแล้วกลับมาทักใหม่ → เปลี่ยน confirmed → returning + ติด tag "ลูกค้าเก่า"
+  // เช็ก 2 สัญญาณ (เข้าเงื่อนไขใดเงื่อนไขหนึ่ง):
+  //   (a) มี customer_events ที่ event_date ผ่านแล้ว หรือ status=completed
+  //   (b) มี tag เดือน+ปี ในอดีต (จาก nickname งานเก่า) ติดอยู่แล้ว
+  if (freshCustomer.status === "confirmed") {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const hasPastEvent = pastEvents.some((e: any) =>
+      e?.status === "completed" || (e?.event_date && e.event_date < todayIso)
+    );
+    const tags: string[] = Array.isArray(freshCustomer.tags) ? freshCustomer.tags : [];
+    const monthTagRe = /^(ม\.ค\.|ก\.พ\.|มี\.ค\.|เม\.ย\.|พ\.ค\.|มิ\.ย\.|ก\.ค\.|ส\.ค\.|ก\.ย\.|ต\.ค\.|พ\.ย\.|ธ\.ค\.|มกราคม|กุมภาพันธ์|มีนาคม|เมษายน|พฤษภาคม|มิถุนายน|กรกฎาคม|สิงหาคม|กันยายน|ตุลาคม|พฤศจิกายน|ธันวาคม|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|0[1-9]|1[0-2])$/;
+    const yearTagRe = /^(25[0-9]{2}|20[2-9][0-9])$/;
+    const hasMonthTag = tags.some(t => monthTagRe.test(t));
+    const hasYearTag = tags.some(t => yearTagRe.test(t));
+    if (hasPastEvent || (hasMonthTag && hasYearTag)) {
+      const newTags = Array.from(new Set([...tags, "ลูกค้าเก่า"]));
+      await supabase.from("customers").update({
+        status: "returning",
+        tags: newTags,
+        ai_active: true,
+        manual_chat_until: null,
+      }).eq("id", freshCustomer.id);
+      freshCustomer.status = "returning";
+      freshCustomer.tags = newTags;
+      freshCustomer.ai_active = true;
+      freshCustomer.manual_chat_until = null;
+      console.log(`[auto-flip] ${freshCustomer.id}: confirmed → returning (ลูกค้าเก่ากลับมา)`);
+    }
+  }
+
 
   // 🚫 AI ปิดอยู่ / อยู่ในช่วง manual chat → เงียบสนิท ไม่ตอบอะไรเลย (ไม่ validate เบอร์/tax ด้วย)
   if (!freshCustomer.ai_active) return;

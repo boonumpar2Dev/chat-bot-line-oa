@@ -30,6 +30,7 @@ import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 import { formatSnippet } from "@/lib/snippet";
+import { readNotificationSettings, playNotificationSound } from "@/hooks/useNotificationSound";
 
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
@@ -48,7 +49,7 @@ type Customer = any;
 type Conversation = any;
 
 const STATUS_LABEL: Record<string, string> = {
-  new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", postponed: "เลื่อนจัดงาน (มัดจำแล้ว)", cancelled: "ยกเลิก",
+  new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)", postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)", cancelled: "ยกเลิก",
 };
 
 function getFileType(url = "") {
@@ -130,7 +131,7 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
   if (filter === "sla" && slaCutoffIso) {
-    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,postponed,cancelled)");
+    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
   }
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
@@ -145,7 +146,7 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
     return (c.unread_count || 0) > 0
       && new Date(c.last_message_at).getTime() < slaCutoffMs
-      && !["confirmed", "postponed", "cancelled"].includes(c.status);
+      && !["confirmed", "confirmed_returning", "postponed", "cancelled"].includes(c.status);
   }
   if (filter.startsWith("status:")) return c.status === filter.slice(7);
   return true;
@@ -278,7 +279,7 @@ export default function Chats() {
     const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
     const [u, s, m, n] = await Promise.all([
       base().gt("unread_count", 0),
-      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,postponed,cancelled)"),
+      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().is("phone", null),
     ]);
@@ -329,6 +330,12 @@ export default function Chats() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations" }, async (payload: any) => {
         const cid = payload.new?.customer_id;
         if (!cid) return;
+        // 🔔 Play sound on incoming customer message (not for AI/admin replies)
+        // Skip if currently viewing this customer's chat (already aware)
+        if (payload.new?.sender === "customer" && cid !== selectedId) {
+          const ns = readNotificationSettings();
+          if (ns.enabled) playNotificationSound(ns.sound, ns.volume);
+        }
         const { data: fresh } = await supabase.from("customers").select("*").eq("id", cid).maybeSingle();
         if (!fresh) return;
         refreshCounts();
@@ -350,7 +357,7 @@ export default function Chats() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching, filter, slaCutoffMs, slaCutoffIso]);
+  }, [isSearching, filter, slaCutoffMs, slaCutoffIso, selectedId]);
 
 
   // Infinite scroll
