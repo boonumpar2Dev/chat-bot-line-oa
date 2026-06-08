@@ -139,17 +139,46 @@ function normalizeMessages(input: any[]): any[] {
         contents: b.contents,
       });
     } else if (b.type === "rich_message" && b.image_url) {
+      const acts = (b.actions || []).map(buildAction).filter(Boolean);
+      if (acts.length === 0) {
+        // A) ไม่มีปุ่ม → native image (เต็มจอจริง)
+        out.push({
+          type: "image",
+          originalContentUrl: String(b.image_url),
+          previewImageUrl: String(b.image_url),
+        });
+      } else if (acts.length === 1) {
+        // B) 1 ปุ่ม → flex hero เต็มจอ กดทั้งภาพ (ไม่มีปุ่มโผล่)
+        out.push({
+          type: "flex",
+          altText: String(b.alt_text || "Rich Message").slice(0, 400),
+          contents: buildRichMessageBubble(b, { tapAction: acts[0] }),
+        });
+      } else {
+        // 2+ ปุ่ม → flex + footer buttons แบบเดิม
+        out.push({
+          type: "flex",
+          altText: String(b.alt_text || "Rich Message").slice(0, 400),
+          contents: buildRichMessageBubble(b),
+        });
+      }
+    } else if (b.type === "rich_video" && b.video_url) {
+      // ส่ง native video เต็มจอเสมอ (ถ้าไม่มี preview ใช้ placeholder)
       out.push({
-        type: "flex",
-        altText: String(b.alt_text || "Rich Message").slice(0, 400),
-        contents: buildRichMessageBubble(b),
+        type: "video",
+        originalContentUrl: String(b.video_url),
+        previewImageUrl: String(b.preview_url || VIDEO_PLACEHOLDER_URL),
       });
-    } else if (b.type === "rich_video" && b.video_url && b.preview_url) {
-      out.push({
-        type: "flex",
-        altText: String(b.alt_text || "Rich Video").slice(0, 400),
-        contents: buildRichVideoBubble(b),
-      });
+      // ถ้ามี actions แนบเป็น flex bubble แยกต่อท้าย
+      const btnBubble = buildButtonsOnlyBubble(b.actions, b.alt_text);
+      if (btnBubble) {
+        out.push({
+          type: "flex",
+          altText: String(b.alt_text || "ดูเพิ่มเติม").slice(0, 400),
+          contents: btnBubble,
+        });
+      }
+
     } else if (b.type === "card_message" && Array.isArray(b.cards) && b.cards.length) {
       const validCards = b.cards.filter((c: any) => c && c.image_url).slice(0, 12);
       if (!validCards.length) continue;
