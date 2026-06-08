@@ -32,7 +32,7 @@ export default function Dashboard() {
         supabase.from("conversations").select("*", { count: "exact", head: true }),
         supabase.from("conversations").select("*", { count: "exact", head: true }).gte("created_at", todayStart),
         supabase.from("customers").select("clv_amount"),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "confirmed"),
+        supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
