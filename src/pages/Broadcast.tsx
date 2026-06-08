@@ -399,6 +399,14 @@ function ComposerDialog({
           if (!b.alt_text.trim()) { toast.error("Flex ต้องมี alt text"); return; }
           if (!b.contents || typeof b.contents !== "object") { toast.error("Flex contents ไม่ถูกต้อง"); return; }
         }
+        if (b.type === "rich_message" && !b.image_url) { toast.error("Rich Message ต้องมีรูป"); return; }
+        if (b.type === "rich_video" && (!b.video_url || !b.preview_url)) { toast.error("Rich Video ต้องมีวิดีโอ+รูปปก"); return; }
+        if (b.type === "card_message") {
+          if (!b.cards?.length) { toast.error("Card Message ต้องมีอย่างน้อย 1 การ์ด"); return; }
+          for (const c of b.cards) {
+            if (!c.image_url) { toast.error("ทุกการ์ดต้องมีรูป"); return; }
+          }
+        }
       }
     }
 
