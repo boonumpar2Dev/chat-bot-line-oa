@@ -920,7 +920,7 @@ function CampaignDetail({
                           {b.preview_url && <img src={b.preview_url} className="w-32 h-20 object-cover rounded" />}
                           <div className="text-xs space-y-1">
                             <div className="text-muted-foreground">Alt: {b.alt_text}</div>
-                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                            {b.actions.length > 0 && <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>}
                           </div>
                         </div>
                       )}
