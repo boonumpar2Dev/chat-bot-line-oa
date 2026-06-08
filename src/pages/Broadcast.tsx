@@ -1109,6 +1109,54 @@ function PreviewPhone({ bubbles }: { bubbles: Bubble[] }) {
                   <div className="text-[11px] text-gray-700 line-clamp-2">{b.alt_text || "(ไม่มี alt text)"}</div>
                 </div>
               )}
+              {b.type === "rich_message" && (
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm w-[220px]">
+                  {b.image_url
+                    ? <img src={b.image_url} className="w-full aspect-square object-cover" />
+                    : <div className="w-full aspect-square bg-gray-200 flex items-center justify-center"><ImageIcon className="w-6 h-6 text-gray-400" /></div>}
+                  <div className="p-1.5 flex flex-col gap-1">
+                    {b.actions.map((a, ai) => (
+                      <div key={ai} className="text-[11px] text-primary text-center py-1 rounded border border-primary/40 bg-primary/5 truncate">
+                        {a.label || "ปุ่ม"}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {b.type === "rich_video" && (
+                <div className="bg-white rounded-lg overflow-hidden shadow-sm w-[220px]">
+                  {b.preview_url
+                    ? <div className="relative"><img src={b.preview_url} className="w-full aspect-video object-cover" /><div className="absolute inset-0 flex items-center justify-center"><div className="w-10 h-10 rounded-full bg-black/50 flex items-center justify-center"><div className="w-0 h-0 border-l-[10px] border-l-white border-y-[6px] border-y-transparent ml-1" /></div></div></div>
+                    : <div className="w-full aspect-video bg-gray-200 flex items-center justify-center"><Video className="w-6 h-6 text-gray-400" /></div>}
+                  <div className="p-1.5 flex flex-col gap-1">
+                    {b.actions.map((a, ai) => (
+                      <div key={ai} className="text-[11px] text-primary text-center py-1 rounded border border-primary/40 bg-primary/5 truncate">
+                        {a.label || "ปุ่ม"}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {b.type === "card_message" && (
+                <div className="flex gap-1.5 overflow-x-auto pb-1 max-w-[260px]">
+                  {b.cards.map((c, ci) => (
+                    <div key={ci} className="bg-white rounded-lg overflow-hidden shadow-sm w-[160px] shrink-0">
+                      {c.image_url
+                        ? <img src={c.image_url} className="w-full aspect-video object-cover" />
+                        : <div className="w-full aspect-video bg-gray-200 flex items-center justify-center"><ImageIcon className="w-5 h-5 text-gray-400" /></div>}
+                      <div className="p-1.5 space-y-1">
+                        <div className="text-[11px] font-semibold text-gray-800 line-clamp-1">{c.title || "หัวข้อ"}</div>
+                        <div className="text-[10px] text-gray-600 line-clamp-2">{c.description}</div>
+                        {c.actions.map((a, ai) => (
+                          <div key={ai} className="text-[10px] text-primary text-center py-0.5 rounded border border-primary/40 truncate">
+                            {a.label || "ปุ่ม"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         ))}
