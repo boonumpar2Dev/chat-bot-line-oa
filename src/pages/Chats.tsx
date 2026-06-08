@@ -30,6 +30,7 @@ import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 import { formatSnippet } from "@/lib/snippet";
+import { readNotificationSettings, playNotificationSound } from "@/hooks/useNotificationSound";
 
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
