@@ -330,6 +330,12 @@ export default function Chats() {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations" }, async (payload: any) => {
         const cid = payload.new?.customer_id;
         if (!cid) return;
+        // 🔔 Play sound on incoming customer message (not for AI/admin replies)
+        // Skip if currently viewing this customer's chat (already aware)
+        if (payload.new?.sender === "customer" && cid !== selectedId) {
+          const ns = readNotificationSettings();
+          if (ns.enabled) playNotificationSound(ns.sound, ns.volume);
+        }
         const { data: fresh } = await supabase.from("customers").select("*").eq("id", cid).maybeSingle();
         if (!fresh) return;
         refreshCounts();
