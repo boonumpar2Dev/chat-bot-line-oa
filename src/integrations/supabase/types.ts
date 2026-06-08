@@ -1106,6 +1106,7 @@ export type Database = {
         | "pending_quote"
         | "pending_confirm"
         | "confirmed"
+        | "confirmed_returning"
         | "cancelled"
         | "inquiry"
         | "postponed"
@@ -1244,6 +1245,7 @@ export const Constants = {
         "pending_quote",
         "pending_confirm",
         "confirmed",
+        "confirmed_returning",
         "cancelled",
         "inquiry",
         "postponed",
