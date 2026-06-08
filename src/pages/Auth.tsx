@@ -68,7 +68,20 @@ export default function Auth() {
 
           <form onSubmit={signIn} className="space-y-4">
             <div className="space-y-1.5"><Label>อีเมล</Label><Input type="email" required value={email} onChange={e=>setEmail(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>รหัสผ่าน</Label><Input type="password" required value={pw} onChange={e=>setPw(e.target.value)} /></div>
+            <div className="space-y-1.5">
+              <Label>รหัสผ่าน</Label>
+              <div className="relative">
+                <Input type={showPw ? "text" : "password"} required value={pw} onChange={e=>setPw(e.target.value)} className="pr-10" />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
             <Button type="submit" className="w-full" disabled={busy}>{busy && <Loader2 className="animate-spin"/>}เข้าสู่ระบบ</Button>
           </form>
           <p className="text-xs text-muted-foreground text-center mt-6">
