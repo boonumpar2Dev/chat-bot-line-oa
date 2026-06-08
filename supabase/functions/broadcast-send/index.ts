@@ -23,6 +23,106 @@ function bubbleToText(m: any): string {
   return `[${m.type}]`;
 }
 
+// Build LINE action object from our ActionItem
+function buildAction(a: any) {
+  if (!a) return null;
+  const label = String(a.label || "ปุ่ม").slice(0, 20);
+  if (a.type === "uri" && a.uri) {
+    return { type: "uri", label, uri: String(a.uri) };
+  }
+  if (a.type === "message" && a.text) {
+    return { type: "message", label, text: String(a.text).slice(0, 300) };
+  }
+  return null;
+}
+
+// Build button components array
+function buildButtons(actions: any[]): any[] {
+  return (actions || [])
+    .map(buildAction)
+    .filter(Boolean)
+    .map((action: any) => ({
+      type: "button",
+      style: "primary",
+      height: "sm",
+      action,
+    }));
+}
+
+// Build a single Flex bubble for Rich Message (image + buttons)
+function buildRichMessageBubble(b: any) {
+  const buttons = buildButtons(b.actions);
+  return {
+    type: "bubble",
+    hero: b.image_url ? {
+      type: "image",
+      url: String(b.image_url),
+      size: "full",
+      aspectRatio: "1:1",
+      aspectMode: "cover",
+    } : undefined,
+    footer: buttons.length ? {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: buttons,
+    } : undefined,
+  };
+}
+
+// Rich Video bubble (video hero + buttons)
+function buildRichVideoBubble(b: any) {
+  const buttons = buildButtons(b.actions);
+  return {
+    type: "bubble",
+    hero: b.video_url && b.preview_url ? {
+      type: "video",
+      url: String(b.video_url),
+      previewUrl: String(b.preview_url),
+      altContent: {
+        type: "image",
+        size: "full",
+        aspectRatio: "16:9",
+        aspectMode: "cover",
+        url: String(b.preview_url),
+      },
+      aspectRatio: "16:9",
+    } : undefined,
+    footer: buttons.length ? {
+      type: "box",
+      layout: "vertical",
+      spacing: "sm",
+      contents: buttons,
+    } : undefined,
+  };
+}
+
+// Card bubble (image + title + desc + buttons) — used inside carousel
+function buildCardBubble(c: any) {
+  const buttons = buildButtons(c.actions);
+  const bodyContents: any[] = [];
+  if (c.title) bodyContents.push({ type: "text", text: String(c.title).slice(0, 40), weight: "bold", size: "md", wrap: true });
+  if (c.description) bodyContents.push({ type: "text", text: String(c.description).slice(0, 60), size: "sm", color: "#666666", wrap: true, margin: "sm" });
+  return {
+    type: "bubble",
+    size: "kilo",
+    hero: c.image_url ? {
+      type: "image",
+      url: String(c.image_url),
+      size: "full",
+      aspectRatio: "20:13",
+      aspectMode: "cover",
+    } : undefined,
+    body: bodyContents.length ? { type: "box", layout: "vertical", contents: bodyContents } : undefined,
+    footer: buttons.length ? {
+      type: "box",
+      layout: "vertical",
+      spacing: "xs",
+      contents: buttons,
+    } : undefined,
+  };
+}
+
 // Normalize editor bubbles → LINE Messaging API format
 function normalizeMessages(input: any[]): any[] {
   const out: any[] = [];
@@ -48,6 +148,37 @@ function normalizeMessages(input: any[]): any[] {
         altText: b.alt_text || "ข้อความจาก LINE OA",
         contents: b.contents,
       });
+    } else if (b.type === "rich_message" && b.image_url) {
+      out.push({
+        type: "flex",
+        altText: String(b.alt_text || "Rich Message").slice(0, 400),
+        contents: buildRichMessageBubble(b),
+      });
+    } else if (b.type === "rich_video" && b.video_url && b.preview_url) {
+      out.push({
+        type: "flex",
+        altText: String(b.alt_text || "Rich Video").slice(0, 400),
+        contents: buildRichVideoBubble(b),
+      });
+    } else if (b.type === "card_message" && Array.isArray(b.cards) && b.cards.length) {
+      const validCards = b.cards.filter((c: any) => c && c.image_url).slice(0, 12);
+      if (!validCards.length) continue;
+      if (validCards.length === 1) {
+        out.push({
+          type: "flex",
+          altText: String(b.alt_text || "Card").slice(0, 400),
+          contents: buildCardBubble(validCards[0]),
+        });
+      } else {
+        out.push({
+          type: "flex",
+          altText: String(b.alt_text || "Card Message").slice(0, 400),
+          contents: {
+            type: "carousel",
+            contents: validCards.map(buildCardBubble),
+          },
+        });
+      }
     }
   }
   return out;
