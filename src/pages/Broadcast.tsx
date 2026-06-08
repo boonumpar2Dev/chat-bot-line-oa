@@ -565,19 +565,38 @@ function ComposerDialog({
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Label className="text-sm font-semibold">เนื้อหาข้อความ ({bubbles.length}/5)</Label>
-              <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="outline" onClick={() => addBubble("text")} disabled={bubbles.length >= 5}>
-                  <Type className="w-3.5 h-3.5 mr-1" /> ข้อความ
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addBubble("image")} disabled={bubbles.length >= 5}>
-                  <ImageIcon className="w-3.5 h-3.5 mr-1" /> รูป
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addBubble("video")} disabled={bubbles.length >= 5}>
-                  <Video className="w-3.5 h-3.5 mr-1" /> วิดีโอ
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => addBubble("flex")} disabled={bubbles.length >= 5}>
-                  <FileJson className="w-3.5 h-3.5 mr-1" /> Flex
-                </Button>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <div className="text-[11px] text-muted-foreground mb-1">ข้อความพื้นฐาน</div>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={() => addBubble("text")} disabled={bubbles.length >= 5}>
+                    <Type className="w-3.5 h-3.5 mr-1" /> ข้อความ
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("image")} disabled={bubbles.length >= 5}>
+                    <ImageIcon className="w-3.5 h-3.5 mr-1" /> รูป
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("video")} disabled={bubbles.length >= 5}>
+                    <Video className="w-3.5 h-3.5 mr-1" /> วิดีโอ
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] text-muted-foreground mb-1">Rich Content (มีปุ่มกด)</div>
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="outline" onClick={() => addBubble("rich_message")} disabled={bubbles.length >= 5} className="border-primary/40">
+                    <Sparkles className="w-3.5 h-3.5 mr-1 text-primary" /> Rich Message
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("rich_video")} disabled={bubbles.length >= 5} className="border-primary/40">
+                    <Film className="w-3.5 h-3.5 mr-1 text-primary" /> Rich Video
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => addBubble("card_message")} disabled={bubbles.length >= 5} className="border-primary/40">
+                    <LayoutGrid className="w-3.5 h-3.5 mr-1 text-primary" /> Card (carousel)
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => addBubble("flex")} disabled={bubbles.length >= 5} title="สำหรับ developer">
+                    <FileJson className="w-3.5 h-3.5 mr-1" /> Flex JSON
+                  </Button>
+                </div>
               </div>
             </div>
 
