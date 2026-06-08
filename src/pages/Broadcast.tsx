@@ -30,6 +30,8 @@ type Campaign = {
   status: string;
   target_tags: string[];
   target_statuses: string[];
+  exclude_tags?: string[];
+  exclude_statuses?: string[];
   target_match_mode: "any" | "all";
   messages: Bubble[];
   scheduled_at: string | null;
