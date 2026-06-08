@@ -365,6 +365,8 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          exclude_statuses: string[]
+          exclude_tags: string[]
           failed_count: number
           id: string
           messages: Json
@@ -382,6 +384,8 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          exclude_statuses?: string[]
+          exclude_tags?: string[]
           failed_count?: number
           id?: string
           messages?: Json
@@ -399,6 +403,8 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          exclude_statuses?: string[]
+          exclude_tags?: string[]
           failed_count?: number
           id?: string
           messages?: Json
