@@ -1067,7 +1067,9 @@ export default function Chats() {
                 </Button>
               </div>
 
-              <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
+              {!(selected.line_user_id?.startsWith("C") || selected.line_user_id?.startsWith("R")) && (
+                <p className="text-[10px] text-muted-foreground mt-1 text-center hidden sm:block">การส่งข้อความจะปิด AI ชั่วคราว (Manual Chat)</p>
+              )}
             </div>
           </>
         )}
