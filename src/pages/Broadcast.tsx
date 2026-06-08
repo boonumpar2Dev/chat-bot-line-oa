@@ -368,6 +368,9 @@ function ComposerDialog({
     if (type === "image") setBubbles([...bubbles, { type: "image", url: "" }]);
     if (type === "video") setBubbles([...bubbles, { type: "video", url: "" }]);
     if (type === "flex") setBubbles([...bubbles, { type: "flex", alt_text: "", contents: {} }]);
+    if (type === "rich_message") setBubbles([...bubbles, { type: "rich_message", image_url: "", alt_text: "Rich Message", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }]);
+    if (type === "rich_video") setBubbles([...bubbles, { type: "rich_video", video_url: "", preview_url: "", alt_text: "Rich Video", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }]);
+    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] }]);
   };
 
   const updateBubble = (i: number, patch: Partial<Bubble>) => {
