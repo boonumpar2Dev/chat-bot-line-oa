@@ -906,6 +906,40 @@ function CampaignDetail({
                           <pre className="text-[10px] bg-background rounded p-2 overflow-x-auto">{JSON.stringify(b.contents, null, 2)}</pre>
                         </>
                       )}
+                      {b.type === "rich_message" && (
+                        <div className="flex gap-3">
+                          {b.image_url && <img src={b.image_url} className="w-24 h-24 object-cover rounded" />}
+                          <div className="text-xs space-y-1">
+                            <div className="text-muted-foreground">Alt: {b.alt_text}</div>
+                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                          </div>
+                        </div>
+                      )}
+                      {b.type === "rich_video" && (
+                        <div className="flex gap-3">
+                          {b.preview_url && <img src={b.preview_url} className="w-32 h-20 object-cover rounded" />}
+                          <div className="text-xs space-y-1">
+                            <div className="text-muted-foreground">Alt: {b.alt_text}</div>
+                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                          </div>
+                        </div>
+                      )}
+                      {b.type === "card_message" && (
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1.5">Alt: {b.alt_text} · {b.cards.length} การ์ด</div>
+                          <div className="flex gap-2 overflow-x-auto">
+                            {b.cards.map((c, ci) => (
+                              <div key={ci} className="w-32 shrink-0 border rounded bg-background overflow-hidden">
+                                {c.image_url && <img src={c.image_url} className="w-full aspect-video object-cover" />}
+                                <div className="p-1.5 text-[10px]">
+                                  <div className="font-semibold truncate">{c.title}</div>
+                                  <div className="text-muted-foreground line-clamp-2">{c.description}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
