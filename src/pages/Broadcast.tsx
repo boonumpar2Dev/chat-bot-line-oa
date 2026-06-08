@@ -1423,7 +1423,7 @@ function CardMessageEditor({
     onUpdate({ cards: bubble.cards.filter((_, idx) => idx !== i) } as any);
   const addCard = () => {
     if (bubble.cards.length >= 10) { toast.error("สูงสุด 10 การ์ด"); return; }
-    onUpdate({ cards: [...bubble.cards, { image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] } as any);
+    onUpdate({ cards: [...bubble.cards, { image_url: "", title: "", description: "", actions: [] }] } as any);
   };
   return (
     <div className="space-y-2.5">
