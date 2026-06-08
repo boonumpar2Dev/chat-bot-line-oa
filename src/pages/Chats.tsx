@@ -1256,7 +1256,7 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
 });
 
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage, customerPicture, customerName }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any; customerPicture?: string | null; customerName?: string | null }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
