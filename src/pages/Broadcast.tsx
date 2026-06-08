@@ -464,27 +464,34 @@ function ComposerDialog({
 
           {/* Target */}
           <div className="space-y-3 p-4 rounded-lg border bg-card/50">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <Label className="text-sm font-semibold">กลุ่มผู้รับ</Label>
               <div className="text-xs">
                 {countLoading ? (
                   <Loader2 className="w-3 h-3 animate-spin inline" />
                 ) : recipientCount !== null ? (
-                  <span className="font-medium">
-                    พบ <span className="text-primary">{recipientCount}</span> คน
+                  <span className="font-medium flex items-center gap-1.5 flex-wrap">
+                    <span className="text-muted-foreground">รวม</span>
+                    <span className="tabular-nums">{rawCount ?? 0}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">ยกเว้น</span>
+                    <span className="tabular-nums text-amber-600">{excludedCount}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-muted-foreground">สุทธิ</span>
+                    <span className="tabular-nums text-primary text-sm font-semibold">{recipientCount}</span>
+                    <span className="text-muted-foreground">คน</span>
                   </span>
                 ) : null}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Tags ({tags.length} เลือกแล้ว · {allTags.length} ทั้งหมด)</Label>
+              <Label className="text-xs text-muted-foreground">Tags ที่ต้องมี ({tags.length} เลือกแล้ว · {allTags.length} ทั้งหมด)</Label>
               <TagPicker allTags={allTags} selected={tags} onChange={setTags} />
             </div>
 
-
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">สถานะ</Label>
+              <Label className="text-xs text-muted-foreground">สถานะที่ต้องมี</Label>
               <div className="flex flex-wrap gap-2">
                 {STATUS_OPTIONS.map((s) => (
                   <label key={s.v} className="flex items-center gap-1.5 text-xs cursor-pointer">
@@ -511,6 +518,31 @@ function ComposerDialog({
                 </RadioGroup>
               </div>
             )}
+
+            {/* Exclude */}
+            <div className="pt-3 mt-1 border-t border-dashed space-y-3">
+              <Label className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                ยกเว้น (ไม่ส่งหา)
+              </Label>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Tags ที่จะยกเว้น ({excludeTags.length} เลือกแล้ว)</Label>
+                <TagPicker allTags={allTags} selected={excludeTags} onChange={setExcludeTags} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">สถานะที่จะยกเว้น</Label>
+                <div className="flex flex-wrap gap-2">
+                  {STATUS_OPTIONS.map((s) => (
+                    <label key={s.v} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <Checkbox
+                        checked={excludeStatuses.includes(s.v)}
+                        onCheckedChange={(c) => setExcludeStatuses(c ? [...excludeStatuses, s.v] : excludeStatuses.filter(x => x !== s.v))}
+                      />
+                      {s.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Messages */}
