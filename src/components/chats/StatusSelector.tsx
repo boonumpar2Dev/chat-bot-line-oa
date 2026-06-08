@@ -26,10 +26,16 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
     if (newStatus === customer.status) return;
     const updateData: any = { status: newStatus };
     if (AI_OFF_STATUSES.includes(newStatus)) updateData.ai_active = false;
+    if (AI_ON_STATUSES.includes(newStatus)) {
+      updateData.ai_active = true;
+      updateData.manual_chat_until = null;
+    }
     await supabase.from("customers").update(updateData).eq("id", customer.id);
     onUpdate({ ...customer, ...updateData });
     if (AI_OFF_STATUSES.includes(newStatus)) {
       toast.info(`ปิด AI อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
+    } else if (AI_ON_STATUSES.includes(newStatus)) {
+      toast.success(`เปิด AI กลับให้อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
     } else {
       toast.success("อัปเดตสเตตัสแล้ว");
     }
