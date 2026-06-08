@@ -130,7 +130,7 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
   if (filter === "sla" && slaCutoffIso) {
-    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)");
+    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,postponed,cancelled)");
   }
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
