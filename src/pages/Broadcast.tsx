@@ -368,9 +368,9 @@ function ComposerDialog({
     if (type === "image") setBubbles([...bubbles, { type: "image", url: "" }]);
     if (type === "video") setBubbles([...bubbles, { type: "video", url: "" }]);
     if (type === "flex") setBubbles([...bubbles, { type: "flex", alt_text: "", contents: {} }]);
-    if (type === "rich_message") setBubbles([...bubbles, { type: "rich_message", image_url: "", alt_text: "Rich Message", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }]);
-    if (type === "rich_video") setBubbles([...bubbles, { type: "rich_video", video_url: "", preview_url: "", alt_text: "Rich Video", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }]);
-    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] }]);
+    if (type === "rich_message") setBubbles([...bubbles, { type: "rich_message", image_url: "", alt_text: "Rich Message", actions: [] }]);
+    if (type === "rich_video") setBubbles([...bubbles, { type: "rich_video", video_url: "", preview_url: "", alt_text: "Rich Video", actions: [] }]);
+    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [] }] }]);
   };
 
   const updateBubble = (i: number, patch: Partial<Bubble>) => {
@@ -911,7 +911,7 @@ function CampaignDetail({
                           {b.image_url && <img src={b.image_url} className="w-24 h-24 object-cover rounded" />}
                           <div className="text-xs space-y-1">
                             <div className="text-muted-foreground">Alt: {b.alt_text}</div>
-                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                            {b.actions.length > 0 && <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>}
                           </div>
                         </div>
                       )}
@@ -920,7 +920,7 @@ function CampaignDetail({
                           {b.preview_url && <img src={b.preview_url} className="w-32 h-20 object-cover rounded" />}
                           <div className="text-xs space-y-1">
                             <div className="text-muted-foreground">Alt: {b.alt_text}</div>
-                            <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>
+                            {b.actions.length > 0 && <div>ปุ่ม: {b.actions.map((a) => a.label).join(" / ")}</div>}
                           </div>
                         </div>
                       )}
@@ -1263,7 +1263,7 @@ function TestSendPanel({ bubbles }: { bubbles: Bubble[] }) {
 // ============================================================
 
 function ActionsEditor({
-  actions, onChange, max = 6, min = 1,
+  actions, onChange, max = 6, min = 0,
 }: { actions: ActionItem[]; onChange: (a: ActionItem[]) => void; max?: number; min?: number }) {
   const update = (i: number, patch: Partial<ActionItem>) =>
     onChange(actions.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
