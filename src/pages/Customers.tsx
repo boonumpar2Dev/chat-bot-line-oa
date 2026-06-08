@@ -20,7 +20,7 @@ import { toast } from "sonner";
 
 const STATUS_LABEL: Record<string, string> = {
   new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา",
-  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", postponed: "เลื่อนจัดงาน (มัดจำแล้ว)", cancelled: "ยกเลิก",
+  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)", postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)", cancelled: "ยกเลิก",
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -30,6 +30,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending_quote: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
   pending_confirm: "bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/20",
   confirmed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
+  confirmed_returning: "bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20",
   postponed: "bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 border-yellow-500/30",
   cancelled: "bg-muted text-muted-foreground border-border",
 };
