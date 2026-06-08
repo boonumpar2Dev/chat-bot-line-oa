@@ -46,8 +46,9 @@ const STATUS_OPTIONS = [
   { v: "pending_quote", label: "รอเสนอราคา" },
   { v: "pending_confirm", label: "รอคอนเฟิร์ม" },
   { v: "confirmed", label: "คอนเฟิร์ม" },
+  { v: "confirmed_returning", label: "คอนเฟิร์ม (ลูกค้าเก่า)" },
   { v: "returning", label: "ลูกค้าเก่า" },
-  { v: "postponed", label: "เลื่อนจัดงาน (มัดจำแล้ว)" },
+  { v: "postponed", label: "เลื่อนวันจัดงาน(มัดจำแล้ว)" },
   { v: "cancelled", label: "ยกเลิก" },
 ];
 
