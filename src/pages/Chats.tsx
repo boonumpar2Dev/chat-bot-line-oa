@@ -357,7 +357,7 @@ export default function Chats() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching, filter, slaCutoffMs, slaCutoffIso]);
+  }, [isSearching, filter, slaCutoffMs, slaCutoffIso, selectedId]);
 
 
   // Infinite scroll
