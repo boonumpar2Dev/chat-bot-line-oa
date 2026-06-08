@@ -268,12 +268,16 @@ function ComposerDialog({
   const [tags, setTags] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
+  const [excludeTags, setExcludeTags] = useState<string[]>([]);
+  const [excludeStatuses, setExcludeStatuses] = useState<string[]>([]);
   const [matchMode, setMatchMode] = useState<"any" | "all">("any");
   const [scheduleMode, setScheduleMode] = useState<"now" | "later">("now");
   const [scheduledAt, setScheduledAt] = useState<string>(() => {
     const d = new Date(Date.now() + 30 * 60_000);
     return toLocalInput(d);
   });
+  const [rawCount, setRawCount] = useState<number | null>(null);
+  const [excludedCount, setExcludedCount] = useState<number>(0);
   const [recipientCount, setRecipientCount] = useState<number | null>(null);
   const [countLoading, setCountLoading] = useState(false);
   const [saving, setSaving] = useState(false);
