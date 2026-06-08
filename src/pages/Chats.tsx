@@ -1299,8 +1299,10 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
     ? (quotedMessage.sender === "customer" ? "ลูกค้า" : quotedMessage.sender === "admin" ? "แอดมิน" : "AI")
     : "";
   const quotedSnippet = quotedMessage ? formatSnippet(quotedMessage.message) : "";
-  return (
-    <div className={cn("flex flex-col gap-0.5 group", align)}>
+  const initial = (customerName || "?").trim().charAt(0).toUpperCase();
+  const bubble = (
+    <div className={cn("flex flex-col gap-0.5 group min-w-0 flex-1", align)}>
+
       {showLabel && (
         <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
           {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
