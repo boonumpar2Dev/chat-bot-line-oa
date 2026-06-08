@@ -48,7 +48,7 @@ type Customer = any;
 type Conversation = any;
 
 const STATUS_LABEL: Record<string, string> = {
-  new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
+  new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", postponed: "เลื่อนจัดงาน (มัดจำแล้ว)", cancelled: "ยกเลิก",
 };
 
 function getFileType(url = "") {
@@ -130,7 +130,7 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
   if (filter === "sla" && slaCutoffIso) {
-    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)");
+    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,postponed,cancelled)");
   }
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
@@ -145,7 +145,7 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
     return (c.unread_count || 0) > 0
       && new Date(c.last_message_at).getTime() < slaCutoffMs
-      && !["confirmed", "cancelled"].includes(c.status);
+      && !["confirmed", "postponed", "cancelled"].includes(c.status);
   }
   if (filter.startsWith("status:")) return c.status === filter.slice(7);
   return true;
@@ -278,7 +278,7 @@ export default function Chats() {
     const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
     const [u, s, m, n] = await Promise.all([
       base().gt("unread_count", 0),
-      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,cancelled)"),
+      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().is("phone", null),
     ]);

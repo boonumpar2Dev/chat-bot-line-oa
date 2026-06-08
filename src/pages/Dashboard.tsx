@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending_quote: "รอเสนอราคา",
   pending_confirm: "รอคอนเฟิร์ม",
   confirmed: "คอนเฟิร์ม",
+  postponed: "เลื่อนจัดงาน (มัดจำแล้ว)",
   cancelled: "ยกเลิก",
 };
 
@@ -61,7 +62,7 @@ export default function Dashboard() {
         .select("*")
         .gt("unread_count", 0)
         .lt("last_message_at", cutoff)
-        .not("status", "in", "(confirmed,cancelled)")
+        .not("status", "in", "(confirmed,postponed,cancelled)")
         .order("last_message_at", { ascending: true })
         .limit(10);
       return (data ?? []).map((r: any) => ({

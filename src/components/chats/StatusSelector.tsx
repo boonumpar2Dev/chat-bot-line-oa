@@ -11,10 +11,12 @@ const STATUS_OPTIONS = [
   { value: "pending_quote", label: "รอเสนอราคา", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
   { value: "pending_confirm", label: "รอคอนเฟิร์ม", color: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
   { value: "confirmed", label: "คอนเฟิร์ม", color: "bg-green-100 text-green-700", dot: "bg-green-500" },
+  { value: "postponed", label: "เลื่อนจัดงาน (มัดจำแล้ว)", color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-600" },
   { value: "cancelled", label: "ยกเลิก", color: "bg-red-100 text-red-700", dot: "bg-red-500" },
 ] as const;
 
 const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed"];
+const AI_ON_STATUSES = ["postponed"];
 
 export default function StatusSelector({ customer, onUpdate }: { customer: any; onUpdate: (c: any) => void }) {
   const [open, setOpen] = useState(false);
@@ -24,10 +26,16 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
     if (newStatus === customer.status) return;
     const updateData: any = { status: newStatus };
     if (AI_OFF_STATUSES.includes(newStatus)) updateData.ai_active = false;
+    if (AI_ON_STATUSES.includes(newStatus)) {
+      updateData.ai_active = true;
+      updateData.manual_chat_until = null;
+    }
     await supabase.from("customers").update(updateData).eq("id", customer.id);
     onUpdate({ ...customer, ...updateData });
     if (AI_OFF_STATUSES.includes(newStatus)) {
       toast.info(`ปิด AI อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
+    } else if (AI_ON_STATUSES.includes(newStatus)) {
+      toast.success(`เปิด AI กลับให้อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
     } else {
       toast.success("อัปเดตสเตตัสแล้ว");
     }

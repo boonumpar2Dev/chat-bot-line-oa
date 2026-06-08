@@ -13,7 +13,7 @@ import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 
 const STATUS_LABEL: Record<string, string> = {
   new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา",
-  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", cancelled: "ยกเลิก",
+  pending_confirm: "รอคอนเฟิร์ม", confirmed: "คอนเฟิร์ม", postponed: "เลื่อนจัดงาน (มัดจำแล้ว)", cancelled: "ยกเลิก",
 };
 
 // Tier is now manual (customers.tier) — admin-managed, no auto computation
