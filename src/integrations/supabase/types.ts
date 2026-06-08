@@ -1108,6 +1108,7 @@ export type Database = {
         | "confirmed"
         | "cancelled"
         | "inquiry"
+        | "postponed"
       message_sender: "customer" | "ai" | "admin"
     }
     CompositeTypes: {
@@ -1245,6 +1246,7 @@ export const Constants = {
         "confirmed",
         "cancelled",
         "inquiry",
+        "postponed",
       ],
       message_sender: ["customer", "ai", "admin"],
     },
