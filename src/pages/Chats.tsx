@@ -145,7 +145,7 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
     return (c.unread_count || 0) > 0
       && new Date(c.last_message_at).getTime() < slaCutoffMs
-      && !["confirmed", "cancelled"].includes(c.status);
+      && !["confirmed", "postponed", "cancelled"].includes(c.status);
   }
   if (filter.startsWith("status:")) return c.status === filter.slice(7);
   return true;
