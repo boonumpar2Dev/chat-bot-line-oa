@@ -554,6 +554,23 @@ async function processEvent(event: any, supabase: any) {
       ai_active: sourceType === "user",
     }).select().single();
     customer = created;
+  } else if (sourceType === "user") {
+    // Refresh profile picture every 7 days (don't touch display_name — may be admin-edited)
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const lastRefresh = customer.picture_refreshed_at ? new Date(customer.picture_refreshed_at).getTime() : 0;
+    if (Date.now() - lastRefresh > SEVEN_DAYS_MS) {
+      try {
+        const profileRes = await fetch(`https://api.line.me/v2/bot/profile/${lineUserId}`, { headers: { Authorization: `Bearer ${LINE_TOKEN}` } });
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          const newPic = profile.pictureUrl || "";
+          const patch: any = { picture_refreshed_at: new Date().toISOString() };
+          if (newPic && newPic !== customer.picture_url) patch.picture_url = newPic;
+          await supabase.from("customers").update(patch).eq("id", customer.id);
+          if (patch.picture_url) customer.picture_url = patch.picture_url;
+        }
+      } catch (e) { console.error("profile refresh failed", e); }
+    }
   }
 
 
