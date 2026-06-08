@@ -342,6 +342,10 @@ export default function Settings() {
         </div>
       </Card>
 
+      {/* Notification sound */}
+      <NotificationSoundCard />
+
+
       {/* Linked pages */}
       <Card className="p-6 shadow-soft border-border/60 bg-primary/5">
         <h2 className="font-display text-lg font-semibold mb-3">การตั้งค่าอื่นๆ</h2>
