@@ -1175,3 +1175,222 @@ function TestSendPanel({ bubbles }: { bubbles: Bubble[] }) {
   );
 }
 
+
+// ============================================================
+// Rich Content Editors (Rich Message / Rich Video / Card)
+// ============================================================
+
+function ActionsEditor({
+  actions, onChange, max = 6, min = 1,
+}: { actions: ActionItem[]; onChange: (a: ActionItem[]) => void; max?: number; min?: number }) {
+  const update = (i: number, patch: Partial<ActionItem>) =>
+    onChange(actions.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+  const remove = (i: number) => onChange(actions.filter((_, idx) => idx !== i));
+  const add = () => {
+    if (actions.length >= max) { toast.error(`สูงสุด ${max} ปุ่ม`); return; }
+    onChange([...actions, { label: "ปุ่ม", type: "uri", uri: "" }]);
+  };
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground">ปุ่ม ({actions.length}/{max})</Label>
+        <Button size="sm" variant="ghost" className="h-6 text-[11px]" onClick={add} disabled={actions.length >= max}>
+          <Plus className="w-3 h-3 mr-0.5" /> เพิ่มปุ่ม
+        </Button>
+      </div>
+      {actions.map((a, i) => (
+        <div key={i} className="flex items-center gap-1.5 p-1.5 rounded border bg-background">
+          <Input
+            value={a.label}
+            onChange={(e) => update(i, { label: e.target.value.slice(0, 20) })}
+            placeholder="ข้อความปุ่ม (≤20)"
+            className="h-7 text-xs flex-1"
+            maxLength={20}
+          />
+          <select
+            value={a.type}
+            onChange={(e) => update(i, { type: e.target.value as "uri" | "message" })}
+            className="h-7 rounded border bg-background text-xs px-1"
+          >
+            <option value="uri">เปิด URL</option>
+            <option value="message">ส่งข้อความกลับ</option>
+          </select>
+          {a.type === "uri" ? (
+            <Input
+              value={a.uri || ""}
+              onChange={(e) => update(i, { uri: e.target.value })}
+              placeholder="https://..."
+              className="h-7 text-xs flex-1"
+            />
+          ) : (
+            <Input
+              value={a.text || ""}
+              onChange={(e) => update(i, { text: e.target.value })}
+              placeholder="ข้อความที่ส่งกลับ"
+              className="h-7 text-xs flex-1"
+            />
+          )}
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500"
+            onClick={() => remove(i)} disabled={actions.length <= min}>
+            <Trash2 className="w-3 h-3" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MediaUpload({
+  url, kind, onChange, accept, maxMB,
+}: { url: string; kind: "image" | "video"; onChange: (url: string) => void; accept: string; maxMB: number }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  return (
+    <div>
+      {url ? (
+        <div className="relative inline-block">
+          {kind === "image"
+            ? <img src={url} className="max-h-32 rounded border" />
+            : <video src={url} className="max-h-32 rounded border" controls />}
+          <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6" onClick={() => onChange("")}>
+            <X className="w-3 h-3" />
+          </Button>
+        </div>
+      ) : (
+        <Button size="sm" variant="outline" disabled={busy} onClick={() => ref.current?.click()}>
+          {busy ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> :
+            kind === "image" ? <ImageIcon className="w-3.5 h-3.5 mr-1" /> : <Video className="w-3.5 h-3.5 mr-1" />}
+          อัปโหลด{kind === "image" ? "รูป" : "วิดีโอ"} (≤{maxMB}MB)
+        </Button>
+      )}
+      <input ref={ref} type="file" accept={accept} className="hidden" onChange={async (e) => {
+        const f = e.target.files?.[0]; if (!f) return;
+        if (f.size > maxMB * 1024 * 1024) { toast.error(`ไฟล์ใหญ่เกิน ${maxMB}MB`); return; }
+        setBusy(true);
+        const u = await uploadMedia(f, kind);
+        setBusy(false);
+        if (u) onChange(u);
+      }} />
+    </div>
+  );
+}
+
+function RichMessageEditor({
+  bubble, onUpdate,
+}: { bubble: { type: "rich_message"; image_url: string; alt_text: string; actions: ActionItem[] }; onUpdate: (p: any) => void }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="space-y-1">
+        <Label className="text-xs text-muted-foreground">รูป (แนะนำสี่เหลี่ยมจัตุรัส 1040×1040)</Label>
+        <MediaUpload url={bubble.image_url} kind="image" accept="image/*" maxMB={10}
+          onChange={(u) => onUpdate({ image_url: u } as any)} />
+      </div>
+      <Input
+        value={bubble.alt_text}
+        onChange={(e) => onUpdate({ alt_text: e.target.value } as any)}
+        placeholder="ข้อความแจ้งเตือน (alt text)"
+        className="text-xs"
+      />
+      <ActionsEditor
+        actions={bubble.actions}
+        onChange={(a) => onUpdate({ actions: a } as any)}
+        max={6}
+      />
+    </div>
+  );
+}
+
+function RichVideoEditor({
+  bubble, onUpdate,
+}: { bubble: { type: "rich_video"; video_url: string; preview_url: string; alt_text: string; actions: ActionItem[] }; onUpdate: (p: any) => void }) {
+  return (
+    <div className="space-y-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">วิดีโอ (mp4, ≤200MB)</Label>
+          <MediaUpload url={bubble.video_url} kind="video" accept="video/mp4"
+            maxMB={200} onChange={(u) => onUpdate({ video_url: u } as any)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">รูปปก (preview) <span className="text-red-500">*</span></Label>
+          <MediaUpload url={bubble.preview_url} kind="image" accept="image/*"
+            maxMB={10} onChange={(u) => onUpdate({ preview_url: u } as any)} />
+        </div>
+      </div>
+      <Input
+        value={bubble.alt_text}
+        onChange={(e) => onUpdate({ alt_text: e.target.value } as any)}
+        placeholder="ข้อความแจ้งเตือน (alt text)"
+        className="text-xs"
+      />
+      <ActionsEditor
+        actions={bubble.actions}
+        onChange={(a) => onUpdate({ actions: a } as any)}
+        max={3}
+      />
+    </div>
+  );
+}
+
+function CardMessageEditor({
+  bubble, onUpdate,
+}: { bubble: { type: "card_message"; alt_text: string; cards: CardItem[] }; onUpdate: (p: any) => void }) {
+  const updateCard = (i: number, patch: Partial<CardItem>) =>
+    onUpdate({ cards: bubble.cards.map((c, idx) => (idx === i ? { ...c, ...patch } : c)) } as any);
+  const removeCard = (i: number) =>
+    onUpdate({ cards: bubble.cards.filter((_, idx) => idx !== i) } as any);
+  const addCard = () => {
+    if (bubble.cards.length >= 10) { toast.error("สูงสุด 10 การ์ด"); return; }
+    onUpdate({ cards: [...bubble.cards, { image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] } as any);
+  };
+  return (
+    <div className="space-y-2.5">
+      <Input
+        value={bubble.alt_text}
+        onChange={(e) => onUpdate({ alt_text: e.target.value } as any)}
+        placeholder="ข้อความแจ้งเตือน (alt text)"
+        className="text-xs"
+      />
+      <div className="space-y-2">
+        {bubble.cards.map((c, i) => (
+          <div key={i} className="p-2.5 rounded border bg-background space-y-2">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-[10px]">การ์ด #{i + 1}</Badge>
+              <Button size="icon" variant="ghost" className="h-6 w-6 text-red-500"
+                onClick={() => removeCard(i)} disabled={bubble.cards.length <= 1}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">รูป (16:9 หรือสี่เหลี่ยมจัตุรัส)</Label>
+              <MediaUpload url={c.image_url} kind="image" accept="image/*" maxMB={10}
+                onChange={(u) => updateCard(i, { image_url: u })} />
+            </div>
+            <Input
+              value={c.title}
+              onChange={(e) => updateCard(i, { title: e.target.value.slice(0, 40) })}
+              placeholder="หัวข้อ"
+              className="text-xs font-medium"
+            />
+            <Textarea
+              value={c.description}
+              onChange={(e) => updateCard(i, { description: e.target.value.slice(0, 60) })}
+              placeholder="รายละเอียดสั้นๆ (≤60 ตัว)"
+              rows={2}
+              className="text-xs"
+            />
+            <ActionsEditor
+              actions={c.actions}
+              onChange={(a) => updateCard(i, { actions: a })}
+              max={3}
+              min={0}
+            />
+          </div>
+        ))}
+      </div>
+      <Button size="sm" variant="outline" onClick={addCard} disabled={bubble.cards.length >= 10} className="w-full">
+        <Plus className="w-3.5 h-3.5 mr-1" /> เพิ่มการ์ด ({bubble.cards.length}/10)
+      </Button>
+    </div>
+  );
+}
