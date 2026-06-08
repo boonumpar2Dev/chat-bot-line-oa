@@ -370,7 +370,7 @@ function ComposerDialog({
     if (type === "flex") setBubbles([...bubbles, { type: "flex", alt_text: "", contents: {} }]);
     if (type === "rich_message") setBubbles([...bubbles, { type: "rich_message", image_url: "", alt_text: "Rich Message", actions: [] }]);
     if (type === "rich_video") setBubbles([...bubbles, { type: "rich_video", video_url: "", preview_url: "", alt_text: "Rich Video", actions: [] }]);
-    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [] }] }]);
+    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "", description: "", actions: [] }] }]);
   };
 
   const updateBubble = (i: number, patch: Partial<Bubble>) => {
