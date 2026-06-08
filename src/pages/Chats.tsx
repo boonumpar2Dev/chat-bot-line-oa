@@ -774,7 +774,8 @@ export default function Chats() {
                 </p>
                 <div className="flex items-center gap-1 mt-1">
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
-                  {!c.ai_active && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
+                  {!c.ai_active && !(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
+                  {(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">กรุ๊ป</Badge>}
                   {isUnread && <Badge variant="destructive" className="text-[10px] py-0 h-4 ml-auto px-1.5 min-w-[20px] justify-center">{c.unread_count}</Badge>}
                 </div>
               </div>
