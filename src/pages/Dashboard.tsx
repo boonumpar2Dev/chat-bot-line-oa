@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending_quote: "รอเสนอราคา",
   pending_confirm: "รอคอนเฟิร์ม",
   confirmed: "คอนเฟิร์ม",
+  postponed: "เลื่อนจัดงาน (มัดจำแล้ว)",
   cancelled: "ยกเลิก",
 };
 
