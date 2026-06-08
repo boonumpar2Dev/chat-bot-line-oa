@@ -370,7 +370,7 @@ function ComposerDialog({
     if (type === "flex") setBubbles([...bubbles, { type: "flex", alt_text: "", contents: {} }]);
     if (type === "rich_message") setBubbles([...bubbles, { type: "rich_message", image_url: "", alt_text: "Rich Message", actions: [] }]);
     if (type === "rich_video") setBubbles([...bubbles, { type: "rich_video", video_url: "", preview_url: "", alt_text: "Rich Video", actions: [] }]);
-    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [] }] }]);
+    if (type === "card_message") setBubbles([...bubbles, { type: "card_message", alt_text: "Card Message", cards: [{ image_url: "", title: "", description: "", actions: [] }] }]);
   };
 
   const updateBubble = (i: number, patch: Partial<Bubble>) => {
@@ -400,7 +400,7 @@ function ComposerDialog({
           if (!b.contents || typeof b.contents !== "object") { toast.error("Flex contents ไม่ถูกต้อง"); return; }
         }
         if (b.type === "rich_message" && !b.image_url) { toast.error("Rich Message ต้องมีรูป"); return; }
-        if (b.type === "rich_video" && (!b.video_url || !b.preview_url)) { toast.error("Rich Video ต้องมีวิดีโอ+รูปปก"); return; }
+        if (b.type === "rich_video" && !b.video_url) { toast.error("Rich Video ต้องมีวิดีโอ"); return; }
         if (b.type === "card_message") {
           if (!b.cards?.length) { toast.error("Card Message ต้องมีอย่างน้อย 1 การ์ด"); return; }
           for (const c of b.cards) {
@@ -1394,7 +1394,7 @@ function RichVideoEditor({
             maxMB={200} onChange={(u) => onUpdate({ video_url: u } as any)} />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">รูปปก (preview) <span className="text-red-500">*</span></Label>
+          <Label className="text-xs text-muted-foreground">รูปปก (ไม่ใส่ก็ได้ — จะใช้ placeholder)</Label>
           <MediaUpload url={bubble.preview_url} kind="image" accept="image/*"
             maxMB={10} onChange={(u) => onUpdate({ preview_url: u } as any)} />
         </div>
@@ -1423,7 +1423,7 @@ function CardMessageEditor({
     onUpdate({ cards: bubble.cards.filter((_, idx) => idx !== i) } as any);
   const addCard = () => {
     if (bubble.cards.length >= 10) { toast.error("สูงสุด 10 การ์ด"); return; }
-    onUpdate({ cards: [...bubble.cards, { image_url: "", title: "หัวข้อ", description: "รายละเอียด", actions: [{ label: "ดูเพิ่มเติม", type: "uri", uri: "" }] }] } as any);
+    onUpdate({ cards: [...bubble.cards, { image_url: "", title: "", description: "", actions: [] }] } as any);
   };
   return (
     <div className="space-y-2.5">
