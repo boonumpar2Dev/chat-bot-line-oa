@@ -49,51 +49,41 @@ function buildButtons(actions: any[]): any[] {
     }));
 }
 
-// Build a single Flex bubble for Rich Message (image + buttons)
-function buildRichMessageBubble(b: any) {
+// Default placeholder for video preview when none provided
+const VIDEO_PLACEHOLDER_URL = "https://void-blossom-bud.lovable.app/video-placeholder.jpg";
+
+// Build Rich Message Flex bubble (full-bleed image + optional tap action; used when 2+ buttons OR single tap)
+function buildRichMessageBubble(b: any, opts: { tapAction?: any } = {}) {
   const buttons = buildButtons(b.actions);
-  return {
+  const bubble: any = {
     type: "bubble",
+    size: "giga",
     hero: b.image_url ? {
       type: "image",
       url: String(b.image_url),
       size: "full",
       aspectRatio: "1:1",
       aspectMode: "cover",
-    } : undefined,
-    footer: buttons.length ? {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
-      contents: buttons,
+      ...(opts.tapAction ? { action: opts.tapAction } : {}),
     } : undefined,
   };
+  if (buttons.length >= 2) {
+    bubble.footer = { type: "box", layout: "vertical", spacing: "sm", contents: buttons };
+  }
+  return bubble;
 }
 
-// Rich Video bubble (video hero + buttons)
-function buildRichVideoBubble(b: any) {
-  const buttons = buildButtons(b.actions);
+// Buttons-only bubble (attached after native video message)
+function buildButtonsOnlyBubble(actions: any[], altLabel?: string) {
+  const buttons = buildButtons(actions);
+  if (!buttons.length) return null;
+  const contents: any[] = [];
+  if (altLabel) contents.push({ type: "text", text: String(altLabel).slice(0, 60), size: "sm", color: "#666666", wrap: true });
+  contents.push({ type: "box", layout: "vertical", spacing: "sm", contents: buttons, margin: altLabel ? "md" : "none" });
   return {
     type: "bubble",
-    hero: b.video_url && b.preview_url ? {
-      type: "video",
-      url: String(b.video_url),
-      previewUrl: String(b.preview_url),
-      altContent: {
-        type: "image",
-        size: "full",
-        aspectRatio: "16:9",
-        aspectMode: "cover",
-        url: String(b.preview_url),
-      },
-      aspectRatio: "16:9",
-    } : undefined,
-    footer: buttons.length ? {
-      type: "box",
-      layout: "vertical",
-      spacing: "sm",
-      contents: buttons,
-    } : undefined,
+    size: "kilo",
+    body: { type: "box", layout: "vertical", contents },
   };
 }
 
