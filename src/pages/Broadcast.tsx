@@ -12,17 +12,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Megaphone, Plus, Trash2, Image as ImageIcon, Video, Type, FileJson, ChevronUp, ChevronDown, Send, Clock, Loader2, Eye, RefreshCw, X, Search, Smartphone, FlaskConical, Check, Copy } from "lucide-react";
+import { Megaphone, Plus, Trash2, Image as ImageIcon, Video, Type, FileJson, ChevronUp, ChevronDown, Send, Clock, Loader2, Eye, RefreshCw, X, Search, Smartphone, FlaskConical, Check, Copy, Sparkles, Film, LayoutGrid, Link as LinkIcon, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 
-type BubbleType = "text" | "image" | "video" | "flex";
+type BubbleType = "text" | "image" | "video" | "flex" | "rich_message" | "rich_video" | "card_message";
+export type ActionItem = { label: string; type: "uri" | "message"; uri?: string; text?: string };
+export type CardItem = { image_url: string; title: string; description: string; actions: ActionItem[] };
 type Bubble =
   | { type: "text"; text: string }
   | { type: "image"; url: string; preview_url?: string }
   | { type: "video"; url: string; thumb_url?: string }
-  | { type: "flex"; alt_text: string; contents: any };
+  | { type: "flex"; alt_text: string; contents: any }
+  | { type: "rich_message"; image_url: string; alt_text: string; actions: ActionItem[] }
+  | { type: "rich_video"; video_url: string; preview_url: string; alt_text: string; actions: ActionItem[] }
+  | { type: "card_message"; alt_text: string; cards: CardItem[] };
 
 type Campaign = {
   id: string;
