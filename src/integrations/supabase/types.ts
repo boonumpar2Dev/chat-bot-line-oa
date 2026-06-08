@@ -650,6 +650,7 @@ export type Database = {
           nickname: string | null
           phone: string | null
           phone_saved_at: string | null
+          picture_refreshed_at: string | null
           picture_url: string | null
           sla_deadline: string | null
           status: Database["public"]["Enums"]["customer_status"]
@@ -684,6 +685,7 @@ export type Database = {
           nickname?: string | null
           phone?: string | null
           phone_saved_at?: string | null
+          picture_refreshed_at?: string | null
           picture_url?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
@@ -718,6 +720,7 @@ export type Database = {
           nickname?: string | null
           phone?: string | null
           phone_saved_at?: string | null
+          picture_refreshed_at?: string | null
           picture_url?: string | null
           sla_deadline?: string | null
           status?: Database["public"]["Enums"]["customer_status"]
