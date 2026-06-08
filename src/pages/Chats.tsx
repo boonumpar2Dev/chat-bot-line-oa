@@ -831,10 +831,12 @@ export default function Chats() {
                   {selected.phone && <span className="text-xs text-muted-foreground hidden sm:inline">{selected.phone}</span>}
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
-                <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
-              </div>
+              {!(selected.line_user_id?.startsWith("C") || selected.line_user_id?.startsWith("R")) && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Label htmlFor="ai-tog" className="text-xs hidden sm:inline">AI</Label>
+                  <Switch id="ai-tog" checked={selected.ai_active} onCheckedChange={toggleAi}/>
+                </div>
+              )}
               <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
                 <Search className="w-4 h-4"/>
               </Button>
