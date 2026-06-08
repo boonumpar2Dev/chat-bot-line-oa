@@ -1388,5 +1388,16 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
       </div>
     </div>
   );
+  if (!isCustomer) return bubble;
+  return (
+    <div className="flex items-start gap-2">
+      <Avatar className="w-8 h-8 shrink-0 mt-0.5">
+        {customerPicture && <AvatarImage src={customerPicture}/>}
+        <AvatarFallback className="bg-brand-gradient text-primary-foreground text-[10px]">{initial}</AvatarFallback>
+      </Avatar>
+      {bubble}
+    </div>
+  );
 }
+
 
