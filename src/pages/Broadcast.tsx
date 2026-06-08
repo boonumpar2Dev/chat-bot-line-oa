@@ -1394,7 +1394,7 @@ function RichVideoEditor({
             maxMB={200} onChange={(u) => onUpdate({ video_url: u } as any)} />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">รูปปก (preview) <span className="text-red-500">*</span></Label>
+          <Label className="text-xs text-muted-foreground">รูปปก (ไม่ใส่ก็ได้ — จะใช้ placeholder)</Label>
           <MediaUpload url={bubble.preview_url} kind="image" accept="image/*"
             maxMB={10} onChange={(u) => onUpdate({ preview_url: u } as any)} />
         </div>
