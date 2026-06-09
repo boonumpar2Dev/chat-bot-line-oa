@@ -131,23 +131,55 @@ function PackagesTab() {
   const { data: pkgs, isLoading } = useQuery({ queryKey: ["packages"], queryFn: async () => (await supabase.from("catering_packages").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
 
-  const openNew = () => { setEdit(blankPkg); setOpen(true); };
-  const openEdit = (p: any) => { setEdit({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }); setOpen(true); };
-  const openDuplicate = (p: any) => {
-    const { id, created_at, updated_at, ...rest } = p;
-    setEdit({ ...rest, name: `${p.name} (สำเนา)`, pricing_tiers: structuredClone(p.pricing_tiers || []), custom_attributes: structuredClone(p.custom_attributes || []), image_urls: [...(p.image_urls || [])], video_urls: structuredClone(p.video_urls || []) });
+  // ---- Draft state ----
+  const initialSnapshotRef = useRef<string>("");
+  const [draftKey, setDraftKey] = useState<string>("pkg:new");
+  const [foundDraft, setFoundDraft] = useState<{ value: Pkg; savedAt: number } | null>(null);
+  const isDirty = useMemo(() => JSON.stringify(edit) !== initialSnapshotRef.current, [edit]);
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Pkg>(draftKey, edit, open, { isDirty });
+
+  const openWith = (val: Pkg, key: string) => {
+    initialSnapshotRef.current = JSON.stringify(val);
+    setDraftKey(key);
+    const d = readDraft<Pkg>(key);
+    if (d && JSON.stringify(d.value) !== initialSnapshotRef.current) setFoundDraft(d);
+    else { setFoundDraft(null); if (d) clearDraft(key); }
+    setEdit(val);
     setOpen(true);
   };
+  const openNew = () => openWith(blankPkg, "pkg:new");
+  const openEdit = (p: any) => openWith({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }, `pkg:${p.id}`);
+  const openDuplicate = (p: any) => {
+    const { id, created_at, updated_at, ...rest } = p;
+    openWith({ ...rest, name: `${p.name} (สำเนา)`, pricing_tiers: structuredClone(p.pricing_tiers || []), custom_attributes: structuredClone(p.custom_attributes || []), image_urls: [...(p.image_urls || [])], video_urls: structuredClone(p.video_urls || []) }, "pkg:new");
+  };
+  const restoreDraft = () => { if (foundDraft) { setEdit(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
+
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
     const res = edit.id
       ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
       : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
+    toast.success("บันทึกแล้ว");
+    clearDraft(draftKey); clearDraftState();
+    setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
     if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
   };
   const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (edit.name) save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, edit]);
 
   return (
     <div className="space-y-4">
@@ -182,9 +214,10 @@ function PackagesTab() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{edit.id?"แก้ไขแพ็คเกจ":"เพิ่มแพ็คเกจ"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6"><DialogTitle>{edit.id?"แก้ไขแพ็คเกจ":"เพิ่มแพ็คเกจ"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 px-6 pt-2 pb-4">
+            {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft}/>}
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>ชื่อแพ็คเกจ *</Label><Input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></div>
               <div className="space-y-1.5">
@@ -269,7 +302,11 @@ function PackagesTab() {
               <Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/>
             </div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button><Button onClick={save} disabled={!edit.name}>บันทึก</Button></DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
+            <DraftSavedIndicator savedAt={savedAt}/>
+            <Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button>
+            <Button onClick={save} disabled={!edit.name} title="Ctrl/Cmd + S">บันทึก</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -307,19 +344,56 @@ function PromotionsTab() {
   const [edit, setEdit] = useState<Promo>(blankPromo);
   const { data: promos } = useQuery({ queryKey:["promos"], queryFn: async()=>(await supabase.from("promotions").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey:["pkg-cats"], queryFn: async()=>(await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
+
+  const initialSnapshotRef = useRef<string>("");
+  const [draftKey, setDraftKey] = useState<string>("promo:new");
+  const [foundDraft, setFoundDraft] = useState<{ value: Promo; savedAt: number } | null>(null);
+  const isDirty = useMemo(() => JSON.stringify(edit) !== initialSnapshotRef.current, [edit]);
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Promo>(draftKey, edit, open, { isDirty });
+
+  const openWith = (val: Promo, key: string) => {
+    initialSnapshotRef.current = JSON.stringify(val);
+    setDraftKey(key);
+    const d = readDraft<Promo>(key);
+    if (d && JSON.stringify(d.value) !== initialSnapshotRef.current) setFoundDraft(d);
+    else { setFoundDraft(null); if (d) clearDraft(key); }
+    setEdit(val);
+    setOpen(true);
+  };
+  const openNew = () => openWith(blankPromo, "promo:new");
+  const openEdit = (p: any) => openWith({ ...p, applicable_categories: p.applicable_categories||[], image_urls: p.image_urls||[], video_urls: p.video_urls||[] }, `promo:${p.id}`);
+  const openDuplicate = (p: any) => { const {id,created_at,updated_at,...rest}=p; openWith({...rest,name:`${p.name} (สำเนา)`,applicable_categories:[...(p.applicable_categories||[])],image_urls:[...(p.image_urls||[])],video_urls:structuredClone(p.video_urls||[])}, "promo:new"); };
+  const restoreDraft = () => { if (foundDraft) { setEdit(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
+
   const save = async () => {
     const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
     const res = edit.id
       ? await supabase.from("promotions").update(payload).eq("id",edit.id).select("id").maybeSingle()
       : await supabase.from("promotions").insert(payload).select("id").maybeSingle();
     if(res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
+    toast.success("บันทึกแล้ว");
+    clearDraft(draftKey); clearDraftState();
+    setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
     if (res.data?.id) triggerEmbed("promotions", res.data.id);
   };
   const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache(); };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (edit.name) save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, edit]);
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={()=>{setEdit(blankPromo);setOpen(true);}}><Plus/>เพิ่มโปรโมชั่น</Button></div>
+      <div className="flex justify-end"><Button onClick={openNew}><Plus/>เพิ่มโปรโมชั่น</Button></div>
       <div className="grid md:grid-cols-2 gap-4">
         {promos?.map((p:any)=>(
           <Card key={p.id} className="p-5 shadow-soft border-border/60 min-w-0 overflow-hidden">
@@ -332,16 +406,17 @@ function PromotionsTab() {
                 </div>
                 {p.description && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{p.description}</p>}
               </div>
-              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[],video_urls:p.video_urls||[]});setOpen(true);}} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>{const {id,created_at,updated_at,...rest}=p;setEdit({...rest,name:`${p.name} (สำเนา)`,applicable_categories:[...(p.applicable_categories||[])],image_urls:[...(p.image_urls||[])],video_urls:structuredClone(p.video_urls||[])});setOpen(true);}} title="คัดลอก"><Copy className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
+              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(p)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>openDuplicate(p)} title="คัดลอก"><Copy className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
             </div>
           </Card>
         ))}
         {!promos?.length && <Card className="p-10 text-center md:col-span-2"><Sparkles className="w-10 h-10 mx-auto text-muted-foreground mb-2"/><p className="text-sm text-muted-foreground">ยังไม่มีโปรโมชั่น</p></Card>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{edit.id?"แก้ไขโปรโมชั่น":"เพิ่มโปรโมชั่น"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6"><DialogTitle>{edit.id?"แก้ไขโปรโมชั่น":"เพิ่มโปรโมชั่น"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 px-6 pt-2 pb-4">
+            {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft}/>}
             <div className="space-y-1.5"><Label>ชื่อ *</Label><Input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></div>
             <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>รายละเอียด</Label>{!edit.description && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,description:PROMO_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={3} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
             <div className="space-y-1.5">
@@ -362,7 +437,11 @@ function PromotionsTab() {
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label><VideoUrlsField videos={edit.video_urls} onChange={v=>setEdit({...edit,video_urls:v})}/></div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted"><Label>เปิดใช้งาน</Label><Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button><Button onClick={save} disabled={!edit.name}>บันทึก</Button></DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
+            <DraftSavedIndicator savedAt={savedAt}/>
+            <Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button>
+            <Button onClick={save} disabled={!edit.name} title="Ctrl/Cmd + S">บันทึก</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
