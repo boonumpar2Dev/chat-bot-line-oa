@@ -3,6 +3,8 @@ import { ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { syncTagsForStatusChange } from "@/lib/statusTags";
+
 
 const STATUS_OPTIONS = [
   { value: "new", label: "ลูกค้าใหม่", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
@@ -31,6 +33,12 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
       updateData.ai_active = true;
       updateData.manual_chat_until = null;
     }
+    // sync tags: ถอด tag ของ status เก่า + เพิ่ม tag ของ status ใหม่
+    try {
+      updateData.tags = await syncTagsForStatusChange(customer.status, newStatus, customer.tags);
+    } catch (e) {
+      // ถ้าโหลด map ไม่ได้ ให้ข้าม sync (ไม่ทำให้การเปลี่ยน status ล้มเหลว)
+    }
     await supabase.from("customers").update(updateData).eq("id", customer.id);
     onUpdate({ ...customer, ...updateData });
     if (AI_OFF_STATUSES.includes(newStatus)) {
@@ -41,6 +49,7 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
       toast.success("อัปเดตสเตตัสแล้ว");
     }
   };
+
 
   const current = STATUS_OPTIONS.find(s => s.value === customer.status) || STATUS_OPTIONS[0];
 
