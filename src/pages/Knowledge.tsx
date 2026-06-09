@@ -214,9 +214,10 @@ function PackagesTab() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{edit.id?"แก้ไขแพ็คเกจ":"เพิ่มแพ็คเกจ"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6"><DialogTitle>{edit.id?"แก้ไขแพ็คเกจ":"เพิ่มแพ็คเกจ"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 px-6 pt-2 pb-4">
+            {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft}/>}
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>ชื่อแพ็คเกจ *</Label><Input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></div>
               <div className="space-y-1.5">
