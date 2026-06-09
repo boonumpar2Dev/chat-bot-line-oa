@@ -558,9 +558,12 @@ function KnowledgeBaseTab() {
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) resetAcks(); setOpen(v); }}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{edit.id ? "แก้ไขข้อมูล" : "เพิ่มข้อมูล"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6"><DialogTitle>{edit.id ? "แก้ไขข้อมูล" : "เพิ่มข้อมูล"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 px-6 pt-2 pb-4">
+            {foundDraft && (
+              <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft}/>
+            )}
             <div className="space-y-1.5"><Label>หัวข้อ *</Label>
               <Input value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })}/>
             </div>
@@ -641,9 +644,10 @@ function KnowledgeBaseTab() {
                 onCheckedChange={v => setEdit({ ...edit, status: v ? "active" : "inactive" })}/>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
+            <DraftSavedIndicator savedAt={savedAt}/>
             <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
-            <Button onClick={save} disabled={!edit.title}>บันทึก</Button>
+            <Button onClick={save} disabled={!edit.title} title="Ctrl/Cmd + S">บันทึก</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
