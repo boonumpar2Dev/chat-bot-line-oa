@@ -437,7 +437,11 @@ function PromotionsTab() {
             <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Film className="w-4 h-4"/>วิดีโอ</Label><VideoUrlsField videos={edit.video_urls} onChange={v=>setEdit({...edit,video_urls:v})}/></div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted"><Label>เปิดใช้งาน</Label><Switch checked={edit.is_active} onCheckedChange={v=>setEdit({...edit,is_active:v})}/></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button><Button onClick={save} disabled={!edit.name}>บันทึก</Button></DialogFooter>
+          <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
+            <DraftSavedIndicator savedAt={savedAt}/>
+            <Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button>
+            <Button onClick={save} disabled={!edit.name} title="Ctrl/Cmd + S">บันทึก</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
