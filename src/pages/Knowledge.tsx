@@ -406,7 +406,7 @@ function PromotionsTab() {
                 </div>
                 {p.description && <p className="text-sm text-muted-foreground mt-2 whitespace-pre-line">{p.description}</p>}
               </div>
-              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>{setEdit({...p,applicable_categories:p.applicable_categories||[],image_urls:p.image_urls||[],video_urls:p.video_urls||[]});setOpen(true);}} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>{const {id,created_at,updated_at,...rest}=p;setEdit({...rest,name:`${p.name} (สำเนา)`,applicable_categories:[...(p.applicable_categories||[])],image_urls:[...(p.image_urls||[])],video_urls:structuredClone(p.video_urls||[])});setOpen(true);}} title="คัดลอก"><Copy className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
+              <div className="flex gap-1"><Button size="icon" variant="ghost" onClick={()=>openEdit(p)} title="แก้ไข"><Edit2 className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>openDuplicate(p)} title="คัดลอก"><Copy className="w-4 h-4"/></Button><Button size="icon" variant="ghost" onClick={()=>del(p.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button></div>
             </div>
           </Card>
         ))}
