@@ -1424,11 +1424,29 @@ ${pastLines}
   const textBubbles = bubbles.length > 0 ? bubbles : [finalAnswer];
   const toLineMsg = (m: { type: string; url: string; thumb?: string }) => {
     if (m.type === "video") {
-      // Native video message — โชว์ thumbnail เต็มตามสัดส่วนจริง กดเพลย์เล่นในแชท
+      // ใช้ Flex video hero → เล่นในบับเบิล (ไม่เต็มจอ) และมีปุ่ม X ปิดมุมขวาบนเมื่อขยาย
+      const thumb = m.thumb || m.url;
       return {
-        type: "video",
-        originalContentUrl: m.url,
-        previewImageUrl: m.thumb || m.url,
+        type: "flex",
+        altText: "🎬 วิดีโอ",
+        contents: {
+          type: "bubble",
+          size: "mega",
+          hero: {
+            type: "video",
+            url: m.url,
+            previewUrl: thumb,
+            altContent: {
+              type: "image",
+              size: "full",
+              aspectRatio: "20:13",
+              aspectMode: "cover",
+              url: thumb,
+            },
+            aspectRatio: "20:13",
+            action: { type: "uri", label: "ดูวิดีโอ", uri: m.url },
+          },
+        },
       };
     }
     return { type: "image", originalContentUrl: m.url, previewImageUrl: m.url };
