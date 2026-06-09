@@ -33,6 +33,12 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
       updateData.ai_active = true;
       updateData.manual_chat_until = null;
     }
+    // sync tags: ถอด tag ของ status เก่า + เพิ่ม tag ของ status ใหม่
+    try {
+      updateData.tags = await syncTagsForStatusChange(customer.status, newStatus, customer.tags);
+    } catch (e) {
+      // ถ้าโหลด map ไม่ได้ ให้ข้าม sync (ไม่ทำให้การเปลี่ยน status ล้มเหลว)
+    }
     await supabase.from("customers").update(updateData).eq("id", customer.id);
     onUpdate({ ...customer, ...updateData });
     if (AI_OFF_STATUSES.includes(newStatus)) {
@@ -43,6 +49,7 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
       toast.success("อัปเดตสเตตัสแล้ว");
     }
   };
+
 
   const current = STATUS_OPTIONS.find(s => s.value === customer.status) || STATUS_OPTIONS[0];
 
