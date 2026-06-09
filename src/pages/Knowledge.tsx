@@ -382,6 +382,14 @@ function KnowledgeBaseTab() {
   const ruleAckedRef = useRef(false);
   const noCatAckedRef = useRef(false);
 
+  // ---- Draft state ----
+  const initialSnapshotRef = useRef<string>(""); // JSON of edit at open time
+  const [draftKey, setDraftKey] = useState<string>("kb:new");
+  const [foundDraft, setFoundDraft] = useState<{ value: KB; savedAt: number } | null>(null);
+
+  const isDirty = useMemo(() => JSON.stringify(edit) !== initialSnapshotRef.current, [edit]);
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<KB>(draftKey, edit, open, { isDirty });
+
   const resetAcks = () => { ruleAckedRef.current = false; noCatAckedRef.current = false; };
 
   const { data: items, isLoading } = useQuery({
@@ -393,14 +401,37 @@ function KnowledgeBaseTab() {
     queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order").order("name")).data ?? [],
   });
 
-  const openNew = () => { resetAcks(); setEdit(blankKB); setOpen(true); };
-  const openEdit = (i: any) => { resetAcks(); setEdit({ ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] }); setOpen(true); };
-  const openDuplicate = (i: any) => {
+  const openWith = (val: KB, key: string) => {
     resetAcks();
-    const { id, created_at, updated_at, ...rest } = i;
-    setEdit({ ...rest, title: `${i.title} (สำเนา)`, image_urls: [...(i.image_urls || [])], video_urls: structuredClone(i.video_urls || []), bundle_image_titles: [...(i.bundle_image_titles || [])] });
+    initialSnapshotRef.current = JSON.stringify(val);
+    setDraftKey(key);
+    const d = readDraft<KB>(key);
+    // Only offer draft if it actually differs from the base value
+    if (d && JSON.stringify(d.value) !== initialSnapshotRef.current) {
+      setFoundDraft(d);
+    } else {
+      setFoundDraft(null);
+      if (d) clearDraft(key);
+    }
+    setEdit(val);
     setOpen(true);
   };
+
+  const openNew = () => openWith(blankKB, "kb:new");
+  const openEdit = (i: any) => openWith(
+    { ...i, image_urls: i.image_urls || [], video_urls: i.video_urls || [], bundle_image_titles: i.bundle_image_titles || [] },
+    `kb:${i.id}`
+  );
+  const openDuplicate = (i: any) => {
+    const { id, created_at, updated_at, ...rest } = i;
+    openWith(
+      { ...rest, title: `${i.title} (สำเนา)`, image_urls: [...(i.image_urls || [])], video_urls: structuredClone(i.video_urls || []), bundle_image_titles: [...(i.bundle_image_titles || [])] },
+      "kb:new"
+    );
+  };
+
+  const restoreDraft = () => { if (foundDraft) { setEdit(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
 
   const save = async () => {
     const c = (edit.content || "").trim();
@@ -419,9 +450,24 @@ function KnowledgeBaseTab() {
       ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
       : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+    toast.success("บันทึกแล้ว");
+    clearDraft(draftKey); clearDraftState();
+    setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
     if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
   };
+
+  // Cmd/Ctrl+S to save while dialog open
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (edit.title) save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, edit]);
 
   const handleAlertConfirm = () => {
     setAlertOpen(false);
