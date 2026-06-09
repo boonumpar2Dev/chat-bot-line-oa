@@ -1422,10 +1422,35 @@ ${pastLines}
 
   const bubbles = finalAnswer.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
   const textBubbles = bubbles.length > 0 ? bubbles : [finalAnswer];
-  const toLineMsg = (m: { type: string; url: string; thumb?: string }) =>
-    m.type === "video"
-      ? { type: "video", originalContentUrl: m.url, previewImageUrl: m.thumb || m.url }
-      : { type: "image", originalContentUrl: m.url, previewImageUrl: m.url };
+  const toLineMsg = (m: { type: string; url: string; thumb?: string }) => {
+    if (m.type === "video") {
+      // ใช้ Flex video hero → เล่นในบับเบิล (ไม่เต็มจอ) และมีปุ่ม X ปิดมุมขวาบนเมื่อขยาย
+      const thumb = m.thumb || m.url;
+      return {
+        type: "flex",
+        altText: "🎬 วิดีโอ",
+        contents: {
+          type: "bubble",
+          size: "mega",
+          hero: {
+            type: "video",
+            url: m.url,
+            previewUrl: thumb,
+            altContent: {
+              type: "image",
+              size: "full",
+              aspectRatio: "20:13",
+              aspectMode: "cover",
+              url: thumb,
+            },
+            aspectRatio: "20:13",
+            action: { type: "uri", label: "ดูวิดีโอ", uri: m.url },
+          },
+        },
+      };
+    }
+    return { type: "image", originalContentUrl: m.url, previewImageUrl: m.url };
+  };
 
   // ส่งเป็น batch ละ 5 ข้อความ (LINE limit) — text bubbles อยู่ batch แรก แล้วทยอยส่งรูปที่เหลือเป็นชุดๆ จนครบ
   const firstBatch: any[] = textBubbles.map(t => ({ type: "text", text: t }));
