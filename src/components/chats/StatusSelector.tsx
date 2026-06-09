@@ -3,6 +3,8 @@ import { ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { syncTagsForStatusChange } from "@/lib/statusTags";
+
 
 const STATUS_OPTIONS = [
   { value: "new", label: "ลูกค้าใหม่", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
