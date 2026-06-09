@@ -43,13 +43,17 @@ export async function syncTagsForStatusChange(
 ): Promise<string[]> {
   const map = await getStatusTagMap();
   const tags = Array.isArray(currentTags) ? [...currentTags] : [];
-  const oldTag = oldStatus ? map[oldStatus] : null;
   const newTag = map[newStatus];
 
-  // เก็บ tag ของ status อื่นๆ ที่อาจค้างอยู่ (จาก status เก่าหลายชั้น) — ถอดทั้งหมด ยกเว้น newTag
+  // tag ที่ห้ามถอด แม้จะอยู่ใน status_tag_map values
+  // (เป็น tag "ประเภทลูกค้า" ไม่ใช่ "สถานะปัจจุบัน")
+  const PROTECTED = new Set(["ลูกค้าเก่า", "ลูกค้าใหม่"]);
+
+  // ถอด tag ที่ตรงกับ status_tag_map values ทั้งหมด (ยกเว้น PROTECTED และ newTag)
   const allStatusTags = new Set(Object.values(map).filter(Boolean));
-  let next = tags.filter((t) => !allStatusTags.has(t) || t === newTag);
+  let next = tags.filter((t) => PROTECTED.has(t) || !allStatusTags.has(t) || t === newTag);
 
   if (newTag && !next.includes(newTag)) next.push(newTag);
   return next;
 }
+
