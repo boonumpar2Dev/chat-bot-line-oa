@@ -737,25 +737,33 @@ async function processEvent(event: any, supabase: any) {
   const aiAskedPhone = /(ขอเบอร์|เบอร์โทร|เบอร์ติดต่อ|หมายเลขโทร|เบอร์ที่ติดต่อ|เบอร์มือถือ)/i.test(lastAiMsg);
 
   // Tax ID detection — ต้องมี context (keyword ในข้อความ หรือ AI เพิ่งถาม tax) ไม่งั้น 13 หลักอาจเป็น "เบอร์พิมพ์ผิด"
+  // ยกเว้น: ถ้าลูกค้าพิมพ์ "เลข 13 หลักล้วนๆ" (ตัดช่องว่าง/ขีด/วงเล็บแล้วได้ 13 หลักพอดี) → ถือเป็น Tax ID ทันที
   const allDigitRuns = (messageText.match(/\d+/g) || []);
   const taxKwArr: string[] = (cfg.tax_id_keywords && cfg.tax_id_keywords.length) ? cfg.tax_id_keywords : ["tag","แท็ก","tax","ภาษี","เลขผู้เสีย","นิติบุคคล","จดทะเบียน"];
   const taxKwRe = new RegExp(taxKwArr.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"), "i");
   const taxKeyword = taxKwRe.test(messageText);
   const taxContext = taxKeyword || aiAskedTax;
+  // pure 13-digit message → tax id (no other letters/chars)
+  const cleaned13 = messageText.replace(/[\s\-().+]/g, "");
+  const isPure13Digits = /^\d{13}$/.test(cleaned13);
   let taxId: string | null = null;
   let taxIdMaybe: string | null = null;
   let phoneTypo: string | null = null; // เลขที่น่าจะเป็นเบอร์แต่ความยาวผิด (เฉพาะตอน AI ถามเบอร์)
-  for (const d of allDigitRuns) {
-    // ถ้า AI กำลังถามเบอร์ + ไม่มี tax context → 11-13 หลัก = เบอร์พิมพ์ผิด ไม่ใช่ tax
-    if (aiAskedPhone && !taxContext && d.length >= 11 && d.length <= 13) {
-      if (!phoneTypo) phoneTypo = d;
-      continue;
-    }
-    if (d.length === 13 && taxContext) { taxId = d; break; }
-    if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
-    if (!taxIdMaybe && taxContext) {
-      if (d.length === 11 || d.length === 12) taxIdMaybe = d;
-      else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
+  if (isPure13Digits) {
+    taxId = cleaned13;
+  } else {
+    for (const d of allDigitRuns) {
+      // ถ้า AI กำลังถามเบอร์ + ไม่มี tax context → 11-13 หลัก = เบอร์พิมพ์ผิด ไม่ใช่ tax
+      if (aiAskedPhone && !taxContext && d.length >= 11 && d.length <= 13) {
+        if (!phoneTypo) phoneTypo = d;
+        continue;
+      }
+      if (d.length === 13 && taxContext) { taxId = d; break; }
+      if (taxKeyword && d.length >= 10 && d.length <= 13) { taxId = d; break; }
+      if (!taxIdMaybe && taxContext) {
+        if (d.length === 11 || d.length === 12) taxIdMaybe = d;
+        else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
+      }
     }
   }
   if (taxId) {
