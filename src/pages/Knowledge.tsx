@@ -344,19 +344,56 @@ function PromotionsTab() {
   const [edit, setEdit] = useState<Promo>(blankPromo);
   const { data: promos } = useQuery({ queryKey:["promos"], queryFn: async()=>(await supabase.from("promotions").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey:["pkg-cats"], queryFn: async()=>(await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
+
+  const initialSnapshotRef = useRef<string>("");
+  const [draftKey, setDraftKey] = useState<string>("promo:new");
+  const [foundDraft, setFoundDraft] = useState<{ value: Promo; savedAt: number } | null>(null);
+  const isDirty = useMemo(() => JSON.stringify(edit) !== initialSnapshotRef.current, [edit]);
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Promo>(draftKey, edit, open, { isDirty });
+
+  const openWith = (val: Promo, key: string) => {
+    initialSnapshotRef.current = JSON.stringify(val);
+    setDraftKey(key);
+    const d = readDraft<Promo>(key);
+    if (d && JSON.stringify(d.value) !== initialSnapshotRef.current) setFoundDraft(d);
+    else { setFoundDraft(null); if (d) clearDraft(key); }
+    setEdit(val);
+    setOpen(true);
+  };
+  const openNew = () => openWith(blankPromo, "promo:new");
+  const openEdit = (p: any) => openWith({ ...p, applicable_categories: p.applicable_categories||[], image_urls: p.image_urls||[], video_urls: p.video_urls||[] }, `promo:${p.id}`);
+  const openDuplicate = (p: any) => { const {id,created_at,updated_at,...rest}=p; openWith({...rest,name:`${p.name} (สำเนา)`,applicable_categories:[...(p.applicable_categories||[])],image_urls:[...(p.image_urls||[])],video_urls:structuredClone(p.video_urls||[])}, "promo:new"); };
+  const restoreDraft = () => { if (foundDraft) { setEdit(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
+
   const save = async () => {
     const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
     const res = edit.id
       ? await supabase.from("promotions").update(payload).eq("id",edit.id).select("id").maybeSingle()
       : await supabase.from("promotions").insert(payload).select("id").maybeSingle();
     if(res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
+    toast.success("บันทึกแล้ว");
+    clearDraft(draftKey); clearDraftState();
+    setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
     if (res.data?.id) triggerEmbed("promotions", res.data.id);
   };
   const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache(); };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (edit.name) save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, edit]);
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end"><Button onClick={()=>{setEdit(blankPromo);setOpen(true);}}><Plus/>เพิ่มโปรโมชั่น</Button></div>
+      <div className="flex justify-end"><Button onClick={openNew}><Plus/>เพิ่มโปรโมชั่น</Button></div>
       <div className="grid md:grid-cols-2 gap-4">
         {promos?.map((p:any)=>(
           <Card key={p.id} className="p-5 shadow-soft border-border/60 min-w-0 overflow-hidden">
