@@ -413,9 +413,10 @@ function PromotionsTab() {
         {!promos?.length && <Card className="p-10 text-center md:col-span-2"><Sparkles className="w-10 h-10 mx-auto text-muted-foreground mb-2"/><p className="text-sm text-muted-foreground">ยังไม่มีโปรโมชั่น</p></Card>}
       </div>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{edit.id?"แก้ไขโปรโมชั่น":"เพิ่มโปรโมชั่น"}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-6"><DialogTitle>{edit.id?"แก้ไขโปรโมชั่น":"เพิ่มโปรโมชั่น"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 px-6 pt-2 pb-4">
+            {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft}/>}
             <div className="space-y-1.5"><Label>ชื่อ *</Label><Input value={edit.name} onChange={e=>setEdit({...edit,name:e.target.value})}/></div>
             <div className="space-y-1.5"><div className="flex items-center justify-between"><Label>รายละเอียด</Label>{!edit.description && <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={()=>setEdit({...edit,description:PROMO_TEMPLATE})}><FileText className="w-3 h-3"/>ใช้เทมเพลตตัวอย่าง</Button>}</div><Textarea rows={3} value={edit.description||""} onChange={e=>setEdit({...edit,description:e.target.value})}/></div>
             <div className="space-y-1.5">
