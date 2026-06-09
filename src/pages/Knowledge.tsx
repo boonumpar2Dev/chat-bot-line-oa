@@ -131,23 +131,55 @@ function PackagesTab() {
   const { data: pkgs, isLoading } = useQuery({ queryKey: ["packages"], queryFn: async () => (await supabase.from("catering_packages").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
 
-  const openNew = () => { setEdit(blankPkg); setOpen(true); };
-  const openEdit = (p: any) => { setEdit({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }); setOpen(true); };
-  const openDuplicate = (p: any) => {
-    const { id, created_at, updated_at, ...rest } = p;
-    setEdit({ ...rest, name: `${p.name} (สำเนา)`, pricing_tiers: structuredClone(p.pricing_tiers || []), custom_attributes: structuredClone(p.custom_attributes || []), image_urls: [...(p.image_urls || [])], video_urls: structuredClone(p.video_urls || []) });
+  // ---- Draft state ----
+  const initialSnapshotRef = useRef<string>("");
+  const [draftKey, setDraftKey] = useState<string>("pkg:new");
+  const [foundDraft, setFoundDraft] = useState<{ value: Pkg; savedAt: number } | null>(null);
+  const isDirty = useMemo(() => JSON.stringify(edit) !== initialSnapshotRef.current, [edit]);
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Pkg>(draftKey, edit, open, { isDirty });
+
+  const openWith = (val: Pkg, key: string) => {
+    initialSnapshotRef.current = JSON.stringify(val);
+    setDraftKey(key);
+    const d = readDraft<Pkg>(key);
+    if (d && JSON.stringify(d.value) !== initialSnapshotRef.current) setFoundDraft(d);
+    else { setFoundDraft(null); if (d) clearDraft(key); }
+    setEdit(val);
     setOpen(true);
   };
+  const openNew = () => openWith(blankPkg, "pkg:new");
+  const openEdit = (p: any) => openWith({ ...p, pricing_tiers: p.pricing_tiers || [], custom_attributes: p.custom_attributes || [], image_urls: p.image_urls || [], video_urls: p.video_urls || [] }, `pkg:${p.id}`);
+  const openDuplicate = (p: any) => {
+    const { id, created_at, updated_at, ...rest } = p;
+    openWith({ ...rest, name: `${p.name} (สำเนา)`, pricing_tiers: structuredClone(p.pricing_tiers || []), custom_attributes: structuredClone(p.custom_attributes || []), image_urls: [...(p.image_urls || [])], video_urls: structuredClone(p.video_urls || []) }, "pkg:new");
+  };
+  const restoreDraft = () => { if (foundDraft) { setEdit(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
+
   const save = async () => {
     const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
     const res = edit.id
       ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
       : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
     if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว"); setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
+    toast.success("บันทึกแล้ว");
+    clearDraft(draftKey); clearDraftState();
+    setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
     if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
   };
   const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        if (edit.name) save();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, edit]);
 
   return (
     <div className="space-y-4">
