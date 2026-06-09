@@ -1,4 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
+import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { triggerEmbed } from "@/lib/embed";
