@@ -163,12 +163,17 @@ export default function AiDelivery() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant={s.badge} className="h-5">{EVENT_LABEL[log.event_type] ?? log.event_type}</Badge>
-                    {log.customer_id && (
-                      <Link to={`/customers/${log.customer_id}`} className="text-xs text-primary hover:underline">
-                        ดูลูกค้า →
+                    {log.customer_id ? (
+                      <Link
+                        to={`/customers/${log.customer_id}`}
+                        className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate max-w-[200px]"
+                      >
+                        {customerMap?.[log.customer_id] ?? "กำลังโหลด…"}
                       </Link>
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">ไม่ระบุลูกค้า</span>
                     )}
+                    <Badge variant={s.badge} className="h-5">{EVENT_LABEL[log.event_type] ?? log.event_type}</Badge>
                     {log.line_user_id && (
                       <span className="text-xs text-muted-foreground font-mono truncate">
                         {log.line_user_id.slice(0, 12)}…
