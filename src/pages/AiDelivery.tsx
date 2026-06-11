@@ -150,9 +150,6 @@ export default function AiDelivery() {
           <TabsTrigger value="audit" className="gap-1.5">
             <ListChecks className="w-4 h-4" /> ตรวจสอบ AI ตอบ
           </TabsTrigger>
-          <TabsTrigger value="coach" className="gap-1.5">
-            <Sparkles className="w-4 h-4" /> AI Coach
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="events">
