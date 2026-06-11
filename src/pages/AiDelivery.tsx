@@ -41,6 +41,13 @@ export default function AiDelivery() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | "error" | "warn" | "info">("all");
   const [live, setLive] = useState(false);
+  const [tab, setTab] = useState("events");
+  const [coachAudit, setCoachAudit] = useState<{ id: string; label: string } | null>(null);
+
+  const goToCoach = (id: string, label: string) => {
+    setCoachAudit({ id, label });
+    setTab("coach");
+  };
 
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ["ai-delivery-logs", filter],
