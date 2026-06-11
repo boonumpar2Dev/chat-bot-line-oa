@@ -149,6 +149,39 @@ export default function CustomerInfoPanel({
     }
   };
 
+  const extractToPanel = async () => {
+    setExtractingPanel(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-event-from-chat", {
+        body: { customer_id: customer.id },
+      });
+      if (error) throw error;
+      const ex = data?.extracted || {};
+      // Only fill blanks — don't overwrite admin's edits
+      const patch: any = {};
+      if (ex.event_type && !local.event_type) patch.event_type = String(ex.event_type).slice(0, 100);
+      if (ex.guest_count && !local.guest_count) patch.guest_count = parseInt(ex.guest_count) || null;
+      if (ex.event_date && !local.event_date && /^\d{4}-\d{2}-\d{2}$/.test(String(ex.event_date))) {
+        patch.event_date = ex.event_date;
+      }
+      if (ex.venue && !local.venue) patch.venue = String(ex.venue).slice(0, 200);
+      if (ex.total_amount && !local.clv_amount) patch.clv_amount = parseFloat(ex.total_amount) || 0;
+      const filled = Object.keys(patch).length;
+      if (filled === 0) {
+        toast.info("ไม่มีช่องว่างให้เติม — ข้อมูลครบหรือ AI ยังไม่เจอเพิ่ม");
+        return;
+      }
+      await supabase.from("customers").update(patch).eq("id", customer.id);
+      setLocal({ ...local, ...patch });
+      onUpdate(patch);
+      toast.success(`เติมข้อมูล ${filled} ช่องจากแชทแล้ว`);
+    } catch (e: any) {
+      toast.error("ดึงข้อมูลไม่สำเร็จ: " + (e?.message || e));
+    } finally {
+      setExtractingPanel(false);
+    }
+  };
+
   const archiveCurrentEvent = async () => {
     const d = archiveDraft || {};
     if (!d.event_type && !d.guest_count && !d.event_date) {
