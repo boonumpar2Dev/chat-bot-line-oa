@@ -209,6 +209,50 @@ async function logDelivery(
   }
 }
 
+// Fire-and-forget AI reply audit (owner/admin/manager dashboard)
+async function logAiAudit(
+  supabase: any,
+  payload: {
+    customer_id?: string | null;
+    line_user_id?: string | null;
+    customer_message?: string | null;
+    ai_reply?: string | null;
+    ai_reply_bubbles?: any[];
+    image_titles?: string[];
+    intent_extracted?: Record<string, any>;
+    confidence?: number | null;
+    model?: string | null;
+    tokens_in?: number | null;
+    tokens_out?: number | null;
+    latency_ms?: number | null;
+    recent_context?: string | null;
+    status?: string;
+    error?: string | null;
+  },
+) {
+  try {
+    await supabase.from("ai_reply_audit").insert({
+      customer_id: payload.customer_id ?? null,
+      line_user_id: payload.line_user_id ?? null,
+      customer_message: (payload.customer_message ?? "").slice(0, 8000),
+      ai_reply: (payload.ai_reply ?? "").slice(0, 8000),
+      ai_reply_bubbles: payload.ai_reply_bubbles ?? [],
+      image_titles: payload.image_titles ?? [],
+      intent_extracted: payload.intent_extracted ?? {},
+      confidence: payload.confidence ?? null,
+      model: payload.model ?? null,
+      tokens_in: payload.tokens_in ?? null,
+      tokens_out: payload.tokens_out ?? null,
+      latency_ms: payload.latency_ms ?? null,
+      recent_context: (payload.recent_context ?? "").slice(0, 12000),
+      status: payload.status ?? "sent",
+      error: payload.error ?? null,
+    });
+  } catch (e) {
+    console.error("[logAiAudit failed]", (e as Error).message);
+  }
+}
+
 // Insert AI conversation row FIRST, then push to LINE. Rollback row if push fails.
 async function saveAndPushAi(
   supabase: any,
@@ -1213,6 +1257,7 @@ ${pastLines}
   };
 
   let aiResp: any;
+  const _aiStart = Date.now();
   try {
     aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-3-flash-preview");
   } catch (e: any) {
@@ -1220,10 +1265,16 @@ ${pastLines}
     try { aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-2.5-flash"); }
     catch (e2: any) {
       console.error("AI failed:", e2.message);
+      logAiAudit(supabase, {
+        customer_id: customer.id, line_user_id: lineUserId,
+        customer_message: messageText, recent_context: recentMsgs,
+        latency_ms: Date.now() - _aiStart, status: "failed", error: String(e2.message || e2),
+      });
       await sendUnableToReply(`both LLM models failed: ${e2.message}`);
       return;
     }
   }
+  const _aiLatency = Date.now() - _aiStart;
   if (aiResp?._usage) {
     logTokenUsage(supabase, { model: aiResp._model, source: "webhook", apiResponse: { usage: aiResp._usage }, customerId: customer.id });
   }
@@ -1347,6 +1398,26 @@ ${pastLines}
     await supabase.from("customers").update(intentUpdate).eq("id", customer.id);
     console.log(`[Intent] saved`, intentUpdate);
   }
+
+  // 📝 Audit log — บันทึก AI reply เพื่อให้ owner เปิดมาไล่ตรวจย้อนหลังได้
+  logAiAudit(supabase, {
+    customer_id: customer.id,
+    line_user_id: lineUserId,
+    customer_message: messageText,
+    ai_reply: finalAnswer,
+    ai_reply_bubbles: finalAnswer.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean),
+    image_titles: imageTitles,
+    intent_extracted: { ...(aiResp.intent || {}), ...(intentUpdate.intent_data ? { extra: intentUpdate.intent_data } : {}) },
+    confidence,
+    model: aiResp._model || null,
+    tokens_in: aiResp._usage?.prompt_tokens ?? aiResp._usage?.input_tokens ?? null,
+    tokens_out: aiResp._usage?.completion_tokens ?? aiResp._usage?.output_tokens ?? null,
+    latency_ms: _aiLatency,
+    recent_context: recentMsgs,
+    status: "sent",
+  });
+
+
 
 
   if (aiResp.confirm_existing_phone && hasPhone) {

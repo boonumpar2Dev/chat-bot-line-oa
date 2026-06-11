@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio, ListChecks } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import AiReplyAuditList from "@/components/ai-delivery/AiReplyAuditList";
 
 type LogRow = {
   id: string;
@@ -133,73 +135,90 @@ export default function AiDelivery() {
         ))}
       </div>
 
-      <Card className="shadow-soft border-border/60">
-        <div className="p-4 border-b flex items-center gap-2 flex-wrap">
-          <h2 className="font-display font-semibold mr-2">เหตุการณ์ล่าสุด</h2>
-          {(["all","error","warn","info"] as const).map(f => (
-            <Button
-              key={f}
-              variant={filter === f ? "default" : "outline"}
-              size="sm"
-              onClick={() => setFilter(f)}
-              className="h-7"
-            >
-              {f === "all" ? "ทั้งหมด" : f === "error" ? "ผิดพลาด" : f === "warn" ? "เตือน" : "สำเร็จ"}
-            </Button>
-          ))}
-        </div>
-        <div className="divide-y">
-          {isLoading && <p className="p-8 text-center text-sm text-muted-foreground">กำลังโหลด…</p>}
-          {!isLoading && logs?.length === 0 && (
-            <p className="p-8 text-center text-sm text-muted-foreground">ยังไม่มี event ในหมวดนี้ 🎉</p>
-          )}
-          {logs?.map(log => {
-            const s = SEVERITY_STYLE[log.severity] ?? SEVERITY_STYLE.info;
-            const Icon = s.icon;
-            return (
-              <div key={log.id} className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors">
-                <div className={`p-2 rounded-lg ${s.bg} ${s.color} shrink-0`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {log.customer_id ? (
-                      <Link
-                        to={`/customers/${log.customer_id}`}
-                        className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate max-w-[200px]"
-                      >
-                        {customerMap?.[log.customer_id] ?? "กำลังโหลด…"}
-                      </Link>
-                    ) : (
-                      <span className="text-sm font-medium text-muted-foreground">ไม่ระบุลูกค้า</span>
-                    )}
-                    <Badge variant={s.badge} className="h-5">{EVENT_LABEL[log.event_type] ?? log.event_type}</Badge>
-                    {log.line_user_id && (
-                      <span className="text-xs text-muted-foreground font-mono truncate">
-                        {log.line_user_id.slice(0, 12)}…
-                      </span>
-                    )}
+      <Tabs defaultValue="events" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="events" className="gap-1.5">
+            <Activity className="w-4 h-4" /> Event Log
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-1.5">
+            <ListChecks className="w-4 h-4" /> ตรวจสอบ AI ตอบ
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="events">
+          <Card className="shadow-soft border-border/60">
+            <div className="p-4 border-b flex items-center gap-2 flex-wrap">
+              <h2 className="font-display font-semibold mr-2">เหตุการณ์ล่าสุด</h2>
+              {(["all","error","warn","info"] as const).map(f => (
+                <Button
+                  key={f}
+                  variant={filter === f ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilter(f)}
+                  className="h-7"
+                >
+                  {f === "all" ? "ทั้งหมด" : f === "error" ? "ผิดพลาด" : f === "warn" ? "เตือน" : "สำเร็จ"}
+                </Button>
+              ))}
+            </div>
+            <div className="divide-y">
+              {isLoading && <p className="p-8 text-center text-sm text-muted-foreground">กำลังโหลด…</p>}
+              {!isLoading && logs?.length === 0 && (
+                <p className="p-8 text-center text-sm text-muted-foreground">ยังไม่มี event ในหมวดนี้ 🎉</p>
+              )}
+              {logs?.map(log => {
+                const s = SEVERITY_STYLE[log.severity] ?? SEVERITY_STYLE.info;
+                const Icon = s.icon;
+                return (
+                  <div key={log.id} className="flex items-start gap-3 p-4 hover:bg-muted/50 transition-colors">
+                    <div className={`p-2 rounded-lg ${s.bg} ${s.color} shrink-0`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {log.customer_id ? (
+                          <Link
+                            to={`/customers/${log.customer_id}`}
+                            className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate max-w-[200px]"
+                          >
+                            {customerMap?.[log.customer_id] ?? "กำลังโหลด…"}
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-medium text-muted-foreground">ไม่ระบุลูกค้า</span>
+                        )}
+                        <Badge variant={s.badge} className="h-5">{EVENT_LABEL[log.event_type] ?? log.event_type}</Badge>
+                        {log.line_user_id && (
+                          <span className="text-xs text-muted-foreground font-mono truncate">
+                            {log.line_user_id.slice(0, 12)}…
+                          </span>
+                        )}
+                      </div>
+                      {log.message && (
+                        <p className="text-sm mt-1 line-clamp-2 break-words">{log.message}</p>
+                      )}
+                      {Object.keys(log.details ?? {}).length > 0 && (
+                        <details className="mt-1.5">
+                          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">รายละเอียด</summary>
+                          <pre className="text-xs bg-muted/50 rounded p-2 mt-1 overflow-x-auto">
+                            {JSON.stringify(log.details, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: th })}
+                    </span>
                   </div>
-                  {log.message && (
-                    <p className="text-sm mt-1 line-clamp-2 break-words">{log.message}</p>
-                  )}
-                  {Object.keys(log.details ?? {}).length > 0 && (
-                    <details className="mt-1.5">
-                      <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">รายละเอียด</summary>
-                      <pre className="text-xs bg-muted/50 rounded p-2 mt-1 overflow-x-auto">
-                        {JSON.stringify(log.details, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0">
-                  {formatDistanceToNow(new Date(log.created_at), { addSuffix: true, locale: th })}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
+                );
+              })}
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit">
+          <AiReplyAuditList />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

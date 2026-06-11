@@ -74,6 +74,77 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_reply_audit: {
+        Row: {
+          ai_reply: string | null
+          ai_reply_bubbles: Json
+          confidence: number | null
+          conv_id: string | null
+          created_at: string
+          customer_id: string | null
+          customer_message: string | null
+          error: string | null
+          id: string
+          image_titles: string[]
+          intent_extracted: Json
+          latency_ms: number | null
+          line_user_id: string | null
+          model: string | null
+          recent_context: string | null
+          status: string
+          tokens_in: number | null
+          tokens_out: number | null
+        }
+        Insert: {
+          ai_reply?: string | null
+          ai_reply_bubbles?: Json
+          confidence?: number | null
+          conv_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_message?: string | null
+          error?: string | null
+          id?: string
+          image_titles?: string[]
+          intent_extracted?: Json
+          latency_ms?: number | null
+          line_user_id?: string | null
+          model?: string | null
+          recent_context?: string | null
+          status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+        }
+        Update: {
+          ai_reply?: string | null
+          ai_reply_bubbles?: Json
+          confidence?: number | null
+          conv_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          customer_message?: string | null
+          error?: string | null
+          id?: string
+          image_titles?: string[]
+          intent_extracted?: Json
+          latency_ms?: number | null
+          line_user_id?: string | null
+          model?: string | null
+          recent_context?: string | null
+          status?: string
+          tokens_in?: number | null
+          tokens_out?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_reply_audit_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_token_usage: {
         Row: {
           completion_tokens: number
