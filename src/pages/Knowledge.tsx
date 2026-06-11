@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
 import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
