@@ -30,14 +30,13 @@ Deno.serve(async (req) => {
     const messages: Msg[] = Array.isArray(body.messages) ? body.messages : [];
     const auditId: string | undefined = body.audit_id;
 
-    // Load current rules + intent fields + categories
+    // Load current rules + categories + active packages
     const [{ data: settings }, { data: cats }, { data: pkgs }] = await Promise.all([
-      admin.from('app_settings').select('strict_rules, system_prompt, intent_fields').eq('key', 'ai_config').maybeSingle(),
+      admin.from('app_settings').select('strict_rules, intent_fields').eq('key', 'ai_config').maybeSingle(),
       admin.from('package_categories').select('name'),
       admin.from('catering_packages').select('id, name, category, is_active').eq('is_active', true),
     ]);
     const rules: string[] = settings?.strict_rules || [];
-    const systemPromptTxt: string = settings?.system_prompt || '';
 
     let auditCtx = '';
     if (auditId) {
