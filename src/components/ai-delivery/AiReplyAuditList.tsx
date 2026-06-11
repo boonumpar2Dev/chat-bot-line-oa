@@ -38,7 +38,7 @@ const RANGE_HOURS: Record<string, number> = {
   "all": 24 * 365 * 5,
 };
 
-export default function AiReplyAuditList() {
+export default function AiReplyAuditList({ onAnalyzeWithCoach }: { onAnalyzeWithCoach?: (id: string, label: string) => void } = {}) {
   const [range, setRange] = useState<keyof typeof RANGE_HOURS>("7d");
   const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "failed">("all");
   const [lowConfOnly, setLowConfOnly] = useState(false);
