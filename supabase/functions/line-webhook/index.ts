@@ -1257,6 +1257,7 @@ ${pastLines}
   };
 
   let aiResp: any;
+  const _aiStart = Date.now();
   try {
     aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-3-flash-preview");
   } catch (e: any) {
@@ -1264,10 +1265,16 @@ ${pastLines}
     try { aiResp = await callAI(systemPrompt, userPrompt, "google/gemini-2.5-flash"); }
     catch (e2: any) {
       console.error("AI failed:", e2.message);
+      logAiAudit(supabase, {
+        customer_id: customer.id, line_user_id: lineUserId,
+        customer_message: messageText, recent_context: recentMsgs,
+        latency_ms: Date.now() - _aiStart, status: "failed", error: String(e2.message || e2),
+      });
       await sendUnableToReply(`both LLM models failed: ${e2.message}`);
       return;
     }
   }
+  const _aiLatency = Date.now() - _aiStart;
   if (aiResp?._usage) {
     logTokenUsage(supabase, { model: aiResp._model, source: "webhook", apiResponse: { usage: aiResp._usage }, customerId: customer.id });
   }
