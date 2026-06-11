@@ -70,9 +70,6 @@ ${JSON.stringify(a.knowledge_retrieved || [], null, 2)}
 - แพ็กเกจที่ active: ${(pkgs || []).map((p: any) => `${p.name} [${p.category}]`).join(', ')}
 - กฎ AI ที่ใช้อยู่ (${rules.length} ข้อ):
 ${rules.map((r, i) => `[${i}] ${r}`).join('\n')}
-
-System Prompt (ตัดต้น):
-${systemPromptTxt.slice(0, 1500)}${systemPromptTxt.length > 1500 ? '\n...[ตัด]' : ''}
 ${auditCtx}
 
 วิธีตอบ:
