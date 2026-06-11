@@ -489,6 +489,14 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="coach" className="mt-4">
+          <AiCoachChat
+            initialAuditId={coachAuditId}
+            initialAuditLabel={coachAuditLabel}
+            onClearAudit={clearCoachAudit}
+          />
+        </TabsContent>
+
       </Tabs>
     </div>
   );
