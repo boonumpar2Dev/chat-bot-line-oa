@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio, ListChecks, Sparkles } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AiReplyAuditList from "@/components/ai-delivery/AiReplyAuditList";
-import AiCoachChat from "@/components/ai-delivery/AiCoachChat";
 
 type LogRow = {
   id: string;
