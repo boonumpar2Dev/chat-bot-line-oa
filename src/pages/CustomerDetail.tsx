@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
+import { useSmartBack } from "@/hooks/useSmartBack";
 
 const STATUS_LABEL: Record<string, string> = {
   new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า", pending_quote: "รอเสนอราคา",
