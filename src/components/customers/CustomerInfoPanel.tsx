@@ -52,6 +52,7 @@ export default function CustomerInfoPanel({
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveDraft, setArchiveDraft] = useState<any>({});
   const [extracting, setExtracting] = useState(false);
+  const [extractingPanel, setExtractingPanel] = useState(false);
 
   useEffect(() => setLocal(customer), [customer.id]);
 
