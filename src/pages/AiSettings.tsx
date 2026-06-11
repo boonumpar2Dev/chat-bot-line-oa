@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -9,9 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, Sparkles } from "lucide-react";
+import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
-import AiCoachChat from "@/components/ai-delivery/AiCoachChat";
 
 type Cfg = any;
 
@@ -20,26 +18,6 @@ export default function AiSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [kbCategories, setKbCategories] = useState<string[]>([]);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get("coach") === "1" ? "coach" : (searchParams.get("tab") || "persona");
-  const [tab, setTab] = useState<string>(initialTab);
-  const coachAuditId = searchParams.get("auditId");
-  const coachAuditLabel = searchParams.get("auditLabel") || undefined;
-
-  const onTabChange = (v: string) => {
-    setTab(v);
-    if (v !== "coach") {
-      const sp = new URLSearchParams(searchParams);
-      sp.delete("coach"); sp.delete("auditId"); sp.delete("auditLabel");
-      setSearchParams(sp, { replace: true });
-    }
-  };
-
-  const clearCoachAudit = () => {
-    const sp = new URLSearchParams(searchParams);
-    sp.delete("auditId"); sp.delete("auditLabel");
-    setSearchParams(sp, { replace: true });
-  };
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
@@ -47,6 +25,7 @@ export default function AiSettings() {
     supabase.from("knowledge_categories").select("name").order("sort_order")
       .then(({ data }) => setKbCategories((data ?? []).map((c: any) => c.name)));
   }, []);
+
 
 
   const upd = (k: string, v: any) => setS((p: Cfg) => p ? { ...p, [k]: v } : p);
