@@ -228,6 +228,9 @@ async function logAiAudit(
     recent_context?: string | null;
     status?: string;
     error?: string | null;
+    packages_retrieved?: any[];
+    knowledge_retrieved?: any[];
+    system_prompt_excerpt?: string | null;
   },
 ) {
   try {
@@ -247,6 +250,9 @@ async function logAiAudit(
       recent_context: (payload.recent_context ?? "").slice(0, 12000),
       status: payload.status ?? "sent",
       error: payload.error ?? null,
+      packages_retrieved: payload.packages_retrieved ?? [],
+      knowledge_retrieved: payload.knowledge_retrieved ?? [],
+      system_prompt_excerpt: (payload.system_prompt_excerpt ?? "").slice(0, 4000) || null,
     });
   } catch (e) {
     console.error("[logAiAudit failed]", (e as Error).message);
@@ -1415,6 +1421,12 @@ ${pastLines}
     latency_ms: _aiLatency,
     recent_context: recentMsgs,
     status: "sent",
+    packages_retrieved: (usePkgs || []).map((p: any) => ({
+      id: p.id, name: p.name, category: p.category,
+      tiers: (p.pricing_tiers || []).map((t: any) => ({ tier: t.tier_name, guest_pax: t.guest_pax, total_pax: t.total_pax, price: t.price })),
+    })),
+    knowledge_retrieved: (filteredKb || []).map((k: any) => ({ id: k.id, title: k.title, category: k.category })),
+    system_prompt_excerpt: systemPrompt,
   });
 
 

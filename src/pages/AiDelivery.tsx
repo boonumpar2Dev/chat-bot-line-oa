@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio, ListChecks } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio, ListChecks, Sparkles } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import AiReplyAuditList from "@/components/ai-delivery/AiReplyAuditList";
+import AiCoachChat from "@/components/ai-delivery/AiCoachChat";
 
 type LogRow = {
   id: string;
@@ -40,6 +41,13 @@ export default function AiDelivery() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<"all" | "error" | "warn" | "info">("all");
   const [live, setLive] = useState(false);
+  const [tab, setTab] = useState("events");
+  const [coachAudit, setCoachAudit] = useState<{ id: string; label: string } | null>(null);
+
+  const goToCoach = (id: string, label: string) => {
+    setCoachAudit({ id, label });
+    setTab("coach");
+  };
 
   const { data: logs, isLoading, refetch } = useQuery({
     queryKey: ["ai-delivery-logs", filter],
@@ -135,13 +143,16 @@ export default function AiDelivery() {
         ))}
       </div>
 
-      <Tabs defaultValue="events" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="events" className="gap-1.5">
             <Activity className="w-4 h-4" /> Event Log
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-1.5">
             <ListChecks className="w-4 h-4" /> ตรวจสอบ AI ตอบ
+          </TabsTrigger>
+          <TabsTrigger value="coach" className="gap-1.5">
+            <Sparkles className="w-4 h-4" /> AI Coach
           </TabsTrigger>
         </TabsList>
 
@@ -216,7 +227,15 @@ export default function AiDelivery() {
         </TabsContent>
 
         <TabsContent value="audit">
-          <AiReplyAuditList />
+          <AiReplyAuditList onAnalyzeWithCoach={goToCoach} />
+        </TabsContent>
+
+        <TabsContent value="coach">
+          <AiCoachChat
+            initialAuditId={coachAudit?.id || null}
+            initialAuditLabel={coachAudit?.label}
+            onClearAudit={() => setCoachAudit(null)}
+          />
         </TabsContent>
       </Tabs>
     </div>

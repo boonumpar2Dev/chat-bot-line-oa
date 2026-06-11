@@ -87,11 +87,14 @@ export type Database = {
           id: string
           image_titles: string[]
           intent_extracted: Json
+          knowledge_retrieved: Json | null
           latency_ms: number | null
           line_user_id: string | null
           model: string | null
+          packages_retrieved: Json | null
           recent_context: string | null
           status: string
+          system_prompt_excerpt: string | null
           tokens_in: number | null
           tokens_out: number | null
         }
@@ -107,11 +110,14 @@ export type Database = {
           id?: string
           image_titles?: string[]
           intent_extracted?: Json
+          knowledge_retrieved?: Json | null
           latency_ms?: number | null
           line_user_id?: string | null
           model?: string | null
+          packages_retrieved?: Json | null
           recent_context?: string | null
           status?: string
+          system_prompt_excerpt?: string | null
           tokens_in?: number | null
           tokens_out?: number | null
         }
@@ -127,11 +133,14 @@ export type Database = {
           id?: string
           image_titles?: string[]
           intent_extracted?: Json
+          knowledge_retrieved?: Json | null
           latency_ms?: number | null
           line_user_id?: string | null
           model?: string | null
+          packages_retrieved?: Json | null
           recent_context?: string | null
           status?: string
+          system_prompt_excerpt?: string | null
           tokens_in?: number | null
           tokens_out?: number | null
         }
