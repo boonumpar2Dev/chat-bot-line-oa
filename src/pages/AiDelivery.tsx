@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Activity, RefreshCw, Bot, Radio, ListChecks } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import AiReplyAuditList from "@/components/ai-delivery/AiReplyAuditList";
 
 type LogRow = {
   id: string;
