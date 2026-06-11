@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -8,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList } from "lucide-react";
+import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import AiCoachChat from "@/components/ai-delivery/AiCoachChat";
 
 type Cfg = any;
 
