@@ -554,6 +554,25 @@ export default function CustomerInfoPanel({
       <Separator />
 
       <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2 -mb-1">
+          <Label className="text-xs text-muted-foreground">รายละเอียดลูกค้า</Label>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-[11px] px-2 gap-1 text-primary hover:text-primary"
+            onClick={extractToPanel}
+            disabled={extractingPanel}
+            title="ให้ AI อ่านแชททั้งหมดแล้วเติมช่องว่างให้"
+          >
+            {extractingPanel ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            ดึงจากแชท
+          </Button>
+        </div>
+
         <div>
           <Label className="text-xs">ชื่อเล่น</Label>
           <Input
