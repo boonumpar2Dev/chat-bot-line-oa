@@ -84,16 +84,16 @@ export default function AiSettings() {
         </Button>
       </div>
 
-      <Tabs value={tab} onValueChange={onTabChange} className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto">
+      <Tabs defaultValue="persona" className="w-full">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
           <TabsTrigger value="intent" className="gap-1.5"><Database className="w-4 h-4" />ข้อมูลที่เก็บ</TabsTrigger>
           <TabsTrigger value="handover" className="gap-1.5"><ClipboardList className="w-4 h-4" />ฟอร์มส่งต่อ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
-          <TabsTrigger value="coach" className="gap-1.5"><Sparkles className="w-4 h-4" />สอน AI</TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="persona" className="mt-4">
           <Card className="p-6 shadow-soft border-border/60 space-y-5">
