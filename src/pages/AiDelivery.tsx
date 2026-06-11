@@ -50,6 +50,24 @@ export default function AiDelivery() {
     },
   });
 
+  const customerIds = Array.from(new Set((logs ?? []).map(l => l.customer_id).filter(Boolean) as string[]));
+  const { data: customerMap } = useQuery({
+    queryKey: ["ai-delivery-customer-names", customerIds.sort().join(",")],
+    enabled: customerIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("id, display_name, real_name")
+        .in("id", customerIds);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((c: any) => {
+        map[c.id] = c.real_name || c.display_name || "ไม่ทราบชื่อ";
+      });
+      return map;
+    },
+  });
+
   const { data: stats } = useQuery({
     queryKey: ["ai-delivery-stats"],
     queryFn: async () => {
