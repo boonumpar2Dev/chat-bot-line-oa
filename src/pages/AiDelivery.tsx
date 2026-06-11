@@ -186,6 +186,7 @@ export default function AiDelivery() {
                         {log.customer_id ? (
                           <Link
                             to={`/customers/${log.customer_id}`}
+                            state={{ from: "/ai-delivery" }}
                             className="text-sm font-medium text-foreground hover:text-primary hover:underline truncate max-w-[200px]"
                           >
                             {customerMap?.[log.customer_id] ?? "กำลังโหลด…"}

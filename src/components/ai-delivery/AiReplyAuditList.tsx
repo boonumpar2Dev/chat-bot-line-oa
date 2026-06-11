@@ -261,6 +261,7 @@ export default function AiReplyAuditList({ onAnalyzeWithCoach }: { onAnalyzeWith
                     {r.customer_id && (
                       <Link
                         to={`/customers/${r.customer_id}`}
+                        state={{ from: "/ai-delivery" }}
                         className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                       >
                         เปิดแชทเต็ม <ExternalLink className="w-3 h-3" />
