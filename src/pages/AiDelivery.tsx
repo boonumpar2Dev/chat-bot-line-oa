@@ -45,7 +45,7 @@ export default function AiDelivery() {
 
   const goToCoach = (id: string, label: string) => {
     const params = new URLSearchParams({ coach: "1", auditId: id, auditLabel: label });
-    navigate(`/ai-settings?${params.toString()}`);
+    navigate(`/knowledge?${params.toString()}`);
   };
 
   const { data: logs, isLoading, refetch } = useQuery({
