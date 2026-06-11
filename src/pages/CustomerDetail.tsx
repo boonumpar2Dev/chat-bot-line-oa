@@ -22,6 +22,7 @@ const STATUS_LABEL: Record<string, string> = {
 export default function CustomerDetail() {
   const { id } = useParams<{ id: string }>();
   const nav = useNavigate();
+  const goBack = useSmartBack("/customers");
   const [customer, setCustomer] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
@@ -69,7 +70,7 @@ export default function CustomerDetail() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <p className="text-muted-foreground">ไม่พบลูกค้ารายนี้</p>
-        <Button variant="outline" onClick={() => nav("/customers")}><ArrowLeft className="w-4 h-4 mr-1"/> กลับรายการลูกค้า</Button>
+        <Button variant="outline" onClick={goBack}><ArrowLeft className="w-4 h-4 mr-1"/> กลับ</Button>
       </div>
     );
   }
@@ -81,7 +82,7 @@ export default function CustomerDetail() {
       {/* Header */}
       <div className="border-b bg-card/40 backdrop-blur sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 lg:px-6 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => nav("/customers")} aria-label="กลับ"><ArrowLeft className="w-4 h-4"/></Button>
+          <Button variant="ghost" size="icon" onClick={goBack} aria-label="กลับ"><ArrowLeft className="w-4 h-4"/></Button>
           <Avatar className="w-10 h-10">
             <AvatarImage src={customer.picture_url} alt={customer.display_name}/>
             <AvatarFallback>{(customer.display_name || "?")[0]}</AvatarFallback>
