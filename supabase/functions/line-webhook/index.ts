@@ -1399,6 +1399,26 @@ ${pastLines}
     console.log(`[Intent] saved`, intentUpdate);
   }
 
+  // 📝 Audit log — บันทึก AI reply เพื่อให้ owner เปิดมาไล่ตรวจย้อนหลังได้
+  logAiAudit(supabase, {
+    customer_id: customer.id,
+    line_user_id: lineUserId,
+    customer_message: messageText,
+    ai_reply: finalAnswer,
+    ai_reply_bubbles: finalAnswer.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean),
+    image_titles: imageTitles,
+    intent_extracted: { ...(aiResp.intent || {}), ...(intentUpdate.intent_data ? { extra: intentUpdate.intent_data } : {}) },
+    confidence,
+    model: aiResp._model || null,
+    tokens_in: aiResp._usage?.prompt_tokens ?? aiResp._usage?.input_tokens ?? null,
+    tokens_out: aiResp._usage?.completion_tokens ?? aiResp._usage?.output_tokens ?? null,
+    latency_ms: _aiLatency,
+    recent_context: recentMsgs,
+    status: "sent",
+  });
+
+
+
 
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
