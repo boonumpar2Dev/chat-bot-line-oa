@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronDown, ChevronRight, MessageSquare, Bot, Clock, Zap, Image as ImageIcon, Search, ExternalLink } from "lucide-react";
+import { ChevronDown, ChevronRight, MessageSquare, Bot, Clock, Zap, Image as ImageIcon, Search, ExternalLink, Sparkles } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
