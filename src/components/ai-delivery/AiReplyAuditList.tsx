@@ -257,16 +257,29 @@ export default function AiReplyAuditList({ onAnalyzeWithCoach }: { onAnalyzeWith
                     <Meta label="เวลา" value={format(new Date(r.created_at), "d MMM HH:mm:ss", { locale: th })} />
                   </div>
 
-                  {r.customer_id && (
-                    <div className="pt-1">
+                  <div className="pt-1 flex items-center gap-3 flex-wrap">
+                    {r.customer_id && (
                       <Link
                         to={`/customers/${r.customer_id}`}
                         className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                       >
                         เปิดแชทเต็ม <ExternalLink className="w-3 h-3" />
                       </Link>
-                    </div>
-                  )}
+                    )}
+                    {onAnalyzeWithCoach && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAnalyzeWithCoach(r.id, `${name} · ${format(new Date(r.created_at), "d MMM HH:mm", { locale: th })}`);
+                        }}
+                      >
+                        <Sparkles className="w-3 h-3" /> วิเคราะห์ด้วย Coach
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
