@@ -38,14 +38,14 @@ const SEVERITY_STYLE: Record<string, { icon: any; color: string; bg: string; bad
 
 export default function AiDelivery() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<"all" | "error" | "warn" | "info">("all");
   const [live, setLive] = useState(false);
   const [tab, setTab] = useState("events");
-  const [coachAudit, setCoachAudit] = useState<{ id: string; label: string } | null>(null);
 
   const goToCoach = (id: string, label: string) => {
-    setCoachAudit({ id, label });
-    setTab("coach");
+    const params = new URLSearchParams({ coach: "1", auditId: id, auditLabel: label });
+    navigate(`/ai-settings?${params.toString()}`);
   };
 
   const { data: logs, isLoading, refetch } = useQuery({
