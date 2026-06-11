@@ -57,12 +57,12 @@ export default function AiDelivery() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("id, display_name, real_name")
+        .select("id, display_name, nickname")
         .in("id", customerIds);
       if (error) throw error;
       const map: Record<string, string> = {};
       (data ?? []).forEach((c: any) => {
-        map[c.id] = c.real_name || c.display_name || "ไม่ทราบชื่อ";
+        map[c.id] = c.nickname || c.display_name || "ไม่ทราบชื่อ";
       });
       return map;
     },
