@@ -227,7 +227,15 @@ export default function AiDelivery() {
         </TabsContent>
 
         <TabsContent value="audit">
-          <AiReplyAuditList />
+          <AiReplyAuditList onAnalyzeWithCoach={goToCoach} />
+        </TabsContent>
+
+        <TabsContent value="coach">
+          <AiCoachChat
+            initialAuditId={coachAudit?.id || null}
+            initialAuditLabel={coachAudit?.label}
+            onClearAudit={() => setCoachAudit(null)}
+          />
         </TabsContent>
       </Tabs>
     </div>
