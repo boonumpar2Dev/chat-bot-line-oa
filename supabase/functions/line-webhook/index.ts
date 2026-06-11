@@ -1421,6 +1421,12 @@ ${pastLines}
     latency_ms: _aiLatency,
     recent_context: recentMsgs,
     status: "sent",
+    packages_retrieved: (usePkgs || []).map((p: any) => ({
+      id: p.id, name: p.name, category: p.category,
+      tiers: (p.pricing_tiers || []).map((t: any) => ({ tier: t.tier_name, guest_pax: t.guest_pax, total_pax: t.total_pax, price: t.price })),
+    })),
+    knowledge_retrieved: (filteredKb || []).map((k: any) => ({ id: k.id, title: k.title, category: k.category })),
+    system_prompt_excerpt: systemPrompt,
   });
 
 
