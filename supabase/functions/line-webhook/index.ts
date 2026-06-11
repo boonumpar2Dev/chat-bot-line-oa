@@ -1394,6 +1394,36 @@ ${pastLines}
           intentUpdate.intent_data = merged;
           console.log(`[IntentData] merged`, merged);
         }
+
+        // 🪞 Mirror standard keys from intent_data → customers columns (only fill blanks, never overwrite admin edits)
+        const mirrorMap: Record<string, string> = {
+          event_type: "event_type",
+          service_type: "event_type",
+          venue: "venue",
+          location: "venue",
+          guest_count: "guest_count",
+          guests: "guest_count",
+          event_date: "event_date",
+          total_amount: "clv_amount",
+          budget: "clv_amount",
+        };
+        for (const [srcKey, colName] of Object.entries(mirrorMap)) {
+          const v = merged[srcKey];
+          if (v === undefined || v === null || String(v).trim() === "") continue;
+          if ((freshCustomer as any)[colName]) continue; // don't overwrite
+          if (intentUpdate[colName]) continue; // already set this round
+          if (colName === "guest_count") {
+            const n = parseInt(String(v).replace(/[^\d]/g, ""), 10);
+            if (n > 0) intentUpdate.guest_count = n;
+          } else if (colName === "clv_amount") {
+            const n = parseFloat(String(v).replace(/[^\d.]/g, ""));
+            if (n > 0) intentUpdate.clv_amount = n;
+          } else if (colName === "event_date") {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) intentUpdate.event_date = String(v);
+          } else {
+            intentUpdate[colName] = String(v).slice(0, 200);
+          }
+        }
       }
     }
   } catch (e: any) {
