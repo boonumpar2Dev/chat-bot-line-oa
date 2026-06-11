@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import {
   Tag, X, Copy, ExternalLink, Smartphone, BookmarkCheck, History,
-  Phone, MapPin, Users as UsersIcon, Calendar, Loader2
+  Phone, MapPin, Users as UsersIcon, Calendar, Loader2, Sparkles
 } from "lucide-react";
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
@@ -52,6 +52,7 @@ export default function CustomerInfoPanel({
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveDraft, setArchiveDraft] = useState<any>({});
   const [extracting, setExtracting] = useState(false);
+  const [extractingPanel, setExtractingPanel] = useState(false);
 
   useEffect(() => setLocal(customer), [customer.id]);
 
@@ -145,6 +146,39 @@ export default function CustomerInfoPanel({
       toast.error("ดึงข้อมูลไม่สำเร็จ: " + (e?.message || e));
     } finally {
       setExtracting(false);
+    }
+  };
+
+  const extractToPanel = async () => {
+    setExtractingPanel(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-event-from-chat", {
+        body: { customer_id: customer.id },
+      });
+      if (error) throw error;
+      const ex = data?.extracted || {};
+      // Only fill blanks — don't overwrite admin's edits
+      const patch: any = {};
+      if (ex.event_type && !local.event_type) patch.event_type = String(ex.event_type).slice(0, 100);
+      if (ex.guest_count && !local.guest_count) patch.guest_count = parseInt(ex.guest_count) || null;
+      if (ex.event_date && !local.event_date && /^\d{4}-\d{2}-\d{2}$/.test(String(ex.event_date))) {
+        patch.event_date = ex.event_date;
+      }
+      if (ex.venue && !local.venue) patch.venue = String(ex.venue).slice(0, 200);
+      if (ex.total_amount && !local.clv_amount) patch.clv_amount = parseFloat(ex.total_amount) || 0;
+      const filled = Object.keys(patch).length;
+      if (filled === 0) {
+        toast.info("ไม่มีช่องว่างให้เติม — ข้อมูลครบหรือ AI ยังไม่เจอเพิ่ม");
+        return;
+      }
+      await supabase.from("customers").update(patch).eq("id", customer.id);
+      setLocal({ ...local, ...patch });
+      onUpdate(patch);
+      toast.success(`เติมข้อมูล ${filled} ช่องจากแชทแล้ว`);
+    } catch (e: any) {
+      toast.error("ดึงข้อมูลไม่สำเร็จ: " + (e?.message || e));
+    } finally {
+      setExtractingPanel(false);
     }
   };
 
@@ -520,6 +554,25 @@ export default function CustomerInfoPanel({
       <Separator />
 
       <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2 -mb-1">
+          <Label className="text-xs text-muted-foreground">รายละเอียดลูกค้า</Label>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-[11px] px-2 gap-1 text-primary hover:text-primary"
+            onClick={extractToPanel}
+            disabled={extractingPanel}
+            title="ให้ AI อ่านแชททั้งหมดแล้วเติมช่องว่างให้"
+          >
+            {extractingPanel ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            ดึงจากแชท
+          </Button>
+        </div>
+
         <div>
           <Label className="text-xs">ชื่อเล่น</Label>
           <Input
