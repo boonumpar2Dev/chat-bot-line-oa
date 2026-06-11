@@ -143,13 +143,16 @@ export default function AiDelivery() {
         ))}
       </div>
 
-      <Tabs defaultValue="events" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="events" className="gap-1.5">
             <Activity className="w-4 h-4" /> Event Log
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-1.5">
             <ListChecks className="w-4 h-4" /> ตรวจสอบ AI ตอบ
+          </TabsTrigger>
+          <TabsTrigger value="coach" className="gap-1.5">
+            <Sparkles className="w-4 h-4" /> AI Coach
           </TabsTrigger>
         </TabsList>
 
