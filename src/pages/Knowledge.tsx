@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
 import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,7 +25,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText, Shield } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText, Shield, GraduationCap } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
@@ -33,6 +34,7 @@ import TierImageField from "@/components/knowledge/TierImageField";
 import KBChatTest from "@/components/knowledge/KBChatTest";
 import SmartTeachBox from "@/components/knowledge/SmartTeachBox";
 import AiRulesTab from "@/components/knowledge/AiRulesTab";
+import AiCoachChat from "@/components/ai-delivery/AiCoachChat";
 
 type Pkg = { id?: string; name: string; category: string | null; description: string | null; min_condition: string | null; pricing_tiers: any[]; custom_attributes: any[]; ai_instruction: string | null; notes: string | null; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; };
 type Promo = { id?: string; name: string; description: string | null; applicable_categories: string[]; image_urls: string[]; video_urls: VideoItem[]; is_active: boolean; min_guests: number | null; };
@@ -82,6 +84,27 @@ const PROMO_TEMPLATE = `เงื่อนไขโปรโมชั่น:
 export default function Knowledge() {
   const { data: cats } = useQuery({ queryKey: ["kb-cats"], queryFn: async () => (await supabase.from("knowledge_categories").select("*").order("sort_order")).data ?? [] });
   const catNames = (cats || []).map((c: any) => c.name);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get("coach") === "1" ? "coach" : (searchParams.get("tab") || "kb");
+  const [tab, setTab] = useState<string>(initialTab);
+  const coachAuditId = searchParams.get("auditId");
+  const coachAuditLabel = searchParams.get("auditLabel") || undefined;
+
+  const onTabChange = (v: string) => {
+    setTab(v);
+    if (v !== "coach") {
+      const sp = new URLSearchParams(searchParams);
+      sp.delete("coach"); sp.delete("auditId"); sp.delete("auditLabel");
+      setSearchParams(sp, { replace: true });
+    }
+  };
+
+  const clearCoachAudit = () => {
+    const sp = new URLSearchParams(searchParams);
+    sp.delete("auditId"); sp.delete("auditLabel");
+    setSearchParams(sp, { replace: true });
+  };
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-6 relative">
       <div className="flex items-start justify-between gap-4">
@@ -106,23 +129,32 @@ export default function Knowledge() {
       </div>
 
       <SmartTeachBox categories={catNames} />
-      <Tabs defaultValue="kb">
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto gap-1">
+      <Tabs value={tab} onValueChange={onTabChange}>
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 h-auto gap-1">
           <TabsTrigger value="kb" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><BookOpen className="w-4 h-4"/><span>ข้อมูลทั่วไป</span></TabsTrigger>
           <TabsTrigger value="categories" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Tag className="w-4 h-4"/><span>ประเภท</span></TabsTrigger>
           <TabsTrigger value="packages" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Package className="w-4 h-4"/><span>แพ็คเกจ</span></TabsTrigger>
           <TabsTrigger value="promotions" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Sparkles className="w-4 h-4"/><span>โปรโมชั่น</span></TabsTrigger>
           <TabsTrigger value="rules" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><Shield className="w-4 h-4"/><span>กฎ AI</span></TabsTrigger>
+          <TabsTrigger value="coach" className="flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 px-1 text-xs sm:text-sm"><GraduationCap className="w-4 h-4"/><span>โค้ช AI</span></TabsTrigger>
         </TabsList>
         <TabsContent value="kb" className="mt-4"><KnowledgeBaseTab/></TabsContent>
         <TabsContent value="categories" className="mt-4"><CategoriesTab/></TabsContent>
         <TabsContent value="packages" className="mt-4"><PackagesTab/></TabsContent>
         <TabsContent value="promotions" className="mt-4"><PromotionsTab/></TabsContent>
         <TabsContent value="rules" className="mt-4"><AiRulesTab/></TabsContent>
+        <TabsContent value="coach" className="mt-4">
+          <AiCoachChat
+            initialAuditId={coachAuditId}
+            initialAuditLabel={coachAuditLabel}
+            onClearAudit={clearCoachAudit}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
+
 
 function PackagesTab() {
   const qc = useQueryClient();
