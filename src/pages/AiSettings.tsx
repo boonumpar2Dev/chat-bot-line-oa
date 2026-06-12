@@ -22,15 +22,27 @@ export default function AiSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [kbCategories, setKbCategories] = useState<string[]>([]);
+  const [initialJSON, setInitialJSON] = useState<string>("");
+  const [foundDraft, setFoundDraft] = useState<{ value: Cfg; savedAt: number } | null>(null);
+  const isDirty = !!s && JSON.stringify(s) !== initialJSON;
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Cfg>(DRAFT_KEY, s, !!s, { isDirty });
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
-      .then(({ data }) => { setS(data as any); setLoading(false); });
+      .then(({ data }) => {
+        setS(data as any);
+        setInitialJSON(JSON.stringify(data ?? {}));
+        const d = readDraft<Cfg>(DRAFT_KEY);
+        if (d && JSON.stringify(d.value) !== JSON.stringify(data ?? {})) setFoundDraft(d);
+        else if (d) clearDraft(DRAFT_KEY);
+        setLoading(false);
+      });
     supabase.from("knowledge_categories").select("name").order("sort_order")
       .then(({ data }) => setKbCategories((data ?? []).map((c: any) => c.name)));
   }, []);
 
-
+  const restoreDraft = () => { if (foundDraft) { setS(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(DRAFT_KEY); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
 
   const upd = (k: string, v: any) => setS((p: Cfg) => p ? { ...p, [k]: v } : p);
 
