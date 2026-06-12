@@ -27,6 +27,16 @@ Deno.serve(async (req) => {
     const lineMessages = messages || (message ? [{ type: "text", text: message }] : null);
     if (!lineMessages) return Response.json({ error: "Missing message" }, { status: 400, headers: corsHeaders });
 
+    // Fix: LINE auto-link parser บางครั้งกินตัวอักษรท้าย URL เมื่อติดอักษรไทย/non-ASCII ทันที
+    // → เติม space 1 ตัวคั่นระหว่าง URL กับตัวอักษรถัดไป (เฉพาะ text message)
+    const safeguardUrls = (s: string): string =>
+      s.replace(/(https?:\/\/[^\s<>"']+?)(?=[^\s\x21-\x7e])/g, "$1 ");
+    for (const m of lineMessages) {
+      if (m?.type === "text" && typeof m.text === "string") {
+        m.text = safeguardUrls(m.text);
+      }
+    }
+
     // แนบ quoteToken กับ message แรกที่เป็น text หรือ sticker (LINE รองรับแค่ 2 types นี้)
     if (quote_token) {
       const idx = lineMessages.findIndex((m: any) => m.type === "text" || m.type === "sticker");
