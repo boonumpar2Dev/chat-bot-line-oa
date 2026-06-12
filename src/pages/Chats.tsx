@@ -1315,7 +1315,13 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
     .filter((u: string) => !stickerUrls.includes(u));
   const videoUrls = (m.message.match(/https?:\/\/\S+\.(?:mp4|mov|webm|m4v)/gi) || []);
   const allUrls = (m.message.match(/https?:\/\/\S+/gi) || []).map((u: string) => u.replace(/[)\].,;]+$/, ""));
-  const fileUrls = allUrls.filter((u: string) => !imgUrls.includes(u) && !videoUrls.includes(u) && !stickerUrls.includes(u));
+  const nonMediaUrls = allUrls.filter((u: string) => !imgUrls.includes(u) && !videoUrls.includes(u) && !stickerUrls.includes(u));
+  // ไฟล์จริง = URL ที่มีนามสกุลไฟล์ใน pathname (เช่น .pdf .doc .xlsx)
+  const hasFileExt = (u: string) => {
+    try { return /\.[a-z0-9]{2,5}$/i.test(new URL(u).pathname); } catch { return false; }
+  };
+  const fileUrls = nonMediaUrls.filter(hasFileExt);
+  const plainLinkUrls = nonMediaUrls.filter((u: string) => !hasFileExt(u));
   const fileLabelMatch = m.message.match(/\[ไฟล์(?::\s*([^\]]+))?\]/);
   const fileLabel = fileLabelMatch?.[1]?.trim() || "";
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
@@ -1327,8 +1333,12 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
     .replace(/🎭\s*https?:\/\/\S+/g, "")
     .replace(/\[ตำแหน่ง\][\s\S]*?(?=\n\n|$)/g, "")
     .replace(/📍\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+/g, "")
-    .replace(/🗺️\s*https?:\/\/\S+/g, "")
-    .replace(/https?:\/\/\S+/g, "")
+    .replace(/🗺️\s*https?:\/\/\S+/g, "");
+  // strip เฉพาะ URL ที่เป็นรูป/วิดีโอ/ไฟล์/สติกเกอร์ — คง plain link ไว้ใน text bubble
+  [...imgUrls, ...videoUrls, ...fileUrls, ...stickerUrls].forEach((u: string) => {
+    cleaned = cleaned.split(u).join("");
+  });
+  cleaned = cleaned
     .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง|สติกเกอร์)(?::[^\]]*)?\]/g, "")
     .replace(/\n{2,}/g, "\n")
     .trim();
