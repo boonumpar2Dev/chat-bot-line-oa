@@ -651,7 +651,17 @@ export default function Chats() {
         } else if (t === "video") {
           lineMessages.push({ type: "video", originalContentUrl: f.url, previewImageUrl: f.url });
         } else {
-          lineMessages.push(buildFileFlex(f.url, f.name, f.size));
+          // ถ้า URL ไม่มีนามสกุลไฟล์ (เช่น google maps, เว็บลิงก์ทั่วไป) → ส่งเป็น text link
+          let isPlainLink = false;
+          try {
+            const path = new URL(f.url).pathname.toLowerCase();
+            isPlainLink = !/\.[a-z0-9]{2,5}$/.test(path);
+          } catch {}
+          if (isPlainLink) {
+            lineMessages.push({ type: "text", text: f.url });
+          } else {
+            lineMessages.push(buildFileFlex(f.url, f.name, f.size));
+          }
         }
       }
       if (reply.trim()) lineMessages.push({ type: "text", text: reply.trim() });
@@ -710,8 +720,15 @@ export default function Chats() {
 
   const onSelectQuick = (resp: any) => {
     if (resp.text) setReply(p => p ? p + "\n" + resp.text : resp.text);
-    const all = [...(resp.image_urls || []), ...(resp.file_urls || [])];
-    if (all.length) setStagedFiles(p => [...p, ...all]);
+    const all: string[] = [...(resp.image_urls || []), ...(resp.file_urls || [])];
+    if (all.length) {
+      const objs = all.map((u: string) => ({
+        url: u,
+        name: decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์"),
+        size: 0,
+      }));
+      setStagedFiles(p => [...p, ...objs]);
+    }
     setShowQuick(false);
   };
 
