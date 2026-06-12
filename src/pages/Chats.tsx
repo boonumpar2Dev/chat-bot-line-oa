@@ -1373,6 +1373,9 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
           ))}
         </div>
       )}
+      {location && (
+        <LocationPreview lat={location.lat} lng={location.lng} title={location.title} address={location.address} url={location.url} />
+      )}
       {videoUrls.length > 0 && (
         <div className="flex flex-col gap-1.5 max-w-[75vw] sm:max-w-[320px]">
           {videoUrls.map((u: string) => (
