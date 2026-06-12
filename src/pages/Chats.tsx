@@ -1303,10 +1303,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
   const fileLabel = fileLabelMatch?.[1]?.trim() || "";
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
+  const location = extractLocation(m.message);
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
     .replace(/🎭\s*https?:\/\/\S+/g, "")
+    .replace(/\[ตำแหน่ง\][\s\S]*?(?=\n\n|$)/g, "")
+    .replace(/📍\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+/g, "")
+    .replace(/🗺️\s*https?:\/\/\S+/g, "")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง|สติกเกอร์)(?::[^\]]*)?\]/g, "")
     .replace(/\n{2,}/g, "\n")
