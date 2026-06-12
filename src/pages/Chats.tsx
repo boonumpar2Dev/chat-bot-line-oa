@@ -28,6 +28,7 @@ import ManualTimerBanner from "@/components/chats/ManualTimerBanner";
 import StagedMessageBar from "@/components/chats/StagedMessageBar";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
+import LocationPreview, { extractLocation } from "@/components/chats/LocationPreview";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 import { formatSnippet } from "@/lib/snippet";
 import { readNotificationSettings, playNotificationSound } from "@/hooks/useNotificationSound";
