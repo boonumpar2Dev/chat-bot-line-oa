@@ -13,6 +13,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useNotificationSettings, type SoundType } from "@/hooks/useNotificationSound";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
+import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
+
+const DRAFT_KEY = "settings:main";
 
 type BotMode = "full" | "scheduled" | "whitelist" | "off";
 
