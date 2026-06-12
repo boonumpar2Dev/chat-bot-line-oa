@@ -651,7 +651,17 @@ export default function Chats() {
         } else if (t === "video") {
           lineMessages.push({ type: "video", originalContentUrl: f.url, previewImageUrl: f.url });
         } else {
-          lineMessages.push(buildFileFlex(f.url, f.name, f.size));
+          // ถ้า URL ไม่มีนามสกุลไฟล์ (เช่น google maps, เว็บลิงก์ทั่วไป) → ส่งเป็น text link
+          let isPlainLink = false;
+          try {
+            const path = new URL(f.url).pathname.toLowerCase();
+            isPlainLink = !/\.[a-z0-9]{2,5}$/.test(path);
+          } catch {}
+          if (isPlainLink) {
+            lineMessages.push({ type: "text", text: f.url });
+          } else {
+            lineMessages.push(buildFileFlex(f.url, f.name, f.size));
+          }
         }
       }
       if (reply.trim()) lineMessages.push({ type: "text", text: reply.trim() });
