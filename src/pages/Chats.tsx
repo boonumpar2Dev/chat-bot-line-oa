@@ -966,7 +966,7 @@ export default function Chats() {
                   const byId: Record<string, any> = {};
                   for (const m of messages) byId[m.id] = m;
                   return list.map(m => (
-                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}
+                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
                       customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
                       onReply={(msg)=>{
