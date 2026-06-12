@@ -20,32 +20,68 @@ export type TeachCtx = {
 export function TeachToKbDialog({ ctx, onClose }: { ctx: TeachCtx | null; onClose: () => void }) {
   const [q, setQ] = useState("");
   const [a, setA] = useState("");
+  const [title, setTitle] = useState("");
   const [target, setTarget] = useState<"kb" | "note">("kb");
   const [category, setCategory] = useState<string>("");
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [refining, setRefining] = useState(false);
+  const [refined, setRefined] = useState(false);
+  const [diagnosis, setDiagnosis] = useState("");
+  const [isGeneral, setIsGeneral] = useState(true);
+  const [similar, setSimilar] = useState<{ id: string; title: string; score: number }[]>([]);
 
   useEffect(() => {
     if (!ctx) return;
     setQ(ctx.question || "");
     setA(ctx.answer || "");
+    setTitle("");
     setTarget("kb");
     setCategory("");
+    setRefined(false);
+    setDiagnosis("");
+    setIsGeneral(true);
+    setSimilar([]);
     supabase.from("knowledge_categories").select("id,name").order("sort_order")
       .then(({ data }) => setCategories(data ?? []));
   }, [ctx]);
 
   if (!ctx) return null;
 
+  const refine = async () => {
+    setRefining(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("refine-kb-draft", {
+        body: { customer_id: ctx.customerId, raw_q: q, raw_a: a },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const d: any = data;
+      if (d.title) setTitle(d.title);
+      if (d.q) setQ(d.q);
+      if (d.a) setA(d.a);
+      if (d.category) setCategory(d.category);
+      setDiagnosis(d.diagnosis || "");
+      setIsGeneral(d.is_general !== false);
+      setSimilar(Array.isArray(d.similar) ? d.similar : []);
+      setRefined(true);
+      toast.success("✨ AI เรียบเรียงให้แล้ว — ตรวจสอบก่อนบันทึก");
+    } catch (e: any) {
+      toast.error(e.message || "วิเคราะห์ไม่สำเร็จ");
+    } finally {
+      setRefining(false);
+    }
+  };
+
   const save = async () => {
     if (!a.trim()) { toast.error("คำตอบว่าง"); return; }
     setSaving(true);
     try {
       if (target === "kb") {
-        const title = (q.trim() || a.trim()).slice(0, 60);
+        const finalTitle = (title.trim() || q.trim() || a.trim()).slice(0, 60);
         const content = q.trim() ? `Q: ${q.trim()}\nA: ${a.trim()}` : a.trim();
         const { data: row, error } = await supabase.from("knowledge_base").insert({
-          title,
+          title: finalTitle,
           content,
           category: category || null,
           status: "active",
