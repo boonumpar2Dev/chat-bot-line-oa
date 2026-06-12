@@ -523,7 +523,7 @@ async function processEvent(event: any, supabase: any) {
       let text: string;
       if (event.message.type === "text") text = event.message.text;
       else if (event.message.type === "sticker") text = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
-      else if (event.message.type === "location") text = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
+      else if (event.message.type === "location") text = fmtLocationMessage({ title: event.message.title, address: event.message.address, lat: event.message.latitude, lng: event.message.longitude });
       else if (["image","video","audio","file"].includes(event.message.type)) {
         const mt = event.message.type;
         const label = mt === "image" ? "รูปภาพ" : mt === "video" ? "วิดีโอ" : mt === "audio" ? "เสียง" : "ไฟล์";
@@ -573,7 +573,7 @@ async function processEvent(event: any, supabase: any) {
   } else if (msgType === "sticker") {
     messageText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
   } else if (msgType === "location") {
-    messageText = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
+    messageText = fmtLocationMessage({ title: event.message.title, address: event.message.address, lat: event.message.latitude, lng: event.message.longitude });
   } else {
     messageText = `[${msgType || "ไม่ทราบ"}]`;
   }
