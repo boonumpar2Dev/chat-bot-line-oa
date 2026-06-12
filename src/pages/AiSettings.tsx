@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList } from "lucide-react";
+import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import LocationPreview, { parseMapsUrl } from "@/components/chats/LocationPreview";
 
 type Cfg = any;
 
@@ -65,6 +66,9 @@ export default function AiSettings() {
       handover_extract_timeout_ms: s.handover_extract_timeout_ms,
       handover_extract_triggers: s.handover_extract_triggers,
       handover_extract_overwrite_mode: s.handover_extract_overwrite_mode,
+      shop_address: s.shop_address,
+      shop_lat: s.shop_lat,
+      shop_lng: s.shop_lng,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
@@ -85,13 +89,14 @@ export default function AiSettings() {
       </div>
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 w-full h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
           <TabsTrigger value="intent" className="gap-1.5"><Database className="w-4 h-4" />ข้อมูลที่เก็บ</TabsTrigger>
           <TabsTrigger value="handover" className="gap-1.5"><ClipboardList className="w-4 h-4" />ฟอร์มส่งต่อ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
+          <TabsTrigger value="shop" className="gap-1.5"><MapPin className="w-4 h-4" />ที่ตั้งร้าน</TabsTrigger>
         </TabsList>
 
 
@@ -468,6 +473,62 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
+
+        <TabsContent value="shop" className="mt-4">
+          <Card className="p-6 shadow-soft border-border/60 space-y-5">
+            <div className="flex items-center gap-2"><MapPin className="text-primary" /><h2 className="font-display text-lg font-semibold">ที่ตั้งร้าน (จุดเริ่มต้นคำนวณระยะทาง)</h2></div>
+            <p className="text-sm text-muted-foreground">ใช้คำนวณระยะทาง/เวลาเดินทางจากร้านไปยังสถานที่จัดงานของลูกค้า เมื่อลูกค้าแชร์ตำแหน่งหรือส่งลิงก์ Google Maps</p>
+
+            <div className="space-y-1.5">
+              <Label>ที่อยู่ร้าน</Label>
+              <Textarea rows={2} value={s.shop_address ?? ""} onChange={e => upd("shop_address", e.target.value)} placeholder="เช่น บุญอำพรครัวไทย ถ.รัชดาภิเษก กรุงเทพฯ" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>ละติจูด (Latitude)</Label>
+                <Input type="number" step="any" value={s.shop_lat ?? ""} onChange={e => upd("shop_lat", e.target.value === "" ? null : +e.target.value)} placeholder="13.756331" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>ลองจิจูด (Longitude)</Label>
+                <Input type="number" step="any" value={s.shop_lng ?? ""} onChange={e => upd("shop_lng", e.target.value === "" ? null : +e.target.value)} placeholder="100.501765" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>วางลิงก์ Google Maps ของร้าน (จะดึงพิกัดให้อัตโนมัติ)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://www.google.com/maps/place/.../@13.756,100.501,..."
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData("text");
+                    const parsed = parseMapsUrl(text);
+                    if (parsed) {
+                      e.preventDefault();
+                      upd("shop_lat", parsed.lat);
+                      upd("shop_lng", parsed.lng);
+                      toast.success(`ดึงพิกัดสำเร็จ: ${parsed.lat}, ${parsed.lng}`);
+                      (e.target as HTMLInputElement).value = "";
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">เคล็ดลับ: เปิด Google Maps → คลิกขวาที่จุดของร้าน → เลือกค่าพิกัด แล้ววางลงช่อง Lat/Lng ได้เลย</p>
+            </div>
+
+            {Number.isFinite(+s.shop_lat) && Number.isFinite(+s.shop_lng) && +s.shop_lat !== 0 && (
+              <div>
+                <Label className="block mb-2">ตัวอย่างตำแหน่งร้าน</Label>
+                <LocationPreview
+                  lat={+s.shop_lat}
+                  lng={+s.shop_lng}
+                  title={s.shop_address || "ที่ตั้งร้าน"}
+                  url={`https://www.google.com/maps?q=${+s.shop_lat},${+s.shop_lng}`}
+                />
+              </div>
+            )}
+          </Card>
+        </TabsContent>
 
       </Tabs>
     </div>
