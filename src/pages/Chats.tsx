@@ -1412,6 +1412,11 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
               <Brain className="w-3 h-3"/>สอน AI จากเคสนี้
             </button>
           )}
+          {isAdmin && cleaned && onTeachKb && (
+            <button onClick={()=>onTeachKb(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="บันทึกคำตอบนี้เป็นความรู้ AI">
+              <BookPlus className="w-3 h-3"/>เพิ่มเป็นความรู้ AI
+            </button>
+          )}
         </span>
       )}
       {quotedMessage && (
