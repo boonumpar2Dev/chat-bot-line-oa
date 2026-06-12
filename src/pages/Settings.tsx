@@ -205,10 +205,17 @@ export default function Settings() {
           <h1 className="font-display text-3xl font-semibold">ตั้งค่าระบบ</h1>
           <p className="text-muted-foreground mt-1">ปรับโหมดการทำงานของบอท และข้อความตอบกลับอัตโนมัติ</p>
         </div>
-        <Button onClick={save} disabled={saving} size="lg">
-          {saving ? <Loader2 className="animate-spin"/> : <Save />} บันทึก
-        </Button>
+        <div className="flex flex-col items-end gap-1.5">
+          <Button onClick={save} disabled={saving} size="lg">
+            {saving ? <Loader2 className="animate-spin"/> : <Save />} บันทึก
+          </Button>
+          <DraftSavedIndicator savedAt={savedAt} />
+        </div>
       </div>
+
+      {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft} />}
+
+
 
       {/* Current status banner */}
       <Card className={`p-5 border-2 ${bannerColor}`}>
