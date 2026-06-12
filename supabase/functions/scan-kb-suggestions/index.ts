@@ -146,12 +146,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, clusters: 0, suggestions: 0, scanned: 0 }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // 2) Embed in batches of 50
+    // 2) Embed by TOPIC (customer question first, then admin answer) — so "ส่งต่างจังหวัดได้ไหม"
+    //    และ "ไปอุดรมั้ย" จับเป็น cluster เดียว แม้แอดมินจะตอบคนละสำนวน
     const allEmbeds: number[][] = [];
     const BATCH = 50;
     for (let i = 0; i < adminItems.length; i += BATCH) {
       const slice = adminItems.slice(i, i + BATCH);
-      const vecs = await embedBatch(slice.map((x) => x.a));
+      const texts = slice.map((x) => {
+        const q = (x.q || "").slice(0, 300);
+        const a = (x.a || "").slice(0, 300);
+        // เน้น q (เรื่องที่ลูกค้าถาม) — ทวน q ก่อน เพื่อให้ embedding ให้น้ำหนัก
+        return q ? `คำถาม: ${q}\nคำตอบ: ${a}` : `คำตอบ: ${a}`;
+      });
+      const vecs = await embedBatch(texts);
       allEmbeds.push(...vecs);
     }
 
