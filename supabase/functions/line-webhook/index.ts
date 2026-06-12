@@ -746,16 +746,22 @@ async function processEvent(event: any, supabase: any) {
     if (msgMs > 0 && msgMs < new Date(freshCustomer.ai_resumed_at).getTime()) return;
   }
 
-  // 🕐 Schedule gate มาก่อน — ในเวลาทำการ บอทตอบทุกคน (ไม่สน whitelist)
-  //    นอกเวลาทำการ → whitelist ใช้เป็นโหมดทดสอบ (ตอบเฉพาะคนใน list), คนอื่นได้ OOH/เงียบ
+  // 🕐 Schedule gate มาก่อน — ในเวลา+วันทำการ บอทตอบทุกคน (ไม่สน whitelist)
+  //    นอกเวลา/นอกวัน → whitelist ใช้เป็นโหมดทดสอบ (ตอบเฉพาะคนใน list), คนอื่นได้ OOH/เงียบ
   let inSchedule = true;
   if (cfg.schedule_enabled) {
     const bkk = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
     const hhmm = bkk.getHours() * 60 + bkk.getMinutes();
+    const dow = bkk.getDay(); // 0=Sun..6=Sat
     const [sh, sm] = (cfg.start_time || "18:00").split(":").map(Number);
     const [eh, em] = (cfg.end_time || "08:00").split(":").map(Number);
     const start = sh * 60 + sm, end = eh * 60 + em;
-    inSchedule = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
+    const inTime = start > end ? (hhmm >= start || hhmm < end) : (hhmm >= start && hhmm < end);
+    const days: number[] = Array.isArray(cfg.schedule_days) && cfg.schedule_days.length > 0
+      ? cfg.schedule_days
+      : [0,1,2,3,4,5,6];
+    const inDay = days.includes(dow);
+    inSchedule = inTime && inDay;
   }
 
   const whitelistMode = cfg.ai_whitelist_enabled === true || cfg.bot_mode === "whitelist";

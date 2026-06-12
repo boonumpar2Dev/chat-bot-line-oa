@@ -1,0 +1,2 @@
+ALTER TABLE public.app_settings ADD COLUMN IF NOT EXISTS schedule_days int[] DEFAULT '{0,1,2,3,4,5,6}';
+UPDATE public.app_settings SET schedule_days = '{0,1,2,3,4,5,6}' WHERE key = 'ai_config' AND schedule_days IS NULL;

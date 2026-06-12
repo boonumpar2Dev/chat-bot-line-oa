@@ -43,7 +43,11 @@ type Settings = {
   unable_to_reply_message: string;
   unable_to_reply_enabled: boolean;
   followup_instruction: string;
+  schedule_days: number[];
 };
+
+const DAY_LABELS = ["อา","จ","อ","พ","พฤ","ศ","ส"]; // 0=Sun..6=Sat
+const DAY_FULL = ["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
 
 const MODES: { value: BotMode; label: string; desc: string; icon: any; color: string; combinable?: boolean }[] = [
   { value: "full", label: "เปิดเต็ม", desc: "บอทตอบลูกค้าทุกคน 24 ชม.", icon: Power, color: "text-green-600 bg-green-500/10 border-green-500/40" },
@@ -136,6 +140,7 @@ export default function Settings() {
       followup_enabled: s.followup_enabled,
       start_time: s.start_time,
       end_time: s.end_time,
+      schedule_days: s.schedule_days ?? [0,1,2,3,4,5,6],
       sla_hours: s.sla_hours,
       debounce_seconds: s.debounce_seconds,
       out_of_hours_message: s.out_of_hours_message,
@@ -258,13 +263,45 @@ export default function Settings() {
 
         {/* Mode-specific config */}
         {isActive("scheduled") && (
-          <div className="mt-5 p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 space-y-3">
-            <Label className="font-medium flex items-center gap-2"><Clock className="w-4 h-4"/> ช่วงเวลาที่บอททำงาน</Label>
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label className="text-xs">บอทเริ่มตอบ</Label><Input type="time" value={s.start_time} onChange={e=>upd("start_time", e.target.value)} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">บอทหยุดตอบ</Label><Input type="time" value={s.end_time} onChange={e=>upd("end_time", e.target.value)} /></div>
+          <div className="mt-5 p-4 rounded-lg border border-blue-500/30 bg-blue-500/5 space-y-4">
+            <div className="space-y-3">
+              <Label className="font-medium flex items-center gap-2"><Clock className="w-4 h-4"/> ช่วงเวลาที่บอททำงาน</Label>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5"><Label className="text-xs">บอทเริ่มตอบ</Label><Input type="time" value={s.start_time} onChange={e=>upd("start_time", e.target.value)} /></div>
+                <div className="space-y-1.5"><Label className="text-xs">บอทหยุดตอบ</Label><Input type="time" value={s.end_time} onChange={e=>upd("end_time", e.target.value)} /></div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">นอกเวลานี้ บอทจะเงียบสำหรับลูกค้าทั่วไป (ถ้าเปิด "ทดสอบ" ร่วม คนใน whitelist จะตอบได้ทุกเวลา)</p>
+            <div className="space-y-2">
+              <Label className="font-medium flex items-center gap-2"><CalendarClock className="w-4 h-4"/> วันที่บอททำงาน</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {DAY_LABELS.map((lbl, i) => {
+                  const days = s.schedule_days ?? [0,1,2,3,4,5,6];
+                  const on = days.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      title={DAY_FULL[i]}
+                      onClick={() => {
+                        const next = on ? days.filter(d => d !== i) : [...days, i].sort();
+                        upd("schedule_days", next);
+                      }}
+                      className={`w-10 h-10 rounded-lg border-2 text-sm font-medium transition-all ${on ? "border-blue-500 bg-blue-500 text-white shadow-sm" : "border-border bg-card text-muted-foreground hover:border-blue-500/40"}`}
+                    >
+                      {lbl}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 text-[11px]">
+                <button type="button" className="text-blue-600 hover:underline" onClick={()=>upd("schedule_days",[0,1,2,3,4,5,6])}>เลือกทุกวัน</button>
+                <span className="text-muted-foreground">·</span>
+                <button type="button" className="text-blue-600 hover:underline" onClick={()=>upd("schedule_days",[1,2,3,4,5])}>เฉพาะวันธรรมดา</button>
+                <span className="text-muted-foreground">·</span>
+                <button type="button" className="text-blue-600 hover:underline" onClick={()=>upd("schedule_days",[0,6])}>เฉพาะวันหยุด</button>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">นอกช่วงเวลา/วันที่กำหนด บอทจะเงียบสำหรับลูกค้าทั่วไป (ถ้าเปิด "ทดสอบ" ร่วม คนใน whitelist จะตอบได้ทุกเวลา)</p>
           </div>
         )}
 
