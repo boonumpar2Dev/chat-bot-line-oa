@@ -1099,7 +1099,7 @@ export default function Chats() {
       </main>
 
       <ImagePreviewModal url={previewImg} onClose={() => setPreviewImg(null)}/>
-      <TrainAIDialog text={trainText} onClose={()=>setTrainText(null)}/>
+      <TrainAIDialog ctx={trainCtx} onClose={()=>setTrainCtx(null)}/>
     </div>
   );
 }
