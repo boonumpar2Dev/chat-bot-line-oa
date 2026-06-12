@@ -3,6 +3,7 @@ import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncate
 import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
+import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
