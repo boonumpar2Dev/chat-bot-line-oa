@@ -44,6 +44,7 @@ const App = () => (
                 <Route path="/customers" element={<ProtectedRoute menuKey="chats"><Customers /></ProtectedRoute>} />
                 <Route path="/customers/:id" element={<ProtectedRoute menuKey="chats"><CustomerDetail /></ProtectedRoute>} />
                 <Route path="/knowledge" element={<ProtectedRoute menuKey="knowledge"><Knowledge /></ProtectedRoute>} />
+                <Route path="/kb-suggestions" element={<ProtectedRoute menuKey="knowledge"><KbSuggestions /></ProtectedRoute>} />
                 <Route path="/ai-settings" element={<ProtectedRoute menuKey="ai_settings"><AiSettings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
                 <Route path="/tags" element={<ProtectedRoute menuKey="tags"><Tags /></ProtectedRoute>} />
