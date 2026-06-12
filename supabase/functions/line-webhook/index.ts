@@ -32,6 +32,30 @@ function triggerSummarize(customerId: string) {
   }).catch(e => console.error("[summarize trigger] failed:", e?.message));
 }
 
+// 📍 ดึงพิกัด venue จาก message (LINE location event หรือ Google Maps URL) → เก็บใน customer.intent_data.venue_location
+// + คำนวณระยะทางจากร้านถ้ามีตั้ง shop_lat/shop_lng ใน app_settings
+async function saveVenueIfAny(supabase: any, customer: any, event: any, text: string) {
+  try {
+    // เคารพข้อมูลเดิม: ถ้าเคยมี venue_location จาก LINE location แล้ว ไม่ overwrite ด้วย URL
+    const existing = customer?.intent_data?.venue_location;
+    const isFromLineLocation = event?.message?.type === "location";
+    if (existing && existing.source === "line_location" && !isFromLineLocation) return;
+
+    const { data: cfgArr } = await supabase.from("app_settings").select("shop_lat, shop_lng").eq("key", "ai_config").limit(1);
+    const sc = cfgArr?.[0] || {};
+    const origin = (Number.isFinite(+sc.shop_lat) && Number.isFinite(+sc.shop_lng))
+      ? { lat: +sc.shop_lat, lng: +sc.shop_lng } : null;
+
+    const res = await extractVenueLocation(event, text, origin);
+    if (!res) return;
+    const merged = { ...(customer.intent_data && typeof customer.intent_data === "object" ? customer.intent_data : {}), venue_location: res.venue };
+    await supabase.from("customers").update({ intent_data: merged }).eq("id", customer.id);
+    console.log(`[venue] saved ${res.venue.source} (${res.venue.lat},${res.venue.lng}) dist=${res.venue.distance_km ?? "-"}km`);
+  } catch (e) {
+    console.error("[venue] saveVenueIfAny error", e);
+  }
+}
+
 // สรุปข้อมูลลูกค้าสำหรับส่งกลับ + ให้แอดมินอ่าน (ใช้ตอนปิดบอท handover)
 function buildCustomerSummary(c: any, cfg: any): string[] {
   const header = (cfg?.handover_summary_header && String(cfg.handover_summary_header).trim()) || "📋 สรุปข้อมูลที่ได้รับ:";
