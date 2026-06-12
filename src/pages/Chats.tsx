@@ -218,7 +218,7 @@ export default function Chats() {
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [msgSearch, setMsgSearch] = useState("");
   const [showMsgSearch, setShowMsgSearch] = useState(false);
-  const [trainText, setTrainText] = useState<string | null>(null);
+  const [trainCtx, setTrainCtx] = useState<{ text: string; customerId: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -966,7 +966,7 @@ export default function Chats() {
                   const byId: Record<string, any> = {};
                   for (const m of messages) byId[m.id] = m;
                   return list.map(m => (
-                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>setTrainText(t)} adminNames={adminNames}
+                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
                       customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
                       onReply={(msg)=>{
@@ -1099,7 +1099,7 @@ export default function Chats() {
       </main>
 
       <ImagePreviewModal url={previewImg} onClose={() => setPreviewImg(null)}/>
-      <TrainAIDialog text={trainText} onClose={()=>setTrainText(null)}/>
+      <TrainAIDialog ctx={trainCtx} onClose={()=>setTrainCtx(null)}/>
     </div>
   );
 }
@@ -1112,40 +1112,49 @@ type ClassifiedItem = {
   reasoning?: string;
 };
 
-const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
+const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx: { text: string; customerId: string } | null; onClose: ()=>void }) {
   const feedbackRef = useRef<HTMLTextAreaElement>(null);
-  const [hasFeedback, setHasFeedback] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState<ClassifiedItem[]>([]);
+  const [diagnosis, setDiagnosis] = useState<string>("");
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (text) {
-      setItems([]);
-      setHasFeedback(false);
-      if (feedbackRef.current) feedbackRef.current.value = "";
-    }
-  }, [text]);
-
-  const analyze = async () => {
-    const fb = (feedbackRef.current?.value || "").trim();
-    if (!fb || !text) return;
+  const runAnalyze = async (extraFeedback?: string) => {
+    if (!ctx) return;
     setAnalyzing(true);
     setItems([]);
+    setDiagnosis("");
     try {
-      const combined = `คำตอบเดิมของ AI:\n"""${text}"""\n\nสิ่งที่แอดมินอยากให้ปรับ:\n${fb}`;
-      const { data, error } = await supabase.functions.invoke("classify-knowledge", { body: { text: combined } });
+      const { data, error } = await supabase.functions.invoke("teach-from-chat", {
+        body: {
+          customer_id: ctx.customerId,
+          focus_reply: ctx.text,
+          feedback: extraFeedback || "",
+        },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      setDiagnosis(data?.diagnosis || "");
       const arr: ClassifiedItem[] = Array.isArray(data?.items) ? data.items : [];
-      if (!arr.length) throw new Error("AI วิเคราะห์ไม่ได้ ลองเขียนใหม่นะคะ");
       setItems(arr);
+      if (!arr.length && !data?.diagnosis) toast.info("AI ไม่พบประเด็นที่ต้องปรับ");
     } catch (e: any) {
       toast.error(e.message || "วิเคราะห์ไม่สำเร็จ");
     } finally {
       setAnalyzing(false);
     }
   };
+
+  useEffect(() => {
+    if (ctx) {
+      setItems([]);
+      setDiagnosis("");
+      if (feedbackRef.current) feedbackRef.current.value = "";
+      runAnalyze();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx?.text, ctx?.customerId]);
+
 
   const updateItem = (idx: number, patch: Partial<ClassifiedItem>) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
@@ -1185,40 +1194,52 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { tex
   };
 
   return (
-    <Dialog open={!!text} onOpenChange={(o)=>!o && onClose()}>
+    <Dialog open={!!ctx} onOpenChange={(o)=>!o && onClose()}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Brain className="w-4 h-4 text-primary"/>ปรับปรุงคำตอบของ AI
+            <Brain className="w-4 h-4 text-primary"/>สอน AI จากเคสนี้
           </DialogTitle>
+          <p className="text-xs text-muted-foreground pt-1">AI จะอ่านบทสนทนาทั้งหมดของลูกค้าคนนี้ → วินิจฉัยว่าตอบผิดตรงไหน → เสนอกฎ/ความรู้เพื่อกันไม่ให้พลาดกับลูกค้าคนอื่น</p>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">คำตอบเดิมของ AI</Label>
+            <Label className="text-xs text-muted-foreground">คำตอบ AI ที่อยากปรับ</Label>
             <div className="text-sm bg-muted/50 border rounded-md p-3 whitespace-pre-wrap max-h-32 overflow-y-auto">
-              {text}
+              {ctx?.text}
             </div>
           </div>
+
+          {analyzing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
+              <Loader2 className="w-4 h-4 animate-spin"/> AI กำลังอ่านบทสนทนาและวินิจฉัย…
+            </div>
+          )}
+
+          {!analyzing && diagnosis && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-[11px] font-semibold text-amber-700 uppercase mb-1">🔍 วินิจฉัย</p>
+              <p className="text-sm text-foreground/90 whitespace-pre-wrap">{diagnosis}</p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <Label className="text-xs">บอกเหมือนคุยกับเพื่อน ว่าอยากให้ AI ปรับยังไง</Label>
+            <Label className="text-xs">เพิ่มคำแนะนำ (ไม่บังคับ) — บอก AI ว่าอยากให้เน้นเรื่องอะไร</Label>
             <Textarea
               ref={feedbackRef}
-              rows={3}
+              rows={2}
               defaultValue=""
-              onChange={e => {
-                const has = e.target.value.trim().length > 0;
-                if (has !== hasFeedback) setHasFeedback(has);
-              }}
-              placeholder={`เช่น\n• อย่าพูดว่า "3 รูปแบบ" โดยไม่บอกชื่อ ต้องระบุ บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน\n• ตอบสั้นลงอีก ไม่เกิน 2 ประโยค\n• ค่าส่งกรุงเทพฟรี ต่างจังหวัด 15 บ./กม.`}
+              placeholder={`เช่น "ดูที่ราคาผิด" หรือ "เน้นเรื่องค่าส่ง"`}
               disabled={analyzing}
             />
             <div className="flex justify-end">
-              <Button size="sm" onClick={analyze} disabled={analyzing || !hasFeedback}>
+              <Button size="sm" variant="outline" onClick={()=>runAnalyze(feedbackRef.current?.value || "")} disabled={analyzing}>
                 {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
-                {analyzing ? "AI กำลังวิเคราะห์…" : "ให้ AI ช่วยจัด"}
+                วิเคราะห์ใหม่
               </Button>
             </div>
           </div>
+
 
           {items.length > 0 && (
             <div className="space-y-2 pt-2 border-t">
@@ -1314,8 +1335,8 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
         <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
           {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
           {m.sender === "ai" && cleaned && onTrainAI && (
-            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
-              <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
+            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
+              <Brain className="w-3 h-3"/>สอน AI จากเคสนี้
             </button>
           )}
         </span>
