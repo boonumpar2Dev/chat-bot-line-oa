@@ -243,6 +243,8 @@ export type Database = {
           intent_collection_order: string
           intent_fields: Json
           kb_menu_title_keywords: string[]
+          kb_suggest_last_scan_at: string | null
+          kb_suggest_strictness: string
           key: string
           location_keywords: string[]
           manual_chat_hours: number
@@ -313,6 +315,8 @@ export type Database = {
           intent_collection_order?: string
           intent_fields?: Json
           kb_menu_title_keywords?: string[]
+          kb_suggest_last_scan_at?: string | null
+          kb_suggest_strictness?: string
           key: string
           location_keywords?: string[]
           manual_chat_hours?: number
@@ -383,6 +387,8 @@ export type Database = {
           intent_collection_order?: string
           intent_fields?: Json
           kb_menu_title_keywords?: string[]
+          kb_suggest_last_scan_at?: string | null
+          kb_suggest_strictness?: string
           key?: string
           location_keywords?: string[]
           manual_chat_hours?: number
@@ -730,6 +736,7 @@ export type Database = {
           contact_year: number | null
           conversation_summary: string | null
           created_at: string
+          customer_notes: Json
           display_name: string | null
           event_date: string | null
           event_month: string | null
@@ -765,6 +772,7 @@ export type Database = {
           contact_year?: number | null
           conversation_summary?: string | null
           created_at?: string
+          customer_notes?: Json
           display_name?: string | null
           event_date?: string | null
           event_month?: string | null
@@ -800,6 +808,7 @@ export type Database = {
           contact_year?: number | null
           conversation_summary?: string | null
           created_at?: string
+          customer_notes?: Json
           display_name?: string | null
           event_date?: string | null
           event_month?: string | null
@@ -828,6 +837,81 @@ export type Database = {
           venue?: string | null
         }
         Relationships: []
+      }
+      kb_suggestions: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          customer_ids: string[]
+          dismissed_embedding: string | null
+          id: string
+          knowledge_base_id: string | null
+          occurrence_count: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scan_from: string | null
+          scan_to: string | null
+          source_message_ids: string[]
+          status: string
+          strictness: string | null
+          suggested_a: string
+          suggested_q: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          customer_ids?: string[]
+          dismissed_embedding?: string | null
+          id?: string
+          knowledge_base_id?: string | null
+          occurrence_count?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scan_from?: string | null
+          scan_to?: string | null
+          source_message_ids?: string[]
+          status?: string
+          strictness?: string | null
+          suggested_a: string
+          suggested_q: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          customer_ids?: string[]
+          dismissed_embedding?: string | null
+          id?: string
+          knowledge_base_id?: string | null
+          occurrence_count?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          scan_from?: string | null
+          scan_to?: string | null
+          source_message_ids?: string[]
+          status?: string
+          strictness?: string | null
+          suggested_a?: string
+          suggested_q?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_suggestions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kb_suggestions_knowledge_base_id_fkey"
+            columns: ["knowledge_base_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_base"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       knowledge_base: {
         Row: {

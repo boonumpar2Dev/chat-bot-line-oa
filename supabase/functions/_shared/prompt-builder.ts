@@ -21,7 +21,9 @@ export interface BuildPromptInput {
   comparisonSection?: string;
   jsonSchemaHint?: string;
   tagInstructions?: string;
+  customerNotes?: string;
 }
+
 
 export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPrompt: string } {
   const cfg = i.cfg || {};
@@ -57,6 +59,12 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     ? `\n\n🏷️ บริบทเฉพาะลูกค้ารายนี้ (จากแท็ก — เป็นแนวทาง, ถ้าขัด strict_rules ให้ strict_rules ชนะ):\n${i.tagInstructions.trim()}`
     : "";
 
+  // 📝 Customer-specific notes (สอนโดยแอดมินจากแชท) — ใช้เฉพาะกับลูกค้าคนนี้ เป็นข้อเท็จจริงเหนือ KB กลาง
+  const notesBlock = (i.customerNotes && i.customerNotes.trim())
+    ? `\n\n📝 โน้ตเฉพาะลูกค้ารายนี้ (แอดมินบันทึก — ถือเป็นข้อเท็จจริง, สำคัญกว่า KB กลาง ถ้าขัดกัน):\n${i.customerNotes.trim()}`
+    : "";
+
+
 
   // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
   const _now = new Date();
@@ -70,7 +78,7 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${dateBlock}
+  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${dateBlock}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด):
 - ตอบจาก KB/แคตตาล็อกแพ็กเกจเท่านั้น — **ห้ามแต่งราคา/ชื่อ tier/ชื่อระดับคุณภาพ/ชื่อเมนู/ชื่อแพ็กเกจ/ชื่อบริการ** เด็ดขาด

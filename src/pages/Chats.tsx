@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft, BookPlus } from "lucide-react";
+import { TeachToKbDialog, type TeachCtx } from "@/components/chats/TeachToKbDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -220,6 +221,7 @@ export default function Chats() {
   const [msgSearch, setMsgSearch] = useState("");
   const [showMsgSearch, setShowMsgSearch] = useState(false);
   const [trainCtx, setTrainCtx] = useState<{ text: string; customerId: string } | null>(null);
+  const [teachKbCtx, setTeachKbCtx] = useState<TeachCtx | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -983,15 +985,31 @@ export default function Chats() {
                   const list = msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages;
                   const byId: Record<string, any> = {};
                   for (const m of messages) byId[m.id] = m;
-                  return list.map(m => (
+                  return list.map((m, idx) => {
+                    // หา customer message ก่อนหน้า admin message นี้ (สำหรับเก็บเป็น Q/A)
+                    let prevCustomerMsg: any = null;
+                    if (m.sender === "admin") {
+                      const fullIdx = messages.findIndex(x => x.id === m.id);
+                      for (let i = fullIdx - 1; i >= 0; i--) {
+                        if (messages[i].sender === "customer") { prevCustomerMsg = messages[i]; break; }
+                      }
+                    }
+                    return (
                     <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
                       customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
+                      onTeachKb={selectedId ? (adminText) => setTeachKbCtx({
+                        customerId: selectedId,
+                        customerName: selected?.display_name || selected?.nickname,
+                        question: prevCustomerMsg?.message || "",
+                        answer: adminText,
+                      }) : undefined}
                       onReply={(msg)=>{
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
                         setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
                       }}/>
-                  ));
+                    );
+                  });
                 })()}
               </div>
             </ScrollArea>
@@ -1118,6 +1136,7 @@ export default function Chats() {
 
       <ImagePreviewModal url={previewImg} onClose={() => setPreviewImg(null)}/>
       <TrainAIDialog ctx={trainCtx} onClose={()=>setTrainCtx(null)}/>
+      <TeachToKbDialog ctx={teachKbCtx} onClose={()=>setTeachKbCtx(null)}/>
     </div>
   );
 }
@@ -1302,7 +1321,7 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx:
 });
 
 
-function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onReply, quotedMessage, customerPicture, customerName }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any; customerPicture?: string | null; customerName?: string | null }) {
+function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, adminNames, onReply, quotedMessage, customerPicture, customerName }: { m: any; onImageClick: (u: string) => void; highlight?: string; onTrainAI?: (t: string) => void; onTeachKb?: (adminText: string) => void; adminNames?: Record<string, string>; onReply?: (m: any) => void; quotedMessage?: any; customerPicture?: string | null; customerName?: string | null }) {
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
@@ -1392,6 +1411,11 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
           {m.sender === "ai" && cleaned && onTrainAI && (
             <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
               <Brain className="w-3 h-3"/>สอน AI จากเคสนี้
+            </button>
+          )}
+          {isAdmin && cleaned && onTeachKb && (
+            <button onClick={()=>onTeachKb(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="บันทึกคำตอบนี้เป็นความรู้ AI">
+              <BookPlus className="w-3 h-3"/>เพิ่มเป็นความรู้ AI
             </button>
           )}
         </span>
