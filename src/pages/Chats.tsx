@@ -1194,40 +1194,52 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx:
   };
 
   return (
-    <Dialog open={!!text} onOpenChange={(o)=>!o && onClose()}>
+    <Dialog open={!!ctx} onOpenChange={(o)=>!o && onClose()}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Brain className="w-4 h-4 text-primary"/>ปรับปรุงคำตอบของ AI
+            <Brain className="w-4 h-4 text-primary"/>สอน AI จากเคสนี้
           </DialogTitle>
+          <p className="text-xs text-muted-foreground pt-1">AI จะอ่านบทสนทนาทั้งหมดของลูกค้าคนนี้ → วินิจฉัยว่าตอบผิดตรงไหน → เสนอกฎ/ความรู้เพื่อกันไม่ให้พลาดกับลูกค้าคนอื่น</p>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">คำตอบเดิมของ AI</Label>
+            <Label className="text-xs text-muted-foreground">คำตอบ AI ที่อยากปรับ</Label>
             <div className="text-sm bg-muted/50 border rounded-md p-3 whitespace-pre-wrap max-h-32 overflow-y-auto">
-              {text}
+              {ctx?.text}
             </div>
           </div>
+
+          {analyzing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-3">
+              <Loader2 className="w-4 h-4 animate-spin"/> AI กำลังอ่านบทสนทนาและวินิจฉัย…
+            </div>
+          )}
+
+          {!analyzing && diagnosis && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+              <p className="text-[11px] font-semibold text-amber-700 uppercase mb-1">🔍 วินิจฉัย</p>
+              <p className="text-sm text-foreground/90 whitespace-pre-wrap">{diagnosis}</p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
-            <Label className="text-xs">บอกเหมือนคุยกับเพื่อน ว่าอยากให้ AI ปรับยังไง</Label>
+            <Label className="text-xs">เพิ่มคำแนะนำ (ไม่บังคับ) — บอก AI ว่าอยากให้เน้นเรื่องอะไร</Label>
             <Textarea
               ref={feedbackRef}
-              rows={3}
+              rows={2}
               defaultValue=""
-              onChange={e => {
-                const has = e.target.value.trim().length > 0;
-                if (has !== hasFeedback) setHasFeedback(has);
-              }}
-              placeholder={`เช่น\n• อย่าพูดว่า "3 รูปแบบ" โดยไม่บอกชื่อ ต้องระบุ บุฟเฟ่ต์/ซุ้ม/โต๊ะจีน\n• ตอบสั้นลงอีก ไม่เกิน 2 ประโยค\n• ค่าส่งกรุงเทพฟรี ต่างจังหวัด 15 บ./กม.`}
+              placeholder={`เช่น "ดูที่ราคาผิด" หรือ "เน้นเรื่องค่าส่ง"`}
               disabled={analyzing}
             />
             <div className="flex justify-end">
-              <Button size="sm" onClick={analyze} disabled={analyzing || !hasFeedback}>
+              <Button size="sm" variant="outline" onClick={()=>runAnalyze(feedbackRef.current?.value || "")} disabled={analyzing}>
                 {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
-                {analyzing ? "AI กำลังวิเคราะห์…" : "ให้ AI ช่วยจัด"}
+                วิเคราะห์ใหม่
               </Button>
             </div>
           </div>
+
 
           {items.length > 0 && (
             <div className="space-y-2 pt-2 border-t">
