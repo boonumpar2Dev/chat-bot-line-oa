@@ -1118,6 +1118,19 @@ async function processEvent(event: any, supabase: any) {
 
   let knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
 
+  // 📍 Venue location (จาก LINE location หรือ Google Maps URL) + ระยะทางจากร้าน (ถ้ามี)
+  const vloc = customerIntentData.venue_location;
+  if (vloc && typeof vloc === "object" && Number.isFinite(vloc.lat) && Number.isFinite(vloc.lng)) {
+    const parts: string[] = [];
+    if (vloc.title) parts.push(`ชื่อสถานที่: ${vloc.title}`);
+    if (vloc.address) parts.push(`ที่อยู่: ${vloc.address}`);
+    parts.push(`พิกัด: ${vloc.lat},${vloc.lng}`);
+    if (Number.isFinite(vloc.distance_km) && Number.isFinite(vloc.duration_min)) {
+      parts.push(`📏 ระยะทางจากร้าน: ${vloc.distance_km} กม. (~${vloc.duration_min} นาที โดยรถยนต์)`);
+    }
+    knownIntentStr += `\n\n📍 พิกัดสถานที่จัดงานที่ลูกค้าแชร์มา:\n${parts.join("\n")}\n⚠️ ใช้ข้อมูลนี้ตอบเรื่องสถานที่ได้ แต่ห้ามแต่งราคาค่าเดินทางเอง — ถ้าลูกค้าถามค่าเดินทาง ให้บอกว่า "ทีมงานจะเช็กแล้วแจ้งกลับนะคะ"`;
+  }
+
   // คำสั่งสำหรับ field ที่ admin กำหนด + field ที่ยังขาด
   if (intentFields.length > 0) {
     const fieldDescs = intentFields.map((f: any) => {
