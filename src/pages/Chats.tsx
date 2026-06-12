@@ -221,6 +221,7 @@ export default function Chats() {
   const [msgSearch, setMsgSearch] = useState("");
   const [showMsgSearch, setShowMsgSearch] = useState(false);
   const [trainCtx, setTrainCtx] = useState<{ text: string; customerId: string } | null>(null);
+  const [teachKbCtx, setTeachKbCtx] = useState<TeachCtx | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
