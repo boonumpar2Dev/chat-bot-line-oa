@@ -985,15 +985,31 @@ export default function Chats() {
                   const list = msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages;
                   const byId: Record<string, any> = {};
                   for (const m of messages) byId[m.id] = m;
-                  return list.map(m => (
+                  return list.map((m, idx) => {
+                    // หา customer message ก่อนหน้า admin message นี้ (สำหรับเก็บเป็น Q/A)
+                    let prevCustomerMsg: any = null;
+                    if (m.sender === "admin") {
+                      const fullIdx = messages.findIndex(x => x.id === m.id);
+                      for (let i = fullIdx - 1; i >= 0; i--) {
+                        if (messages[i].sender === "customer") { prevCustomerMsg = messages[i]; break; }
+                      }
+                    }
+                    return (
                     <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
                       customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
+                      onTeachKb={selectedId ? (adminText) => setTeachKbCtx({
+                        customerId: selectedId,
+                        customerName: selected?.display_name || selected?.nickname,
+                        question: prevCustomerMsg?.message || "",
+                        answer: adminText,
+                      }) : undefined}
                       onReply={(msg)=>{
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
                         setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
                       }}/>
-                  ));
+                    );
+                  });
                 })()}
               </div>
             </ScrollArea>
