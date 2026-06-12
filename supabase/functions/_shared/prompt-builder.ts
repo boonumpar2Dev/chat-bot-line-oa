@@ -21,7 +21,9 @@ export interface BuildPromptInput {
   comparisonSection?: string;
   jsonSchemaHint?: string;
   tagInstructions?: string;
+  customerNotes?: string;
 }
+
 
 export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPrompt: string } {
   const cfg = i.cfg || {};
