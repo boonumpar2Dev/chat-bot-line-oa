@@ -68,6 +68,14 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [initialJSON, setInitialJSON] = useState<string>("");
+  const [foundDraft, setFoundDraft] = useState<{ value: Settings; savedAt: number } | null>(null);
+  const isDirty = !!s && JSON.stringify(s) !== initialJSON;
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Settings>(DRAFT_KEY, s as Settings, !!s, { isDirty });
+
+  const restoreDraft = () => { if (foundDraft) { setS(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(DRAFT_KEY); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
+
 
   const clearTestData = async (mode: "conversations" | "all") => {
     setClearing(true);
