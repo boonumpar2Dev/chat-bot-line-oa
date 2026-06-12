@@ -145,7 +145,11 @@ export default function Settings() {
       followup_instruction: s.followup_instruction,
     }).eq("key", "ai_config");
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกการตั้งค่าแล้ว");
+    setInitialJSON(JSON.stringify(s));
+    clearDraft(DRAFT_KEY);
+    clearDraftState();
   };
 
   const upd = (k: keyof Settings, v: any) => setS(prev => prev ? { ...prev, [k]: v } : prev);
