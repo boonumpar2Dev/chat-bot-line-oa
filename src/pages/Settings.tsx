@@ -13,6 +13,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useNotificationSettings, type SoundType } from "@/hooks/useNotificationSound";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
+import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
+
+const DRAFT_KEY = "settings:main";
 
 type BotMode = "full" | "scheduled" | "whitelist" | "off";
 
@@ -64,6 +68,14 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [initialJSON, setInitialJSON] = useState<string>("");
+  const [foundDraft, setFoundDraft] = useState<{ value: Settings; savedAt: number } | null>(null);
+  const isDirty = !!s && JSON.stringify(s) !== initialJSON;
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Settings>(DRAFT_KEY, s as Settings, !!s, { isDirty });
+
+  const restoreDraft = () => { if (foundDraft) { setS(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(DRAFT_KEY); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
+
 
   const clearTestData = async (mode: "conversations" | "all") => {
     setClearing(true);
@@ -91,7 +103,14 @@ export default function Settings() {
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
-      .then(({ data }) => { setS(data as any); setLoading(false); });
+      .then(({ data }) => {
+        setS(data as any);
+        setInitialJSON(JSON.stringify(data ?? {}));
+        const d = readDraft<Settings>(DRAFT_KEY);
+        if (d && JSON.stringify(d.value) !== JSON.stringify(data ?? {})) setFoundDraft(d);
+        else if (d) clearDraft(DRAFT_KEY);
+        setLoading(false);
+      });
   }, []);
 
   const save = async () => {
@@ -126,7 +145,11 @@ export default function Settings() {
       followup_instruction: s.followup_instruction,
     }).eq("key", "ai_config");
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("บันทึกการตั้งค่าแล้ว");
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกการตั้งค่าแล้ว");
+    setInitialJSON(JSON.stringify(s));
+    clearDraft(DRAFT_KEY);
+    clearDraftState();
   };
 
   const upd = (k: keyof Settings, v: any) => setS(prev => prev ? { ...prev, [k]: v } : prev);
@@ -182,10 +205,17 @@ export default function Settings() {
           <h1 className="font-display text-3xl font-semibold">ตั้งค่าระบบ</h1>
           <p className="text-muted-foreground mt-1">ปรับโหมดการทำงานของบอท และข้อความตอบกลับอัตโนมัติ</p>
         </div>
-        <Button onClick={save} disabled={saving} size="lg">
-          {saving ? <Loader2 className="animate-spin"/> : <Save />} บันทึก
-        </Button>
+        <div className="flex flex-col items-end gap-1.5">
+          <Button onClick={save} disabled={saving} size="lg">
+            {saving ? <Loader2 className="animate-spin"/> : <Save />} บันทึก
+          </Button>
+          <DraftSavedIndicator savedAt={savedAt} />
+        </div>
       </div>
+
+      {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft} />}
+
+
 
       {/* Current status banner */}
       <Card className={`p-5 border-2 ${bannerColor}`}>

@@ -11,23 +11,38 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import LocationPreview, { parseMapsUrl } from "@/components/chats/LocationPreview";
+import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
+import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
 
 type Cfg = any;
+const DRAFT_KEY = "ai-settings:main";
 
 export default function AiSettings() {
   const [s, setS] = useState<Cfg | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [kbCategories, setKbCategories] = useState<string[]>([]);
+  const [initialJSON, setInitialJSON] = useState<string>("");
+  const [foundDraft, setFoundDraft] = useState<{ value: Cfg; savedAt: number } | null>(null);
+  const isDirty = !!s && JSON.stringify(s) !== initialJSON;
+  const { savedAt, clear: clearDraftState } = useAutoSaveDraft<Cfg>(DRAFT_KEY, s, !!s, { isDirty });
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
-      .then(({ data }) => { setS(data as any); setLoading(false); });
+      .then(({ data }) => {
+        setS(data as any);
+        setInitialJSON(JSON.stringify(data ?? {}));
+        const d = readDraft<Cfg>(DRAFT_KEY);
+        if (d && JSON.stringify(d.value) !== JSON.stringify(data ?? {})) setFoundDraft(d);
+        else if (d) clearDraft(DRAFT_KEY);
+        setLoading(false);
+      });
     supabase.from("knowledge_categories").select("name").order("sort_order")
       .then(({ data }) => setKbCategories((data ?? []).map((c: any) => c.name)));
   }, []);
 
-
+  const restoreDraft = () => { if (foundDraft) { setS(foundDraft.value); setFoundDraft(null); toast.success("กู้คืนฉบับร่างแล้ว"); } };
+  const discardDraft = () => { clearDraft(DRAFT_KEY); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
 
   const upd = (k: string, v: any) => setS((p: Cfg) => p ? { ...p, [k]: v } : p);
 
@@ -71,7 +86,11 @@ export default function AiSettings() {
       shop_lng: s.shop_lng,
     }).eq("key", "ai_config");
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
+    if (error) { toast.error(error.message); return; }
+    toast.success("บันทึกแล้ว");
+    setInitialJSON(JSON.stringify(s));
+    clearDraft(DRAFT_KEY);
+    clearDraftState();
   };
 
   if (loading || !s) return <div className="h-full flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -83,10 +102,17 @@ export default function AiSettings() {
           <h1 className="font-display text-3xl font-semibold">ตั้งค่า AI</h1>
           <p className="text-muted-foreground mt-1">ปรับบทบาท สรรพนาม สไตล์การตอบ และกลยุทธ์ส่งรูป</p>
         </div>
-        <Button onClick={save} disabled={saving} size="lg">
-          {saving ? <Loader2 className="animate-spin" /> : <Save />} บันทึก
-        </Button>
+        <div className="flex flex-col items-end gap-1.5">
+          <Button onClick={save} disabled={saving} size="lg">
+            {saving ? <Loader2 className="animate-spin" /> : <Save />} บันทึก
+          </Button>
+          <DraftSavedIndicator savedAt={savedAt} />
+        </div>
       </div>
+
+      {foundDraft && <DraftBanner savedAt={foundDraft.savedAt} onRestore={restoreDraft} onDiscard={discardDraft} />}
+
+
 
       <Tabs defaultValue="persona" className="w-full">
         <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto">
