@@ -218,7 +218,7 @@ export default function Chats() {
   const [previewImg, setPreviewImg] = useState<string | null>(null);
   const [msgSearch, setMsgSearch] = useState("");
   const [showMsgSearch, setShowMsgSearch] = useState(false);
-  const [trainText, setTrainText] = useState<string | null>(null);
+  const [trainCtx, setTrainCtx] = useState<{ text: string; customerId: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
