@@ -33,9 +33,9 @@ type Suggestion = {
 };
 
 const STRICT_LABELS: Record<Strictness, { label: string; hint: string; emoji: string }> = {
-  strict: { label: "เข้มงวด", hint: "พบซ้ำ ≥5 ครั้ง / ≥2 ลูกค้า", emoji: "🟢" },
-  medium: { label: "กลาง", hint: "พบซ้ำ ≥3 ครั้ง / ≥2 ลูกค้า (แนะนำ)", emoji: "🟡" },
-  loose:  { label: "ผ่อน", hint: "พบซ้ำ ≥2 ครั้ง / ≥1 ลูกค้า (เยอะหน่อย)", emoji: "🔴" },
+  strict: { label: "เข้มงวด", hint: "พบซ้ำ ≥20 ครั้ง / ≥4 ลูกค้า — เฉพาะคำถามฮิตจริง", emoji: "🟢" },
+  medium: { label: "กลาง", hint: "พบซ้ำ ≥10 ครั้ง / ≥3 ลูกค้า (แนะนำ)", emoji: "🟡" },
+  loose:  { label: "ผ่อน", hint: "พบซ้ำ ≥5 ครั้ง / ≥2 ลูกค้า — ร้านเล็ก/เริ่มใช้", emoji: "🔴" },
 };
 const STRICT_ORDER: Strictness[] = ["strict", "medium", "loose"];
 

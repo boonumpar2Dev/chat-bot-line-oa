@@ -19,9 +19,9 @@ const MAX_CLUSTERS_PER_SCAN = 30;
 type Strictness = "strict" | "medium" | "loose";
 type StrictCfg = { simThreshold: number; minOccurrences: number; minCustomers: number; kbDupSim: number };
 const STRICT_PRESETS: Record<Strictness, StrictCfg> = {
-  strict: { simThreshold: 0.90, minOccurrences: 5, minCustomers: 2, kbDupSim: 0.88 },
-  medium: { simThreshold: 0.85, minOccurrences: 3, minCustomers: 2, kbDupSim: 0.85 },
-  loose:  { simThreshold: 0.78, minOccurrences: 2, minCustomers: 1, kbDupSim: 0.82 },
+  strict: { simThreshold: 0.90, minOccurrences: 20, minCustomers: 4, kbDupSim: 0.88 },
+  medium: { simThreshold: 0.85, minOccurrences: 10, minCustomers: 3, kbDupSim: 0.85 },
+  loose:  { simThreshold: 0.78, minOccurrences: 5,  minCustomers: 2, kbDupSim: 0.82 },
 };
 
 function cosine(a: number[], b: number[]) {
