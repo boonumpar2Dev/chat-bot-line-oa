@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, MapPin, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import LocationPreview, { parseMapsUrl } from "@/components/chats/LocationPreview";
 
 type Cfg = any;
 
