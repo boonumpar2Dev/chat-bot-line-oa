@@ -103,7 +103,14 @@ export default function Settings() {
 
   useEffect(() => {
     supabase.from("app_settings").select("*").eq("key", "ai_config").maybeSingle()
-      .then(({ data }) => { setS(data as any); setLoading(false); });
+      .then(({ data }) => {
+        setS(data as any);
+        setInitialJSON(JSON.stringify(data ?? {}));
+        const d = readDraft<Settings>(DRAFT_KEY);
+        if (d && JSON.stringify(d.value) !== JSON.stringify(data ?? {})) setFoundDraft(d);
+        else if (d) clearDraft(DRAFT_KEY);
+        setLoading(false);
+      });
   }, []);
 
   const save = async () => {
