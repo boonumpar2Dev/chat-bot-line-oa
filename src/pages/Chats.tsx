@@ -1335,8 +1335,8 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
         <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
           {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
           {m.sender === "ai" && cleaned && onTrainAI && (
-            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ปรับปรุงคำตอบของ AI ให้ดีขึ้น">
-              <Brain className="w-3 h-3"/>ปรับปรุงคำตอบนี้
+            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
+              <Brain className="w-3 h-3"/>สอน AI จากเคสนี้
             </button>
           )}
         </span>
