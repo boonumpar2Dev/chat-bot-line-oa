@@ -59,6 +59,12 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     ? `\n\n🏷️ บริบทเฉพาะลูกค้ารายนี้ (จากแท็ก — เป็นแนวทาง, ถ้าขัด strict_rules ให้ strict_rules ชนะ):\n${i.tagInstructions.trim()}`
     : "";
 
+  // 📝 Customer-specific notes (สอนโดยแอดมินจากแชท) — ใช้เฉพาะกับลูกค้าคนนี้ เป็นข้อเท็จจริงเหนือ KB กลาง
+  const notesBlock = (i.customerNotes && i.customerNotes.trim())
+    ? `\n\n📝 โน้ตเฉพาะลูกค้ารายนี้ (แอดมินบันทึก — ถือเป็นข้อเท็จจริง, สำคัญกว่า KB กลาง ถ้าขัดกัน):\n${i.customerNotes.trim()}`
+    : "";
+
+
 
   // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
   const _now = new Date();
