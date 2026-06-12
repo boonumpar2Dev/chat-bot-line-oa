@@ -1136,6 +1136,7 @@ export default function Chats() {
 
       <ImagePreviewModal url={previewImg} onClose={() => setPreviewImg(null)}/>
       <TrainAIDialog ctx={trainCtx} onClose={()=>setTrainCtx(null)}/>
+      <TeachToKbDialog ctx={teachKbCtx} onClose={()=>setTeachKbCtx(null)}/>
     </div>
   );
 }
