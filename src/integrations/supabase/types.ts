@@ -258,6 +258,9 @@ export type Database = {
           schedule_enabled: boolean
           self_pronouns_allowed: string[]
           service_area_kb_title: string
+          shop_address: string | null
+          shop_lat: number | null
+          shop_lng: number | null
           sla_hours: number
           start_time: string
           strict_rules: string[]
@@ -325,6 +328,9 @@ export type Database = {
           schedule_enabled?: boolean
           self_pronouns_allowed?: string[]
           service_area_kb_title?: string
+          shop_address?: string | null
+          shop_lat?: number | null
+          shop_lng?: number | null
           sla_hours?: number
           start_time?: string
           strict_rules?: string[]
@@ -392,6 +398,9 @@ export type Database = {
           schedule_enabled?: boolean
           self_pronouns_allowed?: string[]
           service_area_kb_title?: string
+          shop_address?: string | null
+          shop_lat?: number | null
+          shop_lng?: number | null
           sla_hours?: number
           start_time?: string
           strict_rules?: string[]

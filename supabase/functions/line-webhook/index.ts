@@ -3,6 +3,7 @@ import { buildKbBlock, buildPackageBlock, buildPromoBlock, countTokens, truncate
 import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
+import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,6 +30,30 @@ function triggerSummarize(customerId: string) {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_KEY}` },
     body: JSON.stringify({ customer_id: customerId }),
   }).catch(e => console.error("[summarize trigger] failed:", e?.message));
+}
+
+// 📍 ดึงพิกัด venue จาก message (LINE location event หรือ Google Maps URL) → เก็บใน customer.intent_data.venue_location
+// + คำนวณระยะทางจากร้านถ้ามีตั้ง shop_lat/shop_lng ใน app_settings
+async function saveVenueIfAny(supabase: any, customer: any, event: any, text: string) {
+  try {
+    // เคารพข้อมูลเดิม: ถ้าเคยมี venue_location จาก LINE location แล้ว ไม่ overwrite ด้วย URL
+    const existing = customer?.intent_data?.venue_location;
+    const isFromLineLocation = event?.message?.type === "location";
+    if (existing && existing.source === "line_location" && !isFromLineLocation) return;
+
+    const { data: cfgArr } = await supabase.from("app_settings").select("shop_lat, shop_lng").eq("key", "ai_config").limit(1);
+    const sc = cfgArr?.[0] || {};
+    const origin = (Number.isFinite(+sc.shop_lat) && Number.isFinite(+sc.shop_lng))
+      ? { lat: +sc.shop_lat, lng: +sc.shop_lng } : null;
+
+    const res = await extractVenueLocation(event, text, origin);
+    if (!res) return;
+    const merged = { ...(customer.intent_data && typeof customer.intent_data === "object" ? customer.intent_data : {}), venue_location: res.venue };
+    await supabase.from("customers").update({ intent_data: merged }).eq("id", customer.id);
+    console.log(`[venue] saved ${res.venue.source} (${res.venue.lat},${res.venue.lng}) dist=${res.venue.distance_km ?? "-"}km`);
+  } catch (e) {
+    console.error("[venue] saveVenueIfAny error", e);
+  }
 }
 
 // สรุปข้อมูลลูกค้าสำหรับส่งกลับ + ให้แอดมินอ่าน (ใช้ตอนปิดบอท handover)
@@ -522,7 +547,7 @@ async function processEvent(event: any, supabase: any) {
       let text: string;
       if (event.message.type === "text") text = event.message.text;
       else if (event.message.type === "sticker") text = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
-      else if (event.message.type === "location") text = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
+      else if (event.message.type === "location") text = fmtLocationMessage({ title: event.message.title, address: event.message.address, lat: event.message.latitude, lng: event.message.longitude });
       else if (["image","video","audio","file"].includes(event.message.type)) {
         const mt = event.message.type;
         const label = mt === "image" ? "รูปภาพ" : mt === "video" ? "วิดีโอ" : mt === "audio" ? "เสียง" : "ไฟล์";
@@ -541,6 +566,7 @@ async function processEvent(event: any, supabase: any) {
         last_message_at: new Date().toISOString(),
         last_message_snippet: snippet,
       }).eq("id", customer.id);
+      await saveVenueIfAny(supabase, customer, event, text);
     }
     return;
   }
@@ -572,7 +598,7 @@ async function processEvent(event: any, supabase: any) {
   } else if (msgType === "sticker") {
     messageText = `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${event.message.stickerId}/android/sticker.png`;
   } else if (msgType === "location") {
-    messageText = `[ตำแหน่ง: ${event.message.title || event.message.address || "ไม่ระบุ"}]`;
+    messageText = fmtLocationMessage({ title: event.message.title, address: event.message.address, lat: event.message.latitude, lng: event.message.longitude });
   } else {
     messageText = `[${msgType || "ไม่ทราบ"}]`;
   }
@@ -640,6 +666,7 @@ async function processEvent(event: any, supabase: any) {
     last_message_at: new Date().toISOString(),
     last_message_snippet: snippet,
   }).eq("id", customer.id);
+  await saveVenueIfAny(supabase, customer, event, messageText);
 
   // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
   if (sourceType !== "user") return;
@@ -1114,6 +1141,19 @@ async function processEvent(event: any, supabase: any) {
   }
 
   let knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+
+  // 📍 Venue location (จาก LINE location หรือ Google Maps URL) + ระยะทางจากร้าน (ถ้ามี)
+  const vloc = customerIntentData.venue_location;
+  if (vloc && typeof vloc === "object" && Number.isFinite(vloc.lat) && Number.isFinite(vloc.lng)) {
+    const parts: string[] = [];
+    if (vloc.title) parts.push(`ชื่อสถานที่: ${vloc.title}`);
+    if (vloc.address) parts.push(`ที่อยู่: ${vloc.address}`);
+    parts.push(`พิกัด: ${vloc.lat},${vloc.lng}`);
+    if (Number.isFinite(vloc.distance_km) && Number.isFinite(vloc.duration_min)) {
+      parts.push(`📏 ระยะทางจากร้าน: ${vloc.distance_km} กม. (~${vloc.duration_min} นาที โดยรถยนต์)`);
+    }
+    knownIntentStr += `\n\n📍 พิกัดสถานที่จัดงานที่ลูกค้าแชร์มา:\n${parts.join("\n")}\n⚠️ ใช้ข้อมูลนี้ตอบเรื่องสถานที่ได้ แต่ห้ามแต่งราคาค่าเดินทางเอง — ถ้าลูกค้าถามค่าเดินทาง ให้บอกว่า "ทีมงานจะเช็กแล้วแจ้งกลับนะคะ"`;
+  }
 
   // คำสั่งสำหรับ field ที่ admin กำหนด + field ที่ยังขาด
   if (intentFields.length > 0) {

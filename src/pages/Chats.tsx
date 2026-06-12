@@ -28,6 +28,7 @@ import ManualTimerBanner from "@/components/chats/ManualTimerBanner";
 import StagedMessageBar from "@/components/chats/StagedMessageBar";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
+import LocationPreview, { extractLocation } from "@/components/chats/LocationPreview";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 import { formatSnippet } from "@/lib/snippet";
 import { readNotificationSettings, playNotificationSound } from "@/hooks/useNotificationSound";
@@ -1302,10 +1303,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
   const fileLabel = fileLabelMatch?.[1]?.trim() || "";
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
+  const location = extractLocation(m.message);
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
     .replace(/🎭\s*https?:\/\/\S+/g, "")
+    .replace(/\[ตำแหน่ง\][\s\S]*?(?=\n\n|$)/g, "")
+    .replace(/📍\s*-?\d+\.\d+\s*,\s*-?\d+\.\d+/g, "")
+    .replace(/🗺️\s*https?:\/\/\S+/g, "")
     .replace(/https?:\/\/\S+/g, "")
     .replace(/\[(รูปภาพ|วิดีโอ|ไฟล์|เสียง|สติกเกอร์)(?::[^\]]*)?\]/g, "")
     .replace(/\n{2,}/g, "\n")
@@ -1367,6 +1372,9 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
               className="w-full aspect-square object-cover rounded-lg border cursor-pointer hover:opacity-90"/>
           ))}
         </div>
+      )}
+      {location && (
+        <LocationPreview lat={location.lat} lng={location.lng} title={location.title} address={location.address} url={location.url} />
       )}
       {videoUrls.length > 0 && (
         <div className="flex flex-col gap-1.5 max-w-[75vw] sm:max-w-[320px]">
