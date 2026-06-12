@@ -542,6 +542,7 @@ async function processEvent(event: any, supabase: any) {
         last_message_at: new Date().toISOString(),
         last_message_snippet: snippet,
       }).eq("id", customer.id);
+      await saveVenueIfAny(supabase, customer, event, text);
     }
     return;
   }
@@ -641,6 +642,7 @@ async function processEvent(event: any, supabase: any) {
     last_message_at: new Date().toISOString(),
     last_message_snippet: snippet,
   }).eq("id", customer.id);
+  await saveVenueIfAny(supabase, customer, event, messageText);
 
   // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
   if (sourceType !== "user") return;
