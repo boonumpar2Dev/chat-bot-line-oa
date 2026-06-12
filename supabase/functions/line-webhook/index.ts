@@ -1264,6 +1264,20 @@ ${pastLines}
     console.warn("[tags] fetch ai_tag_instructions failed:", e?.message);
   }
 
+  // 📝 รวม customer_notes (สอนโดยแอดมิน ฝังเฉพาะลูกค้ารายนี้)
+  let customerNotes = "";
+  try {
+    const notesArr: any[] = Array.isArray((customer as any).customer_notes) ? (customer as any).customer_notes : [];
+    if (notesArr.length) {
+      customerNotes = notesArr
+        .filter((n: any) => n && (n.q || n.a))
+        .map((n: any) => `- ${n.q ? `ถาม: ${String(n.q).trim()} → ` : ""}${String(n.a || "").trim()}`)
+        .join("\n");
+    }
+  } catch (e: any) {
+    console.warn("[customer_notes] parse failed:", e?.message);
+  }
+
   const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
     kbContext,
@@ -1278,7 +1292,9 @@ ${pastLines}
     returningPrompt,
     comparisonSection,
     tagInstructions,
+    customerNotes,
   });
+
 
 
 
