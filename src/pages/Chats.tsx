@@ -1343,12 +1343,35 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, adminNames, onRe
     .replace(/\n{2,}/g, "\n")
     .trim();
 
-  // highlight matching text
+  // render: auto-link URLs + highlight matching text
   const renderText = (txt: string) => {
-    if (!highlight) return txt;
-    const idx = txt.toLowerCase().indexOf(highlight.toLowerCase());
-    if (idx < 0) return txt;
-    return <>{txt.slice(0, idx)}<mark className="bg-yellow-300/70 rounded px-0.5">{txt.slice(idx, idx + highlight.length)}</mark>{txt.slice(idx + highlight.length)}</>;
+    const urlRe = /(https?:\/\/[^\s]+)/g;
+    const parts: (string | JSX.Element)[] = [];
+    let last = 0;
+    let i = 0;
+    txt.replace(urlRe, (url, _g, offset: number) => {
+      if (offset > last) parts.push(txt.slice(last, offset));
+      const clean = url.replace(/[)\].,;]+$/, "");
+      const trailing = url.slice(clean.length);
+      parts.push(
+        <a key={`u${i++}`} href={clean} target="_blank" rel="noreferrer"
+          className="underline underline-offset-2 break-all hover:opacity-80"
+          onClick={(e) => e.stopPropagation()}>{clean}</a>
+      );
+      if (trailing) parts.push(trailing);
+      last = offset + url.length;
+      return url;
+    });
+    if (last < txt.length) parts.push(txt.slice(last));
+    const nodes = parts.length ? parts : [txt];
+    if (!highlight) return <>{nodes}</>;
+    const hl = highlight.toLowerCase();
+    return <>{nodes.map((n, k) => {
+      if (typeof n !== "string") return <span key={k}>{n}</span>;
+      const idx = n.toLowerCase().indexOf(hl);
+      if (idx < 0) return <span key={k}>{n}</span>;
+      return <span key={k}>{n.slice(0, idx)}<mark className="bg-yellow-300/70 rounded px-0.5">{n.slice(idx, idx + highlight.length)}</mark>{n.slice(idx + highlight.length)}</span>;
+    })}</>;
   };
   const d = new Date(m.created_at);
   const timeShort = d.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
