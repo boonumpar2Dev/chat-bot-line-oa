@@ -720,8 +720,15 @@ export default function Chats() {
 
   const onSelectQuick = (resp: any) => {
     if (resp.text) setReply(p => p ? p + "\n" + resp.text : resp.text);
-    const all = [...(resp.image_urls || []), ...(resp.file_urls || [])];
-    if (all.length) setStagedFiles(p => [...p, ...all]);
+    const all: string[] = [...(resp.image_urls || []), ...(resp.file_urls || [])];
+    if (all.length) {
+      const objs = all.map((u: string) => ({
+        url: u,
+        name: decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์"),
+        size: 0,
+      }));
+      setStagedFiles(p => [...p, ...objs]);
+    }
     setShowQuick(false);
   };
 
