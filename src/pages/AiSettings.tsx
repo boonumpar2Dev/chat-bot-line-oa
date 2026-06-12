@@ -473,6 +473,62 @@ export default function AiSettings() {
         </TabsContent>
 
 
+        <TabsContent value="shop" className="mt-4">
+          <Card className="p-6 shadow-soft border-border/60 space-y-5">
+            <div className="flex items-center gap-2"><MapPin className="text-primary" /><h2 className="font-display text-lg font-semibold">ที่ตั้งร้าน (จุดเริ่มต้นคำนวณระยะทาง)</h2></div>
+            <p className="text-sm text-muted-foreground">ใช้คำนวณระยะทาง/เวลาเดินทางจากร้านไปยังสถานที่จัดงานของลูกค้า เมื่อลูกค้าแชร์ตำแหน่งหรือส่งลิงก์ Google Maps</p>
+
+            <div className="space-y-1.5">
+              <Label>ที่อยู่ร้าน</Label>
+              <Textarea rows={2} value={s.shop_address ?? ""} onChange={e => upd("shop_address", e.target.value)} placeholder="เช่น บุญอำพรครัวไทย ถ.รัชดาภิเษก กรุงเทพฯ" />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>ละติจูด (Latitude)</Label>
+                <Input type="number" step="any" value={s.shop_lat ?? ""} onChange={e => upd("shop_lat", e.target.value === "" ? null : +e.target.value)} placeholder="13.756331" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>ลองจิจูด (Longitude)</Label>
+                <Input type="number" step="any" value={s.shop_lng ?? ""} onChange={e => upd("shop_lng", e.target.value === "" ? null : +e.target.value)} placeholder="100.501765" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>วางลิงก์ Google Maps ของร้าน (จะดึงพิกัดให้อัตโนมัติ)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://www.google.com/maps/place/.../@13.756,100.501,..."
+                  onPaste={(e) => {
+                    const text = e.clipboardData.getData("text");
+                    const parsed = parseMapsUrl(text);
+                    if (parsed) {
+                      e.preventDefault();
+                      upd("shop_lat", parsed.lat);
+                      upd("shop_lng", parsed.lng);
+                      toast.success(`ดึงพิกัดสำเร็จ: ${parsed.lat}, ${parsed.lng}`);
+                      (e.target as HTMLInputElement).value = "";
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">เคล็ดลับ: เปิด Google Maps → คลิกขวาที่จุดของร้าน → เลือกค่าพิกัด แล้ววางลงช่อง Lat/Lng ได้เลย</p>
+            </div>
+
+            {Number.isFinite(+s.shop_lat) && Number.isFinite(+s.shop_lng) && +s.shop_lat !== 0 && (
+              <div>
+                <Label className="block mb-2">ตัวอย่างตำแหน่งร้าน</Label>
+                <LocationPreview
+                  lat={+s.shop_lat}
+                  lng={+s.shop_lng}
+                  title={s.shop_address || "ที่ตั้งร้าน"}
+                  url={`https://www.google.com/maps?q=${+s.shop_lat},${+s.shop_lng}`}
+                />
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
