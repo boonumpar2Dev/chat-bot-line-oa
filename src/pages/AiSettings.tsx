@@ -65,6 +65,9 @@ export default function AiSettings() {
       handover_extract_timeout_ms: s.handover_extract_timeout_ms,
       handover_extract_triggers: s.handover_extract_triggers,
       handover_extract_overwrite_mode: s.handover_extract_overwrite_mode,
+      shop_address: s.shop_address,
+      shop_lat: s.shop_lat,
+      shop_lng: s.shop_lng,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("บันทึกแล้ว");
