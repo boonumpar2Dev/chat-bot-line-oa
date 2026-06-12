@@ -25,6 +25,7 @@ const navGroups: NavGroup[] = [
   ]},
   { label: "AI", items: [
     { to: "/knowledge", label: "สอน AI", icon: BookOpen, key: "knowledge" },
+    { to: "/kb-suggestions", label: "AI แนะนำเข้า KB", icon: Sparkles, key: "knowledge" },
     { to: "/ai-settings", label: "ตั้งค่า AI", icon: Bot, key: "ai_settings" },
   ]},
   { label: "ระบบ", items: [
