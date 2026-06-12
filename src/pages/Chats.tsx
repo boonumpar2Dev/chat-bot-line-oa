@@ -1112,40 +1112,49 @@ type ClassifiedItem = {
   reasoning?: string;
 };
 
-const TrainAIDialog = React.memo(function TrainAIDialog({ text, onClose }: { text: string | null; onClose: ()=>void }) {
+const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx: { text: string; customerId: string } | null; onClose: ()=>void }) {
   const feedbackRef = useRef<HTMLTextAreaElement>(null);
-  const [hasFeedback, setHasFeedback] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [items, setItems] = useState<ClassifiedItem[]>([]);
+  const [diagnosis, setDiagnosis] = useState<string>("");
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (text) {
-      setItems([]);
-      setHasFeedback(false);
-      if (feedbackRef.current) feedbackRef.current.value = "";
-    }
-  }, [text]);
-
-  const analyze = async () => {
-    const fb = (feedbackRef.current?.value || "").trim();
-    if (!fb || !text) return;
+  const runAnalyze = async (extraFeedback?: string) => {
+    if (!ctx) return;
     setAnalyzing(true);
     setItems([]);
+    setDiagnosis("");
     try {
-      const combined = `คำตอบเดิมของ AI:\n"""${text}"""\n\nสิ่งที่แอดมินอยากให้ปรับ:\n${fb}`;
-      const { data, error } = await supabase.functions.invoke("classify-knowledge", { body: { text: combined } });
+      const { data, error } = await supabase.functions.invoke("teach-from-chat", {
+        body: {
+          customer_id: ctx.customerId,
+          focus_reply: ctx.text,
+          feedback: extraFeedback || "",
+        },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      setDiagnosis(data?.diagnosis || "");
       const arr: ClassifiedItem[] = Array.isArray(data?.items) ? data.items : [];
-      if (!arr.length) throw new Error("AI วิเคราะห์ไม่ได้ ลองเขียนใหม่นะคะ");
       setItems(arr);
+      if (!arr.length && !data?.diagnosis) toast.info("AI ไม่พบประเด็นที่ต้องปรับ");
     } catch (e: any) {
       toast.error(e.message || "วิเคราะห์ไม่สำเร็จ");
     } finally {
       setAnalyzing(false);
     }
   };
+
+  useEffect(() => {
+    if (ctx) {
+      setItems([]);
+      setDiagnosis("");
+      if (feedbackRef.current) feedbackRef.current.value = "";
+      runAnalyze();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctx?.text, ctx?.customerId]);
+
 
   const updateItem = (idx: number, patch: Partial<ClassifiedItem>) =>
     setItems(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
