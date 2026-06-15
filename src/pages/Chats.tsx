@@ -800,12 +800,15 @@ export default function Chats() {
           {!loading && filtered.length === 0 && <p className="p-6 text-sm text-center text-muted-foreground">ยังไม่มีลูกค้า</p>}
           {filtered.map(c => {
             const isUnread = (c.unread_count || 0) > 0;
+            const isFirstPriority = getFirstPriority(c);
+            const isAwaitingAdmin = !isFirstPriority && getAwaitingAdmin(c);
             return (
             <button key={c.id} onClick={() => setSelectedId(c.id)}
               className={cn(
                 "w-full text-left p-3 flex gap-3 border-b hover:bg-accent/50 transition",
                 selectedId === c.id && "bg-accent",
-                isUnread && selectedId !== c.id && "bg-primary/[0.03]"
+                isUnread && selectedId !== c.id && "bg-primary/[0.03]",
+                isFirstPriority && selectedId !== c.id && "bg-[#DC2626]/[0.06]"
               )}>
               <div className="relative shrink-0">
                 <Avatar className="w-10 h-10">
@@ -830,7 +833,13 @@ export default function Chats() {
                 <p className={cn("text-xs mt-0.5 line-clamp-2 leading-snug [overflow-wrap:anywhere]", isUnread ? "text-foreground/80" : "text-muted-foreground")}>
                   {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : formatSnippet(c.last_message_snippet)}
                 </p>
-                <div className="flex items-center gap-1 mt-1">
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  {isFirstPriority && (
+                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#DC2626] text-white hover:bg-[#DC2626] border-0">🔥 First Priority</Badge>
+                  )}
+                  {isAwaitingAdmin && (
+                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#F59E0B] text-white hover:bg-[#F59E0B] border-0">🤖 รอแอดมิน</Badge>
+                  )}
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && !(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
                   {(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">กรุ๊ป</Badge>}
