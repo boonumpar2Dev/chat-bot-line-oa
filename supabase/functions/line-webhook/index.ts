@@ -782,11 +782,13 @@ async function processEvent(event: any, supabase: any) {
         const muteH = cfg.fallback_mute_hours ?? 1;
         const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
         await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: oohText }], { customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
+        // 🕐 นอกเวลาทำการ: แค่กัน spam ด้วย manual_chat_until ระยะสั้น — ไม่ปิดบอท
+        // รอบหน้าในเวลาทำการ บอทตอบต่อได้ทันที (ai_active ยังคงเดิม)
         await supabase.from("customers").update({
-          ai_active: false, manual_chat_until: muteUntil,
+          manual_chat_until: muteUntil,
           last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
         }).eq("id", customer.id);
-        console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h`);
+        console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h (ai_active unchanged)`);
       }
       return;
     }
