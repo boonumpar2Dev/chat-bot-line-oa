@@ -1736,9 +1736,14 @@ ${pastLines}
   const isAskingPhone = /เบอร์|โทร|ติดต่อกลับที่/.test(finalAnswer);
   if (handoverPatterns.test(finalAnswer) && !isAskingPhone) {
     const muteH = cfg.manual_chat_hours ?? 360;
-    update.ai_active = false;
     update.manual_chat_until = new Date(Date.now() + muteH * 3600000).toISOString();
-    console.log(`[Handover] AI promised staff handover → ai_active=false`);
+    // 🛡️ admin_bot_override = true → ไม่ปิดบอท (เคารพการตัดสินใจของแอด)
+    if (!freshCustomer.admin_bot_override) {
+      update.ai_active = false;
+      console.log(`[Handover] AI promised staff handover → ai_active=false`);
+    } else {
+      console.log(`[Handover] AI promised staff handover — skip disable (admin_bot_override=true)`);
+    }
   }
 
   await supabase.from("customers").update(update).eq("id", customer.id);
