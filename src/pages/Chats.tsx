@@ -116,10 +116,12 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
-type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | `status:${string}`;
+type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" | `status:${string}`;
 
-const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" }[] = [
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" }[] = [
   { key: "all", label: "ทั้งหมด" },
+  { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
+  { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
   { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
@@ -127,11 +129,21 @@ const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla
   { key: "read", label: "อ่านแล้ว" },
 ];
 
+// Badge helpers — derive from customer row
+export function getAwaitingAdmin(c: any): boolean {
+  return c?.last_sender === "ai";
+}
+export function getFirstPriority(c: any): boolean {
+  return getAwaitingAdmin(c) && !!c?.phone && (c?.unread_count || 0) > 0;
+}
+
 function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "unread") return q.gt("unread_count", 0);
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
+  if (filter === "awaiting_admin") return q.eq("last_sender", "ai");
+  if (filter === "first_priority") return q.eq("last_sender", "ai").not("phone", "is", null).gt("unread_count", 0);
   if (filter === "sla" && slaCutoffIso) {
     return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
   }
@@ -145,6 +157,8 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "read") return (c.unread_count || 0) === 0;
   if (filter === "manual") return c.ai_active === false;
   if (filter === "no_phone") return !c.phone;
+  if (filter === "awaiting_admin") return getAwaitingAdmin(c);
+  if (filter === "first_priority") return getFirstPriority(c);
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
     return (c.unread_count || 0) > 0
       && new Date(c.last_message_at).getTime() < slaCutoffMs
