@@ -149,7 +149,7 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai");
-  if (filter === "first_priority") return q.eq("last_sender", "ai").not("phone", "is", null).eq("admin_unseen", true);
+  if (filter === "first_priority") return q.not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote");
   if (filter === "sla" && slaCutoffIso) {
     return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
   }
