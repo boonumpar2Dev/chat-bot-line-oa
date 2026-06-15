@@ -1011,8 +1011,8 @@ export default function Chats() {
                     return (
                     <React.Fragment key={m.id}>
                     {showDateSep && (
-                      <div className="flex justify-center my-3 sticky top-0 z-10 pointer-events-none">
-                        <span className="text-[11px] font-medium text-muted-foreground bg-background/90 backdrop-blur border border-border/60 rounded-full px-3 py-1 shadow-sm pointer-events-auto">
+                      <div className="flex justify-center my-4">
+                        <span className="text-[11px] font-medium text-muted-foreground bg-muted/70 border border-border/50 rounded-full px-3 py-1">
                           {fmtDay(m.created_at)}
                         </span>
                       </div>
