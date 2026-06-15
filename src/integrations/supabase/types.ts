@@ -732,6 +732,7 @@ export type Database = {
       }
       customers: {
         Row: {
+          admin_bot_override: boolean
           admin_notes: string | null
           admin_seen_at: string | null
           admin_unseen: boolean | null
@@ -771,6 +772,7 @@ export type Database = {
           venue: string | null
         }
         Insert: {
+          admin_bot_override?: boolean
           admin_notes?: string | null
           admin_seen_at?: string | null
           admin_unseen?: boolean | null
@@ -810,6 +812,7 @@ export type Database = {
           venue?: string | null
         }
         Update: {
+          admin_bot_override?: boolean
           admin_notes?: string | null
           admin_seen_at?: string | null
           admin_unseen?: boolean | null
@@ -1303,7 +1306,8 @@ export type Database = {
         | "cancelled"
         | "inquiry"
         | "postponed"
-      message_sender: "customer" | "ai" | "admin"
+        | "completed"
+      message_sender: "customer" | "ai" | "admin" | "system"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1442,8 +1446,9 @@ export const Constants = {
         "cancelled",
         "inquiry",
         "postponed",
+        "completed",
       ],
-      message_sender: ["customer", "ai", "admin"],
+      message_sender: ["customer", "ai", "admin", "system"],
     },
   },
 } as const

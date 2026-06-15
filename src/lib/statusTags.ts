@@ -10,6 +10,7 @@ const DEFAULT_STATUS_TAG_MAP: Record<string, string> = {
   returning: "ลูกค้าเก่า",
   postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)",
   cancelled: "ยกเลิก",
+  completed: "ปิดงาน",
 };
 
 let cachedMap: Record<string, string> | null = null;

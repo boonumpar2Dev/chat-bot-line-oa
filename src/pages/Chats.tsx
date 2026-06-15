@@ -717,10 +717,12 @@ export default function Chats() {
   const toggleAi = async (active: boolean) => {
     if (!selected) return;
     if (!active) { setPausePickerOpen(true); return; }
+    const isProtected = ["confirmed", "confirmed_returning", "postponed"].includes(selected.status);
     const update: any = { ai_active: true, manual_chat_until: null, ai_resumed_at: new Date().toISOString() };
+    if (isProtected) update.admin_bot_override = true;
     await supabase.from("customers").update(update).eq("id", selected.id);
     updateLocalCustomer(update);
-    toast.success("เปิด AI แล้ว");
+    toast.success(isProtected ? "เปิด AI + override (ระบบจะไม่ปิดอัตโนมัติ)" : "เปิด AI แล้ว");
   };
 
   const pauseAiFor = async (hours: number) => {

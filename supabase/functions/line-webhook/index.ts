@@ -12,6 +12,9 @@ const corsHeaders = {
 
 const processingIds = new Set<string>();
 const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning"];
+// สถานะ "ปกป้อง" — ระบบจะไม่แตะ ai_active/status อัตโนมัติเมื่อ admin_bot_override=true
+const PROTECTED_STATUSES = ["confirmed", "confirmed_returning", "postponed"];
+const isProtectedStatus = (s: string | null | undefined) => !!s && PROTECTED_STATUSES.includes(s);
 let LINE_TOKEN = ""; // loaded per-request from getLineConfig()
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -779,11 +782,13 @@ async function processEvent(event: any, supabase: any) {
         const muteH = cfg.fallback_mute_hours ?? 1;
         const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
         await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: oohText }], { customer_id: customer.id, message: oohText, sender: "ai", is_fallback: true });
+        // 🕐 นอกเวลาทำการ: แค่กัน spam ด้วย manual_chat_until ระยะสั้น — ไม่ปิดบอท
+        // รอบหน้าในเวลาทำการ บอทตอบต่อได้ทันที (ai_active ยังคงเดิม)
         await supabase.from("customers").update({
-          ai_active: false, manual_chat_until: muteUntil,
+          manual_chat_until: muteUntil,
           last_message_at: new Date().toISOString(), last_message_snippet: `🕐 ${oohText.slice(0, 60)}`,
         }).eq("id", customer.id);
-        console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h`);
+        console.log(`[Schedule] sent out-of-hours message + mute ${muteH}h (ai_active unchanged)`);
       }
       return;
     }
@@ -841,6 +846,21 @@ async function processEvent(event: any, supabase: any) {
         else if (aiAskedTax && d.length >= 9 && d.length <= 14) taxIdMaybe = d;
       }
     }
+  }
+  // 🛡️ ลูกค้าสถานะปกป้อง (confirmed/postponed) ส่ง tax_id ใหม่ → save แบบไม่แตะ status/ai
+  if (taxId && isProtectedStatus(freshCustomer.status)) {
+    const oldNorm = String(freshCustomer.tax_id || "").replace(/\D/g, "");
+    if (oldNorm === taxId) {
+      console.log(`[Protected] same tax_id (${taxId}) — silent skip`);
+      return;
+    }
+    await supabase.from("customers").update({ tax_id: taxId }).eq("id", customer.id);
+    await supabase.from("conversations").insert({
+      customer_id: customer.id, sender: "system",
+      message: `🔔 ลูกค้าส่ง Tax ID ใหม่\nเก่า: ${freshCustomer.tax_id || "—"}\nใหม่: ${taxId}`,
+    });
+    console.log(`[Protected] tax_id changed ${freshCustomer.tax_id} → ${taxId} (no status/ai change)`);
+    return;
   }
   if (taxId) {
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
@@ -909,6 +929,25 @@ async function processEvent(event: any, supabase: any) {
     : [];
   
 
+  // 🛡️ ลูกค้าสถานะปกป้อง (confirmed/postponed) ส่งเบอร์ใหม่ → save แบบไม่แตะ status/ai
+  if (validPhones.length > 0 && isProtectedStatus(freshCustomer.status)) {
+    const existingNorm = new Set(
+      String(freshCustomer.phone || "").split(/[,\s]+/).map(p => p.replace(/\D/g, "")).filter(Boolean)
+    );
+    const newOnes = validPhones.filter(p => !existingNorm.has(p));
+    if (newOnes.length === 0) {
+      console.log(`[Protected] same phone(s) — silent skip`);
+      return;
+    }
+    const mergedPhones = Array.from(new Set([...String(freshCustomer.phone || "").split(/[,\s]+/).filter(Boolean), ...validPhones])).join(", ");
+    await supabase.from("customers").update({ phone: mergedPhones }).eq("id", customer.id);
+    await supabase.from("conversations").insert({
+      customer_id: customer.id, sender: "system",
+      message: `🔔 ลูกค้าส่งเบอร์ใหม่\nเก่า: ${freshCustomer.phone || "—"}\nใหม่: ${newOnes.join(", ")}`,
+    });
+    console.log(`[Protected] phone added ${newOnes.join(",")} (no status/ai change)`);
+    return;
+  }
   if (validPhones.length > 0) {
     const fmtOne = (p: string) => /^0[689]\d{8}$/.test(p)
       ? p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
@@ -1528,10 +1567,13 @@ ${pastLines}
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
     await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: finalAnswer }], { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
-    await supabase.from("customers").update({
-      ai_active: false, manual_chat_until: muteUntil,
+    // 🛡️ admin_bot_override = true → ไม่แตะ ai_active (เคารพการตัดสินใจของแอด)
+    const patch: any = {
+      manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
-    }).eq("id", customer.id);
+    };
+    if (!freshCustomer.admin_bot_override) patch.ai_active = false;
+    await supabase.from("customers").update(patch).eq("id", customer.id);
     return;
   }
 
@@ -1694,9 +1736,14 @@ ${pastLines}
   const isAskingPhone = /เบอร์|โทร|ติดต่อกลับที่/.test(finalAnswer);
   if (handoverPatterns.test(finalAnswer) && !isAskingPhone) {
     const muteH = cfg.manual_chat_hours ?? 360;
-    update.ai_active = false;
     update.manual_chat_until = new Date(Date.now() + muteH * 3600000).toISOString();
-    console.log(`[Handover] AI promised staff handover → ai_active=false`);
+    // 🛡️ admin_bot_override = true → ไม่ปิดบอท (เคารพการตัดสินใจของแอด)
+    if (!freshCustomer.admin_bot_override) {
+      update.ai_active = false;
+      console.log(`[Handover] AI promised staff handover → ai_active=false`);
+    } else {
+      console.log(`[Handover] AI promised staff handover — skip disable (admin_bot_override=true)`);
+    }
   }
 
   await supabase.from("customers").update(update).eq("id", customer.id);
