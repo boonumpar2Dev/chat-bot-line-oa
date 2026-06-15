@@ -420,7 +420,7 @@ export default function Chats() {
       if (active) setMessages(data || []);
     };
     load();
-    supabase.from("customers").update({ unread_count: 0 }).eq("id", selectedId).then();
+    supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
     const ch = supabase.channel(`conv-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations", filter: `customer_id=eq.${selectedId}` },
         (payload) => setMessages(prev => [...prev, payload.new as Conversation]))
