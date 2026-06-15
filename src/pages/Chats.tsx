@@ -134,8 +134,11 @@ export function getAwaitingAdmin(c: any): boolean {
   return c?.last_sender === "ai";
 }
 export function getFirstPriority(c: any): boolean {
-  if (!getAwaitingAdmin(c) || !c?.phone || !c?.last_message_at) return false;
-  // Unseen by admin: never seen, or last message arrived after admin last opened
+  if (!c?.phone) return false;
+  // Case 1: still waiting for admin to handle (รอใบเสนอราคา)
+  if (c?.status === "pending_quote") return true;
+  // Case 2: bot replied last & admin hasn't opened the chat yet
+  if (!getAwaitingAdmin(c) || !c?.last_message_at) return false;
   if (!c?.admin_seen_at) return true;
   return new Date(c.last_message_at).getTime() > new Date(c.admin_seen_at).getTime();
 }
