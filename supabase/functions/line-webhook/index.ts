@@ -929,6 +929,25 @@ async function processEvent(event: any, supabase: any) {
     : [];
   
 
+  // 🛡️ ลูกค้าสถานะปกป้อง (confirmed/postponed) ส่งเบอร์ใหม่ → save แบบไม่แตะ status/ai
+  if (validPhones.length > 0 && isProtectedStatus(freshCustomer.status)) {
+    const existingNorm = new Set(
+      String(freshCustomer.phone || "").split(/[,\s]+/).map(p => p.replace(/\D/g, "")).filter(Boolean)
+    );
+    const newOnes = validPhones.filter(p => !existingNorm.has(p));
+    if (newOnes.length === 0) {
+      console.log(`[Protected] same phone(s) — silent skip`);
+      return;
+    }
+    const mergedPhones = Array.from(new Set([...String(freshCustomer.phone || "").split(/[,\s]+/).filter(Boolean), ...validPhones])).join(", ");
+    await supabase.from("customers").update({ phone: mergedPhones }).eq("id", customer.id);
+    await supabase.from("conversations").insert({
+      customer_id: customer.id, sender: "system",
+      message: `🔔 ลูกค้าส่งเบอร์ใหม่\nเก่า: ${freshCustomer.phone || "—"}\nใหม่: ${newOnes.join(", ")}`,
+    });
+    console.log(`[Protected] phone added ${newOnes.join(",")} (no status/ai change)`);
+    return;
+  }
   if (validPhones.length > 0) {
     const fmtOne = (p: string) => /^0[689]\d{8}$/.test(p)
       ? p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
