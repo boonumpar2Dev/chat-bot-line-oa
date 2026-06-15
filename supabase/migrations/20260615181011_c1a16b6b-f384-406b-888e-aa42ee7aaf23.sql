@@ -1,0 +1,1 @@
+ALTER TYPE public.message_sender ADD VALUE IF NOT EXISTS 'system';
