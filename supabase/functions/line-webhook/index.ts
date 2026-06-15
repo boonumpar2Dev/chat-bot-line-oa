@@ -12,6 +12,9 @@ const corsHeaders = {
 
 const processingIds = new Set<string>();
 const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning"];
+// สถานะ "ปกป้อง" — ระบบจะไม่แตะ ai_active/status อัตโนมัติเมื่อ admin_bot_override=true
+const PROTECTED_STATUSES = ["confirmed", "confirmed_returning", "postponed"];
+const isProtectedStatus = (s: string | null | undefined) => !!s && PROTECTED_STATUSES.includes(s);
 let LINE_TOKEN = ""; // loaded per-request from getLineConfig()
 const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
