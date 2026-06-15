@@ -708,6 +708,89 @@ export default function Tags() {
           onDone={load}
         />
       )}
+
+      {/* Confirm dialog for missing / all_additive */}
+      <AlertDialog open={confirmModeOpen} onOpenChange={setConfirmModeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {rescanMode === "missing" ? "สแกนเฉพาะลูกค้าที่ยังไม่มี tag?" : "เติม tag ที่ขาดให้ลูกค้าทุกคน?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {rescanMode === "missing"
+                ? "ระบบจะข้ามลูกค้าที่เคยมี auto-tag อยู่แล้ว — tag ที่แอดมินติดเองทั้งหมดจะไม่ถูกแตะต้อง"
+                : "ระบบจะวนทุกคน เติม tag ที่ขาดให้ครบ โดยไม่ลบ tag เดิมใดๆ (รวม tag ที่แอดมินติดเอง)"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmModeOpen(false); runRescan(rescanMode as "missing" | "all_additive"); }}>
+              เริ่มสแกน
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset — 2-step verification */}
+      <AlertDialog open={resetStep === 1} onOpenChange={(o) => !o && setResetStep(0)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5"/> Reset auto-tag ทั้งหมด?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                การกระทำนี้จะ <b>ลบ tag อัตโนมัติเดิมทั้งหมด</b> (เดือน/ปี/บ้าน-บริษัท/สถานะ/regex) จากลูกค้าทุกคน แล้วสแกนใหม่ตามค่าปัจจุบัน
+              </span>
+              <span className="block">
+                tag ที่แอดมินติดเอง (เช่น VIP) จะ <b>ไม่ถูกลบ</b>
+              </span>
+              <span className="block text-destructive font-medium">
+                ⚠️ ใช้เฉพาะกรณีตั้งค่าใหม่ทั้งระบบ หรือ tag เพี้ยนเท่านั้น
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setResetStep(2)} className="bg-destructive hover:bg-destructive/90">
+              ฉันเข้าใจ — ดำเนินการต่อ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={resetStep === 2} onOpenChange={(o) => { if (!o) { setResetStep(0); setResetEmail(""); setResetPassword(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="w-5 h-5"/> ยืนยันด้วยอีเมล + รหัสผ่าน
+            </DialogTitle>
+            <DialogDescription>
+              กรอกอีเมลและรหัสผ่านของบัญชี <b>Owner หรือ Admin</b> เพื่อยืนยันการ Reset (จะไม่ออกจากระบบของคุณ)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">อีเมล Owner/Admin</Label>
+              <Input type="email" autoComplete="off" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="admin@example.com"/>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">รหัสผ่าน</Label>
+              <Input type="password" autoComplete="new-password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="••••••••"/>
+            </div>
+            <div className="text-[11px] text-muted-foreground bg-destructive/5 border border-destructive/20 rounded p-2 flex gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5"/>
+              หากยืนยันสำเร็จ ระบบจะลบ auto-tag เดิมแล้วสแกนใหม่ทันที — ไม่สามารถยกเลิกได้
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetStep(0); setResetEmail(""); setResetPassword(""); }}>ยกเลิก</Button>
+            <Button onClick={runResetVerified} disabled={rescanning || !resetEmail.trim() || !resetPassword} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              {rescanning ? "กำลัง Reset..." : "ยืนยัน & Reset"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
