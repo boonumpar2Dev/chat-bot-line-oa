@@ -134,7 +134,10 @@ export function getAwaitingAdmin(c: any): boolean {
   return c?.last_sender === "ai";
 }
 export function getFirstPriority(c: any): boolean {
-  return getAwaitingAdmin(c) && !!c?.phone && (c?.unread_count || 0) > 0;
+  if (!getAwaitingAdmin(c) || !c?.phone || !c?.last_message_at) return false;
+  // Unseen by admin: never seen, or last message arrived after admin last opened
+  if (!c?.admin_seen_at) return true;
+  return new Date(c.last_message_at).getTime() > new Date(c.admin_seen_at).getTime();
 }
 
 function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
