@@ -131,16 +131,14 @@ const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla
 
 // Badge helpers — derive from customer row
 export function getAwaitingAdmin(c: any): boolean {
-  return c?.last_sender === "ai";
+  return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 export function getFirstPriority(c: any): boolean {
   if (!c?.phone) return false;
   // Case 1: still waiting for admin to handle (รอใบเสนอราคา)
   if (c?.status === "pending_quote") return true;
-  // Case 2: bot replied last & admin hasn't opened the chat yet
-  if (!getAwaitingAdmin(c) || !c?.last_message_at) return false;
-  if (!c?.admin_seen_at) return true;
-  return new Date(c.last_message_at).getTime() > new Date(c.admin_seen_at).getTime();
+  // Case 2: bot replied last & admin hasn't opened/touched the chat yet
+  return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 
 function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
@@ -148,7 +146,7 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
-  if (filter === "awaiting_admin") return q.eq("last_sender", "ai");
+  if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
   if (filter === "first_priority") return q.not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote");
   if (filter === "sla" && slaCutoffIso) {
     return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");

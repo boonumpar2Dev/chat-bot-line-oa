@@ -27,7 +27,7 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
   const handleChange = async (newStatus: string) => {
     setOpen(false);
     if (newStatus === customer.status) return;
-    const updateData: any = { status: newStatus };
+    const updateData: any = { status: newStatus, admin_unseen: false, admin_seen_at: new Date().toISOString() };
     if (AI_OFF_STATUSES.includes(newStatus)) updateData.ai_active = false;
     if (AI_ON_STATUSES.includes(newStatus)) {
       updateData.ai_active = true;
