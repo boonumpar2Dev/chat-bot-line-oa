@@ -1567,10 +1567,13 @@ ${pastLines}
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
     await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: finalAnswer }], { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
-    await supabase.from("customers").update({
-      ai_active: false, manual_chat_until: muteUntil,
+    // 🛡️ admin_bot_override = true → ไม่แตะ ai_active (เคารพการตัดสินใจของแอด)
+    const patch: any = {
+      manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
-    }).eq("id", customer.id);
+    };
+    if (!freshCustomer.admin_bot_override) patch.ai_active = false;
+    await supabase.from("customers").update(patch).eq("id", customer.id);
     return;
   }
 
