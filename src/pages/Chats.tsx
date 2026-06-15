@@ -134,8 +134,11 @@ export function getAwaitingAdmin(c: any): boolean {
   return c?.last_sender === "ai";
 }
 export function getFirstPriority(c: any): boolean {
-  if (!getAwaitingAdmin(c) || !c?.phone || !c?.last_message_at) return false;
-  // Unseen by admin: never seen, or last message arrived after admin last opened
+  if (!c?.phone) return false;
+  // Case 1: still waiting for admin to handle (รอใบเสนอราคา)
+  if (c?.status === "pending_quote") return true;
+  // Case 2: bot replied last & admin hasn't opened the chat yet
+  if (!getAwaitingAdmin(c) || !c?.last_message_at) return false;
   if (!c?.admin_seen_at) return true;
   return new Date(c.last_message_at).getTime() > new Date(c.admin_seen_at).getTime();
 }
@@ -146,7 +149,7 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai");
-  if (filter === "first_priority") return q.eq("last_sender", "ai").not("phone", "is", null).eq("admin_unseen", true);
+  if (filter === "first_priority") return q.not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote");
   if (filter === "sla" && slaCutoffIso) {
     return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
   }
@@ -302,7 +305,7 @@ export default function Chats() {
       base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().is("phone", null),
-      base().eq("last_sender", "ai").not("phone", "is", null).eq("admin_unseen", true),
+      base().not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote"),
       base().eq("last_sender", "ai"),
     ]);
     setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });

@@ -310,7 +310,7 @@ export default function CustomerInfoPanel({
       {/* Priority alerts */}
       {(customer.last_sender === "ai") && (
         <div className="flex flex-wrap gap-1.5">
-          {customer.phone && customer.admin_unseen && (
+          {customer.phone && (customer.admin_unseen || customer.status === "pending_quote") && (
             <Badge className="text-[11px] py-0.5 px-2 bg-[#DC2626] text-white hover:bg-[#DC2626] border-0">
               🔥 First Priority — มีเบอร์ โทรได้
             </Badge>
