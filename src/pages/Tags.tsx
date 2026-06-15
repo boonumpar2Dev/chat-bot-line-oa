@@ -542,10 +542,40 @@ export default function Tags() {
 
           {/* Actions bar */}
           <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-            <Button variant="outline" size="sm" onClick={rescan} disabled={rescanning} className="gap-1.5">
-              <RefreshCw className={`w-3.5 h-3.5 ${rescanning ? "animate-spin" : ""}`}/>
-              {rescanning ? "กำลังสแกน..." : "สแกนลูกค้าเดิมทั้งหมด"}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={rescanning} className="gap-1.5">
+                  <RefreshCw className={`w-3.5 h-3.5 ${rescanning ? "animate-spin" : ""}`}/>
+                  {rescanning ? "กำลังสแกน..." : "สแกนลูกค้าเดิม"}
+                  <ChevronDown className="w-3.5 h-3.5 opacity-60"/>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[320px]">
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                  เลือกโหมดการสแกน — โหมดยิ่งล่างยิ่งกระทบของเดิม
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator/>
+                <DropdownMenuItem onClick={() => onPickRescanMode("missing")} className="flex-col items-start gap-0.5 py-2.5">
+                  <div className="flex items-center gap-1.5 font-medium text-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"/> เฉพาะลูกค้าที่ยังไม่มี tag อัตโนมัติ
+                  </div>
+                  <div className="text-[11px] text-muted-foreground pl-3.5">ปลอดภัยที่สุด — ข้ามคนที่ระบบเคยติด tag แล้ว</div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onPickRescanMode("all_additive")} className="flex-col items-start gap-0.5 py-2.5">
+                  <div className="flex items-center gap-1.5 font-medium text-sm">
+                    <span className="w-2 h-2 rounded-full bg-amber-500"/> ทุกคน — เติม tag ที่ขาด
+                  </div>
+                  <div className="text-[11px] text-muted-foreground pl-3.5">ไม่ลบ tag ใดๆ ที่มีอยู่ (รวม tag ที่แอดมินติดเอง)</div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator/>
+                <DropdownMenuItem onClick={() => onPickRescanMode("reset")} className="flex-col items-start gap-0.5 py-2.5 text-destructive focus:text-destructive">
+                  <div className="flex items-center gap-1.5 font-medium text-sm">
+                    <ShieldAlert className="w-3.5 h-3.5"/> Reset ทั้งหมด (อันตราย)
+                  </div>
+                  <div className="text-[11px] opacity-80 pl-5">ลบ auto-tag เดิมแล้วสแกนใหม่ — ต้องยืนยันด้วยอีเมล+รหัสผ่าน Owner/Admin</div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={saveAuto} disabled={!autoDirty || savingAuto} className="gap-1.5">
               <Save className="w-3.5 h-3.5"/>{savingAuto ? "กำลังบันทึก..." : "บันทึกการตั้งค่า"}
             </Button>
