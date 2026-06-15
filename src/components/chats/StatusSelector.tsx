@@ -15,11 +15,14 @@ const STATUS_OPTIONS = [
   { value: "confirmed", label: "คอนเฟิร์ม", color: "bg-green-100 text-green-700", dot: "bg-green-500" },
   { value: "confirmed_returning", label: "คอนเฟิร์ม (ลูกค้าเก่า)", color: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-600" },
   { value: "postponed", label: "เลื่อนวันจัดงาน(มัดจำแล้ว)", color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-600" },
+  { value: "completed", label: "ปิดงาน", color: "bg-slate-200 text-slate-700", dot: "bg-slate-500" },
   { value: "cancelled", label: "ยกเลิก", color: "bg-red-100 text-red-700", dot: "bg-red-500" },
 ] as const;
 
 const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning"];
 const AI_ON_STATUSES = ["postponed"];
+// สถานะที่ต้อง "ล้าง admin_bot_override" — กลับมาทำงานตามปกติ
+const CLEAR_OVERRIDE_STATUSES = ["completed", "cancelled", "pending_quote", "new", "inquiry", "returning"];
 
 export default function StatusSelector({ customer, onUpdate }: { customer: any; onUpdate: (c: any) => void }) {
   const [open, setOpen] = useState(false);
@@ -28,10 +31,23 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
     setOpen(false);
     if (newStatus === customer.status) return;
     const updateData: any = { status: newStatus, admin_unseen: false, admin_seen_at: new Date().toISOString() };
-    if (AI_OFF_STATUSES.includes(newStatus)) updateData.ai_active = false;
+    if (AI_OFF_STATUSES.includes(newStatus)) {
+      updateData.ai_active = false;
+      updateData.admin_bot_override = false; // เข้าโหมดปกป้อง — รอแอดมินตัดสินใจ
+    }
     if (AI_ON_STATUSES.includes(newStatus)) {
       updateData.ai_active = true;
       updateData.manual_chat_until = null;
+      updateData.admin_bot_override = false;
+    }
+    if (newStatus === "completed") {
+      // ปิดงาน: บอทกลับมาทำงานปกติ — ลูกค้าทักใหม่ = inquiry ใหม่
+      updateData.ai_active = true;
+      updateData.manual_chat_until = null;
+      updateData.admin_bot_override = false;
+    }
+    if (CLEAR_OVERRIDE_STATUSES.includes(newStatus) && !AI_OFF_STATUSES.includes(newStatus)) {
+      updateData.admin_bot_override = false;
     }
     // sync tags: ถอด tag ของ status เก่า + เพิ่ม tag ของ status ใหม่
     try {
@@ -41,7 +57,9 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
     }
     await supabase.from("customers").update(updateData).eq("id", customer.id);
     onUpdate({ ...customer, ...updateData });
-    if (AI_OFF_STATUSES.includes(newStatus)) {
+    if (newStatus === "completed") {
+      toast.success("ปิดงานแล้ว — บอทกลับมาทำงานปกติ");
+    } else if (AI_OFF_STATUSES.includes(newStatus)) {
       toast.info(`ปิด AI อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
     } else if (AI_ON_STATUSES.includes(newStatus)) {
       toast.success(`เปิด AI กลับให้อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
