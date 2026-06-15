@@ -306,6 +306,21 @@ export default function CustomerInfoPanel({
           <p className="text-xs text-muted-foreground truncate">{customer.line_user_id}</p>
         </div>
       </div>
+
+      {/* Priority alerts */}
+      {(customer.last_sender === "ai") && (
+        <div className="flex flex-wrap gap-1.5">
+          {customer.phone && (customer.unread_count || 0) > 0 && (
+            <Badge className="text-[11px] py-0.5 px-2 bg-[#DC2626] text-white hover:bg-[#DC2626] border-0">
+              🔥 First Priority — มีเบอร์ โทรได้
+            </Badge>
+          )}
+          <Badge className="text-[11px] py-0.5 px-2 bg-[#F59E0B] text-white hover:bg-[#F59E0B] border-0">
+            🤖 รอแอดมินตอบ
+          </Badge>
+        </div>
+      )}
+
       <Separator />
 
       {/* Tags */}

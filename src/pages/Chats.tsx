@@ -116,10 +116,12 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
-type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | `status:${string}`;
+type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" | `status:${string}`;
 
-const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" }[] = [
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" }[] = [
   { key: "all", label: "ทั้งหมด" },
+  { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
+  { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
   { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
@@ -127,11 +129,21 @@ const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla
   { key: "read", label: "อ่านแล้ว" },
 ];
 
+// Badge helpers — derive from customer row
+export function getAwaitingAdmin(c: any): boolean {
+  return c?.last_sender === "ai";
+}
+export function getFirstPriority(c: any): boolean {
+  return getAwaitingAdmin(c) && !!c?.phone && (c?.unread_count || 0) > 0;
+}
+
 function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "unread") return q.gt("unread_count", 0);
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "no_phone") return q.is("phone", null);
+  if (filter === "awaiting_admin") return q.eq("last_sender", "ai");
+  if (filter === "first_priority") return q.eq("last_sender", "ai").not("phone", "is", null).gt("unread_count", 0);
   if (filter === "sla" && slaCutoffIso) {
     return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
   }
@@ -145,6 +157,8 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "read") return (c.unread_count || 0) === 0;
   if (filter === "manual") return c.ai_active === false;
   if (filter === "no_phone") return !c.phone;
+  if (filter === "awaiting_admin") return getAwaitingAdmin(c);
+  if (filter === "first_priority") return getFirstPriority(c);
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
     return (c.unread_count || 0) > 0
       && new Date(c.last_message_at).getTime() < slaCutoffMs
@@ -205,7 +219,7 @@ export default function Chats() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKind>("all");
-  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
+  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number; first_priority: number; awaiting_admin: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0, first_priority: 0, awaiting_admin: 0 });
   const [slaHours, setSlaHours] = useState<number>(24);
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
@@ -280,13 +294,15 @@ export default function Chats() {
   // Fetch counts for filter pills
   const refreshCounts = async () => {
     const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
-    const [u, s, m, n] = await Promise.all([
+    const [u, s, m, n, fp, aa] = await Promise.all([
       base().gt("unread_count", 0),
       base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().is("phone", null),
+      base().eq("last_sender", "ai").not("phone", "is", null).gt("unread_count", 0),
+      base().eq("last_sender", "ai"),
     ]);
-    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0 });
+    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
   useEffect(() => { refreshCounts(); }, [slaCutoffIso]);
 
@@ -784,12 +800,15 @@ export default function Chats() {
           {!loading && filtered.length === 0 && <p className="p-6 text-sm text-center text-muted-foreground">ยังไม่มีลูกค้า</p>}
           {filtered.map(c => {
             const isUnread = (c.unread_count || 0) > 0;
+            const isFirstPriority = getFirstPriority(c);
+            const isAwaitingAdmin = !isFirstPriority && getAwaitingAdmin(c);
             return (
             <button key={c.id} onClick={() => setSelectedId(c.id)}
               className={cn(
                 "w-full text-left p-3 flex gap-3 border-b hover:bg-accent/50 transition",
                 selectedId === c.id && "bg-accent",
-                isUnread && selectedId !== c.id && "bg-primary/[0.03]"
+                isUnread && selectedId !== c.id && "bg-primary/[0.03]",
+                isFirstPriority && selectedId !== c.id && "bg-[#DC2626]/[0.06]"
               )}>
               <div className="relative shrink-0">
                 <Avatar className="w-10 h-10">
@@ -814,7 +833,13 @@ export default function Chats() {
                 <p className={cn("text-xs mt-0.5 line-clamp-2 leading-snug [overflow-wrap:anywhere]", isUnread ? "text-foreground/80" : "text-muted-foreground")}>
                   {msgSnippets[c.id] ? <span className="text-primary">🔍 {msgSnippets[c.id]}</span> : formatSnippet(c.last_message_snippet)}
                 </p>
-                <div className="flex items-center gap-1 mt-1">
+                <div className="flex items-center gap-1 mt-1 flex-wrap">
+                  {isFirstPriority && (
+                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#DC2626] text-white hover:bg-[#DC2626] border-0">🔥 First Priority</Badge>
+                  )}
+                  {isAwaitingAdmin && (
+                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#F59E0B] text-white hover:bg-[#F59E0B] border-0">🤖 รอแอดมิน</Badge>
+                  )}
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && !(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
                   {(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">กรุ๊ป</Badge>}
