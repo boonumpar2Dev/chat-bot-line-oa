@@ -164,13 +164,47 @@ export default function Tags() {
     setAutoDirty(false);
   };
 
-  const rescan = async () => {
+  const [rescanMode, setRescanMode] = useState<"missing" | "all_additive" | "reset">("missing");
+  const [confirmModeOpen, setConfirmModeOpen] = useState(false);
+  const [resetStep, setResetStep] = useState<0 | 1 | 2>(0); // 0 = closed
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+
+  const runRescan = async (mode: "missing" | "all_additive") => {
     setRescanning(true);
-    const { data, error } = await supabase.rpc("rescan_auto_tags");
+    const { data, error } = await supabase.rpc("rescan_auto_tags", { _mode: mode });
     setRescanning(false);
     if (error) { toast.error(error.message); return; }
     toast.success(`สแกนเสร็จ — อัปเดตลูกค้า ${data ?? 0} ราย`);
     load();
+  };
+
+  const runResetVerified = async () => {
+    if (!resetEmail.trim() || !resetPassword) {
+      toast.error("กรุณากรอกอีเมลและรหัสผ่าน");
+      return;
+    }
+    setRescanning(true);
+    const { data, error } = await supabase.functions.invoke("verify-admin-reset-tags", {
+      body: { email: resetEmail.trim(), password: resetPassword },
+    });
+    setRescanning(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "ยืนยันไม่สำเร็จ");
+      return;
+    }
+    toast.success(`Reset เสร็จ — อัปเดตลูกค้า ${(data as any)?.affected ?? 0} ราย`);
+    setResetStep(0); setResetEmail(""); setResetPassword("");
+    load();
+  };
+
+  const onPickRescanMode = (mode: "missing" | "all_additive" | "reset") => {
+    setRescanMode(mode);
+    if (mode === "reset") {
+      setResetStep(1);
+    } else {
+      setConfirmModeOpen(true);
+    }
   };
 
   const toggleSelect = (id: string) => setSelected(prev => {
