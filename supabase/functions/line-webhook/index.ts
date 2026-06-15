@@ -847,6 +847,21 @@ async function processEvent(event: any, supabase: any) {
       }
     }
   }
+  // 🛡️ ลูกค้าสถานะปกป้อง (confirmed/postponed) ส่ง tax_id ใหม่ → save แบบไม่แตะ status/ai
+  if (taxId && isProtectedStatus(freshCustomer.status)) {
+    const oldNorm = String(freshCustomer.tax_id || "").replace(/\D/g, "");
+    if (oldNorm === taxId) {
+      console.log(`[Protected] same tax_id (${taxId}) — silent skip`);
+      return;
+    }
+    await supabase.from("customers").update({ tax_id: taxId }).eq("id", customer.id);
+    await supabase.from("conversations").insert({
+      customer_id: customer.id, sender: "system",
+      message: `🔔 ลูกค้าส่ง Tax ID ใหม่\nเก่า: ${freshCustomer.tax_id || "—"}\nใหม่: ${taxId}`,
+    });
+    console.log(`[Protected] tax_id changed ${freshCustomer.tax_id} → ${taxId} (no status/ai change)`);
+    return;
+  }
   if (taxId) {
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + phoneMuteHours * 3600000).toISOString();
