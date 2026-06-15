@@ -1278,7 +1278,9 @@ export type Database = {
         Args: { _source_names: string[]; _target_name: string }
         Returns: number
       }
-      rescan_auto_tags: { Args: never; Returns: number }
+      rescan_auto_tags:
+        | { Args: never; Returns: number }
+        | { Args: { _mode?: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "manager" | "staff" | "owner"

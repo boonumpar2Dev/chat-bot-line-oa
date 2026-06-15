@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink, UserPlus } from "lucide-react";
+import { Tag as TagIcon, Plus, Pencil, Trash2, Sparkles, Users, Save, Check, Wand2, RefreshCw, ChevronDown, Info, GitMerge, ExternalLink, UserPlus, ShieldAlert, AlertTriangle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import BulkAssignDialog from "@/components/tags/BulkAssignDialog";
 
@@ -163,13 +164,47 @@ export default function Tags() {
     setAutoDirty(false);
   };
 
-  const rescan = async () => {
+  const [rescanMode, setRescanMode] = useState<"missing" | "all_additive" | "reset">("missing");
+  const [confirmModeOpen, setConfirmModeOpen] = useState(false);
+  const [resetStep, setResetStep] = useState<0 | 1 | 2>(0); // 0 = closed
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+
+  const runRescan = async (mode: "missing" | "all_additive") => {
     setRescanning(true);
-    const { data, error } = await supabase.rpc("rescan_auto_tags");
+    const { data, error } = await supabase.rpc("rescan_auto_tags", { _mode: mode });
     setRescanning(false);
     if (error) { toast.error(error.message); return; }
     toast.success(`สแกนเสร็จ — อัปเดตลูกค้า ${data ?? 0} ราย`);
     load();
+  };
+
+  const runResetVerified = async () => {
+    if (!resetEmail.trim() || !resetPassword) {
+      toast.error("กรุณากรอกอีเมลและรหัสผ่าน");
+      return;
+    }
+    setRescanning(true);
+    const { data, error } = await supabase.functions.invoke("verify-admin-reset-tags", {
+      body: { email: resetEmail.trim(), password: resetPassword },
+    });
+    setRescanning(false);
+    if (error || (data as any)?.error) {
+      toast.error((data as any)?.error || error?.message || "ยืนยันไม่สำเร็จ");
+      return;
+    }
+    toast.success(`Reset เสร็จ — อัปเดตลูกค้า ${(data as any)?.affected ?? 0} ราย`);
+    setResetStep(0); setResetEmail(""); setResetPassword("");
+    load();
+  };
+
+  const onPickRescanMode = (mode: "missing" | "all_additive" | "reset") => {
+    setRescanMode(mode);
+    if (mode === "reset") {
+      setResetStep(1);
+    } else {
+      setConfirmModeOpen(true);
+    }
   };
 
   const toggleSelect = (id: string) => setSelected(prev => {
@@ -507,10 +542,40 @@ export default function Tags() {
 
           {/* Actions bar */}
           <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-            <Button variant="outline" size="sm" onClick={rescan} disabled={rescanning} className="gap-1.5">
-              <RefreshCw className={`w-3.5 h-3.5 ${rescanning ? "animate-spin" : ""}`}/>
-              {rescanning ? "กำลังสแกน..." : "สแกนลูกค้าเดิมทั้งหมด"}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={rescanning} className="gap-1.5">
+                  <RefreshCw className={`w-3.5 h-3.5 ${rescanning ? "animate-spin" : ""}`}/>
+                  {rescanning ? "กำลังสแกน..." : "สแกนลูกค้าเดิม"}
+                  <ChevronDown className="w-3.5 h-3.5 opacity-60"/>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[320px]">
+                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
+                  เลือกโหมดการสแกน — โหมดยิ่งล่างยิ่งกระทบของเดิม
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator/>
+                <DropdownMenuItem onClick={() => onPickRescanMode("missing")} className="flex-col items-start gap-0.5 py-2.5">
+                  <div className="flex items-center gap-1.5 font-medium text-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"/> เฉพาะลูกค้าที่ยังไม่มี tag อัตโนมัติ
+                  </div>
+                  <div className="text-[11px] text-muted-foreground pl-3.5">ปลอดภัยที่สุด — ข้ามคนที่ระบบเคยติด tag แล้ว</div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onPickRescanMode("all_additive")} className="flex-col items-start gap-0.5 py-2.5">
+                  <div className="flex items-center gap-1.5 font-medium text-sm">
+                    <span className="w-2 h-2 rounded-full bg-amber-500"/> ทุกคน — เติม tag ที่ขาด
+                  </div>
+                  <div className="text-[11px] text-muted-foreground pl-3.5">ไม่ลบ tag ใดๆ ที่มีอยู่ (รวม tag ที่แอดมินติดเอง)</div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator/>
+                <DropdownMenuItem onClick={() => onPickRescanMode("reset")} className="flex-col items-start gap-0.5 py-2.5 text-destructive focus:text-destructive">
+                  <div className="flex items-center gap-1.5 font-medium text-sm">
+                    <ShieldAlert className="w-3.5 h-3.5"/> Reset ทั้งหมด (อันตราย)
+                  </div>
+                  <div className="text-[11px] opacity-80 pl-5">ลบ auto-tag เดิมแล้วสแกนใหม่ — ต้องยืนยันด้วยอีเมล+รหัสผ่าน Owner/Admin</div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={saveAuto} disabled={!autoDirty || savingAuto} className="gap-1.5">
               <Save className="w-3.5 h-3.5"/>{savingAuto ? "กำลังบันทึก..." : "บันทึกการตั้งค่า"}
             </Button>
@@ -643,6 +708,89 @@ export default function Tags() {
           onDone={load}
         />
       )}
+
+      {/* Confirm dialog for missing / all_additive */}
+      <AlertDialog open={confirmModeOpen} onOpenChange={setConfirmModeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {rescanMode === "missing" ? "สแกนเฉพาะลูกค้าที่ยังไม่มี tag?" : "เติม tag ที่ขาดให้ลูกค้าทุกคน?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {rescanMode === "missing"
+                ? "ระบบจะข้ามลูกค้าที่เคยมี auto-tag อยู่แล้ว — tag ที่แอดมินติดเองทั้งหมดจะไม่ถูกแตะต้อง"
+                : "ระบบจะวนทุกคน เติม tag ที่ขาดให้ครบ โดยไม่ลบ tag เดิมใดๆ (รวม tag ที่แอดมินติดเอง)"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmModeOpen(false); runRescan(rescanMode as "missing" | "all_additive"); }}>
+              เริ่มสแกน
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset — 2-step verification */}
+      <AlertDialog open={resetStep === 1} onOpenChange={(o) => !o && setResetStep(0)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5"/> Reset auto-tag ทั้งหมด?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                การกระทำนี้จะ <b>ลบ tag อัตโนมัติเดิมทั้งหมด</b> (เดือน/ปี/บ้าน-บริษัท/สถานะ/regex) จากลูกค้าทุกคน แล้วสแกนใหม่ตามค่าปัจจุบัน
+              </span>
+              <span className="block">
+                tag ที่แอดมินติดเอง (เช่น VIP) จะ <b>ไม่ถูกลบ</b>
+              </span>
+              <span className="block text-destructive font-medium">
+                ⚠️ ใช้เฉพาะกรณีตั้งค่าใหม่ทั้งระบบ หรือ tag เพี้ยนเท่านั้น
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setResetStep(2)} className="bg-destructive hover:bg-destructive/90">
+              ฉันเข้าใจ — ดำเนินการต่อ
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={resetStep === 2} onOpenChange={(o) => { if (!o) { setResetStep(0); setResetEmail(""); setResetPassword(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="w-5 h-5"/> ยืนยันด้วยอีเมล + รหัสผ่าน
+            </DialogTitle>
+            <DialogDescription>
+              กรอกอีเมลและรหัสผ่านของบัญชี <b>Owner หรือ Admin</b> เพื่อยืนยันการ Reset (จะไม่ออกจากระบบของคุณ)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">อีเมล Owner/Admin</Label>
+              <Input type="email" autoComplete="off" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} placeholder="admin@example.com"/>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">รหัสผ่าน</Label>
+              <Input type="password" autoComplete="new-password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="••••••••"/>
+            </div>
+            <div className="text-[11px] text-muted-foreground bg-destructive/5 border border-destructive/20 rounded p-2 flex gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5"/>
+              หากยืนยันสำเร็จ ระบบจะลบ auto-tag เดิมแล้วสแกนใหม่ทันที — ไม่สามารถยกเลิกได้
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetStep(0); setResetEmail(""); setResetPassword(""); }}>ยกเลิก</Button>
+            <Button onClick={runResetVerified} disabled={rescanning || !resetEmail.trim() || !resetPassword} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              {rescanning ? "กำลัง Reset..." : "ยืนยัน & Reset"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
