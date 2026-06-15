@@ -219,7 +219,7 @@ export default function Chats() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKind>("all");
-  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0 });
+  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number; first_priority: number; awaiting_admin: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0, first_priority: 0, awaiting_admin: 0 });
   const [slaHours, setSlaHours] = useState<number>(24);
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
