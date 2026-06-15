@@ -734,6 +734,7 @@ export type Database = {
         Row: {
           admin_notes: string | null
           admin_seen_at: string | null
+          admin_unseen: boolean | null
           ai_active: boolean
           ai_resumed_at: string | null
           clv_amount: number
@@ -772,6 +773,7 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           admin_seen_at?: string | null
+          admin_unseen?: boolean | null
           ai_active?: boolean
           ai_resumed_at?: string | null
           clv_amount?: number
@@ -810,6 +812,7 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           admin_seen_at?: string | null
+          admin_unseen?: boolean | null
           ai_active?: boolean
           ai_resumed_at?: string | null
           clv_amount?: number
