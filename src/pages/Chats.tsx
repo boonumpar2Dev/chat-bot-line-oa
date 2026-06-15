@@ -305,7 +305,7 @@ export default function Chats() {
       base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().is("phone", null),
-      base().eq("last_sender", "ai").not("phone", "is", null).eq("admin_unseen", true),
+      base().not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote"),
       base().eq("last_sender", "ai"),
     ]);
     setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
