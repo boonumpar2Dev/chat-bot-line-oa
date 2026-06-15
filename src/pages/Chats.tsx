@@ -985,6 +985,18 @@ export default function Chats() {
                   const list = msgSearch ? messages.filter(m=>(m.message||"").toLowerCase().includes(msgSearch.toLowerCase())) : messages;
                   const byId: Record<string, any> = {};
                   for (const m of messages) byId[m.id] = m;
+                  const dayKey = (s: string) => { const d = new Date(s); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; };
+                  const fmtDay = (s: string) => {
+                    const d = new Date(s);
+                    const today = new Date();
+                    const yest = new Date(); yest.setDate(today.getDate() - 1);
+                    if (dayKey(s) === dayKey(today.toISOString())) return "วันนี้";
+                    if (dayKey(s) === dayKey(yest.toISOString())) return "เมื่อวาน";
+                    const sameYear = d.getFullYear() === today.getFullYear();
+                    return d.toLocaleDateString("th-TH", sameYear
+                      ? { day: "numeric", month: "short", weekday: "short" }
+                      : { day: "numeric", month: "short", year: "numeric", weekday: "short" });
+                  };
                   return list.map((m, idx) => {
                     // หา customer message ก่อนหน้า admin message นี้ (สำหรับเก็บเป็น Q/A)
                     let prevCustomerMsg: any = null;
@@ -994,8 +1006,18 @@ export default function Chats() {
                         if (messages[i].sender === "customer") { prevCustomerMsg = messages[i]; break; }
                       }
                     }
+                    const prev = idx > 0 ? list[idx - 1] : null;
+                    const showDateSep = !prev || dayKey(prev.created_at) !== dayKey(m.created_at);
                     return (
-                    <MessageBubble key={m.id} m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
+                    <React.Fragment key={m.id}>
+                    {showDateSep && (
+                      <div className="flex justify-center my-3 sticky top-0 z-10 pointer-events-none">
+                        <span className="text-[11px] font-medium text-muted-foreground bg-background/90 backdrop-blur border border-border/60 rounded-full px-3 py-1 shadow-sm pointer-events-auto">
+                          {fmtDay(m.created_at)}
+                        </span>
+                      </div>
+                    )}
+                    <MessageBubble m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
                       customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
                       onTeachKb={selectedId ? (adminText) => setTeachKbCtx({
@@ -1008,6 +1030,7 @@ export default function Chats() {
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
                         setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
                       }}/>
+                    </React.Fragment>
                     );
                   });
                 })()}
