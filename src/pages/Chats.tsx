@@ -1030,6 +1030,7 @@ export default function Chats() {
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
                         setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
                       }}/>
+                    </React.Fragment>
                     );
                   });
                 })()}
