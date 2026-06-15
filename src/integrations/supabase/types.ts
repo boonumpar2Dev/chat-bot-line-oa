@@ -749,6 +749,7 @@ export type Database = {
           intent_data: Json
           last_message_at: string | null
           last_message_snippet: string | null
+          last_sender: string | null
           last_sent_image_titles: string[]
           line_user_id: string
           manual_chat_until: string | null
@@ -785,6 +786,7 @@ export type Database = {
           intent_data?: Json
           last_message_at?: string | null
           last_message_snippet?: string | null
+          last_sender?: string | null
           last_sent_image_titles?: string[]
           line_user_id: string
           manual_chat_until?: string | null
@@ -821,6 +823,7 @@ export type Database = {
           intent_data?: Json
           last_message_at?: string | null
           last_message_snippet?: string | null
+          last_sender?: string | null
           last_sent_image_titles?: string[]
           line_user_id?: string
           manual_chat_until?: string | null
