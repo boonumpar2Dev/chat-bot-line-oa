@@ -55,6 +55,18 @@ export default function CustomerInfoPanel({
   const [extractingPanel, setExtractingPanel] = useState(false);
 
   useEffect(() => setLocal(customer), [customer.id]);
+  // sync เฉพาะ field ที่โชว์ใน dropdown/ปุ่ม (status, ai_active, admin_bot_override, manual_chat_until)
+  // เพื่อกันค่าค้างทับ DB จริงเมื่อ realtime อัปเดต — ไม่แตะ input ที่กำลังพิมพ์
+  useEffect(() => {
+    setLocal((prev: any) => ({
+      ...prev,
+      status: customer.status,
+      ai_active: customer.ai_active,
+      admin_bot_override: customer.admin_bot_override,
+      manual_chat_until: customer.manual_chat_until,
+      tags: customer.tags,
+    }));
+  }, [customer.status, customer.ai_active, customer.admin_bot_override, customer.manual_chat_until, customer.tags]);
 
   const save = (k: string, v: any) => {
     setLocal({ ...local, [k]: v });

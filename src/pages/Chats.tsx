@@ -728,10 +728,18 @@ export default function Chats() {
   const toggleAi = async (active: boolean) => {
     if (!selected) return;
     if (!active) { setPausePickerOpen(true); return; }
-    const isProtected = ["confirmed", "confirmed_returning", "postponed"].includes(selected.status);
+    // ดึง status ล่าสุดจาก DB ก่อน — กัน race เคส StatusSelector เพิ่งเปลี่ยนแต่ realtime ยังไม่มา
+    const { data: fresh } = await supabase.from("customers").select("status").eq("id", selected.id).maybeSingle();
+    const liveStatus = fresh?.status ?? selected.status;
+    const isProtected = ["confirmed", "confirmed_returning", "postponed"].includes(liveStatus);
     const update: any = { ai_active: true, manual_chat_until: null, ai_resumed_at: new Date().toISOString() };
     if (isProtected) update.admin_bot_override = true;
-    await supabase.from("customers").update(update).eq("id", selected.id);
+    const { error } = await supabase.from("customers").update(update).eq("id", selected.id);
+    if (error) {
+      console.error("[toggleAi] update failed:", error, { id: selected.id, update });
+      toast.error("เปิด AI ไม่สำเร็จ: " + error.message);
+      return;
+    }
     updateLocalCustomer(update);
     toast.success(isProtected ? "เปิด AI + override (ระบบจะไม่ปิดอัตโนมัติ)" : "เปิด AI แล้ว");
   };
@@ -740,7 +748,12 @@ export default function Chats() {
     if (!selected) return;
     const until = new Date(Date.now() + hours * 3600000).toISOString();
     const update: any = { ai_active: false, manual_chat_until: until };
-    await supabase.from("customers").update(update).eq("id", selected.id);
+    const { error } = await supabase.from("customers").update(update).eq("id", selected.id);
+    if (error) {
+      console.error("[pauseAiFor] update failed:", error, { id: selected.id, update });
+      toast.error("ปิด AI ไม่สำเร็จ: " + error.message);
+      return;
+    }
     updateLocalCustomer(update);
     setPausePickerOpen(false);
     toast.success(`ปิด AI ${hours} ชม.`);
@@ -748,7 +761,12 @@ export default function Chats() {
 
   const updateCustomer = async (patch: any) => {
     if (!selected) return;
-    await supabase.from("customers").update(patch).eq("id", selected.id);
+    const { error } = await supabase.from("customers").update(patch).eq("id", selected.id);
+    if (error) {
+      console.error("[updateCustomer] update failed:", error, { id: selected.id, patch });
+      toast.error("บันทึกไม่สำเร็จ: " + error.message);
+      return;
+    }
     updateLocalCustomer(patch);
     toast.success("บันทึกแล้ว");
   };
