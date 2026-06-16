@@ -586,7 +586,18 @@ export default function Chats() {
   }, [customers, search, msgMatchIds]);
 
   const updateLocalCustomer = (patch: any) => {
-    setCustomers(prev => prev.map(c => c.id === selectedId ? { ...c, ...patch } : c));
+    setCustomers(prev => {
+      const idx = prev.findIndex(c => c.id === selectedId);
+      if (idx < 0) return prev;
+      const merged = { ...prev[idx], ...patch };
+      const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+      if (!stillMatches) return prev.filter(c => c.id !== selectedId);
+      const next = [...prev];
+      next[idx] = merged;
+      return next.sort((a, b) =>
+        new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
+      );
+    });
   };
 
   const [clearingChat, setClearingChat] = useState(false);
