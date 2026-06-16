@@ -29,16 +29,25 @@ export default function ManualTimerBanner({ customer, onUpdate }: { customer: an
 
   const handleResume = async () => {
     setResuming(true);
-    const now = new Date().toISOString();
-    // ถ้าลูกค้าอยู่ในสถานะปกป้อง (confirmed/postponed) → ตั้ง admin_bot_override=true
-    // เพื่อให้ระบบไม่ปิดบอทอัตโนมัติอีก (เคารพการตัดสินใจของแอด)
-    const isProtected = ["confirmed", "confirmed_returning", "postponed"].includes(customer.status);
-    const patch: any = { ai_active: true, manual_chat_until: null, ai_resumed_at: now };
-    if (isProtected) patch.admin_bot_override = true;
-    await supabase.from("customers").update(patch).eq("id", customer.id);
-    onUpdate({ ...customer, ...patch });
-    toast.success(isProtected ? "ปลุกบอท + เปิด override (ระบบจะไม่ปิดอัตโนมัติ)" : "ปลุกบอทสำเร็จ");
-    setResuming(false);
+    try {
+      const now = new Date().toISOString();
+      // ดึง status สดจาก DB กัน race
+      const { data: fresh } = await supabase.from("customers").select("status").eq("id", customer.id).maybeSingle();
+      const liveStatus = fresh?.status ?? customer.status;
+      const isProtected = ["confirmed", "confirmed_returning", "postponed"].includes(liveStatus);
+      const patch: any = { ai_active: true, manual_chat_until: null, ai_resumed_at: now };
+      if (isProtected) patch.admin_bot_override = true;
+      const { error } = await supabase.from("customers").update(patch).eq("id", customer.id);
+      if (error) {
+        console.error("[ManualTimerBanner] resume failed:", error, { id: customer.id, patch });
+        toast.error("ปลุกบอทไม่สำเร็จ: " + error.message);
+        return;
+      }
+      onUpdate(patch); // ส่งเฉพาะ patch (กันทับของใหม่จาก realtime)
+      toast.success(isProtected ? "ปลุกบอท + เปิด override (ระบบจะไม่ปิดอัตโนมัติ)" : "ปลุกบอทสำเร็จ");
+    } finally {
+      setResuming(false);
+    }
   };
 
   return (

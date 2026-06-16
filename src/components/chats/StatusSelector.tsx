@@ -55,8 +55,13 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
     } catch (e) {
       // ถ้าโหลด map ไม่ได้ ให้ข้าม sync (ไม่ทำให้การเปลี่ยน status ล้มเหลว)
     }
-    await supabase.from("customers").update(updateData).eq("id", customer.id);
-    onUpdate({ ...customer, ...updateData });
+    const { error } = await supabase.from("customers").update(updateData).eq("id", customer.id);
+    if (error) {
+      console.error("[StatusSelector] update failed:", error, { id: customer.id, updateData });
+      toast.error("อัปเดตสเตตัสไม่สำเร็จ: " + error.message);
+      return; // ไม่อัปเดต local เพื่อให้ UI ตรงกับ DB จริง
+    }
+    onUpdate(updateData); // ส่งเฉพาะ patch ไม่ spread ทั้ง customer (กันทับ field ที่ realtime เพิ่งอัปเดต)
     if (newStatus === "completed") {
       toast.success("ปิดงานแล้ว — บอทกลับมาทำงานปกติ");
     } else if (AI_OFF_STATUSES.includes(newStatus)) {
