@@ -656,11 +656,55 @@ export default function CustomerInfoPanel({
         </div>
         <div>
           <Label className="text-xs">ประเภทงาน</Label>
-          <Input
-            value={local.event_type || ""}
-            onChange={(e) => setLocal({ ...local, event_type: e.target.value })}
-            onBlur={() => onUpdate({ event_type: local.event_type })}
-          />
+          {(() => {
+            const f = intentFields.find((x: any) => x?.key === "event_type");
+            const opts: string[] = Array.isArray(f?.values) ? f.values.filter(Boolean) : [];
+            if (opts.length === 0) {
+              return (
+                <Input
+                  value={local.event_type || ""}
+                  onChange={(e) => setLocal({ ...local, event_type: e.target.value })}
+                  onBlur={() => onUpdate({ event_type: local.event_type })}
+                />
+              );
+            }
+            const cur = local.event_type || "";
+            const isOther = cur !== "" && !opts.includes(cur);
+            const selectVal = cur === "" ? "" : isOther ? "__other__" : cur;
+            return (
+              <div className="space-y-1.5">
+                <Select
+                  value={selectVal}
+                  onValueChange={(v) => {
+                    if (v === "__other__") {
+                      setLocal({ ...local, event_type: isOther ? cur : "" });
+                    } else {
+                      setLocal({ ...local, event_type: v });
+                      onUpdate({ event_type: v });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="เลือกประเภทงาน" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {opts.map((o) => (
+                      <SelectItem key={o} value={o}>{o}</SelectItem>
+                    ))}
+                    <SelectItem value="__other__">อื่นๆ (พิมพ์เอง)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(isOther || selectVal === "__other__") && (
+                  <Input
+                    placeholder="ระบุประเภทงาน"
+                    value={cur}
+                    onChange={(e) => setLocal({ ...local, event_type: e.target.value })}
+                    onBlur={() => onUpdate({ event_type: local.event_type })}
+                  />
+                )}
+              </div>
+            );
+          })()}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div>
