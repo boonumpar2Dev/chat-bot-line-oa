@@ -311,7 +311,7 @@ export default function Chats() {
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === newRow.id);
           const merged = idx >= 0 ? { ...prev[idx], ...newRow } : newRow;
-          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+          const stillMatches = isSearching || matchesFilter(merged, filter);
           if (idx >= 0) {
             if (!stillMatches) return prev.filter(c => c.id !== newRow.id);
             const next = [...prev];
@@ -340,7 +340,7 @@ export default function Chats() {
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === cid);
           const merged = idx >= 0 ? { ...prev[idx], ...fresh } : fresh;
-          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+          const stillMatches = isSearching || matchesFilter(merged, filter);
           if (idx >= 0) {
             if (!stillMatches) return prev.filter(c => c.id !== cid);
             const next = [...prev];
@@ -367,7 +367,7 @@ export default function Chats() {
     const to = from + PAGE_SIZE - 1;
     let q: any = supabase.from("customers").select("*")
       .order("last_message_at", { ascending: false, nullsFirst: false });
-    q = applyFilter(q, filter, slaCutoffIso).range(from, to);
+    q = applyFilter(q, filter).range(from, to);
     const { data } = await q;
     setCustomers(prev => {
       const ids = new Set(prev.map(c => c.id));
@@ -565,7 +565,7 @@ export default function Chats() {
       const idx = prev.findIndex(c => c.id === selectedId);
       if (idx < 0) return prev;
       const merged = { ...prev[idx], ...patch };
-      const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+      const stillMatches = isSearching || matchesFilter(merged, filter);
       if (!stillMatches) return prev.filter(c => c.id !== selectedId);
       const next = [...prev];
       next[idx] = merged;
