@@ -30,7 +30,8 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
   const handleChange = async (newStatus: string) => {
     setOpen(false);
     if (newStatus === customer.status) return;
-    const updateData: any = { status: newStatus, admin_unseen: false, admin_seen_at: new Date().toISOString() };
+    // admin_unseen เป็น GENERATED column (auto-คำนวณจาก admin_seen_at vs last_message_at) — เขียนตรงๆ ไม่ได้
+    const updateData: any = { status: newStatus, admin_seen_at: new Date().toISOString() };
     if (AI_OFF_STATUSES.includes(newStatus)) {
       updateData.ai_active = false;
       updateData.admin_bot_override = false; // เข้าโหมดปกป้อง — รอแอดมินตัดสินใจ
