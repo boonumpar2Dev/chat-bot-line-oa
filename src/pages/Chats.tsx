@@ -119,10 +119,10 @@ function buildFileFlex(url: string, name: string, size: number) {
 type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" | `status:${string}`;
 
 const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" }[] = [
+  { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "all", label: "ทั้งหมด" },
   { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
   { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
-  { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
   { key: "no_phone", label: "📞 ไม่มีเบอร์", countKey: "no_phone" },
