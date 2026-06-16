@@ -158,7 +158,6 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "unread") return (c.unread_count || 0) > 0;
   if (filter === "read") return (c.unread_count || 0) === 0;
   if (filter === "manual") return c.ai_active === false;
-  if (filter === "no_phone") return !c.phone;
   if (filter === "awaiting_admin") return getAwaitingAdmin(c);
   if (filter === "first_priority") return getFirstPriority(c);
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
