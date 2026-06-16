@@ -304,7 +304,7 @@ export default function Chats() {
       base().eq("ai_active", false),
       base().is("phone", null),
       base().not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote"),
-      base().eq("last_sender", "ai"),
+      base().eq("last_sender", "ai").eq("admin_unseen", true),
     ]);
     setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
