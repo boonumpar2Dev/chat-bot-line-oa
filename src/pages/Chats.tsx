@@ -116,14 +116,13 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
-type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "first_priority" | "awaiting_admin" | `status:${string}`;
+type FilterKind = "all" | "unread" | "read" | "manual" | "first_priority" | "awaiting_admin" | `status:${string}`;
 
-const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "first_priority" | "awaiting_admin" }[] = [
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "manual" | "first_priority" | "awaiting_admin" }[] = [
   { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "all", label: "ทั้งหมด" },
   { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
   { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
-  { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
   { key: "read", label: "อ่านแล้ว" },
 ];
@@ -140,31 +139,23 @@ export function getFirstPriority(c: any): boolean {
   return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 
-function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
+function applyFilter(q: any, filter: FilterKind) {
   if (filter === "unread") return q.gt("unread_count", 0);
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
   if (filter === "first_priority") return q.not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote");
-  if (filter === "sla" && slaCutoffIso) {
-    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
-  }
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
 }
 
-function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): boolean {
+function matchesFilter(c: any, filter: FilterKind): boolean {
   if (filter === "all") return true;
   if (filter === "unread") return (c.unread_count || 0) > 0;
   if (filter === "read") return (c.unread_count || 0) === 0;
   if (filter === "manual") return c.ai_active === false;
   if (filter === "awaiting_admin") return getAwaitingAdmin(c);
   if (filter === "first_priority") return getFirstPriority(c);
-  if (filter === "sla" && slaCutoffMs && c.last_message_at) {
-    return (c.unread_count || 0) > 0
-      && new Date(c.last_message_at).getTime() < slaCutoffMs
-      && !["confirmed", "confirmed_returning", "postponed", "cancelled"].includes(c.status);
-  }
   if (filter.startsWith("status:")) return c.status === filter.slice(7);
   return true;
 }
@@ -220,8 +211,7 @@ export default function Chats() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKind>("all");
-  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, sla: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
-  const [slaHours, setSlaHours] = useState<number>(24);
+  const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
@@ -255,16 +245,6 @@ export default function Chats() {
 
   const isSearching = debouncedSearch.length >= 2;
 
-  // Fetch sla_hours once
-  useEffect(() => {
-    supabase.from("app_settings").select("sla_hours").limit(1).maybeSingle().then(({ data }) => {
-      if (data?.sla_hours) setSlaHours(Number(data.sla_hours));
-    });
-  }, []);
-
-  const slaCutoffIso = useMemo(() => new Date(Date.now() - slaHours * 3600_000).toISOString(), [slaHours]);
-  const slaCutoffMs = useMemo(() => Date.now() - slaHours * 3600_000, [slaHours]);
-
 
   const selected = customers.find(c => c.id === selectedId);
 
@@ -281,7 +261,7 @@ export default function Chats() {
         const s = debouncedSearch.replace(/[%,]/g, "");
         q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
-        q = applyFilter(q, filter, slaCutoffIso).range(0, PAGE_SIZE - 1);
+        q = applyFilter(q, filter).range(0, PAGE_SIZE - 1);
       }
       const { data } = await q;
       if (!active) return;
@@ -290,21 +270,20 @@ export default function Chats() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debouncedSearch, isSearching, filter, slaCutoffIso]);
+  }, [debouncedSearch, isSearching, filter]);
 
   // Fetch counts for filter pills
   const refreshCounts = async () => {
     const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
-    const [u, s, m, fp, aa] = await Promise.all([
+    const [u, m, fp, aa] = await Promise.all([
       base().gt("unread_count", 0),
-      base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)"),
       base().eq("ai_active", false),
       base().not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote"),
       base().eq("last_sender", "ai").eq("admin_unseen", true),
     ]);
-    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
+    setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
-  useEffect(() => { refreshCounts(); }, [slaCutoffIso]);
+  useEffect(() => { refreshCounts(); }, []);
 
   // Ensure deep-linked customer (?customer=id) row is loaded into list
   useEffect(() => {
@@ -332,7 +311,7 @@ export default function Chats() {
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === newRow.id);
           const merged = idx >= 0 ? { ...prev[idx], ...newRow } : newRow;
-          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+          const stillMatches = isSearching || matchesFilter(merged, filter);
           if (idx >= 0) {
             if (!stillMatches) return prev.filter(c => c.id !== newRow.id);
             const next = [...prev];
@@ -361,7 +340,7 @@ export default function Chats() {
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === cid);
           const merged = idx >= 0 ? { ...prev[idx], ...fresh } : fresh;
-          const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+          const stillMatches = isSearching || matchesFilter(merged, filter);
           if (idx >= 0) {
             if (!stillMatches) return prev.filter(c => c.id !== cid);
             const next = [...prev];
@@ -376,7 +355,7 @@ export default function Chats() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching, filter, slaCutoffMs, slaCutoffIso, selectedId]);
+  }, [isSearching, filter, selectedId]);
 
 
   // Infinite scroll
@@ -388,7 +367,7 @@ export default function Chats() {
     const to = from + PAGE_SIZE - 1;
     let q: any = supabase.from("customers").select("*")
       .order("last_message_at", { ascending: false, nullsFirst: false });
-    q = applyFilter(q, filter, slaCutoffIso).range(from, to);
+    q = applyFilter(q, filter).range(from, to);
     const { data } = await q;
     setCustomers(prev => {
       const ids = new Set(prev.map(c => c.id));
@@ -586,7 +565,7 @@ export default function Chats() {
       const idx = prev.findIndex(c => c.id === selectedId);
       if (idx < 0) return prev;
       const merged = { ...prev[idx], ...patch };
-      const stillMatches = isSearching || matchesFilter(merged, filter, slaCutoffMs);
+      const stillMatches = isSearching || matchesFilter(merged, filter);
       if (!stillMatches) return prev.filter(c => c.id !== selectedId);
       const next = [...prev];
       next[idx] = merged;
