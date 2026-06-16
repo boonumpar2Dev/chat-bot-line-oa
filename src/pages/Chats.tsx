@@ -759,6 +759,22 @@ export default function Chats() {
     toast.success(`ปิด AI ${hours} ชม.`);
   };
 
+  const pauseAiPermanent = async () => {
+    if (!selected) return;
+    // ปิดถาวร — ไม่มี timer ให้ปลุก, ล้าง override เพื่อไม่ให้ระบบเปิดให้อัตโนมัติ
+    const update: any = { ai_active: false, manual_chat_until: null, admin_bot_override: false };
+    const { error } = await supabase.from("customers").update(update).eq("id", selected.id);
+    if (error) {
+      console.error("[pauseAiPermanent] update failed:", error, { id: selected.id, update });
+      toast.error("ปิด AI ไม่สำเร็จ: " + error.message);
+      return;
+    }
+    updateLocalCustomer(update);
+    setPausePickerOpen(false);
+    toast.success("ปิด AI ถาวร — บอทจะไม่ทำงานจนกว่าแอดมินจะเปิดเอง");
+  };
+
+
   const updateCustomer = async (patch: any) => {
     if (!selected) return;
     const { error } = await supabase.from("customers").update(patch).eq("id", selected.id);
@@ -1016,6 +1032,9 @@ export default function Chats() {
                       <Button key={h} variant="outline" onClick={() => pauseAiFor(h)}>{h} ชม.</Button>
                     ))}
                   </div>
+                  <Button variant="destructive" className="w-full" onClick={pauseAiPermanent}>
+                    ปิดถาวร (จนกว่าจะเปิดเอง)
+                  </Button>
                   <DialogFooter>
                     <Button variant="ghost" size="sm" onClick={() => setPausePickerOpen(false)}>ยกเลิก</Button>
                   </DialogFooter>
