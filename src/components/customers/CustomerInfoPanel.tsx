@@ -750,6 +750,64 @@ export default function CustomerInfoPanel({
             );
           })()}
         </div>
+        {(() => {
+          const f = intentFields.find((x: any) => x?.key === "service_type");
+          if (!f) return null;
+          const opts: string[] = Array.isArray(f?.values) ? f.values.filter(Boolean) : [];
+          const cur = (intentData.service_type as string) || "";
+          const isOther = cur !== "" && opts.length > 0 && !opts.includes(cur);
+          const selectVal = cur === "" ? "" : isOther ? "__other__" : cur;
+          return (
+            <div>
+              <Label className="text-xs">{f.label || "รูปแบบอาหาร"}</Label>
+              {opts.length === 0 ? (
+                <Input
+                  value={cur}
+                  onChange={(e) => {
+                    const next = { ...intentData, service_type: e.target.value };
+                    setLocal({ ...local, intent_data: next });
+                  }}
+                  onBlur={() => saveIntent("service_type", cur)}
+                />
+              ) : (
+                <div className="space-y-1.5">
+                  <Select
+                    value={selectVal}
+                    onValueChange={(v) => {
+                      if (v === "__other__") {
+                        if (!isOther) saveIntent("service_type", "");
+                      } else {
+                        saveIntent("service_type", v);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder={`เลือก${f.label || "รูปแบบอาหาร"}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {opts.map((o) => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                      <SelectItem value="__other__">อื่นๆ (พิมพ์เอง)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {(isOther || selectVal === "__other__") && (
+                    <Input
+                      placeholder={`ระบุ${f.label || "รูปแบบอาหาร"}`}
+                      value={cur}
+                      onChange={(e) => {
+                        const next = { ...intentData, service_type: e.target.value };
+                        setLocal({ ...local, intent_data: next });
+                      }}
+                      onBlur={() => saveIntent("service_type", cur)}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         <div className="grid grid-cols-2 gap-2">
           <div>
             <Label className="text-xs flex items-center gap-1">
