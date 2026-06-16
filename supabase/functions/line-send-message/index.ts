@@ -90,7 +90,24 @@ Deno.serve(async (req) => {
         if (m.type === "sticker") return `[สติกเกอร์]\n🎭 https://stickershop.line-scdn.net/stickershop/v1/sticker/${m.stickerId}/android/sticker.png`;
         if (m.type === "flex" || m.type === "template") {
           const alt = (m.altText || "").trim();
-          return alt || `[${m.type}]`;
+          // ดึง URL จากปุ่ม action (เช่น flex file มีปุ่มดาวน์โหลด) เพื่อให้หน้าแชท render ปุ่มดาวน์โหลดได้
+          let extractedUrl = "";
+          try {
+            const stack: any[] = [m.contents];
+            while (stack.length) {
+              const node = stack.pop();
+              if (!node || typeof node !== "object") continue;
+              if (node.action?.type === "uri" && typeof node.action.uri === "string") {
+                extractedUrl = node.action.uri; break;
+              }
+              if (Array.isArray(node.contents)) stack.push(...node.contents);
+              if (node.body) stack.push(node.body);
+              if (node.hero) stack.push(node.hero);
+              if (node.footer) stack.push(node.footer);
+            }
+          } catch {}
+          const label = alt || `[${m.type}]`;
+          return extractedUrl ? `${label}\n📎 ${extractedUrl}` : label;
         }
         return `[${m.type}]`;
       }).join("\n");
