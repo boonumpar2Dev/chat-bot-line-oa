@@ -116,14 +116,13 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
-type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "first_priority" | "awaiting_admin" | `status:${string}`;
+type FilterKind = "all" | "unread" | "read" | "manual" | "first_priority" | "awaiting_admin" | `status:${string}`;
 
-const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "first_priority" | "awaiting_admin" }[] = [
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "manual" | "first_priority" | "awaiting_admin" }[] = [
   { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "all", label: "ทั้งหมด" },
   { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
   { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
-  { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
   { key: "read", label: "อ่านแล้ว" },
 ];
@@ -140,31 +139,23 @@ export function getFirstPriority(c: any): boolean {
   return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 
-function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
+function applyFilter(q: any, filter: FilterKind) {
   if (filter === "unread") return q.gt("unread_count", 0);
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
   if (filter === "first_priority") return q.not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote");
-  if (filter === "sla" && slaCutoffIso) {
-    return q.gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)");
-  }
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
 }
 
-function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): boolean {
+function matchesFilter(c: any, filter: FilterKind): boolean {
   if (filter === "all") return true;
   if (filter === "unread") return (c.unread_count || 0) > 0;
   if (filter === "read") return (c.unread_count || 0) === 0;
   if (filter === "manual") return c.ai_active === false;
   if (filter === "awaiting_admin") return getAwaitingAdmin(c);
   if (filter === "first_priority") return getFirstPriority(c);
-  if (filter === "sla" && slaCutoffMs && c.last_message_at) {
-    return (c.unread_count || 0) > 0
-      && new Date(c.last_message_at).getTime() < slaCutoffMs
-      && !["confirmed", "confirmed_returning", "postponed", "cancelled"].includes(c.status);
-  }
   if (filter.startsWith("status:")) return c.status === filter.slice(7);
   return true;
 }
