@@ -603,12 +603,23 @@ export default function Chats() {
     if (!files.length) return;
     setUploading(true);
     const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
-    setStagedFiles(p => [...p, ...results]);
+    setStagedFiles(p => {
+      const next = [...p, ...results];
+      // Persist immediately in case the browser unmounts/reloads (e.g. Android Samsung Internet after picker)
+      try {
+        if (userId && selectedId) {
+          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: next }));
+        }
+      } catch {}
+      return next;
+    });
     setUploading(false);
   };
   const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    await uploadFiles(Array.from(e.target.files || []));
+    // Capture files synchronously — some mobile browsers clear e.target.files during await
+    const picked = Array.from(e.target.files || []);
     e.target.value = "";
+    await uploadFiles(picked);
   };
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
