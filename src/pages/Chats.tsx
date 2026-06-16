@@ -116,16 +116,15 @@ function buildFileFlex(url: string, name: string, size: number) {
   };
 }
 
-type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" | `status:${string}`;
+type FilterKind = "all" | "unread" | "read" | "sla" | "manual" | "first_priority" | "awaiting_admin" | `status:${string}`;
 
-const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "no_phone" | "first_priority" | "awaiting_admin" }[] = [
+const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "sla" | "manual" | "first_priority" | "awaiting_admin" }[] = [
   { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "all", label: "ทั้งหมด" },
   { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
   { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
   { key: "sla", label: "⚠️ SLA เกิน", countKey: "sla" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
-  { key: "no_phone", label: "📞 ไม่มีเบอร์", countKey: "no_phone" },
   { key: "read", label: "อ่านแล้ว" },
 ];
 
@@ -145,7 +144,6 @@ function applyFilter(q: any, filter: FilterKind, slaCutoffIso: string | null) {
   if (filter === "unread") return q.gt("unread_count", 0);
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
-  if (filter === "no_phone") return q.is("phone", null);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
   if (filter === "first_priority") return q.not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote");
   if (filter === "sla" && slaCutoffIso) {
@@ -160,7 +158,6 @@ function matchesFilter(c: any, filter: FilterKind, slaCutoffMs: number | null): 
   if (filter === "unread") return (c.unread_count || 0) > 0;
   if (filter === "read") return (c.unread_count || 0) === 0;
   if (filter === "manual") return c.ai_active === false;
-  if (filter === "no_phone") return !c.phone;
   if (filter === "awaiting_admin") return getAwaitingAdmin(c);
   if (filter === "first_priority") return getFirstPriority(c);
   if (filter === "sla" && slaCutoffMs && c.last_message_at) {
@@ -223,7 +220,7 @@ export default function Chats() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKind>("all");
-  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; no_phone: number; first_priority: number; awaiting_admin: number }>({ unread: 0, sla: 0, manual: 0, no_phone: 0, first_priority: 0, awaiting_admin: 0 });
+  const [filterCounts, setFilterCounts] = useState<{ unread: number; sla: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, sla: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [slaHours, setSlaHours] = useState<number>(24);
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
@@ -298,15 +295,14 @@ export default function Chats() {
   // Fetch counts for filter pills
   const refreshCounts = async () => {
     const base = () => supabase.from("customers").select("*", { count: "exact", head: true });
-    const [u, s, m, n, fp, aa] = await Promise.all([
+    const [u, s, m, fp, aa] = await Promise.all([
       base().gt("unread_count", 0),
       base().gt("unread_count", 0).lt("last_message_at", slaCutoffIso).not("status", "in", "(confirmed,confirmed_returning,postponed,cancelled)"),
       base().eq("ai_active", false),
-      base().is("phone", null),
       base().not("phone", "is", null).or("and(last_sender.eq.ai,admin_unseen.eq.true),status.eq.pending_quote"),
       base().eq("last_sender", "ai").eq("admin_unseen", true),
     ]);
-    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, no_phone: n.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
+    setFilterCounts({ unread: u.count || 0, sla: s.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
   useEffect(() => { refreshCounts(); }, [slaCutoffIso]);
 
