@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft, BookPlus } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft, BookPlus, Image as ImageIcon } from "lucide-react";
 import { TeachToKbDialog, type TeachCtx } from "@/components/chats/TeachToKbDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -1148,17 +1148,32 @@ export default function Chats() {
               <div className="max-w-3xl mx-auto flex gap-2 items-end">
                 <input ref={fileInputRef} id="chat-file-input" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
-                {/* Mobile: single "+" popover */}
+                {/* Mobile-only separate inputs so labels can trigger picker directly (no Popover/Radix interception) */}
+                <input id="chat-image-input-mobile" type="file" accept="image/*,video/*" multiple
+                  onChange={handleFilesPick} className="hidden"/>
+                <input id="chat-file-input-mobile" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
+                  onChange={handleFilesPick} className="hidden"/>
+
+                {/* Mobile: direct image + file labels (outside Popover so picker opens reliably) */}
+                <label htmlFor="chat-image-input-mobile"
+                  className={`sm:hidden shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
+                  title="ส่งรูป/วิดีโอ" aria-label="ส่งรูป/วิดีโอ">
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <ImageIcon className="w-5 h-5"/>}
+                </label>
+                <label htmlFor="chat-file-input-mobile"
+                  className={`sm:hidden shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
+                  title="ส่งไฟล์" aria-label="ส่งไฟล์">
+                  <Paperclip className="w-5 h-5"/>
+                </label>
+
+                {/* Mobile: "+" popover for the rest (quick replies / form) */}
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button size="icon" variant="ghost" type="button" className="sm:hidden shrink-0" disabled={uploading} title="เพิ่มเติม">
-                      {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Plus className="w-5 h-5"/>}
+                    <Button size="icon" variant="ghost" type="button" className="sm:hidden shrink-0" title="เพิ่มเติม">
+                      <Plus className="w-5 h-5"/>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent side="top" align="start" className="w-44 p-1">
-                    <label htmlFor="chat-file-input" className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer">
-                      <Paperclip className="w-4 h-4 text-muted-foreground"/>แนบไฟล์
-                    </label>
                     <button type="button" onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
                     </button>
