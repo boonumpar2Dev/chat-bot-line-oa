@@ -1146,7 +1146,7 @@ export default function Chats() {
               <QuickResponsePopup show={showQuick} filter={reply.startsWith("/") ? reply.slice(1) : ""}
                 onSelect={onSelectQuick} onClose={() => setShowQuick(false)}/>
               <div className="max-w-3xl mx-auto flex gap-2 items-end">
-                <input ref={fileInputRef} type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
+                <input ref={fileInputRef} id="chat-file-input" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
                 {/* Mobile: single "+" popover */}
                 <Popover>
@@ -1156,9 +1156,9 @@ export default function Chats() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent side="top" align="start" className="w-44 p-1">
-                    <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
+                    <label htmlFor="chat-file-input" className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer">
                       <Paperclip className="w-4 h-4 text-muted-foreground"/>แนบไฟล์
-                    </button>
+                    </label>
                     <button type="button" onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
                       <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
                     </button>
