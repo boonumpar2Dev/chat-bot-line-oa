@@ -19,10 +19,11 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "ยกเลิก", color: "bg-red-100 text-red-700", dot: "bg-red-500" },
 ] as const;
 
-const AI_OFF_STATUSES = ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning"];
-const AI_ON_STATUSES = ["postponed"];
+// pending_confirm → บอทเปิด (strict grounding mode) ไม่ปิด เพื่อรับ chitchat/คำถามต่อโดยไม่เดา
+const AI_OFF_STATUSES = ["pending_quote", "confirmed", "confirmed_returning"];
+const AI_ON_STATUSES = ["postponed", "pending_confirm"];
 // สถานะที่ต้อง "ล้าง admin_bot_override" — กลับมาทำงานตามปกติ
-const CLEAR_OVERRIDE_STATUSES = ["completed", "cancelled", "pending_quote", "new", "inquiry", "returning"];
+const CLEAR_OVERRIDE_STATUSES = ["completed", "cancelled", "pending_quote", "new", "inquiry", "returning", "pending_confirm"];
 
 export default function StatusSelector({ customer, onUpdate }: { customer: any; onUpdate: (c: any) => void }) {
   const [open, setOpen] = useState(false);
