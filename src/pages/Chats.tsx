@@ -455,15 +455,8 @@ export default function Chats() {
     // Save draft of previous customer before switching
     const prev = prevDraftIdRef.current;
     if (prev && prev !== selectedId) {
-      try {
-        const persistFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:"));
-        const draft: Draft = { text: reply, files: persistFiles };
-        if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
-          localStorage.setItem(draftKey(userId, prev), JSON.stringify(draft));
-        } else {
-          localStorage.removeItem(draftKey(userId, prev));
-        }
-      } catch {}
+      const persistFiles = stagedFiles.filter(isReadyFile);
+      saveDraft(userId, prev, { text: reply, files: persistFiles });
     }
     // Load draft for the newly selected customer (only when actually switching)
     if (prev !== selectedId) {
@@ -483,14 +476,8 @@ export default function Chats() {
   useEffect(() => {
     if (!selectedId) return;
     const t = setTimeout(() => {
-      try {
-        const persistFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:"));
-        if (reply.length || persistFiles.length) {
-          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: persistFiles }));
-        } else {
-          localStorage.removeItem(draftKey(userId, selectedId));
-        }
-      } catch {}
+      const persistFiles = stagedFiles.filter(isReadyFile);
+      saveDraft(userId, selectedId, { text: reply, files: persistFiles });
     }, 300);
     return () => clearTimeout(t);
   }, [reply, stagedFiles, selectedId, userId]);
@@ -533,10 +520,12 @@ export default function Chats() {
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", restore);
     window.addEventListener("pageshow", restore);
+    window.addEventListener("chats:draft-updated", restore as EventListener);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", restore);
       window.removeEventListener("pageshow", restore);
+      window.removeEventListener("chats:draft-updated", restore as EventListener);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, selectedId]);
