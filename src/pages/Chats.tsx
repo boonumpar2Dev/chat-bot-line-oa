@@ -1166,9 +1166,9 @@ export default function Chats() {
                 <input ref={fileInputRef} id="chat-file-input" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
                 {/* Mobile-only separate inputs so labels can trigger picker directly (no Popover/Radix interception) */}
-                <input id="chat-image-input-mobile" type="file" accept="image/*,video/*" multiple
+                <input id="chat-image-input-mobile" type="file" accept="image/*,video/*"
                   onChange={handleFilesPick} className="hidden"/>
-                <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple
+                <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv"
                   onChange={handleFilesPick} className="hidden"/>
 
                 {/* Mobile: single "+" button with custom panel (NOT Radix Popover — so <label> picker works reliably) */}
