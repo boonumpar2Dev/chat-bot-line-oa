@@ -199,6 +199,12 @@ const saveDraft = (userId: string | undefined, customerId: string, draft: Draft)
   } catch {}
 };
 
+const persistDraft = (userId: string | undefined, customerId: string, draft: Draft) => {
+  const current = readDraft(userId, customerId);
+  if (!draft.text && !draft.files?.length && current.files?.length) return;
+  saveDraft(userId, customerId, draft);
+};
+
 const appendReadyFilesToDraft = (userId: string | undefined, customerId: string | null, files: ReadyFile[]) => {
   if (!customerId || !files.length) return;
   const current = readDraft(userId, customerId);
@@ -467,7 +473,7 @@ export default function Chats() {
     const prev = prevDraftIdRef.current;
     if (prev && prev !== selectedId) {
       const persistFiles = stagedFiles.filter(isReadyFile);
-      saveDraft(userId, prev, { text: reply, files: persistFiles });
+      persistDraft(userId, prev, { text: reply, files: persistFiles });
     }
     // Load draft for the newly selected customer (only when actually switching)
     if (prev !== selectedId) {
@@ -488,7 +494,7 @@ export default function Chats() {
     if (!selectedId) return;
     const t = setTimeout(() => {
       const persistFiles = stagedFiles.filter(isReadyFile);
-      saveDraft(userId, selectedId, { text: reply, files: persistFiles });
+      persistDraft(userId, selectedId, { text: reply, files: persistFiles });
     }, 300);
     return () => clearTimeout(t);
   }, [reply, stagedFiles, selectedId, userId]);
