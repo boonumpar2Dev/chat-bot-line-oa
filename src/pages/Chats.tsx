@@ -1166,9 +1166,9 @@ export default function Chats() {
                 <input ref={fileInputRef} id="chat-file-input" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
                 {/* Mobile-only separate inputs so labels can trigger picker directly (no Popover/Radix interception) */}
-                <input id="chat-image-input-mobile" type="file" accept="image/*,video/*" multiple
+                <input id="chat-image-input-mobile" type="file" accept="image/*,video/*"
                   onChange={handleFilesPick} className="hidden"/>
-                <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple
+                <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv"
                   onChange={handleFilesPick} className="hidden"/>
 
                 {/* Mobile: single "+" button with custom panel (NOT Radix Popover — so <label> picker works reliably) */}
@@ -1181,11 +1181,13 @@ export default function Chats() {
                       <div className="fixed inset-0 z-40" onClick={() => setMobileAddOpen(false)}/>
                       <div className="absolute bottom-full left-0 mb-2 z-50 w-52 rounded-md border bg-popover shadow-md p-1">
                         <label htmlFor="chat-image-input-mobile" onClick={() => setMobileAddOpen(false)}
-                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
+                          style={{cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
                           <ImageIcon className="w-4 h-4 text-muted-foreground"/>ส่งรูป / วิดีโอ
                         </label>
                         <label htmlFor="chat-file-input-mobile" onClick={() => setMobileAddOpen(false)}
-                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
+                          style={{cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
                           <Paperclip className="w-4 h-4 text-muted-foreground"/>ส่งไฟล์เอกสาร
                         </label>
                         <button type="button" onClick={() => { setMobileAddOpen(false); setShowQuick(s => !s); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent">
