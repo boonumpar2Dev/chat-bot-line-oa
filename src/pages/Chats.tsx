@@ -705,6 +705,7 @@ export default function Chats() {
       const result = await uploadToStorage(it.file);
       if (result) {
         okCount++;
+        appendReadyFilesToDraft(userId, selectedId, [result]);
         setStagedFiles(p => p.map(f => f.localId === it.localId
           ? { url: result.url, name: result.name, size: result.size }
           : f));
@@ -767,7 +768,7 @@ export default function Chats() {
 
   const sendReply = async () => {
     if (!selected) return;
-    const readyFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:") && !f.url.startsWith("pending:"));
+    const readyFiles = stagedFiles.filter(isReadyFile);
     const hasPending = stagedFiles.some(f => f.uploading);
     if (hasPending) { toast.error("กรุณารอไฟล์อัปโหลดเสร็จก่อน"); return; }
     if (!reply.trim() && readyFiles.length === 0 && !stagedSticker) return;
