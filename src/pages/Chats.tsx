@@ -469,6 +469,21 @@ export default function Chats() {
     return () => clearTimeout(t);
   }, [reply, stagedFiles, selectedId, userId]);
 
+  // When auth's userId arrives after first render, re-read draft from the correct key
+  // (initial useState may have used "anon" key, missing staged files saved under real userId)
+  const userIdLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!userId || userIdLoadedRef.current) return;
+    userIdLoadedRef.current = true;
+    if (!selectedId) return;
+    const d = readDraft(userId, selectedId);
+    if ((d.files && d.files.length) || d.text) {
+      if (d.files && d.files.length && stagedFiles.length === 0) setStagedFiles(d.files);
+      if (d.text && !reply) setReply(d.text);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
 
 
   // โหลดชื่อแสดงของแอดมินทุกคน (ใช้แทนคำว่า "แอดมิน" ในบับเบิลข้อความ)
