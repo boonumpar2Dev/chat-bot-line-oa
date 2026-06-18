@@ -619,18 +619,25 @@ export default function Chats() {
   const uploadFiles = async (files: File[]) => {
     if (!files.length) return;
     setUploading(true);
-    const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
-    setStagedFiles(p => {
-      const next = [...p, ...results];
-      // Persist immediately in case the browser unmounts/reloads (e.g. Android Samsung Internet after picker)
-      try {
-        if (userId && selectedId) {
-          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: next }));
-        }
-      } catch {}
-      return next;
-    });
-    setUploading(false);
+    try {
+      const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
+      if (results.length === 0) {
+        toast.error("ไม่สามารถอัปโหลดไฟล์ได้ กรุณาลองใหม่");
+        return;
+      }
+      setStagedFiles(p => {
+        const next = [...p, ...results];
+        // Persist immediately in case the browser unmounts/reloads (e.g. Android Samsung Internet after picker)
+        try {
+          if (userId && selectedId) {
+            localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: next }));
+          }
+        } catch {}
+        return next;
+      });
+    } finally {
+      setUploading(false);
+    }
   };
   const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Capture files synchronously — some mobile browsers clear e.target.files during await
@@ -1159,7 +1166,7 @@ export default function Chats() {
               accept="image/*,video/*" multiple
               onChange={handleFilesPick} className="hidden"/>
             <input id="chat-file-input-mobile" type="file"
-              accept="*/*" multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv" multiple
               onChange={handleFilesPick} className="hidden"/>
 
 
