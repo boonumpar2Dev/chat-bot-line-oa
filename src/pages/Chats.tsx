@@ -132,10 +132,10 @@ export function getAwaitingAdmin(c: any): boolean {
   return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 export function getFirstPriority(c: any): boolean {
-  // Human-set status: always surface regardless of phone
+  // ต้องมีเบอร์เท่านั้น (admin ที่เปลี่ยน pending_quote แต่ยังไม่มีเบอร์ — AI จะ extract เบอร์ให้ภายหลัง)
+  if (!c?.phone) return false;
   if (c?.status === "pending_quote") return true;
-  // AI replied: must have a phone so admin can follow up
-  return !!c?.phone && c?.last_sender === "ai" && c?.admin_unseen === true;
+  return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 
 function applyFilter(q: any, filter: FilterKind) {
@@ -143,7 +143,8 @@ function applyFilter(q: any, filter: FilterKind) {
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
-  if (filter === "first_priority") return q.or("status.eq.pending_quote,and(phone.not.is.null,last_sender.eq.ai,admin_unseen.eq.true)");
+  if (filter === "first_priority") return q.not("phone", "is", null).or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)");
+
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
 }
@@ -278,7 +279,7 @@ export default function Chats() {
     const [u, m, fp, aa] = await Promise.all([
       base().gt("unread_count", 0),
       base().eq("ai_active", false),
-      base().or("status.eq.pending_quote,and(phone.not.is.null,last_sender.eq.ai,admin_unseen.eq.true)"),
+      base().not("phone", "is", null).or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)"),
       base().eq("last_sender", "ai").eq("admin_unseen", true),
     ]);
     setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
