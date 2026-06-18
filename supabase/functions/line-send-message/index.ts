@@ -133,6 +133,25 @@ Deno.serve(async (req) => {
         last_message_at: new Date().toISOString(),
         last_message_snippet: `👤 ${text.slice(0, 120)}`,
       }).eq("id", customer_id);
+
+      // Fire-and-forget: ถ้าลูกค้ายังไม่มีเบอร์ ให้ AI ลอง extract จากบทสนทนา (ไม่ block admin)
+      try {
+        const { data: cust } = await admin.from("customers").select("phone").eq("id", customer_id).maybeSingle();
+        if (!cust?.phone) {
+          const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/extract-phone-from-chat`;
+          fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ customer_id }),
+          }).catch((e) => console.error("extract-phone trigger failed:", e?.message || e));
+        }
+      } catch (e) {
+        console.error("extract-phone pre-check failed:", e);
+      }
+
     }
 
 
