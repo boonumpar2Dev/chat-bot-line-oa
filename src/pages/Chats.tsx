@@ -643,7 +643,14 @@ export default function Chats() {
     // Capture files synchronously — some mobile browsers clear e.target.files during await
     const picked = Array.from(e.target.files || []);
     e.target.value = "";
-    await uploadFiles(picked);
+    if (!picked.length) { toast.error("ไม่ได้เลือกไฟล์"); return; }
+    const tId = toast.loading(`กำลังอัปโหลด ${picked.length} ไฟล์...`);
+    try {
+      await uploadFiles(picked);
+      toast.success(`แนบไฟล์ ${picked.length} ไฟล์เรียบร้อย`, { id: tId });
+    } catch (err: any) {
+      toast.error(`อัปโหลดไม่สำเร็จ: ${err?.message || "unknown"}`, { id: tId });
+    }
   };
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
