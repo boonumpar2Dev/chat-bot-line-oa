@@ -163,13 +163,37 @@ function matchesFilter(c: any, filter: FilterKind): boolean {
 const LAST_CUSTOMER_KEY = "chats:lastCustomer";
 const draftKey = (userId: string | undefined, customerId: string) =>
   `chats:draft:${userId || "anon"}:${customerId}`;
-type Draft = { text?: string; files?: { url: string; name: string; size: number }[] };
+type StagedFile = { url: string; name: string; size: number; uploading?: boolean; localId?: string; error?: boolean };
+type ReadyFile = Pick<StagedFile, "url" | "name" | "size">;
+type Draft = { text?: string; files?: ReadyFile[] };
 const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
   if (!customerId) return {};
   try {
     const raw = localStorage.getItem(draftKey(userId, customerId));
     return raw ? JSON.parse(raw) : {};
   } catch { return {}; }
+};
+
+const isReadyFile = (f: StagedFile): f is ReadyFile =>
+  !f.uploading && !f.error && !f.url.startsWith("blob:") && !f.url.startsWith("pending:");
+
+const saveDraft = (userId: string | undefined, customerId: string, draft: Draft) => {
+  try {
+    if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
+      localStorage.setItem(draftKey(userId, customerId), JSON.stringify(draft));
+    } else {
+      localStorage.removeItem(draftKey(userId, customerId));
+    }
+    window.dispatchEvent(new CustomEvent("chats:draft-updated", { detail: { customerId } }));
+  } catch {}
+};
+
+const appendReadyFilesToDraft = (userId: string | undefined, customerId: string | null, files: ReadyFile[]) => {
+  if (!customerId || !files.length) return;
+  const current = readDraft(userId, customerId);
+  const seen = new Set((current.files || []).map(f => f.url));
+  const merged = [...(current.files || []), ...files.filter(f => !seen.has(f.url))];
+  saveDraft(userId, customerId, { ...current, files: merged });
 };
 
 export default function Chats() {
@@ -213,7 +237,7 @@ export default function Chats() {
   const [filter, setFilter] = useState<FilterKind>("all");
   const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
-  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number; uploading?: boolean; localId?: string; error?: boolean }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   
