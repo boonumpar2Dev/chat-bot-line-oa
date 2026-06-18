@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Plus, Smile, Reply, CornerUpLeft, BookPlus, Image as ImageIcon } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Smile, Reply, CornerUpLeft, BookPlus, Image as ImageIcon } from "lucide-react";
 import { TeachToKbDialog, type TeachCtx } from "@/components/chats/TeachToKbDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -216,7 +216,7 @@ export default function Chats() {
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
-  const [mobileAddOpen, setMobileAddOpen] = useState(false);
+  
   const [replyingTo, setReplyingTo] = useState<{ id: string; quoteToken: string; sender: string; snippet: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -1171,34 +1171,26 @@ export default function Chats() {
                 <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv"
                   onChange={handleFilesPick} className="hidden"/>
 
-                {/* Mobile: single "+" button with custom panel (NOT Radix Popover — so <label> picker works reliably) */}
-                <div className="sm:hidden relative shrink-0">
-                  <Button size="icon" variant="ghost" type="button" onClick={() => setMobileAddOpen(o => !o)} title="เพิ่มเติม" aria-label="เพิ่มเติม">
-                    <Plus className="w-5 h-5"/>
+                {/* Mobile: 4 separate buttons */}
+                <div className="sm:hidden flex items-center gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" type="button" title="ส่งรูป/วิดีโอ"
+                    onTouchEnd={(e) => { e.preventDefault(); setTimeout(() => document.getElementById("chat-image-input-mobile")?.click(), 50); }}
+                    onClick={() => document.getElementById("chat-image-input-mobile")?.click()}>
+                    <ImageIcon className="w-5 h-5"/>
                   </Button>
-                  {mobileAddOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setMobileAddOpen(false)}/>
-                      <div className="absolute bottom-full left-0 mb-2 z-50 w-52 rounded-md border bg-popover shadow-md p-1">
-                        <label htmlFor="chat-image-input-mobile" onClick={() => setMobileAddOpen(false)}
-                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
-                          style={{cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
-                          <ImageIcon className="w-4 h-4 text-muted-foreground"/>ส่งรูป / วิดีโอ
-                        </label>
-                        <label htmlFor="chat-file-input-mobile" onClick={() => setMobileAddOpen(false)}
-                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
-                          style={{cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
-                          <Paperclip className="w-4 h-4 text-muted-foreground"/>ส่งไฟล์เอกสาร
-                        </label>
-                        <button type="button" onClick={() => { setMobileAddOpen(false); setShowQuick(s => !s); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent">
-                          <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
-                        </button>
-                        <button type="button" onClick={() => { setMobileAddOpen(false); setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent">
-                          <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
-                        </button>
-                      </div>
-                    </>
-                  )}
+                  <Button size="icon" variant="ghost" type="button" title="ส่งไฟล์เอกสาร"
+                    onTouchEnd={(e) => { e.preventDefault(); setTimeout(() => document.getElementById("chat-file-input-mobile")?.click(), 50); }}
+                    onClick={() => document.getElementById("chat-file-input-mobile")?.click()}>
+                    <Paperclip className="w-5 h-5"/>
+                  </Button>
+                  <Button size="icon" variant="ghost" type="button" title="แทรกฟอร์มขอข้อมูล"
+                    onClick={() => setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)}>
+                    <FileText className="w-5 h-5"/>
+                  </Button>
+                  <Button size="icon" variant="ghost" type="button" title="คำตอบสำเร็จรูป"
+                    onClick={() => setShowQuick(s => !s)}>
+                    <MessageSquareText className="w-5 h-5"/>
+                  </Button>
                 </div>
 
 
