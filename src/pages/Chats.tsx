@@ -213,7 +213,7 @@ export default function Chats() {
   const [filter, setFilter] = useState<FilterKind>("all");
   const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
-  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
+  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number; uploading?: boolean; localId?: string; error?: boolean }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   
