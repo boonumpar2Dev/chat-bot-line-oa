@@ -1155,6 +1155,12 @@ export default function Chats() {
                 </button>
               </div>
             )}
+            <input id="chat-image-input-mobile" type="file"
+              accept="image/*,video/*" multiple
+              onChange={handleFilesPick} className="hidden"/>
+            <input id="chat-file-input-mobile" type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv" multiple
+              onChange={handleFilesPick} className="hidden"/>
 
 
 
@@ -1165,29 +1171,25 @@ export default function Chats() {
               <div className="max-w-3xl mx-auto flex gap-2 items-end">
                 <input ref={fileInputRef} id="chat-file-input" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
-                {/* Mobile-only separate inputs so labels can trigger picker directly (no Popover/Radix interception) */}
-                <input id="chat-image-input-mobile" type="file" accept="image/*,video/*"
-                  onChange={handleFilesPick} className="hidden"/>
-                <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv"
-                  onChange={handleFilesPick} className="hidden"/>
-
                 {/* Mobile: 4 separate buttons */}
-                <div className="sm:hidden flex items-center gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" type="button" title="ส่งรูป/วิดีโอ"
-                    onTouchEnd={(e) => { e.preventDefault(); setTimeout(() => document.getElementById("chat-image-input-mobile")?.click(), 50); }}
+                <div className="sm:hidden flex items-center gap-1 px-1 pt-1 pb-0">
+                  <Button size="icon" variant="ghost" type="button"
+                    aria-label="ส่งรูป/วิดีโอ"
                     onClick={() => document.getElementById("chat-image-input-mobile")?.click()}>
                     <ImageIcon className="w-5 h-5"/>
                   </Button>
-                  <Button size="icon" variant="ghost" type="button" title="ส่งไฟล์เอกสาร"
-                    onTouchEnd={(e) => { e.preventDefault(); setTimeout(() => document.getElementById("chat-file-input-mobile")?.click(), 50); }}
+                  <Button size="icon" variant="ghost" type="button"
+                    aria-label="ส่งไฟล์เอกสาร"
                     onClick={() => document.getElementById("chat-file-input-mobile")?.click()}>
                     <Paperclip className="w-5 h-5"/>
                   </Button>
-                  <Button size="icon" variant="ghost" type="button" title="แทรกฟอร์มขอข้อมูล"
+                  <Button size="icon" variant="ghost" type="button"
+                    aria-label="แทรกฟอร์มขอข้อมูล"
                     onClick={() => setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)}>
                     <FileText className="w-5 h-5"/>
                   </Button>
-                  <Button size="icon" variant="ghost" type="button" title="คำตอบสำเร็จรูป"
+                  <Button size="icon" variant="ghost" type="button"
+                    aria-label="คำตอบสำเร็จรูป"
                     onClick={() => setShowQuick(s => !s)}>
                     <MessageSquareText className="w-5 h-5"/>
                   </Button>
