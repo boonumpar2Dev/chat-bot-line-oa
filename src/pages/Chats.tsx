@@ -1159,7 +1159,7 @@ export default function Chats() {
               accept="image/*,video/*" multiple
               onChange={handleFilesPick} className="hidden"/>
             <input id="chat-file-input-mobile" type="file"
-              accept="*/*" multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv" multiple
               onChange={handleFilesPick} className="hidden"/>
 
 
