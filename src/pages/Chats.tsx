@@ -1201,9 +1201,16 @@ export default function Chats() {
             </ScrollArea>
 
             {/* Staged files */}
-            <StagedMessageBar files={stagedFiles.map(f => f.url)}
-              onRemoveFile={(u) => setStagedFiles(p => p.filter(x => x.url !== u))}
-              onClearAll={() => setStagedFiles([])}/>
+            <StagedMessageBar items={stagedFiles.map(f => ({ url: f.url, uploading: !!f.uploading, name: f.name }))}
+              onRemoveFile={(u) => setStagedFiles(p => {
+                const target = p.find(x => x.url === u);
+                if (target?.url.startsWith("blob:")) { try { URL.revokeObjectURL(target.url); } catch {} }
+                return p.filter(x => x.url !== u);
+              })}
+              onClearAll={() => setStagedFiles(p => {
+                p.forEach(x => { if (x.url.startsWith("blob:")) { try { URL.revokeObjectURL(x.url); } catch {} } });
+                return [];
+              })}/>
 
             {/* Staged sticker */}
             {stagedSticker && (
