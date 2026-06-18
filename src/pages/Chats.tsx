@@ -705,10 +705,10 @@ export default function Chats() {
       const result = await uploadToStorage(it.file);
       if (result) {
         okCount++;
-        appendReadyFilesToDraft(userId, selectedId, [result]);
         setStagedFiles(p => p.map(f => f.localId === it.localId
           ? { url: result.url, name: result.name, size: result.size }
           : f));
+        appendReadyFilesToDraft(userId, selectedId, [result]);
         try { if (it.previewUrl) URL.revokeObjectURL(it.previewUrl); } catch {}
       } else {
         failCount++;
