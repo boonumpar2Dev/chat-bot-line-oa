@@ -919,7 +919,7 @@ export default function Chats() {
         ) : (
           <>
             {/* Header */}
-            <div className="border-b bg-card p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+            <div className="border-b bg-card p-2.5 pr-3 sm:p-3 flex items-center gap-2 sm:gap-3">
               <Button size="icon" variant="ghost" className="lg:hidden shrink-0 h-9 w-9" onClick={() => setSelectedId(null)}>
                 <ArrowLeft className="w-4 h-4"/>
               </Button>
