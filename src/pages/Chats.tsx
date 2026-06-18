@@ -166,12 +166,23 @@ const draftKey = (userId: string | undefined, customerId: string) =>
 type StagedFile = { url: string; name: string; size: number; uploading?: boolean; localId?: string; error?: boolean };
 type ReadyFile = Pick<StagedFile, "url" | "name" | "size">;
 type Draft = { text?: string; files?: ReadyFile[] };
-const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
-  if (!customerId) return {};
+const readDraftByStorageKey = (key: string): Draft => {
   try {
-    const raw = localStorage.getItem(draftKey(userId, customerId));
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : {};
   } catch { return {}; }
+};
+const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
+  if (!customerId) return {};
+  const own = readDraftByStorageKey(draftKey(userId, customerId));
+  if (!userId) return own;
+  const anon = readDraftByStorageKey(draftKey(undefined, customerId));
+  if (!anon.text && !anon.files?.length) return own;
+  const seen = new Set((own.files || []).map(f => f.url));
+  return {
+    text: own.text || anon.text,
+    files: [...(own.files || []), ...(anon.files || []).filter(f => !seen.has(f.url))],
+  };
 };
 
 const isReadyFile = (f: StagedFile): f is ReadyFile =>
