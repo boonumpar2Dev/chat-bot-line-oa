@@ -1176,14 +1176,14 @@ export default function Chats() {
               <QuickResponsePopup show={showQuick} filter={reply.startsWith("/") ? reply.slice(1) : ""}
                 onSelect={onSelectQuick} onClose={() => setShowQuick(false)}/>
               <div className="sm:hidden flex items-center gap-1 px-2 pt-2 pb-1 border-b border-border/30">
-                <Button size="icon" variant="ghost" type="button"
-                  onClick={() => document.getElementById("chat-image-input-mobile")?.click()}>
+                <label htmlFor="chat-image-input-mobile"
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent cursor-pointer">
                   <ImageIcon className="w-5 h-5"/>
-                </Button>
-                <Button size="icon" variant="ghost" type="button"
-                  onClick={() => document.getElementById("chat-file-input-mobile")?.click()}>
+                </label>
+                <label htmlFor="chat-file-input-mobile"
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-md hover:bg-accent cursor-pointer">
                   <Paperclip className="w-5 h-5"/>
-                </Button>
+                </label>
                 <Button size="icon" variant="ghost" type="button"
                   onClick={() => setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)}>
                   <FileText className="w-5 h-5"/>
