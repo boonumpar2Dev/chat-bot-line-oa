@@ -753,11 +753,15 @@ export default function Chats() {
   }, []);
 
   const sendReply = async () => {
-    if ((!reply.trim() && stagedFiles.length === 0 && !stagedSticker) || !selected) return;
+    if (!selected) return;
+    const readyFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:") && !f.url.startsWith("pending:"));
+    const hasPending = stagedFiles.some(f => f.uploading);
+    if (hasPending) { toast.error("กรุณารอไฟล์อัปโหลดเสร็จก่อน"); return; }
+    if (!reply.trim() && readyFiles.length === 0 && !stagedSticker) return;
     setSending(true);
     try {
       const lineMessages: any[] = [];
-      for (const f of stagedFiles) {
+      for (const f of readyFiles) {
         const t = getFileType(f.url);
         if (t === "image") {
           lineMessages.push({ type: "image", originalContentUrl: f.url, previewImageUrl: f.url });
