@@ -216,6 +216,7 @@ export default function Chats() {
   const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const [mobileAddOpen, setMobileAddOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<{ id: string; quoteToken: string; sender: string; snippet: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [sending, setSending] = useState(false);
@@ -918,7 +919,7 @@ export default function Chats() {
         ) : (
           <>
             {/* Header */}
-            <div className="border-b bg-card p-2.5 sm:p-3 flex items-center gap-2 sm:gap-3">
+            <div className="border-b bg-card p-2.5 pr-3 sm:p-3 flex items-center gap-2 sm:gap-3">
               <Button size="icon" variant="ghost" className="lg:hidden shrink-0 h-9 w-9" onClick={() => setSelectedId(null)}>
                 <ArrowLeft className="w-4 h-4"/>
               </Button>
@@ -1151,37 +1152,37 @@ export default function Chats() {
                 {/* Mobile-only separate inputs so labels can trigger picker directly (no Popover/Radix interception) */}
                 <input id="chat-image-input-mobile" type="file" accept="image/*,video/*" multiple
                   onChange={handleFilesPick} className="hidden"/>
-                <input id="chat-file-input-mobile" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
+                <input id="chat-file-input-mobile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple
                   onChange={handleFilesPick} className="hidden"/>
 
-                {/* Mobile: direct image + file labels (outside Popover so picker opens reliably) */}
-                <label htmlFor="chat-image-input-mobile"
-                  className={`sm:hidden shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
-                  title="ส่งรูป/วิดีโอ" aria-label="ส่งรูป/วิดีโอ">
-                  {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <ImageIcon className="w-5 h-5"/>}
-                </label>
-                <label htmlFor="chat-file-input-mobile"
-                  className={`sm:hidden shrink-0 inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
-                  title="ส่งไฟล์" aria-label="ส่งไฟล์">
-                  <Paperclip className="w-5 h-5"/>
-                </label>
+                {/* Mobile: single "+" button with custom panel (NOT Radix Popover — so <label> picker works reliably) */}
+                <div className="sm:hidden relative shrink-0">
+                  <Button size="icon" variant="ghost" type="button" onClick={() => setMobileAddOpen(o => !o)} title="เพิ่มเติม" aria-label="เพิ่มเติม">
+                    <Plus className="w-5 h-5"/>
+                  </Button>
+                  {mobileAddOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMobileAddOpen(false)}/>
+                      <div className="absolute bottom-full left-0 mb-2 z-50 w-52 rounded-md border bg-popover shadow-md p-1">
+                        <label htmlFor="chat-image-input-mobile" onClick={() => setMobileAddOpen(false)}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+                          <ImageIcon className="w-4 h-4 text-muted-foreground"/>ส่งรูป / วิดีโอ
+                        </label>
+                        <label htmlFor="chat-file-input-mobile" onClick={() => setMobileAddOpen(false)}
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+                          <Paperclip className="w-4 h-4 text-muted-foreground"/>ส่งไฟล์เอกสาร
+                        </label>
+                        <button type="button" onClick={() => { setMobileAddOpen(false); setShowQuick(s => !s); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent">
+                          <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
+                        </button>
+                        <button type="button" onClick={() => { setMobileAddOpen(false); setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE); }} className="w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent">
+                          <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
 
-                {/* Mobile: "+" popover for the rest (quick replies / form) */}
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button size="icon" variant="ghost" type="button" className="sm:hidden shrink-0" title="เพิ่มเติม">
-                      <Plus className="w-5 h-5"/>
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent side="top" align="start" className="w-44 p-1">
-                    <button type="button" onClick={() => setShowQuick(s => !s)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
-                      <MessageSquareText className="w-4 h-4 text-muted-foreground"/>คำตอบสำเร็จรูป
-                    </button>
-                    <button type="button" onClick={()=>setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)} className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent">
-                      <FileText className="w-4 h-4 text-muted-foreground"/>แทรกฟอร์มขอข้อมูล
-                    </button>
-                  </PopoverContent>
-                </Popover>
 
                 {/* Desktop: 3 inline buttons */}
                 <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="แนบไฟล์">
