@@ -1181,7 +1181,8 @@ export default function Chats() {
                       <div className="fixed inset-0 z-40" onClick={() => setMobileAddOpen(false)}/>
                       <div className="absolute bottom-full left-0 mb-2 z-50 w-52 rounded-md border bg-popover shadow-md p-1">
                         <label htmlFor="chat-image-input-mobile" onClick={() => setMobileAddOpen(false)}
-                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}>
+                          className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm rounded-md hover:bg-accent cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}
+                          style={{cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
                           <ImageIcon className="w-4 h-4 text-muted-foreground"/>ส่งรูป / วิดีโอ
                         </label>
                         <label htmlFor="chat-file-input-mobile" onClick={() => setMobileAddOpen(false)}
