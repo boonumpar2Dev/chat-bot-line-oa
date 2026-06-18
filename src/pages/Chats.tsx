@@ -163,13 +163,54 @@ function matchesFilter(c: any, filter: FilterKind): boolean {
 const LAST_CUSTOMER_KEY = "chats:lastCustomer";
 const draftKey = (userId: string | undefined, customerId: string) =>
   `chats:draft:${userId || "anon"}:${customerId}`;
-type Draft = { text?: string; files?: { url: string; name: string; size: number }[] };
-const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
-  if (!customerId) return {};
+type StagedFile = { url: string; name: string; size: number; uploading?: boolean; localId?: string; error?: boolean };
+type ReadyFile = Pick<StagedFile, "url" | "name" | "size">;
+type Draft = { text?: string; files?: ReadyFile[] };
+const readDraftByStorageKey = (key: string): Draft => {
   try {
-    const raw = localStorage.getItem(draftKey(userId, customerId));
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : {};
   } catch { return {}; }
+};
+const readDraft = (userId: string | undefined, customerId: string | null): Draft => {
+  if (!customerId) return {};
+  const own = readDraftByStorageKey(draftKey(userId, customerId));
+  if (!userId) return own;
+  const anon = readDraftByStorageKey(draftKey(undefined, customerId));
+  if (!anon.text && !anon.files?.length) return own;
+  const seen = new Set((own.files || []).map(f => f.url));
+  return {
+    text: own.text || anon.text,
+    files: [...(own.files || []), ...(anon.files || []).filter(f => !seen.has(f.url))],
+  };
+};
+
+const isReadyFile = (f: StagedFile): f is ReadyFile =>
+  !f.uploading && !f.error && !f.url.startsWith("blob:") && !f.url.startsWith("pending:");
+
+const saveDraft = (userId: string | undefined, customerId: string, draft: Draft) => {
+  try {
+    if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
+      localStorage.setItem(draftKey(userId, customerId), JSON.stringify(draft));
+    } else {
+      localStorage.removeItem(draftKey(userId, customerId));
+    }
+    window.dispatchEvent(new CustomEvent("chats:draft-updated", { detail: { customerId } }));
+  } catch {}
+};
+
+const persistDraft = (userId: string | undefined, customerId: string, draft: Draft) => {
+  const current = readDraft(userId, customerId);
+  if (!draft.text && !draft.files?.length && current.files?.length) return;
+  saveDraft(userId, customerId, draft);
+};
+
+const appendReadyFilesToDraft = (userId: string | undefined, customerId: string | null, files: ReadyFile[]) => {
+  if (!customerId || !files.length) return;
+  const current = readDraft(userId, customerId);
+  const seen = new Set((current.files || []).map(f => f.url));
+  const merged = [...(current.files || []), ...files.filter(f => !seen.has(f.url))];
+  saveDraft(userId, customerId, { ...current, files: merged });
 };
 
 export default function Chats() {
@@ -213,7 +254,7 @@ export default function Chats() {
   const [filter, setFilter] = useState<FilterKind>("all");
   const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
-  const [stagedFiles, setStagedFiles] = useState<{ url: string; name: string; size: number; uploading?: boolean; localId?: string; error?: boolean }[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
   const [stagedSticker, setStagedSticker] = useState<{ packageId: string; stickerId: string } | null>(null);
   const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
   
@@ -431,15 +472,8 @@ export default function Chats() {
     // Save draft of previous customer before switching
     const prev = prevDraftIdRef.current;
     if (prev && prev !== selectedId) {
-      try {
-        const persistFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:"));
-        const draft: Draft = { text: reply, files: persistFiles };
-        if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
-          localStorage.setItem(draftKey(userId, prev), JSON.stringify(draft));
-        } else {
-          localStorage.removeItem(draftKey(userId, prev));
-        }
-      } catch {}
+      const persistFiles = stagedFiles.filter(isReadyFile);
+      persistDraft(userId, prev, { text: reply, files: persistFiles });
     }
     // Load draft for the newly selected customer (only when actually switching)
     if (prev !== selectedId) {
@@ -459,14 +493,8 @@ export default function Chats() {
   useEffect(() => {
     if (!selectedId) return;
     const t = setTimeout(() => {
-      try {
-        const persistFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:"));
-        if (reply.length || persistFiles.length) {
-          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: persistFiles }));
-        } else {
-          localStorage.removeItem(draftKey(userId, selectedId));
-        }
-      } catch {}
+      const persistFiles = stagedFiles.filter(isReadyFile);
+      persistDraft(userId, selectedId, { text: reply, files: persistFiles });
     }, 300);
     return () => clearTimeout(t);
   }, [reply, stagedFiles, selectedId, userId]);
@@ -509,10 +537,12 @@ export default function Chats() {
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", restore);
     window.addEventListener("pageshow", restore);
+    window.addEventListener("chats:draft-updated", restore as EventListener);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", restore);
       window.removeEventListener("pageshow", restore);
+      window.removeEventListener("chats:draft-updated", restore as EventListener);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, selectedId]);
@@ -695,6 +725,7 @@ export default function Chats() {
         setStagedFiles(p => p.map(f => f.localId === it.localId
           ? { url: result.url, name: result.name, size: result.size }
           : f));
+        appendReadyFilesToDraft(userId, selectedId, [result]);
         try { if (it.previewUrl) URL.revokeObjectURL(it.previewUrl); } catch {}
       } else {
         failCount++;
@@ -754,7 +785,7 @@ export default function Chats() {
 
   const sendReply = async () => {
     if (!selected) return;
-    const readyFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:") && !f.url.startsWith("pending:"));
+    const readyFiles = stagedFiles.filter(isReadyFile);
     const hasPending = stagedFiles.some(f => f.uploading);
     if (hasPending) { toast.error("กรุณารอไฟล์อัปโหลดเสร็จก่อน"); return; }
     if (!reply.trim() && readyFiles.length === 0 && !stagedSticker) return;
@@ -1205,10 +1236,13 @@ export default function Chats() {
               onRemoveFile={(u) => setStagedFiles(p => {
                 const target = p.find(x => x.url === u);
                 if (target?.url.startsWith("blob:")) { try { URL.revokeObjectURL(target.url); } catch {} }
-                return p.filter(x => x.url !== u);
+                const next = p.filter(x => x.url !== u);
+                if (selectedId) saveDraft(userId, selectedId, { text: reply, files: next.filter(isReadyFile) });
+                return next;
               })}
               onClearAll={() => setStagedFiles(p => {
                 p.forEach(x => { if (x.url.startsWith("blob:")) { try { URL.revokeObjectURL(x.url); } catch {} } });
+                if (selectedId) saveDraft(userId, selectedId, { text: reply, files: [] });
                 return [];
               })}/>
 
