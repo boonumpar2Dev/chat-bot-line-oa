@@ -484,6 +484,37 @@ export default function Chats() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  // Mobile resilience: when the tab becomes visible again (after Android file picker /
+  // app switcher), re-read draft from localStorage and merge any files that aren't
+  // already staged. Fixes the case where the WebView lost in-memory React state during
+  // the picker round-trip but uploadFiles had already persisted results to storage.
+  useEffect(() => {
+    if (!selectedId) return;
+    const restore = () => {
+      try {
+        const d = readDraft(userId, selectedId);
+        if (d.files && d.files.length) {
+          setStagedFiles(prev => {
+            const seen = new Set(prev.map(f => f.url));
+            const extras = d.files!.filter(f => !seen.has(f.url));
+            return extras.length ? [...prev, ...extras] : prev;
+          });
+        }
+        if (d.text) setReply(r => (r ? r : d.text!));
+      } catch {}
+    };
+    const onVis = () => { if (document.visibilityState === "visible") restore(); };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", restore);
+    window.addEventListener("pageshow", restore);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", restore);
+      window.removeEventListener("pageshow", restore);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, selectedId]);
+
 
 
   // โหลดชื่อแสดงของแอดมินทุกคน (ใช้แทนคำว่า "แอดมิน" ในบับเบิลข้อความ)
