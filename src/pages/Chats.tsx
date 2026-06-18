@@ -286,6 +286,22 @@ export default function Chats() {
   };
   useEffect(() => { refreshCounts(); }, []);
 
+  // Polling fallback + refocus → keep filter counts fresh even if realtime drops
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") refreshCounts();
+    }, 20000);
+    const onFocus = () => refreshCounts();
+    const onVisible = () => { if (document.visibilityState === "visible") refreshCounts(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
   // Ensure deep-linked customer (?customer=id) row is loaded into list
   useEffect(() => {
     if (!selectedId) return;
