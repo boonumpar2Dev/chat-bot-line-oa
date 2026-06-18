@@ -666,39 +666,54 @@ export default function Chats() {
 
   const uploadFiles = async (files: File[]) => {
     if (!files.length) return;
+    // 1) Pre-stage every file IMMEDIATELY so the user sees them in the composer
+    //    even if the picker round-trip caused a remount (Android Chrome/Samsung Internet).
+    const items = files.map(file => {
+      const localId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      let previewUrl = "";
+      try { previewUrl = URL.createObjectURL(file); } catch {}
+      return { file, localId, previewUrl };
+    });
+    setStagedFiles(p => [
+      ...p,
+      ...items.map(it => ({
+        url: it.previewUrl || `pending:${it.localId}`,
+        name: it.file.name,
+        size: it.file.size,
+        uploading: true,
+        localId: it.localId,
+      })),
+    ]);
     setUploading(true);
-    try {
-      const results = (await Promise.all(files.map(uploadToStorage))).filter(Boolean) as { url: string; name: string; size: number }[];
-      if (results.length === 0) {
-        toast.error("ไม่สามารถอัปโหลดไฟล์ได้ กรุณาลองใหม่");
-        return;
+    let okCount = 0;
+    let failCount = 0;
+    // 2) Upload one-by-one in the background; swap each entry to the real URL when ready.
+    for (const it of items) {
+      const result = await uploadToStorage(it.file);
+      if (result) {
+        okCount++;
+        setStagedFiles(p => p.map(f => f.localId === it.localId
+          ? { url: result.url, name: result.name, size: result.size }
+          : f));
+        try { if (it.previewUrl) URL.revokeObjectURL(it.previewUrl); } catch {}
+      } else {
+        failCount++;
+        setStagedFiles(p => p.filter(f => f.localId !== it.localId));
+        try { if (it.previewUrl) URL.revokeObjectURL(it.previewUrl); } catch {}
       }
-      setStagedFiles(p => {
-        const next = [...p, ...results];
-        // Persist immediately in case the browser unmounts/reloads (e.g. Android Samsung Internet after picker)
-        try {
-          if (userId && selectedId) {
-            localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: next }));
-          }
-        } catch {}
-        return next;
-      });
-    } finally {
-      setUploading(false);
     }
+    setUploading(false);
+    if (okCount > 0) toast.success(`แนบไฟล์ ${okCount} ไฟล์เรียบร้อย`);
+    if (failCount > 0) toast.error(`อัปโหลด ${failCount} ไฟล์ไม่สำเร็จ`);
   };
   const handleFilesPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // Capture files synchronously — some mobile browsers clear e.target.files during await
     const picked = Array.from(e.target.files || []);
     e.target.value = "";
     if (!picked.length) { toast.error("ไม่ได้เลือกไฟล์"); return; }
-    const tId = toast.loading(`กำลังอัปโหลด ${picked.length} ไฟล์...`);
-    try {
-      await uploadFiles(picked);
-      toast.success(`แนบไฟล์ ${picked.length} ไฟล์เรียบร้อย`, { id: tId });
-    } catch (err: any) {
-      toast.error(`อัปโหลดไม่สำเร็จ: ${err?.message || "unknown"}`, { id: tId });
-    }
+    // Fire-and-forget: pre-staging happens inside uploadFiles synchronously,
+    // so files appear in the composer immediately even on slow networks.
+    uploadFiles(picked);
   };
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
