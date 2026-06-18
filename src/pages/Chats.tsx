@@ -279,7 +279,7 @@ export default function Chats() {
     const [u, m, fp, aa] = await Promise.all([
       base().gt("unread_count", 0),
       base().eq("ai_active", false),
-      base().or("status.eq.pending_quote,and(phone.not.is.null,last_sender.eq.ai,admin_unseen.eq.true)"),
+      base().not("phone", "is", null).or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)"),
       base().eq("last_sender", "ai").eq("admin_unseen", true),
     ]);
     setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
