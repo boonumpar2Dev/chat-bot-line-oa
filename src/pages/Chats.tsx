@@ -1573,12 +1573,14 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
   const fileUrls = nonMediaUrls.filter(hasFileExt);
   const plainLinkUrls = nonMediaUrls.filter((u: string) => !hasFileExt(u));
   const fileLabelMatch = m.message.match(/\[ไฟล์(?::\s*([^\]]+))?\]/);
-  const fileLabel = fileLabelMatch?.[1]?.trim() || "";
+  const altFileLabelMatch = m.message.match(/📄\s*ไฟล์:\s*([^\n]+)/);
+  const fileLabel = (fileLabelMatch?.[1] || altFileLabelMatch?.[1] || "").trim();
   const ocrMatch = m.message.match(/📄\s*เนื้อหาในรูป:\s*\n?([\s\S]*)$/);
   const ocrText = ocrMatch?.[1]?.trim() || "";
   const location = extractLocation(m.message);
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
+    .replace(/📄\s*ไฟล์:\s*[^\n]+/g, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
     .replace(/🎭\s*https?:\/\/\S+/g, "")
     .replace(/\[ตำแหน่ง\][\s\S]*?(?=\n\n|$)/g, "")
