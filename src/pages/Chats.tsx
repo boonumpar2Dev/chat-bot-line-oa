@@ -1580,6 +1580,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
   const location = extractLocation(m.message);
   let cleaned = m.message
     .replace(/📄\s*เนื้อหาในรูป:[\s\S]*$/, "")
+    .replace(/📄\s*ไฟล์:\s*[^\n]+/g, "")
     .replace(/📎\s*https?:\/\/\S+/g, "")
     .replace(/🎭\s*https?:\/\/\S+/g, "")
     .replace(/\[ตำแหน่ง\][\s\S]*?(?=\n\n|$)/g, "")
