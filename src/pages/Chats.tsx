@@ -432,7 +432,8 @@ export default function Chats() {
     const prev = prevDraftIdRef.current;
     if (prev && prev !== selectedId) {
       try {
-        const draft: Draft = { text: reply, files: stagedFiles };
+        const persistFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:"));
+        const draft: Draft = { text: reply, files: persistFiles };
         if ((draft.text && draft.text.length) || (draft.files && draft.files.length)) {
           localStorage.setItem(draftKey(userId, prev), JSON.stringify(draft));
         } else {
@@ -459,8 +460,9 @@ export default function Chats() {
     if (!selectedId) return;
     const t = setTimeout(() => {
       try {
-        if (reply.length || stagedFiles.length) {
-          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: stagedFiles }));
+        const persistFiles = stagedFiles.filter(f => !f.uploading && !f.error && !f.url.startsWith("blob:"));
+        if (reply.length || persistFiles.length) {
+          localStorage.setItem(draftKey(userId, selectedId), JSON.stringify({ text: reply, files: persistFiles }));
         } else {
           localStorage.removeItem(draftKey(userId, selectedId));
         }
