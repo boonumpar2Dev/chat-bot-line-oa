@@ -1236,10 +1236,13 @@ export default function Chats() {
               onRemoveFile={(u) => setStagedFiles(p => {
                 const target = p.find(x => x.url === u);
                 if (target?.url.startsWith("blob:")) { try { URL.revokeObjectURL(target.url); } catch {} }
-                return p.filter(x => x.url !== u);
+                const next = p.filter(x => x.url !== u);
+                if (selectedId) saveDraft(userId, selectedId, { text: reply, files: next.filter(isReadyFile) });
+                return next;
               })}
               onClearAll={() => setStagedFiles(p => {
                 p.forEach(x => { if (x.url.startsWith("blob:")) { try { URL.revokeObjectURL(x.url); } catch {} } });
+                if (selectedId) saveDraft(userId, selectedId, { text: reply, files: [] });
                 return [];
               })}/>
 
