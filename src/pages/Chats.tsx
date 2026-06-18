@@ -1155,6 +1155,12 @@ export default function Chats() {
                 </button>
               </div>
             )}
+            <input id="chat-image-input-mobile" type="file"
+              accept="image/*,video/*" multiple
+              onChange={handleFilesPick} className="hidden"/>
+            <input id="chat-file-input-mobile" type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.csv" multiple
+              onChange={handleFilesPick} className="hidden"/>
 
 
 
