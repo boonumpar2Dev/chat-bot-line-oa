@@ -1168,34 +1168,27 @@ export default function Chats() {
             <div className="border-t bg-card p-3 relative pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <QuickResponsePopup show={showQuick} filter={reply.startsWith("/") ? reply.slice(1) : ""}
                 onSelect={onSelectQuick} onClose={() => setShowQuick(false)}/>
+              <div className="sm:hidden flex items-center gap-1 px-2 pt-2 pb-1 border-b border-border/30">
+                <Button size="icon" variant="ghost" type="button"
+                  onClick={() => document.getElementById("chat-image-input-mobile")?.click()}>
+                  <ImageIcon className="w-5 h-5"/>
+                </Button>
+                <Button size="icon" variant="ghost" type="button"
+                  onClick={() => document.getElementById("chat-file-input-mobile")?.click()}>
+                  <Paperclip className="w-5 h-5"/>
+                </Button>
+                <Button size="icon" variant="ghost" type="button"
+                  onClick={() => setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)}>
+                  <FileText className="w-5 h-5"/>
+                </Button>
+                <Button size="icon" variant="ghost" type="button"
+                  onClick={() => setShowQuick(s => !s)}>
+                  <MessageSquareText className="w-5 h-5"/>
+                </Button>
+              </div>
               <div className="max-w-3xl mx-auto flex gap-2 items-end">
                 <input ref={fileInputRef} id="chat-file-input" type="file" accept="image/*,video/*,.pdf,.doc,.docx" multiple
                   onChange={handleFilesPick} className="hidden"/>
-                {/* Mobile: 4 separate buttons */}
-                <div className="sm:hidden flex items-center gap-1 px-1 pt-1 pb-0">
-                  <Button size="icon" variant="ghost" type="button"
-                    aria-label="ส่งรูป/วิดีโอ"
-                    onClick={() => document.getElementById("chat-image-input-mobile")?.click()}>
-                    <ImageIcon className="w-5 h-5"/>
-                  </Button>
-                  <Button size="icon" variant="ghost" type="button"
-                    aria-label="ส่งไฟล์เอกสาร"
-                    onClick={() => document.getElementById("chat-file-input-mobile")?.click()}>
-                    <Paperclip className="w-5 h-5"/>
-                  </Button>
-                  <Button size="icon" variant="ghost" type="button"
-                    aria-label="แทรกฟอร์มขอข้อมูล"
-                    onClick={() => setReply(p => p ? p + "\n" + QUOTE_FORM_TEMPLATE : QUOTE_FORM_TEMPLATE)}>
-                    <FileText className="w-5 h-5"/>
-                  </Button>
-                  <Button size="icon" variant="ghost" type="button"
-                    aria-label="คำตอบสำเร็จรูป"
-                    onClick={() => setShowQuick(s => !s)}>
-                    <MessageSquareText className="w-5 h-5"/>
-                  </Button>
-                </div>
-
-
                 {/* Desktop: 3 inline buttons */}
                 <Button size="icon" variant="ghost" type="button" className="hidden sm:inline-flex" onClick={() => fileInputRef.current?.click()} disabled={uploading} title="แนบไฟล์">
                   {uploading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Paperclip className="w-4 h-4"/>}
