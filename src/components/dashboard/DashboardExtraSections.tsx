@@ -180,7 +180,8 @@ function DailyReportTable() {
         supabase
           .from("customers")
           .select("created_at,updated_at,status,phone,event_date,guest_count")
-          .or(`created_at.gte.${since},updated_at.gte.${since}`),
+          .or(`created_at.gte.${since},updated_at.gte.${since}`)
+          .limit(10000),
         supabase
           .from("conversations")
           .select("created_at,sender")
