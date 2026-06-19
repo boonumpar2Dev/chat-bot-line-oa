@@ -359,6 +359,7 @@ function FunnelSection() {
     const nd = new Date(d);
     if (mode === "day") nd.setDate(nd.getDate() + dir);
     else nd.setMonth(nd.getMonth() + dir);
+    if (nd < FUNNEL_MIN_DATE) return d;
     return nd;
   };
 
