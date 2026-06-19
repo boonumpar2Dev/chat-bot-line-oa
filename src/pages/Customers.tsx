@@ -43,6 +43,15 @@ const DEFAULT_TIERS: TierDef[] = [
 
 const PAGE_SIZE = 50;
 
+const TH_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const TH_MONTHS_FULL: Record<string,string> = {
+  "ม.ค.": "มกราคม","ก.พ.": "กุมภาพันธ์","มี.ค.": "มีนาคม","เม.ย.": "เมษายน",
+  "พ.ค.": "พฤษภาคม","มิ.ย.": "มิถุนายน","ก.ค.": "กรกฎาคม","ส.ค.": "สิงหาคม",
+  "ก.ย.": "กันยายน","ต.ค.": "ตุลาคม","พ.ย.": "พฤศจิกายน","ธ.ค.": "ธันวาคม",
+};
+const parseCsv = (s: string | null) => (s ? s.split(",").map(x => x.trim()).filter(Boolean) : []);
+const toCsv = (arr: string[]) => arr.join(",");
+
 export default function Customers() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
