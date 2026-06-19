@@ -534,7 +534,12 @@ export default function Customers() {
             <p>ไม่พบลูกค้า</p>
           </div>
         ) : (
-          <div className="p-3 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className={cn(
+            "p-3 lg:p-4 gap-3",
+            viewMode === "card"
+              ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+              : "flex flex-col max-w-3xl mx-auto"
+          )}>
             {filtered.map(c => {
               const tierDef = c.tier ? tierByName[c.tier] : null;
               const isSelected = selected.has(c.id);
