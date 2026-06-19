@@ -307,7 +307,8 @@ async function fetchFunnel(mode: FunnelMode, date: Date) {
     .from("customers")
     .select("status")
     .gte("created_at", from.toISOString())
-    .lte("created_at", to.toISOString());
+    .lte("created_at", to.toISOString())
+    .limit(10000);
   if (error) throw error;
   const counts: Record<string, number> = {};
   (data ?? []).forEach((r: any) => {
