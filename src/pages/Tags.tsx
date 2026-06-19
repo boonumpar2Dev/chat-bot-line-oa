@@ -39,9 +39,9 @@ const PRESET_COLORS = ["#94a3b8","#ef4444","#f97316","#eab308","#22c55e","#06b6d
 const STATUS_LABEL: Record<string, string> = {
   new: "ลูกค้าใหม่", inquiry: "สอบถาม", returning: "ลูกค้าเก่า",
   pending_quote: "รอเสนอราคา", pending_confirm: "รอคอนเฟิร์ม",
-  confirmed: "คอนเฟิร์ม", confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)", postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)", cancelled: "ยกเลิก",
+  confirmed: "คอนเฟิร์ม", confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)", completed: "จัดงานจบแล้ว", postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)", cancelled: "ยกเลิก",
 };
-const STATUS_KEYS = ["new","inquiry","returning","pending_quote","pending_confirm","confirmed","confirmed_returning","postponed","cancelled"];
+const STATUS_KEYS = ["new","inquiry","returning","pending_quote","pending_confirm","confirmed","confirmed_returning","completed","postponed","cancelled"];
 
 const MONTH_PREVIEW: Record<string, string[]> = {
   short_th: ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."],
