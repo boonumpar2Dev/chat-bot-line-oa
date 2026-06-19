@@ -172,7 +172,7 @@ function NewCustomersChart() {
 /* ============= Section 2: Daily Report Table ============= */
 function DailyReportTable() {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["daily-report-7d"],
+    queryKey: ["daily-report-7d-v2"],
     queryFn: async () => {
       const days: Date[] = [];
       for (let i = 6; i >= 0; i--) {
