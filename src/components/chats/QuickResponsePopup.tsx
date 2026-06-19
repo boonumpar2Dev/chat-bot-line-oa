@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Loader2, X, FileText, Paperclip, Film, Pencil } from "lucide-react";
+import { Plus, Trash2, Loader2, X, FileText, Paperclip, Film, Pencil, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -71,6 +71,7 @@ export default function QuickResponsePopup({
   const [form, setForm] = useState({ name: "", text: "", image_urls: [] as string[], file_urls: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -89,8 +90,9 @@ export default function QuickResponsePopup({
     return () => document.removeEventListener("mousedown", h);
   }, [show, onClose]);
 
-  const filtered = filter
-    ? responses.filter(r => r.name.toLowerCase().includes(filter.toLowerCase()) || r.text.toLowerCase().includes(filter.toLowerCase()))
+  const q = (search || filter || "").trim().toLowerCase();
+  const filtered = q
+    ? responses.filter(r => r.name.toLowerCase().includes(q) || r.text.toLowerCase().includes(q))
     : responses;
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -152,6 +154,23 @@ export default function QuickResponsePopup({
             <Plus className="w-3 h-3"/> เพิ่ม
           </button>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted"><X className="w-4 h-4"/></button>
+        </div>
+      </div>
+
+      <div className="px-3 py-2 border-b bg-background">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground"/>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="ค้นหาด้วยชื่อหรือข้อความ..."
+            className="w-full pl-8 pr-8 py-1.5 rounded-lg border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted">
+              <X className="w-3 h-3 text-muted-foreground"/>
+            </button>
+          )}
         </div>
       </div>
 
