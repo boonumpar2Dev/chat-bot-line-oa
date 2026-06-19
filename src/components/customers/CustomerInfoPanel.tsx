@@ -33,6 +33,7 @@ const DEFAULT_STATUS_LABELS: Record<string, string> = {
   pending_confirm: "รอคอนเฟิร์ม",
   confirmed: "คอนเฟิร์ม",
   confirmed_returning: "คอนเฟิร์ม (ลูกค้าเก่า)",
+  completed: "จัดงานจบแล้ว",
   postponed: "เลื่อนวันจัดงาน(มัดจำแล้ว)",
   cancelled: "ยกเลิก",
 };
