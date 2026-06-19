@@ -460,19 +460,36 @@ export default function Customers() {
           </div>
         </div>
 
-        {tagFilter && (
-          <div className="mt-3 flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">กรองตามแท็ก:</span>
-            <Badge className="gap-1 pr-1 border-0 text-white" style={{ backgroundColor: "#64748b" }}>
-              {tagFilter}
-              <button
-                onClick={() => { setTagFilter(""); updateFilter("tag", "all"); }}
-                className="ml-0.5 rounded-full hover:bg-white/20 p-0.5"
-                aria-label="ล้างตัวกรองแท็ก"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
+        {(tagFilter || monthFilter.length > 0 || yearFilter.length > 0) && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="text-xs text-muted-foreground mr-0.5">กรอง:</span>
+            {tagFilter && (
+              <Badge className="gap-1 pr-1 border-0 text-white" style={{ backgroundColor: "#64748b" }}>
+                <TagIcon className="w-3 h-3" /> {tagFilter}
+                <button onClick={() => { setTagFilter(""); updateFilter("tag", "all"); }} className="ml-0.5 rounded-full hover:bg-white/20 p-0.5" aria-label="ล้างแท็ก">
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {monthFilter.map(m => (
+              <Badge key={m} className="gap-1 pr-1 border-0 bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20">
+                <CalendarRange className="w-3 h-3" /> {m}
+                <button onClick={() => setMonths(monthFilter.filter(x => x !== m))} className="ml-0.5 rounded-full hover:bg-blue-500/20 p-0.5" aria-label={`ลบ ${m}`}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            {yearFilter.map(y => (
+              <Badge key={y} className="gap-1 pr-1 border-0 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">
+                <Calendar className="w-3 h-3" /> {y}
+                <button onClick={() => setYears(yearFilter.filter(x => x !== y))} className="ml-0.5 rounded-full hover:bg-amber-500/20 p-0.5" aria-label={`ลบ ${y}`}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={clearAllFilters}>
+              ล้างทั้งหมด
+            </Button>
           </div>
         )}
       </div>
