@@ -606,7 +606,7 @@ function CurrentStatusGrid() {
         const { data: waitData } = await supabase
           .from("customers")
           .select("status,updated_at")
-          .in("status", activeStatuses)
+          .in("status", activeStatuses as any[])
           .limit(10000);
         const now = Date.now();
         (waitData ?? []).forEach((r: any) => {
