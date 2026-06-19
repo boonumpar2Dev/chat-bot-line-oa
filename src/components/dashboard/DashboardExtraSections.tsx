@@ -951,7 +951,8 @@ export default function DashboardExtraSections() {
     <>
       <NewCustomersChart />
       <DailyReportTable />
-      <FunnelSection />
+      <FunnelToday />
+      <BacklogCard />
       <CurrentStatusGrid />
     </>
   );
