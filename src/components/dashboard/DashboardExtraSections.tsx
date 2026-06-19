@@ -589,7 +589,7 @@ function CurrentStatusGrid() {
           const { count, error } = await supabase
             .from("customers")
             .select("*", { count: "exact", head: true })
-            .eq("status", status);
+            .eq("status", status as any);
           if (error) throw error;
           return { status, count: count ?? 0 };
         })
