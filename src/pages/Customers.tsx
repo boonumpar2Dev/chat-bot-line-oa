@@ -151,7 +151,15 @@ export default function Customers() {
   // Load master tags
   useEffect(() => {
     supabase.from("tags").select("id, name, color").order("sort_order").order("name")
-      .then(({ data }) => setMasterTags((data as any) || []));
+      .then(({ data }) => {
+        const list = (data as any) || [];
+        setMasterTags(list);
+        const years = list
+          .map((t: any) => t.name)
+          .filter((n: string) => /^25\d{2}$/.test(n))
+          .sort((a: string, b: string) => Number(b) - Number(a));
+        setYearOptions(years);
+      });
   }, []);
 
   // Realtime patch
