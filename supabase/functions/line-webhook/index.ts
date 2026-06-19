@@ -739,6 +739,20 @@ async function processEvent(event: any, supabase: any) {
     }
   }
 
+  // 🔁 ลูกค้าปิดงานแล้ว (completed) กลับมาทักใหม่ → returning
+  //    (auto-complete cron set status=completed หลังวันจัดงานผ่าน)
+  if (freshCustomer.status === "completed") {
+    const tags: string[] = Array.isArray(freshCustomer.tags) ? freshCustomer.tags : [];
+    const newTags = Array.from(new Set([...tags, "ลูกค้าเก่า"]));
+    await supabase.from("customers").update({
+      status: "returning",
+      tags: newTags,
+    }).eq("id", freshCustomer.id);
+    freshCustomer.status = "returning";
+    freshCustomer.tags = newTags;
+    console.log(`Customer returned after completed event: ${freshCustomer.id}`);
+  }
+
 
 
   // 🚫 AI ปิดอยู่ / อยู่ในช่วง manual chat → เงียบสนิท ไม่ตอบอะไรเลย (ไม่ validate เบอร์/tax ด้วย)
