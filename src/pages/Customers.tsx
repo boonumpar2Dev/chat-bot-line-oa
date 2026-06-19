@@ -896,5 +896,129 @@ function TagFilterInline({ value, onChange, tags }: { value: string; onChange: (
   );
 }
 
+function MonthChipPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (m: string) => onChange(value.includes(m) ? value.filter(x => x !== m) : [...value, m]);
+  return (
+    <div className="grid grid-cols-4 gap-1.5">
+      {TH_MONTHS.map(m => {
+        const active = value.includes(m);
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => toggle(m)}
+            className={cn(
+              "h-9 rounded-md border text-xs font-medium transition",
+              active
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background hover:bg-accent border-border text-foreground"
+            )}
+          >
+            {m}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function YearChipPicker({ value, onChange, options }: { value: string[]; onChange: (v: string[]) => void; options: string[] }) {
+  const toggle = (y: string) => onChange(value.includes(y) ? value.filter(x => x !== y) : [...value, y]);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map(y => {
+        const active = value.includes(y);
+        return (
+          <button
+            key={y}
+            type="button"
+            onClick={() => toggle(y)}
+            className={cn(
+              "h-8 px-2.5 rounded-md border text-xs font-medium transition",
+              active
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-background hover:bg-accent border-border text-foreground"
+            )}
+          >
+            {y}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiPickerPopover({
+  label, icon, value, onChange, options, emptyHint,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  value: string[];
+  onChange: (v: string[]) => void;
+  options: { value: string; label: string; sub?: string }[];
+  emptyHint?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const toggle = (v: string) => onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="justify-between font-normal gap-2 min-w-[160px]">
+          <span className="inline-flex items-center gap-2 truncate">
+            {icon}
+            <span className="truncate">
+              {value.length === 0 ? label : `${label} · ${value.length}`}
+            </span>
+          </span>
+          {value.length > 0 && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="ล้าง"
+              onClick={(e) => { e.stopPropagation(); onChange([]); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onChange([]); } }}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent text-muted-foreground"
+            >
+              <X className="h-3 w-3" />
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        {emptyHint && value.length === 0 && (
+          <p className="text-[11px] text-muted-foreground px-1 pb-2">{emptyHint}</p>
+        )}
+        <div className="max-h-72 overflow-y-auto space-y-0.5">
+          {options.map(o => {
+            const active = value.includes(o.value);
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => toggle(o.value)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm transition",
+                  active ? "bg-primary/10 text-foreground" : "hover:bg-accent"
+                )}
+              >
+                <Checkbox checked={active} className="pointer-events-none" />
+                <span className="flex-1 truncate">{o.label}</span>
+                {o.sub && <span className="text-[10px] text-muted-foreground">{o.sub}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {value.length > 0 && (
+          <div className="border-t mt-2 pt-2 flex justify-between items-center">
+            <span className="text-[11px] text-muted-foreground">เลือก {value.length}</span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onChange([])}>ล้าง</Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
 
 
