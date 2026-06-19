@@ -252,6 +252,13 @@ export default function Chats() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKind>("all");
+
+  useEffect(() => {
+    const filterParam = sp.get("filter");
+    if (filterParam) {
+      setFilter(filterParam as FilterKind);
+    }
+  }, []);
   const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
