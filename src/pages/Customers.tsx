@@ -342,18 +342,18 @@ export default function Customers() {
                 <Button variant="outline" className="flex-1 justify-start gap-2 relative">
                   <SlidersHorizontal className="w-4 h-4" />
                   ตัวกรอง
-                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
+                  {activeFilterCount > 0 && (
                     <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
-                      {[statusFilter !== "all", tierFilter !== "all", !!tagFilter].filter(Boolean).length}
+                      {activeFilterCount}
                     </Badge>
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="rounded-t-2xl p-4 max-h-[55vh] overflow-y-auto">
+              <SheetContent side="bottom" className="rounded-t-2xl p-4 max-h-[75vh] overflow-y-auto">
                 <SheetHeader className="mb-3">
                   <SheetTitle className="text-base">ตัวกรองลูกค้า</SheetTitle>
                 </SheetHeader>
-                <div className="space-y-2.5 pb-2">
+                <div className="space-y-3 pb-2">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">สถานะ</p>
                     <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}>
@@ -387,17 +387,18 @@ export default function Customers() {
                       tags={masterTags}
                     />
                   </div>
-                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-muted-foreground h-8"
-                      onClick={() => {
-                        setStatusFilter("all"); updateFilter("status", "all");
-                        setTierFilter("all"); updateFilter("tier", "all");
-                        setTagFilter(""); updateFilter("tag", "all");
-                      }}
-                    >
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">เดือนจัดงาน <span className="text-[10px] opacity-70">(เลือกได้หลายเดือน)</span></p>
+                    <MonthChipPicker value={monthFilter} onChange={setMonths} />
+                  </div>
+                  {yearOptions.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">ปี พ.ศ. <span className="text-[10px] opacity-70">(ไม่จำเป็น)</span></p>
+                      <YearChipPicker value={yearFilter} onChange={setYears} options={yearOptions} />
+                    </div>
+                  )}
+                  {activeFilterCount > 0 && (
+                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground h-8" onClick={clearAllFilters}>
                       <X className="w-4 h-4 mr-1" /> ล้างตัวกรองทั้งหมด
                     </Button>
                   )}
@@ -410,7 +411,7 @@ export default function Customers() {
           </div>
 
           {/* Desktop: original layout */}
-          <div className="hidden sm:flex gap-2">
+          <div className="hidden sm:flex flex-wrap gap-2">
             <FilterCombobox
               className="w-44"
               placeholder="สถานะ"
@@ -436,6 +437,23 @@ export default function Customers() {
               onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
               options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
             />
+            <MultiPickerPopover
+              label="เดือนจัดงาน"
+              icon={<CalendarRange className="w-4 h-4" />}
+              value={monthFilter}
+              onChange={setMonths}
+              options={TH_MONTHS.map(m => ({ value: m, label: m, sub: TH_MONTHS_FULL[m] }))}
+              emptyHint="เลือกเดือนเพื่อตามล่วงหน้า"
+            />
+            {yearOptions.length > 0 && (
+              <MultiPickerPopover
+                label="ปี"
+                icon={<Calendar className="w-4 h-4" />}
+                value={yearFilter}
+                onChange={setYears}
+                options={yearOptions.map(y => ({ value: y, label: y }))}
+              />
+            )}
             <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
               <Settings2 className="w-4 h-4" />
             </Button>
