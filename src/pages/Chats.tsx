@@ -833,6 +833,7 @@ export default function Chats() {
       });
       if (error) throw error;
       setReply("");
+      const sentFiles = [...stagedFiles];
       setStagedFiles([]);
       setStagedSticker(null);
       setReplyingTo(null);
