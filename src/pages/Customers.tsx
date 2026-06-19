@@ -133,16 +133,20 @@ export default function Customers() {
       } else {
         if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
         if (tagFilter) q = q.contains("tags", [tagFilter]);
-        q = q.range(0, PAGE_SIZE - 1);
+        if (monthFilter.length) q = q.overlaps("tags", monthFilter);
+        // When month filter active, fetch larger page so client-side year/tier filtering has enough rows
+        const limit = monthFilter.length ? 500 : PAGE_SIZE;
+        q = q.range(0, limit - 1);
       }
       const { data } = await q;
       if (!active) return;
       setCustomers(data || []);
-      setHasMore(!isSearching && (data?.length || 0) === PAGE_SIZE);
+      const pageSize = monthFilter.length ? 500 : PAGE_SIZE;
+      setHasMore(!isSearching && (data?.length || 0) === pageSize);
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debounced, isSearching, statusFilter, tagFilter]);
+  }, [debounced, isSearching, statusFilter, tagFilter, monthFilter]);
 
   // Load master tags
   useEffect(() => {
