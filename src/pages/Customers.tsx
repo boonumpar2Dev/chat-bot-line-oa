@@ -292,17 +292,35 @@ export default function Customers() {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="border-b bg-card/40 backdrop-blur px-4 lg:px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl font-display font-bold flex items-center gap-2">
               <UsersIcon className="w-6 h-6 text-primary" />
               ลูกค้า
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {totalCount !== null
-                ? <>ทั้งหมด {totalCount.toLocaleString()} คน · แสดง {customers.length.toLocaleString()}</>
+                ? <>ทั้งหมด {totalCount.toLocaleString()} คน · แสดง {filtered.length.toLocaleString()}</>
                 : <>กำลังนับ...</>}
             </p>
+          </div>
+          <div className="shrink-0 inline-flex rounded-md border bg-background overflow-hidden">
+            <button
+              onClick={() => setView("list")}
+              className={cn("h-9 px-3 inline-flex items-center gap-1.5 text-xs font-medium transition", viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
+              aria-label="มุมมองรายการ"
+              title="มุมมองรายการ"
+            >
+              <ListIcon className="w-4 h-4" /> <span className="hidden sm:inline">รายการ</span>
+            </button>
+            <button
+              onClick={() => setView("card")}
+              className={cn("h-9 px-3 inline-flex items-center gap-1.5 text-xs font-medium transition border-l", viewMode === "card" ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
+              aria-label="มุมมองการ์ด"
+              title="มุมมองการ์ด"
+            >
+              <LayoutGrid className="w-4 h-4" /> <span className="hidden sm:inline">การ์ด</span>
+            </button>
           </div>
         </div>
 
