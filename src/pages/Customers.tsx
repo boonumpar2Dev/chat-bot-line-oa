@@ -175,12 +175,14 @@ export default function Customers() {
     if (loadingMore || !hasMore || isSearching) return;
     setLoadingMore(true);
     const np = page + 1;
+    const pageSize = monthFilter.length ? 500 : PAGE_SIZE;
     let q = supabase.from("customers").select("*").order("last_message_at", { ascending: false, nullsFirst: false });
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
     if (tagFilter) q = q.contains("tags", [tagFilter]);
-    const { data } = await q.range(np * PAGE_SIZE, np * PAGE_SIZE + PAGE_SIZE - 1);
+    if (monthFilter.length) q = q.overlaps("tags", monthFilter);
+    const { data } = await q.range(np * pageSize, np * pageSize + pageSize - 1);
     setCustomers(p => { const ids = new Set(p.map(c => c.id)); return [...p, ...(data || []).filter((c: any) => !ids.has(c.id))]; });
-    setHasMore((data?.length || 0) === PAGE_SIZE);
+    setHasMore((data?.length || 0) === pageSize);
     setPage(np); setLoadingMore(false);
   };
 
