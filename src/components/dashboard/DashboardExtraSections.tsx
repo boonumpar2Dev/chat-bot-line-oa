@@ -73,20 +73,24 @@ const ymd = (d: Date) => format(d, "yyyy-MM-dd");
 const fmtDayTH = (d: Date) => format(d, "d MMM", { locale: th });
 
 /* ============= Section 1: New customers per day ============= */
+const DASHBOARD_MIN_DATE = new Date(2026, 5, 19);
 function NewCustomersChart() {
   const [range, setRange] = useState<7 | 30>(7);
   const { data, isLoading, error } = useQuery({
     queryKey: ["new-customers-chart", range],
     queryFn: async () => {
-      const since = startOfDay(new Date());
+      let since = startOfDay(new Date());
       since.setDate(since.getDate() - (range - 1));
+      if (since < DASHBOARD_MIN_DATE) since = startOfDay(DASHBOARD_MIN_DATE);
+      const today = startOfDay(new Date());
+      const dayCount = Math.floor((today.getTime() - since.getTime()) / 86400000) + 1;
       const { data, error } = await supabase
         .from("customers")
         .select("created_at")
         .gte("created_at", since.toISOString());
       if (error) throw error;
       const buckets: Record<string, number> = {};
-      for (let i = 0; i < range; i++) {
+      for (let i = 0; i < dayCount; i++) {
         const d = new Date(since);
         d.setDate(since.getDate() + i);
         buckets[ymd(d)] = 0;
@@ -174,8 +178,10 @@ function DailyReportTable() {
       for (let i = 6; i >= 0; i--) {
         const d = startOfDay(new Date());
         d.setDate(d.getDate() - i);
+        if (d < DASHBOARD_MIN_DATE) continue;
         days.push(d);
       }
+      if (days.length === 0) days.push(startOfDay(DASHBOARD_MIN_DATE));
       const since = days[0].toISOString();
 
       const [custRes, convRes] = await Promise.all([
