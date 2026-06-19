@@ -293,13 +293,13 @@ function DailyReportTable() {
 
 /* ============= Section 3: Funnel ============= */
 type FunnelMode = "day" | "month";
-const FUNNEL_STAGES: { key: string; label: string; statuses: string[] }[] = [
-  { key: "new", label: "ทักเข้ามา", statuses: ["new", "returning", "inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed", "cancelled"] },
-  { key: "inquiry", label: "สอบถามข้อมูล", statuses: ["inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "quote", label: "รอใบเสนอราคา", statuses: ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "confirm", label: "รอคอนเฟิร์ม", statuses: ["pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "confirmed", label: "คอนเฟิร์มแล้ว", statuses: ["confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "completed", label: "จัดงานจบแล้ว", statuses: ["completed"] },
+const FUNNEL_STAGES: { key: string; label: string; statuses: string[]; color: string; subLabel?: string }[] = [
+  { key: "new", label: "ทักเข้ามา", color: "#378ADD", statuses: ["new", "returning", "inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed", "cancelled"] },
+  { key: "inquiry", label: "สอบถามข้อมูล", color: "#378ADD", statuses: ["inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "Admin ต้องทำ", statuses: ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", statuses: ["pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75", statuses: ["confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "completed", label: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close", statuses: ["completed"] },
 ];
 
 async function fetchFunnel(mode: FunnelMode, date: Date) {
