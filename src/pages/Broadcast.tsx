@@ -55,6 +55,7 @@ const STATUS_OPTIONS = [
   { v: "confirmed", label: "คอนเฟิร์ม" },
   { v: "confirmed_returning", label: "คอนเฟิร์ม (ลูกค้าเก่า)" },
   { v: "returning", label: "ลูกค้าเก่า" },
+  { v: "completed", label: "จัดงานจบแล้ว" },
   { v: "postponed", label: "เลื่อนวันจัดงาน(มัดจำแล้ว)" },
   { v: "cancelled", label: "ยกเลิก" },
 ];
