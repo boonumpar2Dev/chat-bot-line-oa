@@ -240,6 +240,8 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      <DashboardExtraSections />
     </div>
   );
 }
