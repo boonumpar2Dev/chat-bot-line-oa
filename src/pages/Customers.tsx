@@ -267,6 +267,26 @@ export default function Customers() {
     if (v === "all") next.delete(k); else next.set(k, v);
     setSp(next, { replace: true });
   };
+  const updateFilterArr = (k: string, arr: string[]) => {
+    const next = new URLSearchParams(sp);
+    if (!arr.length) next.delete(k); else next.set(k, toCsv(arr));
+    setSp(next, { replace: true });
+  };
+  const setMonths = (arr: string[]) => { setMonthFilter(arr); updateFilterArr("months", arr); };
+  const setYears = (arr: string[]) => { setYearFilter(arr); updateFilterArr("years", arr); };
+  const setView = (v: "list" | "card") => {
+    setViewMode(v);
+    const next = new URLSearchParams(sp);
+    if (v === "list") next.delete("view"); else next.set("view", v);
+    setSp(next, { replace: true });
+  };
+  const clearAllFilters = () => {
+    setStatusFilter("all"); updateFilter("status", "all");
+    setTierFilter("all"); updateFilter("tier", "all");
+    setTagFilter(""); updateFilter("tag", "all");
+    setMonths([]); setYears([]);
+  };
+  const activeFilterCount = [statusFilter !== "all", tierFilter !== "all", !!tagFilter, monthFilter.length > 0, yearFilter.length > 0].filter(Boolean).length;
 
   return (
     <div className="h-full flex flex-col">
