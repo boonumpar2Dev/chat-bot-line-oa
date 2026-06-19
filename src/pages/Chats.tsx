@@ -1232,7 +1232,7 @@ export default function Chats() {
             </ScrollArea>
 
             {/* Staged files */}
-            <StagedMessageBar items={stagedFiles.map(f => ({ url: f.url, uploading: !!f.uploading, name: f.name }))}
+            <StagedMessageBar items={stagedFiles.map(f => ({ url: f.url, uploading: !!f.uploading, name: f.name, size: f.size }))}
               onRemoveFile={(u) => setStagedFiles(p => {
                 const target = p.find(x => x.url === u);
                 if (target?.url.startsWith("blob:")) { try { URL.revokeObjectURL(target.url); } catch {} }
