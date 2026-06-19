@@ -1,4 +1,4 @@
-import { X, FileText, Film, Loader2, Download } from "lucide-react";
+import { X, Film, Loader2, Download } from "lucide-react";
 
 function getFileType(url = "", name = "") {
   const l = (name || url).toLowerCase();
