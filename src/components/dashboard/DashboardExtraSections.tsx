@@ -297,12 +297,12 @@ function DailyReportTable() {
   );
 }
 
-/* ============= Section 3: Funnel ============= */
+/* ============= Section 3: Funnel Today + Backlog ============= */
 type FunnelMode = "day" | "month";
 const FUNNEL_STAGES: { key: string; label: string; color: string; subLabel?: string }[] = [
   { key: "new", label: "ทักเข้ามา", color: "#378ADD" },
-  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "Admin ต้องทำ" },
-  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27" },
+  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "ข้อมูลครบ Admin ต้องทำ" },
+  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", subLabel: "ส่งใบแล้ว รอลูกค้าตอบ" },
   { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75" },
   { key: "completed", label: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close" },
 ];
@@ -313,26 +313,21 @@ async function fetchFunnel(mode: FunnelMode, date: Date) {
   const from = mode === "day" ? startOfDay(date) : startOfMonth(date);
   const to = mode === "day" ? endOfDay(date) : endOfMonth(date);
 
-  // Stage 1: ทักเข้ามา = นับ customers.created_at ในช่วง
   const { count: newCount, error: e1 } = await supabase
     .from("customers")
     .select("*", { count: "exact", head: true })
     .gte("created_at", from.toISOString())
     .lte("created_at", to.toISOString());
-
   if (e1) throw e1;
 
-  // Stage 2-5: นับจาก customer_status_log
   const { data: logs, error: e2 } = await supabase
     .from("customer_status_log")
     .select("customer_id, new_status")
     .gte("changed_at", from.toISOString())
     .lte("changed_at", to.toISOString())
     .limit(10000);
-
   if (e2) throw e2;
 
-  // นับ distinct customer_id ต่อ stage
   const countDistinct = (statuses: string[]) => {
     const ids = new Set<string>();
     (logs ?? []).forEach((r: any) => {
@@ -341,16 +336,19 @@ async function fetchFunnel(mode: FunnelMode, date: Date) {
     return ids.size;
   };
 
-  return [
-    { key: "new", label: "ทักเข้ามา", count: newCount ?? 0 },
-    { key: "quote", label: "รอใบเสนอราคา", count: countDistinct(["pending_quote"]) },
-    { key: "confirm", label: "รอคอนเฟิร์ม", count: countDistinct(["pending_confirm"]) },
-    { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: countDistinct(["confirmed", "confirmed_returning"]) },
-    { key: "completed", label: "จัดงานจบแล้ว", count: countDistinct(["completed"]) },
-  ];
+  return {
+    stages: [
+      { key: "new", label: "ทักเข้ามา", count: newCount ?? 0 },
+      { key: "quote", label: "รอใบเสนอราคา", count: countDistinct(["pending_quote"]) },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: countDistinct(["pending_confirm"]) },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: countDistinct(["confirmed", "confirmed_returning"]) },
+      { key: "completed", label: "จัดงานจบแล้ว", count: countDistinct(["completed"]) },
+    ],
+    inquiryCount: countDistinct(["inquiry"]),
+  };
 }
 
-function FunnelSection() {
+function FunnelToday() {
   const [mode, setMode] = useState<FunnelMode>("day");
   const [dateA, setDateA] = useState<Date>(new Date());
   const [compare, setCompare] = useState(false);
@@ -369,18 +367,18 @@ function FunnelSection() {
   };
 
   const queryA = useQuery({
-    queryKey: ["funnel", mode, ymd(dateA)],
+    queryKey: ["funnel-today", mode, ymd(dateA)],
     queryFn: () => fetchFunnel(mode, dateA),
   });
   const queryB = useQuery({
-    queryKey: ["funnel", mode, ymd(dateB)],
+    queryKey: ["funnel-today", mode, ymd(dateB)],
     queryFn: () => fetchFunnel(mode, dateB),
     enabled: compare,
   });
 
   const chartData = useMemo(() => {
-    const a = queryA.data ?? [];
-    const b = queryB.data ?? [];
+    const a = queryA.data?.stages ?? [];
+    const b = queryB.data?.stages ?? [];
     return a.map((row, i) => {
       const stage = FUNNEL_STAGES[i];
       return {
@@ -394,6 +392,8 @@ function FunnelSection() {
       };
     });
   }, [queryA.data, queryB.data, compare]);
+
+  const inquiryA = queryA.data?.inquiryCount ?? 0;
 
   const fmtPicker = (d: Date) =>
     mode === "day" ? format(d, "d MMM yyyy", { locale: th }) : format(d, "MMM yyyy", { locale: th });
@@ -433,7 +433,7 @@ function FunnelSection() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-semibold">Funnel ลูกค้า</h2>
+            <h2 className="font-display font-semibold">📊 Funnel วันนี้ — เกิดอะไรขึ้น</h2>
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant={mode === "day" ? "default" : "outline"} onClick={() => setMode("day")}>
@@ -466,17 +466,11 @@ function FunnelSection() {
         {queryA.data && (() => {
           const firstA = chartData[0]?.A || 1;
           const maxVal = Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
-          const dropThreshold = mode === "month" ? 10 : 3;
-          // insights
           const totalIn = chartData[0]?.A ?? 0;
           const quoteCount = chartData.find((r) => r.key === "quote")?.A ?? 0;
           const confirmedCount = chartData.find((r) => r.key === "confirmed")?.A ?? 0;
           const conv = totalIn > 0 ? Math.round((confirmedCount / totalIn) * 100) : 0;
-          let maxDrop = { label: "-", count: 0 };
-          for (let i = 1; i < chartData.length; i++) {
-            const d = chartData[i - 1].A - chartData[i].A;
-            if (d > maxDrop.count) maxDrop = { label: chartData[i].label, count: d };
-          }
+          const quotePct = totalIn > 0 ? Math.round((quoteCount / totalIn) * 100) : 0;
           return (
             <>
               <div className="space-y-1">
@@ -485,35 +479,33 @@ function FunnelSection() {
                   const pctB = (row.B / maxVal) * 100;
                   const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
-                  const prev = chartData[i - 1];
-                  const drop = prev ? prev.A - row.A : 0;
-                  const isHighDrop = drop >= dropThreshold;
                   return (
                     <div key={row.key}>
                       {i > 0 && (
-                        <div className="flex items-center gap-2 pl-[160px] py-1.5">
+                        <div className="flex items-center gap-2 sm:pl-[160px] py-1.5 flex-wrap">
                           <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "h-5 px-2 text-[11px] font-medium border-0",
-                              isHighDrop
-                                ? "bg-rose-100 text-rose-700"
-                                : "bg-emerald-100 text-emerald-700"
-                            )}
-                          >
-                            หลุด {drop}
-                          </Badge>
-                          {row.key === "quote" && drop > 0 && (
-                            <span className="text-[11px] text-rose-600 font-medium flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" />
-                              จุดหลุดสูง
-                            </span>
+                          {i === 1 ? (
+                            <Badge
+                              variant="outline"
+                              className="h-5 px-2 text-[11px] font-medium border-0 bg-amber-100 text-amber-700"
+                            >
+                              ไปสอบถาม {inquiryA} คน (ยังไม่ให้ข้อมูลครบ)
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="h-5 px-2 text-[11px] font-medium border-0 bg-emerald-100 text-emerald-700"
+                            >
+                              ไปต่อ {row.A} คน
+                              {row.key === "confirm" && " (รอลูกค้าตอบ)"}
+                              {row.key === "confirmed" && " (ปิดการขายได้)"}
+                              {row.key === "completed" && " (จัดงานเสร็จ)"}
+                            </Badge>
                           )}
                         </div>
                       )}
                       <div className="flex items-center gap-3">
-                        <div className="w-[150px] shrink-0 min-w-0">
+                        <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
                           {row.subLabel && (
                             <div className="text-[11px] text-muted-foreground truncate">
@@ -522,6 +514,14 @@ function FunnelSection() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
+                          <div className="sm:hidden mb-1">
+                            <div className="text-sm font-medium truncate">{row.label}</div>
+                            {row.subLabel && (
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {row.subLabel}
+                              </div>
+                            )}
+                          </div>
                           <div className="relative h-9 bg-muted/40 rounded-md overflow-hidden">
                             <div
                               className="absolute inset-y-0 left-0 rounded-md transition-all flex items-center px-3"
@@ -547,7 +547,7 @@ function FunnelSection() {
                             )}
                           </div>
                         </div>
-                        <div className="w-[130px] shrink-0 text-right">
+                        <div className="w-[90px] sm:w-[130px] shrink-0 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <span className="font-display font-bold text-lg tabular-nums leading-none">
                               {row.A}
@@ -582,25 +582,199 @@ function FunnelSection() {
                   <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
                 </div>
                 <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                  <div className="text-[11px] text-muted-foreground">รอใบเสนอ</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteCount}</div>
-                  <div className="text-[10px] text-rose-600 mt-0.5">Admin ต้องดูแล</div>
+                  <div className="text-[11px] text-muted-foreground">ข้อมูลครบ</div>
+                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">
+                    {quoteCount} <span className="text-sm text-muted-foreground">({quotePct}%)</span>
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
-                  <div className="text-[11px] text-muted-foreground">Conversion</div>
+                  <div className="text-[11px] text-muted-foreground">Conversion ทัก→คอนเฟิร์ม</div>
                   <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{conv}%</div>
                 </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                  <div className="text-[11px] text-muted-foreground">จุดหลุดสูงสุด</div>
-                  <div className="font-display font-bold text-base tabular-nums mt-0.5 truncate">
-                    {maxDrop.label}
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">หลุด {maxDrop.count} คน</div>
+                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#EAB308" }}>
+                  <div className="text-[11px] text-muted-foreground">ไปสอบถาม</div>
+                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{inquiryA}</div>
                 </div>
               </div>
             </>
           );
         })()}
+      </div>
+    </Card>
+  );
+}
+
+/* ============= Backlog Card ============= */
+type BacklogKey = "inquiry" | "quote" | "confirm" | "confirmed";
+const BACKLOG_GROUPS: {
+  key: BacklogKey;
+  title: string;
+  icon: string;
+  hint: string;
+  statuses: string[];
+  bg: string;
+  filter: string;
+  trendUpGood: boolean;
+  pulseOnIncrease?: boolean;
+  important?: boolean;
+}[] = [
+  {
+    key: "inquiry",
+    title: "สอบถาม (ยังไม่ให้ข้อมูลครบ)",
+    icon: "💬",
+    hint: "อาจกลับมาให้ข้อมูลได้",
+    statuses: ["new", "inquiry", "returning"],
+    bg: "bg-amber-50 dark:bg-amber-950/30 border-amber-200/60 dark:border-amber-900/60",
+    filter: "new,inquiry,returning",
+    trendUpGood: false,
+  },
+  {
+    key: "quote",
+    title: "รอใบเสนอราคา",
+    icon: "📄",
+    hint: "Admin ต้องทำใบให้ครบ",
+    statuses: ["pending_quote"],
+    bg: "bg-rose-50 dark:bg-rose-950/30 border-rose-200/60 dark:border-rose-900/60",
+    filter: "pending_quote",
+    trendUpGood: false,
+    pulseOnIncrease: true,
+    important: true,
+  },
+  {
+    key: "confirm",
+    title: "รอคอนเฟิร์ม (ส่งใบแล้ว)",
+    icon: "⏳",
+    hint: "ต้องตามลูกค้า",
+    statuses: ["pending_confirm"],
+    bg: "bg-orange-50 dark:bg-orange-950/30 border-orange-200/60 dark:border-orange-900/60",
+    filter: "pending_confirm",
+    trendUpGood: false,
+  },
+  {
+    key: "confirmed",
+    title: "คอนเฟิร์มแล้ว (รอจัดงาน)",
+    icon: "✅",
+    hint: "รอวันจัดงาน",
+    statuses: ["confirmed", "confirmed_returning"],
+    bg: "bg-green-50 dark:bg-green-950/30 border-green-200/60 dark:border-green-900/60",
+    filter: "confirmed,confirmed_returning",
+    trendUpGood: true,
+  },
+];
+
+function BacklogCard() {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["backlog-card"],
+    queryFn: async () => {
+      // count ปัจจุบันต่อ status
+      const allStatuses = Array.from(new Set(BACKLOG_GROUPS.flatMap((g) => g.statuses)));
+      const counts: Record<string, number> = {};
+      await Promise.all(
+        allStatuses.map(async (s) => {
+          const { count, error } = await supabase
+            .from("customers")
+            .select("*", { count: "exact", head: true })
+            .eq("status", s as any);
+          if (error) throw error;
+          counts[s] = count ?? 0;
+        })
+      );
+
+      // ดึง log เมื่อวานเพื่อหา net change
+      const yStart = startOfDay(new Date());
+      yStart.setDate(yStart.getDate() - 1);
+      const yEnd = endOfDay(yStart);
+      const { data: logs, error: e2 } = await supabase
+        .from("customer_status_log")
+        .select("old_status, new_status")
+        .gte("changed_at", yStart.toISOString())
+        .lte("changed_at", yEnd.toISOString())
+        .limit(10000);
+      if (e2) throw e2;
+
+      const netByStatus: Record<string, number> = {};
+      (logs ?? []).forEach((r: any) => {
+        if (r.new_status) netByStatus[r.new_status] = (netByStatus[r.new_status] ?? 0) + 1;
+        if (r.old_status) netByStatus[r.old_status] = (netByStatus[r.old_status] ?? 0) - 1;
+      });
+
+      return BACKLOG_GROUPS.map((g) => {
+        const count = g.statuses.reduce((s, k) => s + (counts[k] ?? 0), 0);
+        const net = g.statuses.reduce((s, k) => s + (netByStatus[k] ?? 0), 0);
+        return { ...g, count, net };
+      });
+    },
+  });
+
+  return (
+    <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
+      <div className="p-5 border-b">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600" />
+          <h2 className="font-display font-semibold">⚡ ค้างสะสมที่ต้องเคลีย</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          เป้าหมาย: ลดให้เหลือ 0 — ตัวเลขรวมจากทุกวัน
+        </p>
+      </div>
+      <div className="p-5">
+        {error && <p className="text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
+        {isLoading && <p className="text-sm text-muted-foreground">กำลังโหลด...</p>}
+        {data && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.map((g) => {
+              const net = g.net;
+              const isIncrease = net > 0;
+              const isDecrease = net < 0;
+              const trendGood = (isIncrease && g.trendUpGood) || (isDecrease && !g.trendUpGood);
+              const trendBad = (isIncrease && !g.trendUpGood) || (isDecrease && g.trendUpGood);
+              const trendColor = trendGood
+                ? "text-emerald-600"
+                : trendBad
+                ? "text-rose-600"
+                : "text-muted-foreground";
+              const pulse = g.pulseOnIncrease && isIncrease;
+              return (
+                <a
+                  key={g.key}
+                  href={`/chats?filter=status:${g.filter}`}
+                  className={cn(
+                    "rounded-lg p-4 border block transition-shadow hover:shadow-md",
+                    g.bg
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="text-xs font-medium text-foreground/80 truncate">
+                        <span className="mr-1">{g.icon}</span>
+                        {g.title}
+                        {g.important && <span className="ml-1">⚠️</span>}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{g.hint}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-between mt-3">
+                    <span
+                      className={cn(
+                        "font-display font-bold text-3xl tabular-nums leading-none",
+                        pulse && "animate-pulse"
+                      )}
+                    >
+                      {g.count}
+                    </span>
+                    {net !== 0 ? (
+                      <span className={cn("text-xs font-medium tabular-nums", trendColor)}>
+                        {isIncrease ? "↑" : "↓"} {Math.abs(net)} เทียบเมื่อวาน
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">— เทียบเมื่อวาน</span>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -777,7 +951,8 @@ export default function DashboardExtraSections() {
     <>
       <NewCustomersChart />
       <DailyReportTable />
-      <FunnelSection />
+      <FunnelToday />
+      <BacklogCard />
       <CurrentStatusGrid />
     </>
   );
