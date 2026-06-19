@@ -195,11 +195,17 @@ export default function Customers() {
 
   const filtered = useMemo(() => {
     return customers.filter(c => {
-      if (tierFilter === "all") return true;
-      if (tierFilter === "__none__") return !c.tier;
-      return c.tier === tierFilter;
+      if (tierFilter !== "all") {
+        if (tierFilter === "__none__") { if (c.tier) return false; }
+        else if (c.tier !== tierFilter) return false;
+      }
+      if (yearFilter.length) {
+        const tags: string[] = Array.isArray(c.tags) ? c.tags : [];
+        if (!yearFilter.some(y => tags.includes(y))) return false;
+      }
+      return true;
     });
-  }, [customers, tierFilter]);
+  }, [customers, tierFilter, yearFilter]);
 
   const tagColor = (name: string) => masterTags.find(m => m.name === name)?.color || "#94a3b8";
 
