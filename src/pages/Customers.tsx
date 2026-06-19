@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown, SlidersHorizontal } from "lucide-react";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown, SlidersHorizontal, List as ListIcon, LayoutGrid, CalendarRange } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,15 @@ const DEFAULT_TIERS: TierDef[] = [
 
 const PAGE_SIZE = 50;
 
+const TH_MONTHS = ["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+const TH_MONTHS_FULL: Record<string,string> = {
+  "ม.ค.": "มกราคม","ก.พ.": "กุมภาพันธ์","มี.ค.": "มีนาคม","เม.ย.": "เมษายน",
+  "พ.ค.": "พฤษภาคม","มิ.ย.": "มิถุนายน","ก.ค.": "กรกฎาคม","ส.ค.": "สิงหาคม",
+  "ก.ย.": "กันยายน","ต.ค.": "ตุลาคม","พ.ย.": "พฤศจิกายน","ธ.ค.": "ธันวาคม",
+};
+const parseCsv = (s: string | null) => (s ? s.split(",").map(x => x.trim()).filter(Boolean) : []);
+const toCsv = (arr: string[]) => arr.join(",");
+
 export default function Customers() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
@@ -56,6 +65,10 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
   const [tagFilter, setTagFilter] = useState<string>(sp.get("tag") || "");
+  const [monthFilter, setMonthFilter] = useState<string[]>(parseCsv(sp.get("months")));
+  const [yearFilter, setYearFilter] = useState<string[]>(parseCsv(sp.get("years")));
+  const [viewMode, setViewMode] = useState<"list" | "card">((sp.get("view") === "card" ? "card" : "list"));
+  const [yearOptions, setYearOptions] = useState<string[]>([]);
 
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -120,21 +133,33 @@ export default function Customers() {
       } else {
         if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
         if (tagFilter) q = q.contains("tags", [tagFilter]);
-        q = q.range(0, PAGE_SIZE - 1);
+        if (monthFilter.length) q = q.overlaps("tags", monthFilter);
+        // When month filter active, fetch larger page so client-side year/tier filtering has enough rows
+        const limit = monthFilter.length ? 500 : PAGE_SIZE;
+        q = q.range(0, limit - 1);
       }
       const { data } = await q;
       if (!active) return;
       setCustomers(data || []);
-      setHasMore(!isSearching && (data?.length || 0) === PAGE_SIZE);
+      const pageSize = monthFilter.length ? 500 : PAGE_SIZE;
+      setHasMore(!isSearching && (data?.length || 0) === pageSize);
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debounced, isSearching, statusFilter, tagFilter]);
+  }, [debounced, isSearching, statusFilter, tagFilter, monthFilter]);
 
   // Load master tags
   useEffect(() => {
     supabase.from("tags").select("id, name, color").order("sort_order").order("name")
-      .then(({ data }) => setMasterTags((data as any) || []));
+      .then(({ data }) => {
+        const list = (data as any) || [];
+        setMasterTags(list);
+        const years = list
+          .map((t: any) => t.name)
+          .filter((n: string) => /^25\d{2}$/.test(n))
+          .sort((a: string, b: string) => Number(b) - Number(a));
+        setYearOptions(years);
+      });
   }, []);
 
   // Realtime patch
@@ -158,12 +183,14 @@ export default function Customers() {
     if (loadingMore || !hasMore || isSearching) return;
     setLoadingMore(true);
     const np = page + 1;
+    const pageSize = monthFilter.length ? 500 : PAGE_SIZE;
     let q = supabase.from("customers").select("*").order("last_message_at", { ascending: false, nullsFirst: false });
     if (statusFilter !== "all") q = q.eq("status", statusFilter as any);
     if (tagFilter) q = q.contains("tags", [tagFilter]);
-    const { data } = await q.range(np * PAGE_SIZE, np * PAGE_SIZE + PAGE_SIZE - 1);
+    if (monthFilter.length) q = q.overlaps("tags", monthFilter);
+    const { data } = await q.range(np * pageSize, np * pageSize + pageSize - 1);
     setCustomers(p => { const ids = new Set(p.map(c => c.id)); return [...p, ...(data || []).filter((c: any) => !ids.has(c.id))]; });
-    setHasMore((data?.length || 0) === PAGE_SIZE);
+    setHasMore((data?.length || 0) === pageSize);
     setPage(np); setLoadingMore(false);
   };
 
@@ -176,11 +203,17 @@ export default function Customers() {
 
   const filtered = useMemo(() => {
     return customers.filter(c => {
-      if (tierFilter === "all") return true;
-      if (tierFilter === "__none__") return !c.tier;
-      return c.tier === tierFilter;
+      if (tierFilter !== "all") {
+        if (tierFilter === "__none__") { if (c.tier) return false; }
+        else if (c.tier !== tierFilter) return false;
+      }
+      if (yearFilter.length) {
+        const tags: string[] = Array.isArray(c.tags) ? c.tags : [];
+        if (!yearFilter.some(y => tags.includes(y))) return false;
+      }
+      return true;
     });
-  }, [customers, tierFilter]);
+  }, [customers, tierFilter, yearFilter]);
 
   const tagColor = (name: string) => masterTags.find(m => m.name === name)?.color || "#94a3b8";
 
@@ -234,22 +267,60 @@ export default function Customers() {
     if (v === "all") next.delete(k); else next.set(k, v);
     setSp(next, { replace: true });
   };
+  const updateFilterArr = (k: string, arr: string[]) => {
+    const next = new URLSearchParams(sp);
+    if (!arr.length) next.delete(k); else next.set(k, toCsv(arr));
+    setSp(next, { replace: true });
+  };
+  const setMonths = (arr: string[]) => { setMonthFilter(arr); updateFilterArr("months", arr); };
+  const setYears = (arr: string[]) => { setYearFilter(arr); updateFilterArr("years", arr); };
+  const setView = (v: "list" | "card") => {
+    setViewMode(v);
+    const next = new URLSearchParams(sp);
+    if (v === "list") next.delete("view"); else next.set("view", v);
+    setSp(next, { replace: true });
+  };
+  const clearAllFilters = () => {
+    setStatusFilter("all"); updateFilter("status", "all");
+    setTierFilter("all"); updateFilter("tier", "all");
+    setTagFilter(""); updateFilter("tag", "all");
+    setMonths([]); setYears([]);
+  };
+  const activeFilterCount = [statusFilter !== "all", tierFilter !== "all", !!tagFilter, monthFilter.length > 0, yearFilter.length > 0].filter(Boolean).length;
 
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="border-b bg-card/40 backdrop-blur px-4 lg:px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div>
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <div className="min-w-0">
             <h1 className="text-2xl font-display font-bold flex items-center gap-2">
               <UsersIcon className="w-6 h-6 text-primary" />
               ลูกค้า
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {totalCount !== null
-                ? <>ทั้งหมด {totalCount.toLocaleString()} คน · แสดง {customers.length.toLocaleString()}</>
+                ? <>ทั้งหมด {totalCount.toLocaleString()} คน · แสดง {filtered.length.toLocaleString()}</>
                 : <>กำลังนับ...</>}
             </p>
+          </div>
+          <div className="shrink-0 inline-flex rounded-md border bg-background overflow-hidden">
+            <button
+              onClick={() => setView("list")}
+              className={cn("h-9 px-3 inline-flex items-center gap-1.5 text-xs font-medium transition", viewMode === "list" ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
+              aria-label="มุมมองรายการ"
+              title="มุมมองรายการ"
+            >
+              <ListIcon className="w-4 h-4" /> <span className="hidden sm:inline">รายการ</span>
+            </button>
+            <button
+              onClick={() => setView("card")}
+              className={cn("h-9 px-3 inline-flex items-center gap-1.5 text-xs font-medium transition border-l", viewMode === "card" ? "bg-primary text-primary-foreground" : "hover:bg-accent")}
+              aria-label="มุมมองการ์ด"
+              title="มุมมองการ์ด"
+            >
+              <LayoutGrid className="w-4 h-4" /> <span className="hidden sm:inline">การ์ด</span>
+            </button>
           </div>
         </div>
 
@@ -271,18 +342,18 @@ export default function Customers() {
                 <Button variant="outline" className="flex-1 justify-start gap-2 relative">
                   <SlidersHorizontal className="w-4 h-4" />
                   ตัวกรอง
-                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
+                  {activeFilterCount > 0 && (
                     <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px]">
-                      {[statusFilter !== "all", tierFilter !== "all", !!tagFilter].filter(Boolean).length}
+                      {activeFilterCount}
                     </Badge>
                   )}
                 </Button>
               </SheetTrigger>
-              <SheetContent side="bottom" className="rounded-t-2xl p-4 max-h-[55vh] overflow-y-auto">
+              <SheetContent side="bottom" className="rounded-t-2xl p-4 max-h-[75vh] overflow-y-auto">
                 <SheetHeader className="mb-3">
                   <SheetTitle className="text-base">ตัวกรองลูกค้า</SheetTitle>
                 </SheetHeader>
-                <div className="space-y-2.5 pb-2">
+                <div className="space-y-3 pb-2">
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">สถานะ</p>
                     <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); updateFilter("status", v); }}>
@@ -316,17 +387,18 @@ export default function Customers() {
                       tags={masterTags}
                     />
                   </div>
-                  {(statusFilter !== "all" || tierFilter !== "all" || tagFilter) && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-muted-foreground h-8"
-                      onClick={() => {
-                        setStatusFilter("all"); updateFilter("status", "all");
-                        setTierFilter("all"); updateFilter("tier", "all");
-                        setTagFilter(""); updateFilter("tag", "all");
-                      }}
-                    >
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">เดือนจัดงาน <span className="text-[10px] opacity-70">(เลือกได้หลายเดือน)</span></p>
+                    <MonthChipPicker value={monthFilter} onChange={setMonths} />
+                  </div>
+                  {yearOptions.length > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">ปี พ.ศ. <span className="text-[10px] opacity-70">(ไม่จำเป็น)</span></p>
+                      <YearChipPicker value={yearFilter} onChange={setYears} options={yearOptions} />
+                    </div>
+                  )}
+                  {activeFilterCount > 0 && (
+                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground h-8" onClick={clearAllFilters}>
                       <X className="w-4 h-4 mr-1" /> ล้างตัวกรองทั้งหมด
                     </Button>
                   )}
@@ -339,7 +411,7 @@ export default function Customers() {
           </div>
 
           {/* Desktop: original layout */}
-          <div className="hidden sm:flex gap-2">
+          <div className="hidden sm:flex flex-wrap gap-2">
             <FilterCombobox
               className="w-44"
               placeholder="สถานะ"
@@ -365,25 +437,59 @@ export default function Customers() {
               onChange={(v) => { const nv = v === "all" ? "" : v; setTagFilter(nv); updateFilter("tag", nv || "all"); }}
               options={[{ value: "all", label: "ทุกแท็ก" }, ...masterTags.map(t => ({ value: t.name, label: t.name, color: t.color }))]}
             />
+            <MultiPickerPopover
+              label="เดือนจัดงาน"
+              icon={<CalendarRange className="w-4 h-4" />}
+              value={monthFilter}
+              onChange={setMonths}
+              options={TH_MONTHS.map(m => ({ value: m, label: m, sub: TH_MONTHS_FULL[m] }))}
+              emptyHint="เลือกเดือนเพื่อตามล่วงหน้า"
+            />
+            {yearOptions.length > 0 && (
+              <MultiPickerPopover
+                label="ปี"
+                icon={<Calendar className="w-4 h-4" />}
+                value={yearFilter}
+                onChange={setYears}
+                options={yearOptions.map(y => ({ value: y, label: y }))}
+              />
+            )}
             <Button variant="outline" size="icon" className="shrink-0" title="ตั้งค่าระดับลูกค้า" onClick={() => setTierMgrOpen(true)}>
               <Settings2 className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {tagFilter && (
-          <div className="mt-3 flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">กรองตามแท็ก:</span>
-            <Badge className="gap-1 pr-1 border-0 text-white" style={{ backgroundColor: "#64748b" }}>
-              {tagFilter}
-              <button
-                onClick={() => { setTagFilter(""); updateFilter("tag", "all"); }}
-                className="ml-0.5 rounded-full hover:bg-white/20 p-0.5"
-                aria-label="ล้างตัวกรองแท็ก"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
+        {(tagFilter || monthFilter.length > 0 || yearFilter.length > 0) && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-sm">
+            <span className="text-xs text-muted-foreground mr-0.5">กรอง:</span>
+            {tagFilter && (
+              <Badge className="gap-1 pr-1 border-0 text-white" style={{ backgroundColor: "#64748b" }}>
+                <TagIcon className="w-3 h-3" /> {tagFilter}
+                <button onClick={() => { setTagFilter(""); updateFilter("tag", "all"); }} className="ml-0.5 rounded-full hover:bg-white/20 p-0.5" aria-label="ล้างแท็ก">
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {monthFilter.map(m => (
+              <Badge key={m} className="gap-1 pr-1 border-0 bg-blue-500/15 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20">
+                <CalendarRange className="w-3 h-3" /> {m}
+                <button onClick={() => setMonths(monthFilter.filter(x => x !== m))} className="ml-0.5 rounded-full hover:bg-blue-500/20 p-0.5" aria-label={`ลบ ${m}`}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            {yearFilter.map(y => (
+              <Badge key={y} className="gap-1 pr-1 border-0 bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20">
+                <Calendar className="w-3 h-3" /> {y}
+                <button onClick={() => setYears(yearFilter.filter(x => x !== y))} className="ml-0.5 rounded-full hover:bg-amber-500/20 p-0.5" aria-label={`ลบ ${y}`}>
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            ))}
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground" onClick={clearAllFilters}>
+              ล้างทั้งหมด
+            </Button>
           </div>
         )}
       </div>
@@ -428,7 +534,12 @@ export default function Customers() {
             <p>ไม่พบลูกค้า</p>
           </div>
         ) : (
-          <div className="p-3 lg:p-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className={cn(
+            "p-3 lg:p-4 gap-3",
+            viewMode === "card"
+              ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+              : "flex flex-col max-w-3xl mx-auto"
+          )}>
             {filtered.map(c => {
               const tierDef = c.tier ? tierByName[c.tier] : null;
               const isSelected = selected.has(c.id);
@@ -555,7 +666,7 @@ export default function Customers() {
                 </div>
               );
             })}
-            <div ref={sentinelRef} className="col-span-full h-8 flex items-center justify-center text-xs text-muted-foreground">
+            <div ref={sentinelRef} className={cn("h-8 flex items-center justify-center text-xs text-muted-foreground", viewMode === "card" && "col-span-full")}>
               {loadingMore && <Loader2 className="w-4 h-4 animate-spin"/>}
             </div>
           </div>
@@ -784,6 +895,130 @@ function TagFilterInline({ value, onChange, tags }: { value: string; onChange: (
     </div>
   );
 }
+
+function MonthChipPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (m: string) => onChange(value.includes(m) ? value.filter(x => x !== m) : [...value, m]);
+  return (
+    <div className="grid grid-cols-4 gap-1.5">
+      {TH_MONTHS.map(m => {
+        const active = value.includes(m);
+        return (
+          <button
+            key={m}
+            type="button"
+            onClick={() => toggle(m)}
+            className={cn(
+              "h-9 rounded-md border text-xs font-medium transition",
+              active
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background hover:bg-accent border-border text-foreground"
+            )}
+          >
+            {m}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function YearChipPicker({ value, onChange, options }: { value: string[]; onChange: (v: string[]) => void; options: string[] }) {
+  const toggle = (y: string) => onChange(value.includes(y) ? value.filter(x => x !== y) : [...value, y]);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map(y => {
+        const active = value.includes(y);
+        return (
+          <button
+            key={y}
+            type="button"
+            onClick={() => toggle(y)}
+            className={cn(
+              "h-8 px-2.5 rounded-md border text-xs font-medium transition",
+              active
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-background hover:bg-accent border-border text-foreground"
+            )}
+          >
+            {y}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MultiPickerPopover({
+  label, icon, value, onChange, options, emptyHint,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  value: string[];
+  onChange: (v: string[]) => void;
+  options: { value: string; label: string; sub?: string }[];
+  emptyHint?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const toggle = (v: string) => onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="justify-between font-normal gap-2 min-w-[160px]">
+          <span className="inline-flex items-center gap-2 truncate">
+            {icon}
+            <span className="truncate">
+              {value.length === 0 ? label : `${label} · ${value.length}`}
+            </span>
+          </span>
+          {value.length > 0 && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label="ล้าง"
+              onClick={(e) => { e.stopPropagation(); onChange([]); }}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.stopPropagation(); onChange([]); } }}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-sm hover:bg-accent text-muted-foreground"
+            >
+              <X className="h-3 w-3" />
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        {emptyHint && value.length === 0 && (
+          <p className="text-[11px] text-muted-foreground px-1 pb-2">{emptyHint}</p>
+        )}
+        <div className="max-h-72 overflow-y-auto space-y-0.5">
+          {options.map(o => {
+            const active = value.includes(o.value);
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => toggle(o.value)}
+                className={cn(
+                  "w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm transition",
+                  active ? "bg-primary/10 text-foreground" : "hover:bg-accent"
+                )}
+              >
+                <Checkbox checked={active} className="pointer-events-none" />
+                <span className="flex-1 truncate">{o.label}</span>
+                {o.sub && <span className="text-[10px] text-muted-foreground">{o.sub}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {value.length > 0 && (
+          <div className="border-t mt-2 pt-2 flex justify-between items-center">
+            <span className="text-[11px] text-muted-foreground">เลือก {value.length}</span>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onChange([])}>ล้าง</Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 
 
 
