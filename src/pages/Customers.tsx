@@ -666,7 +666,7 @@ export default function Customers() {
                 </div>
               );
             })}
-            <div ref={sentinelRef} className="col-span-full h-8 flex items-center justify-center text-xs text-muted-foreground">
+            <div ref={sentinelRef} className={cn("h-8 flex items-center justify-center text-xs text-muted-foreground", viewMode === "card" && "col-span-full")}>
               {loadingMore && <Loader2 className="w-4 h-4 animate-spin"/>}
             </div>
           </div>
