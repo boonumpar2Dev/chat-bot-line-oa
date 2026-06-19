@@ -353,12 +353,18 @@ function FunnelSection() {
   const chartData = useMemo(() => {
     const a = queryA.data ?? [];
     const b = queryB.data ?? [];
-    return a.map((row, i) => ({
-      label: row.label,
-      A: row.count,
-      B: compare ? b[i]?.count ?? 0 : 0,
-      diff: compare ? row.count - (b[i]?.count ?? 0) : 0,
-    }));
+    return a.map((row, i) => {
+      const stage = FUNNEL_STAGES[i];
+      return {
+        key: stage.key,
+        label: row.label,
+        subLabel: stage.subLabel,
+        color: stage.color,
+        A: row.count,
+        B: compare ? b[i]?.count ?? 0 : 0,
+        diff: compare ? row.count - (b[i]?.count ?? 0) : 0,
+      };
+    });
   }, [queryA.data, queryB.data, compare]);
 
   const fmtPicker = (d: Date) =>
