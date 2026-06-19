@@ -410,6 +410,7 @@ function FunnelSection() {
             mode="single"
             selected={value}
             onSelect={(d) => d && onChange(d)}
+            disabled={(date) => date < FUNNEL_MIN_DATE}
             initialFocus
             className={cn("p-3 pointer-events-auto")}
           />
