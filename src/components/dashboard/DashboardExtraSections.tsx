@@ -180,7 +180,8 @@ function DailyReportTable() {
         supabase
           .from("customers")
           .select("created_at,updated_at,status,phone,event_date,guest_count")
-          .or(`created_at.gte.${since},updated_at.gte.${since}`),
+          .or(`created_at.gte.${since},updated_at.gte.${since}`)
+          .limit(10000),
         supabase
           .from("conversations")
           .select("created_at,sender")
@@ -306,7 +307,8 @@ async function fetchFunnel(mode: FunnelMode, date: Date) {
     .from("customers")
     .select("status")
     .gte("created_at", from.toISOString())
-    .lte("created_at", to.toISOString());
+    .lte("created_at", to.toISOString())
+    .limit(10000);
   if (error) throw error;
   const counts: Record<string, number> = {};
   (data ?? []).forEach((r: any) => {
@@ -481,7 +483,8 @@ function CurrentStatusGrid() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("status,updated_at");
+        .select("status,updated_at")
+        .limit(10000);
       if (error) throw error;
       const now = Date.now();
       const grouped: Record<string, { count: number; waitMs: number[] }> = {};

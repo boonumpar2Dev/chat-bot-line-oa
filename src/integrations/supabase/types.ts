@@ -730,6 +730,44 @@ export type Database = {
           },
         ]
       }
+      customer_status_log: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          customer_id: string
+          id: string
+          new_status: string
+          note: string | null
+          old_status: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          customer_id: string
+          id?: string
+          new_status: string
+          note?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          customer_id?: string
+          id?: string
+          new_status?: string
+          note?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_status_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           admin_bot_override: boolean
