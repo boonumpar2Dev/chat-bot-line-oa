@@ -90,8 +90,9 @@ export default function QuickResponsePopup({
     return () => document.removeEventListener("mousedown", h);
   }, [show, onClose]);
 
-  const filtered = filter
-    ? responses.filter(r => r.name.toLowerCase().includes(filter.toLowerCase()) || r.text.toLowerCase().includes(filter.toLowerCase()))
+  const q = (search || filter || "").trim().toLowerCase();
+  const filtered = q
+    ? responses.filter(r => r.name.toLowerCase().includes(q) || r.text.toLowerCase().includes(q))
     : responses;
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
