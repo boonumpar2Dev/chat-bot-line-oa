@@ -294,33 +294,55 @@ function DailyReportTable() {
 /* ============= Section 3: Funnel ============= */
 type FunnelMode = "day" | "month";
 const FUNNEL_STAGES: { key: string; label: string; statuses: string[]; color: string; subLabel?: string }[] = [
-  { key: "new", label: "ทักเข้ามา", color: "#378ADD", statuses: ["new", "returning", "inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed", "cancelled"] },
-  { key: "inquiry", label: "สอบถามข้อมูล", color: "#378ADD", statuses: ["inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "Admin ต้องทำ", statuses: ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", statuses: ["pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75", statuses: ["confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "new", label: "ทักเข้ามา", color: "#378ADD", statuses: [] },
+  { key: "inquiry", label: "สอบถามข้อมูล", color: "#378ADD", statuses: ["inquiry"] },
+  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "Admin ต้องทำ", statuses: ["pending_quote"] },
+  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", statuses: ["pending_confirm"] },
+  { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75", statuses: ["confirmed", "confirmed_returning"] },
   { key: "completed", label: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close", statuses: ["completed"] },
 ];
+
+const FUNNEL_MIN_DATE = new Date(2026, 5, 19);
 
 async function fetchFunnel(mode: FunnelMode, date: Date) {
   const from = mode === "day" ? startOfDay(date) : startOfMonth(date);
   const to = mode === "day" ? endOfDay(date) : endOfMonth(date);
-  const { data, error } = await supabase
+
+  // stage "new" — นับ customers.created_at ในช่วง
+  const { count: newCount, error: newErr } = await supabase
     .from("customers")
-    .select("status")
+    .select("id", { count: "exact", head: true })
     .gte("created_at", from.toISOString())
-    .lte("created_at", to.toISOString())
-    .limit(10000);
-  if (error) throw error;
-  const counts: Record<string, number> = {};
-  (data ?? []).forEach((r: any) => {
-    counts[r.status] = (counts[r.status] ?? 0) + 1;
+    .lte("created_at", to.toISOString());
+  if (newErr) throw newErr;
+
+  // stage อื่น — distinct customer_id จาก customer_status_log
+  const logStatuses = FUNNEL_STAGES.flatMap((s) => s.statuses);
+  const { data: logs, error: logErr } = await supabase
+    .from("customer_status_log")
+    .select("customer_id, new_status")
+    .in("new_status", logStatuses)
+    .gte("changed_at", from.toISOString())
+    .lte("changed_at", to.toISOString())
+    .limit(50000);
+  if (logErr) throw logErr;
+
+  const distinctByStatus: Record<string, Set<string>> = {};
+  (logs ?? []).forEach((r: any) => {
+    if (!distinctByStatus[r.new_status]) distinctByStatus[r.new_status] = new Set();
+    distinctByStatus[r.new_status].add(r.customer_id);
   });
-  return FUNNEL_STAGES.map((s) => ({
-    key: s.key,
-    label: s.label,
-    count: s.statuses.reduce((sum, st) => sum + (counts[st] ?? 0), 0),
-  }));
+
+  return FUNNEL_STAGES.map((s) => {
+    if (s.key === "new") {
+      return { key: s.key, label: s.label, count: newCount ?? 0 };
+    }
+    const ids = new Set<string>();
+    s.statuses.forEach((st) => {
+      distinctByStatus[st]?.forEach((id) => ids.add(id));
+    });
+    return { key: s.key, label: s.label, count: ids.size };
+  });
 }
 
 function FunnelSection() {
