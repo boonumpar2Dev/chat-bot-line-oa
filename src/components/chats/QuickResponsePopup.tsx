@@ -71,6 +71,7 @@ export default function QuickResponsePopup({
   const [form, setForm] = useState({ name: "", text: "", image_urls: [] as string[], file_urls: [] as string[] });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
