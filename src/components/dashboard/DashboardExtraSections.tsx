@@ -27,6 +27,8 @@ import {
   GitCompare,
   FileText,
   Activity,
+  ArrowDown,
+  AlertTriangle,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -291,13 +293,13 @@ function DailyReportTable() {
 
 /* ============= Section 3: Funnel ============= */
 type FunnelMode = "day" | "month";
-const FUNNEL_STAGES: { key: string; label: string; statuses: string[] }[] = [
-  { key: "new", label: "ทักเข้ามา", statuses: ["new", "returning", "inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed", "cancelled"] },
-  { key: "inquiry", label: "สอบถามข้อมูล", statuses: ["inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "quote", label: "รอใบเสนอราคา", statuses: ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "confirm", label: "รอคอนเฟิร์ม", statuses: ["pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "confirmed", label: "คอนเฟิร์มแล้ว", statuses: ["confirmed", "confirmed_returning", "completed", "postponed"] },
-  { key: "completed", label: "จัดงานจบแล้ว", statuses: ["completed"] },
+const FUNNEL_STAGES: { key: string; label: string; statuses: string[]; color: string; subLabel?: string }[] = [
+  { key: "new", label: "ทักเข้ามา", color: "#378ADD", statuses: ["new", "returning", "inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed", "cancelled"] },
+  { key: "inquiry", label: "สอบถามข้อมูล", color: "#378ADD", statuses: ["inquiry", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "Admin ต้องทำ", statuses: ["pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", statuses: ["pending_confirm", "confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75", statuses: ["confirmed", "confirmed_returning", "completed", "postponed"] },
+  { key: "completed", label: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close", statuses: ["completed"] },
 ];
 
 async function fetchFunnel(mode: FunnelMode, date: Date) {
@@ -351,12 +353,18 @@ function FunnelSection() {
   const chartData = useMemo(() => {
     const a = queryA.data ?? [];
     const b = queryB.data ?? [];
-    return a.map((row, i) => ({
-      label: row.label,
-      A: row.count,
-      B: compare ? b[i]?.count ?? 0 : 0,
-      diff: compare ? row.count - (b[i]?.count ?? 0) : 0,
-    }));
+    return a.map((row, i) => {
+      const stage = FUNNEL_STAGES[i];
+      return {
+        key: stage.key,
+        label: row.label,
+        subLabel: stage.subLabel,
+        color: stage.color,
+        A: row.count,
+        B: compare ? b[i]?.count ?? 0 : 0,
+        diff: compare ? row.count - (b[i]?.count ?? 0) : 0,
+      };
+    });
   }, [queryA.data, queryB.data, compare]);
 
   const fmtPicker = (d: Date) =>
@@ -426,51 +434,144 @@ function FunnelSection() {
           <p className="text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>
         )}
         {queryA.isLoading && <p className="text-sm text-muted-foreground">กำลังโหลด...</p>}
-        {queryA.data && (
-          <div className="space-y-2">
-            {chartData.map((row) => {
-              const maxVal = Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
-              const pctA = (row.A / maxVal) * 100;
-              const pctB = (row.B / maxVal) * 100;
-              return (
-                <div key={row.label} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium">{row.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-display font-semibold tabular-nums">{row.A}</span>
-                      {compare && (
-                        <>
-                          <span className="text-muted-foreground tabular-nums">vs {row.B}</span>
-                          {row.diff !== 0 && (
-                            <Badge
-                              variant={row.diff > 0 ? "default" : "destructive"}
-                              className="h-4 px-1 text-[10px]"
-                            >
-                              {row.diff > 0 ? "+" : ""}
-                              {row.diff}
-                            </Badge>
+        {queryA.data && (() => {
+          const firstA = chartData[0]?.A || 1;
+          const maxVal = Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
+          const dropThreshold = mode === "month" ? 10 : 3;
+          // insights
+          const totalIn = chartData[0]?.A ?? 0;
+          const quoteCount = chartData.find((r) => r.key === "quote")?.A ?? 0;
+          const confirmedCount = chartData.find((r) => r.key === "confirmed")?.A ?? 0;
+          const conv = totalIn > 0 ? Math.round((confirmedCount / totalIn) * 100) : 0;
+          let maxDrop = { label: "-", count: 0 };
+          for (let i = 1; i < chartData.length; i++) {
+            const d = chartData[i - 1].A - chartData[i].A;
+            if (d > maxDrop.count) maxDrop = { label: chartData[i].label, count: d };
+          }
+          return (
+            <>
+              <div className="space-y-1">
+                {chartData.map((row, i) => {
+                  const pctA = (row.A / maxVal) * 100;
+                  const pctB = (row.B / maxVal) * 100;
+                  const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
+                  const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
+                  const prev = chartData[i - 1];
+                  const drop = prev ? prev.A - row.A : 0;
+                  const isHighDrop = drop >= dropThreshold;
+                  return (
+                    <div key={row.key}>
+                      {i > 0 && (
+                        <div className="flex items-center gap-2 pl-[160px] py-1.5">
+                          <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "h-5 px-2 text-[11px] font-medium border-0",
+                              isHighDrop
+                                ? "bg-rose-100 text-rose-700"
+                                : "bg-emerald-100 text-emerald-700"
+                            )}
+                          >
+                            หลุด {drop}
+                          </Badge>
+                          {row.key === "quote" && drop > 0 && (
+                            <span className="text-[11px] text-rose-600 font-medium flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              จุดหลุดสูง
+                            </span>
                           )}
-                        </>
+                        </div>
                       )}
+                      <div className="flex items-center gap-3">
+                        <div className="w-[150px] shrink-0 min-w-0">
+                          <div className="text-sm font-medium truncate">{row.label}</div>
+                          {row.subLabel && (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {row.subLabel}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="relative h-9 bg-muted/40 rounded-md overflow-hidden">
+                            <div
+                              className="absolute inset-y-0 left-0 rounded-md transition-all flex items-center px-3"
+                              style={{ width: `${pctA}%`, backgroundColor: row.color }}
+                            >
+                              {pctA > 12 && (
+                                <span className="text-xs font-semibold text-white tabular-nums">
+                                  {row.A} คน
+                                </span>
+                              )}
+                            </div>
+                            {compare && (
+                              <div
+                                className="absolute left-0 rounded-md transition-all"
+                                style={{
+                                  width: `${pctB}%`,
+                                  backgroundColor: "#7F77DD",
+                                  top: "60%",
+                                  height: "40%",
+                                  opacity: 0.85,
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        <div className="w-[130px] shrink-0 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className="font-display font-bold text-lg tabular-nums leading-none">
+                              {row.A}
+                            </span>
+                            {compare && row.diff !== 0 && (
+                              <Badge
+                                variant={row.diff > 0 ? "default" : "destructive"}
+                                className="h-4 px-1 text-[10px]"
+                              >
+                                {row.diff > 0 ? "+" : ""}
+                                {row.diff}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground tabular-nums leading-tight">
+                            {pctOfFirst}%
+                            {compare && (
+                              <span style={{ color: "#7F77DD" }} className="ml-1">
+                                ({pctOfFirstB}%)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="relative h-6 bg-muted rounded overflow-hidden">
-                    <div
-                      className="absolute inset-y-0 left-0 bg-primary transition-all"
-                      style={{ width: `${pctA}%` }}
-                    />
-                    {compare && (
-                      <div
-                        className="absolute inset-y-0 left-0 bg-foreground/30 transition-all border-r-2 border-foreground/60"
-                        style={{ width: `${pctB}%`, top: "60%", height: "40%" }}
-                      />
-                    )}
-                  </div>
+                  );
+                })}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
+                  <div className="text-[11px] text-muted-foreground">ทักเข้ามา</div>
+                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
+                  <div className="text-[11px] text-muted-foreground">รอใบเสนอ</div>
+                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteCount}</div>
+                  <div className="text-[10px] text-rose-600 mt-0.5">Admin ต้องดูแล</div>
+                </div>
+                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
+                  <div className="text-[11px] text-muted-foreground">Conversion</div>
+                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{conv}%</div>
+                </div>
+                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
+                  <div className="text-[11px] text-muted-foreground">จุดหลุดสูงสุด</div>
+                  <div className="font-display font-bold text-base tabular-nums mt-0.5 truncate">
+                    {maxDrop.label}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">หลุด {maxDrop.count} คน</div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </Card>
   );
