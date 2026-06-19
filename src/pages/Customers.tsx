@@ -65,6 +65,10 @@ export default function Customers() {
   const [statusFilter, setStatusFilter] = useState<string>(sp.get("status") || "all");
   const [tierFilter, setTierFilter] = useState<string>(sp.get("tier") || "all");
   const [tagFilter, setTagFilter] = useState<string>(sp.get("tag") || "");
+  const [monthFilter, setMonthFilter] = useState<string[]>(parseCsv(sp.get("months")));
+  const [yearFilter, setYearFilter] = useState<string[]>(parseCsv(sp.get("years")));
+  const [viewMode, setViewMode] = useState<"list" | "card">((sp.get("view") === "card" ? "card" : "list"));
+  const [yearOptions, setYearOptions] = useState<string[]>([]);
 
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
