@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown, SlidersHorizontal } from "lucide-react";
+import { Loader2, Search, Phone, MessageSquare, Users as UsersIcon, Calendar, Tag as TagIcon, X, Plus, Settings2, Crown, SlidersHorizontal, List as ListIcon, LayoutGrid, CalendarRange } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
