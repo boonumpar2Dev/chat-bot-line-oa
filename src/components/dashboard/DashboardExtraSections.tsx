@@ -582,19 +582,40 @@ function CurrentStatusGrid() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["current-status-grid"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("status,updated_at")
-        .limit(10000);
-      if (error) throw error;
-      const now = Date.now();
+      const statuses = ["new", "inquiry", "returning", "pending_quote", "pending_confirm", "confirmed", "confirmed_returning", "postponed", "cancelled", "completed"];
+
+      const results = await Promise.all(
+        statuses.map(async (status) => {
+          const { count, error } = await supabase
+            .from("customers")
+            .select("*", { count: "exact", head: true })
+            .eq("status", status);
+          if (error) throw error;
+          return { status, count: count ?? 0 };
+        })
+      );
+
       const grouped: Record<string, { count: number; waitMs: number[] }> = {};
-      (data ?? []).forEach((r: any) => {
-        const s = r.status as string;
-        if (!grouped[s]) grouped[s] = { count: 0, waitMs: [] };
-        grouped[s].count++;
-        if (r.updated_at) grouped[s].waitMs.push(now - new Date(r.updated_at).getTime());
-      });
+      for (const r of results) {
+        grouped[r.status] = { count: r.count, waitMs: [] };
+      }
+
+      // query เวลารอเฉลี่ยแยก สำหรับ status ที่มีคนอยู่
+      const activeStatuses = results.filter((r) => r.count > 0).map((r) => r.status);
+      if (activeStatuses.length > 0) {
+        const { data: waitData } = await supabase
+          .from("customers")
+          .select("status,updated_at")
+          .in("status", activeStatuses)
+          .limit(10000);
+        const now = Date.now();
+        (waitData ?? []).forEach((r: any) => {
+          if (grouped[r.status] && r.updated_at) {
+            grouped[r.status].waitMs.push(now - new Date(r.updated_at).getTime());
+          }
+        });
+      }
+
       return grouped;
     },
   });
