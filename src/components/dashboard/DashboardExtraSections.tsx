@@ -178,8 +178,10 @@ function DailyReportTable() {
       for (let i = 6; i >= 0; i--) {
         const d = startOfDay(new Date());
         d.setDate(d.getDate() - i);
+        if (d < DASHBOARD_MIN_DATE) continue;
         days.push(d);
       }
+      if (days.length === 0) days.push(startOfDay(DASHBOARD_MIN_DATE));
       const since = days[0].toISOString();
 
       const [custRes, convRes] = await Promise.all([
