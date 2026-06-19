@@ -1,4 +1,4 @@
-import { X, FileText, Film, Loader2 } from "lucide-react";
+import { X, Film, Loader2, Download } from "lucide-react";
 
 function getFileType(url = "", name = "") {
   const l = (name || url).toLowerCase();
@@ -12,17 +12,32 @@ function getFileType(url = "", name = "") {
   return "file";
 }
 
-type Item = { url: string; uploading?: boolean; name?: string };
+type Item = { url: string; uploading?: boolean; name?: string; size?: number };
+
+function formatBytes(bytes?: number) {
+  if (!bytes) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function getExtension(name = "") {
+  const ext = name.split(".").pop()?.trim();
+  if (!ext || ext === name) return "FILE";
+  return ext.toUpperCase().slice(0, 5);
+}
 
 export default function StagedMessageBar({ items, onRemoveFile, onClearAll }:
   { items: Item[]; onRemoveFile: (url: string) => void; onClearAll: () => void }) {
   if (!items?.length) return null;
   return (
     <div className="px-4 py-2 border-b bg-amber-50/60 flex items-center gap-2">
-      <div className="flex items-center gap-1.5 flex-1 overflow-x-auto">
-        {items.map(({ url, uploading, name: itemName }) => {
+      <div className="flex items-center gap-2 flex-1 overflow-x-auto pb-1">
+        {items.map(({ url, uploading, name: itemName, size }) => {
           const t = getFileType(url, itemName);
           const name = itemName || url.split("/").pop()?.split("?")[0] || "ไฟล์";
+          const sizeText = formatBytes(size);
+          const ext = getExtension(name);
           const isPending = url.startsWith("pending:");
           return (
             <div key={url} className="relative group shrink-0">
@@ -33,9 +48,25 @@ export default function StagedMessageBar({ items, onRemoveFile, onClearAll }:
                   <Film className="w-4 h-4 text-purple-500"/><span className="text-[7px] text-purple-600">VDO</span>
                 </div>
               ) : (
-                <div className="w-12 h-12 rounded-lg border border-amber-200 bg-blue-50 flex flex-col items-center justify-center">
-                  <FileText className="w-4 h-4 text-blue-500"/>
-                  <span className="text-[7px] text-blue-600 truncate max-w-[44px]">{name.slice(-6)}</span>
+                <div className="w-[304px] max-w-[72vw] rounded-lg border border-border bg-background p-3 shadow-sm">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                      <span className="max-w-[42px] truncate text-xs font-bold text-primary" title={ext}>{ext}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="line-clamp-2 break-all text-sm font-semibold leading-5 text-foreground" title={name}>{name}</div>
+                      {sizeText && <div className="mt-0.5 truncate text-xs text-muted-foreground">{sizeText}</div>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => !uploading && !isPending && window.open(url, "_blank", "noopener,noreferrer")}
+                    disabled={uploading || isPending}
+                    className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
+                  >
+                    {uploading || isPending ? <Loader2 className="h-4 w-4 animate-spin"/> : <Download className="h-4 w-4"/>}
+                    {uploading || isPending ? "กำลังอัปโหลด" : "ดาวน์โหลดไฟล์"}
+                  </button>
                 </div>
               )}
               {uploading && (
