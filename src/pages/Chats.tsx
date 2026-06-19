@@ -1556,7 +1556,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
   const isCustomer = m.sender === "customer";
   const isAdmin = m.sender === "admin";
   const align = isCustomer ? "items-start" : "items-end";
-  const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary";
+  const bg = isCustomer ? "bg-card border" : isAdmin ? "bg-[#FEF9E7] text-black border border-amber-200/60" : "bg-secondary";
   const adminName = isAdmin ? (m.admin_user_id && adminNames?.[m.admin_user_id]) || "แอดมิน" : "";
   const label = isCustomer ? "ลูกค้า" : isAdmin ? `👤 ${adminName}` : "🤖 AI";
 
