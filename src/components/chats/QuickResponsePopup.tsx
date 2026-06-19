@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, Loader2, X, FileText, Paperclip, Film, Pencil } from "lucide-react";
+import { Plus, Trash2, Loader2, X, FileText, Paperclip, Film, Pencil, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
