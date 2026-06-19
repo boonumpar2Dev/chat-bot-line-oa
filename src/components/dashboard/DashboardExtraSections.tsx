@@ -483,7 +483,8 @@ function CurrentStatusGrid() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("customers")
-        .select("status,updated_at");
+        .select("status,updated_at")
+        .limit(10000);
       if (error) throw error;
       const now = Date.now();
       const grouped: Record<string, { count: number; waitMs: number[] }> = {};
