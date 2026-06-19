@@ -535,12 +535,82 @@ export default function Customers() {
           </div>
         ) : (
           <div className={cn(
-            "p-3 lg:p-4 gap-3",
             viewMode === "card"
-              ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
-              : "flex flex-col max-w-3xl mx-auto"
+              ? "p-3 lg:p-4 gap-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+              : "px-2 sm:px-4 py-2 max-w-4xl mx-auto divide-y divide-border/60 rounded-lg sm:border sm:bg-card sm:my-3 sm:divide-y"
           )}>
-            {filtered.map(c => {
+            {viewMode === "list" && filtered.map(c => {
+              const tierDef = c.tier ? tierByName[c.tier] : null;
+              const isSelected = selected.has(c.id);
+              const cleanPhone = c.phone ? String(c.phone).replace(/[^0-9+]/g, "") : "";
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => nav(`/customers/${c.id}`)}
+                  className={cn(
+                    "group flex items-center gap-2 sm:gap-3 px-2 py-2.5 hover:bg-accent/40 cursor-pointer transition-colors",
+                    isSelected && "bg-primary/5"
+                  )}
+                >
+                  <div onClick={(e) => { e.stopPropagation(); toggleSelect(c.id); }} className="shrink-0">
+                    <Checkbox checked={isSelected} />
+                  </div>
+                  <Avatar className="w-9 h-9 shrink-0">
+                    <AvatarImage src={c.picture_url} alt={c.display_name}/>
+                    <AvatarFallback className="text-xs">{(c.display_name || "?")[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <p className="font-medium text-sm truncate">{c.nickname || c.display_name || "ไม่ระบุชื่อ"}</p>
+                      {c.tier === "VIP" && <Crown className="w-3 h-3 text-amber-500 shrink-0"/>}
+                      {tierDef && c.tier !== "VIP" && (
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: tierDef.color }} title={tierDef.name} />
+                      )}
+                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 shrink-0", STATUS_COLOR[c.status])}>
+                        {STATUS_LABEL[c.status] || c.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5 flex-wrap">
+                      {c.phone ? (
+                        <span className="inline-flex items-center gap-1"><Phone className="w-3 h-3"/>{c.phone}</span>
+                      ) : (
+                        <span className="opacity-50">ไม่มีเบอร์</span>
+                      )}
+                      {c.event_date && (
+                        <span className="inline-flex items-center gap-1"><Calendar className="w-3 h-3"/>{new Date(c.event_date).toLocaleDateString("th-TH")}</span>
+                      )}
+                      {Array.isArray(c.tags) && c.tags
+                        .filter((t: string) => TH_MONTHS.includes(t) || /^25\d{2}$/.test(t))
+                        .slice(0, 4)
+                        .map((t: string) => (
+                          <span key={t} className="inline-flex items-center px-1.5 h-4 rounded text-[10px] text-white border-0" style={{ backgroundColor: tagColor(t) }}>{t}</span>
+                        ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {cleanPhone && (
+                      <a
+                        href={`tel:${cleanPhone}`}
+                        className="inline-flex items-center justify-center h-8 w-8 rounded-md text-emerald-600 hover:bg-emerald-500/10 transition"
+                        title="โทร"
+                        aria-label="โทร"
+                      >
+                        <Phone className="w-4 h-4"/>
+                      </a>
+                    )}
+                    <Button
+                      size="icon" variant="ghost"
+                      aria-label="เปิดแชท"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                      onClick={() => nav(`/chats?customer=${c.id}`)}
+                    >
+                      <MessageSquare className="w-4 h-4"/>
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+            {viewMode === "card" && filtered.map(c => {
               const tierDef = c.tier ? tierByName[c.tier] : null;
               const isSelected = selected.has(c.id);
               return (
