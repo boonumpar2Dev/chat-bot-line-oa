@@ -243,7 +243,7 @@ function DailyReportTable() {
     <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
       <div className="p-5 border-b flex items-center gap-2">
         <FileText className="w-4 h-4 text-muted-foreground" />
-        <h2 className="font-display font-semibold">รายงานรายวัน (7 วันล่าสุด)</h2>
+        <h2 className="font-display font-semibold">รายงานรายวัน ({data?.length ?? 7} วันล่าสุด)</h2>
       </div>
       <div className="overflow-x-auto">
         {error && <p className="p-5 text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
