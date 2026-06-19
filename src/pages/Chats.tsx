@@ -838,6 +838,24 @@ export default function Chats() {
       setStagedSticker(null);
       setReplyingTo(null);
       try { localStorage.removeItem(draftKey(userId, selected.id)); } catch {}
+      const bnpPattern = /BNP-[NV](\d{4})\d{2}/i;
+      const bnpFile = sentFiles.find(f => bnpPattern.test(f.name));
+      if (bnpFile) {
+        const match = bnpFile.name.match(bnpPattern);
+        if (match) {
+          const quoteYear = parseInt(match[1]);
+          const currentBEYear = new Date().getFullYear() + 543;
+          const isCurrentQuote = Math.abs(quoteYear - currentBEYear) <= 1;
+          const changeableStatuses = ['new','inquiry','returning','pending_quote','cancelled'];
+          if (isCurrentQuote && changeableStatuses.includes(selected.status)) {
+            await supabase.from("customers")
+              .update({ status: "pending_confirm" })
+              .eq("id", selected.id);
+            updateLocalCustomer({ status: "pending_confirm" });
+            toast.success("ตรวจพบใบเสนอราคา — เปลี่ยนสถานะเป็น 'รอคอนเฟิร์ม' อัตโนมัติ");
+          }
+        }
+      }
 
     } catch (e: any) {
       toast.error("ส่งข้อความไม่สำเร็จ: " + e.message);
