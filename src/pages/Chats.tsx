@@ -1673,16 +1673,16 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
     <div className={cn("flex flex-col gap-0.5 group min-w-0 flex-1", align)}>
 
       {showLabel && (
-        <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5 flex-wrap">
           {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
           {m.sender === "ai" && cleaned && onTrainAI && (
-            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
-              <Brain className="w-3 h-3"/>สอน AI จากเคสนี้
+            <button onClick={()=>onTrainAI(cleaned)} className="inline-flex items-center gap-0.5 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-2 py-0.5 transition" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
+              <Brain className="w-3 h-3"/>สอน AI
             </button>
           )}
           {isAdmin && cleaned && onTeachKb && (
-            <button onClick={()=>onTeachKb(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="บันทึกคำตอบนี้เป็นความรู้ AI">
-              <BookPlus className="w-3 h-3"/>เพิ่มเป็นความรู้ AI
+            <button onClick={()=>onTeachKb(cleaned)} className="inline-flex items-center gap-0.5 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-2 py-0.5 transition" title="บันทึกคำตอบนี้เป็นความรู้ AI">
+              <BookPlus className="w-3 h-3"/>เพิ่มเป็น KB
             </button>
           )}
         </span>
