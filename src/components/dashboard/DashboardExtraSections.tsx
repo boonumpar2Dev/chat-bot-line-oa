@@ -480,29 +480,7 @@ function FunnelToday() {
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
                   return (
                     <div key={row.key}>
-                      {i > 0 && (
-                        <div className="flex items-center gap-2 sm:pl-[160px] py-1.5 flex-wrap">
-                          <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
-                          {i === 1 ? (
-                            <Badge
-                              variant="outline"
-                              className="h-5 px-2 text-[11px] font-medium border-0 bg-amber-100 text-amber-700"
-                            >
-                              ไปสอบถาม {inquiryA} คน (ยังไม่ให้ข้อมูลครบ)
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="h-5 px-2 text-[11px] font-medium border-0 bg-emerald-100 text-emerald-700"
-                            >
-                              ไปต่อ {row.A} คน
-                              {row.key === "confirm" && " (รอลูกค้าตอบ)"}
-                              {row.key === "confirmed" && " (ปิดการขายได้)"}
-                              {row.key === "completed" && " (จัดงานเสร็จ)"}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+
                       <div className="flex items-center gap-3">
                         <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
