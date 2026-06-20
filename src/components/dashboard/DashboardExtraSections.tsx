@@ -432,7 +432,7 @@ function FunnelToday() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-semibold">📊 Funnel วันนี้ — เกิดอะไรขึ้น</h2>
+            <h2 className="font-display font-semibold">📊 {mode === "day" ? "กิจกรรมวันนี้" : "กิจกรรมเดือนนี้"} — เกิดอะไรขึ้น</h2>
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant={mode === "day" ? "default" : "outline"} onClick={() => setMode("day")}>
