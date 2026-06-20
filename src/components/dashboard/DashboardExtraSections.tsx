@@ -27,7 +27,7 @@ import {
   GitCompare,
   FileText,
   Activity,
-  
+  ArrowDown,
   AlertTriangle,
 } from "lucide-react";
 
@@ -309,9 +309,9 @@ const FUNNEL_STAGES: { key: string; labelDay: string; labelMonth: string; color:
 
 const FUNNEL_MIN_DATE = new Date(2026, 5, 19);
 
-async function fetchFunnel(mode: FunnelMode, date: Date) {
-  const from = mode === "day" ? startOfDay(date) : startOfMonth(date);
-  const to = mode === "day" ? endOfDay(date) : endOfMonth(date);
+async function fetchFunnelDay(date: Date) {
+  const from = startOfDay(date);
+  const to = endOfDay(date);
 
   const { count: newCount, error: e1 } = await supabase
     .from("customers")
@@ -338,13 +338,79 @@ async function fetchFunnel(mode: FunnelMode, date: Date) {
 
   return {
     stages: [
-      { key: "new", label: "ทักเข้ามา", count: newCount ?? 0 },
-      { key: "quote", label: "รอใบเสนอราคา", count: countDistinct(["pending_quote"]) },
-      { key: "confirm", label: "รอคอนเฟิร์ม", count: countDistinct(["pending_confirm"]) },
-      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: countDistinct(["confirmed", "confirmed_returning"]) },
-      { key: "completed", label: "จัดงานจบแล้ว", count: countDistinct(["completed"]) },
+      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newCount ?? 0 },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: countDistinct(["pending_quote"]) },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: countDistinct(["pending_confirm"]) },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: countDistinct(["confirmed", "confirmed_returning"]) },
+      { key: "completed", label: "จัดงานเสร็จ", count: countDistinct(["completed"]) },
     ],
-    inquiryCount: countDistinct(["inquiry"]),
+    inquiryCount: 0,
+    isDayMode: true as boolean,
+  };
+}
+
+async function fetchFunnelMonth(date: Date) {
+  const from = startOfMonth(date);
+  const to = endOfMonth(date);
+
+  const { data: custs, error: e1 } = await supabase
+    .from("customers")
+    .select("id")
+    .gte("created_at", from.toISOString())
+    .lte("created_at", to.toISOString())
+    .limit(10000);
+  if (e1) throw e1;
+  const idSet = new Set<string>((custs ?? []).map((c: any) => c.id));
+  const newCount = idSet.size;
+
+  const STAGE_RANK: Record<string, number> = {
+    inquiry: 1,
+    pending_quote: 2,
+    pending_confirm: 3,
+    confirmed: 4,
+    confirmed_returning: 4,
+    completed: 5,
+  };
+  const highest = new Map<string, number>();
+
+  if (idSet.size > 0) {
+    const { data: logs, error: e2 } = await supabase
+      .from("customer_status_log")
+      .select("customer_id, new_status")
+      .in("customer_id", Array.from(idSet))
+      .limit(10000);
+    if (e2) throw e2;
+    (logs ?? []).forEach((r: any) => {
+      const rank = STAGE_RANK[r.new_status];
+      if (!rank) return;
+      const prev = highest.get(r.customer_id) ?? 0;
+      if (rank > prev) highest.set(r.customer_id, rank);
+    });
+  }
+
+  const countAtLeast = (n: number) => {
+    let c = 0;
+    highest.forEach((v) => {
+      if (v >= n) c++;
+    });
+    return c;
+  };
+
+  const quoteOrAbove = countAtLeast(2);
+  const confirmOrAbove = countAtLeast(3);
+  const confirmedOrAbove = countAtLeast(4);
+  const completedOrAbove = countAtLeast(5);
+
+  return {
+    stages: [
+      { key: "new", label: "ทักเข้ามา", count: newCount },
+      { key: "quote", label: "รอใบเสนอราคา", count: quoteOrAbove },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmOrAbove },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedOrAbove },
+      { key: "completed", label: "จัดงานจบแล้ว", count: completedOrAbove },
+    ],
+    inquiryCount: Math.max(0, newCount - quoteOrAbove),
+    isDayMode: false as boolean,
   };
 }
 
@@ -368,11 +434,11 @@ function FunnelToday() {
 
   const queryA = useQuery({
     queryKey: ["funnel-today", mode, ymd(dateA)],
-    queryFn: () => fetchFunnel(mode, dateA),
+    queryFn: () => (mode === "day" ? fetchFunnelDay(dateA) : fetchFunnelMonth(dateA)),
   });
   const queryB = useQuery({
     queryKey: ["funnel-today", mode, ymd(dateB)],
-    queryFn: () => fetchFunnel(mode, dateB),
+    queryFn: () => (mode === "day" ? fetchFunnelDay(dateB) : fetchFunnelMonth(dateB)),
     enabled: compare,
   });
 
@@ -382,7 +448,7 @@ function FunnelToday() {
     return FUNNEL_STAGES.map((stage, i) => {
       return {
         key: stage.key,
-        label: mode === "day" ? stage.labelDay : stage.labelMonth,
+        label: a[i]?.label ?? (mode === "day" ? stage.labelDay : stage.labelMonth),
         subLabel: stage.subLabel,
         color: stage.color,
         A: a[i]?.count ?? 0,
@@ -432,7 +498,7 @@ function FunnelToday() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-semibold">📊 {mode === "day" ? "กิจกรรมวันนี้" : "กิจกรรมเดือนนี้"} — เกิดอะไรขึ้น</h2>
+            <h2 className="font-display font-semibold">{mode === "day" ? "📊 กิจกรรมวันนี้ — เกิดอะไรขึ้น" : "📊 Funnel ลูกค้า — ติดตามกลุ่มเดือนนี้"}</h2>
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant={mode === "day" ? "default" : "outline"} onClick={() => setMode("day")}>
@@ -463,24 +529,43 @@ function FunnelToday() {
         )}
         {queryA.isLoading && <p className="text-sm text-muted-foreground">กำลังโหลด...</p>}
         {queryA.data && (() => {
+          const isDayMode = queryA.data.isDayMode;
           const firstA = chartData[0]?.A || 1;
           const maxVal = Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
           const totalIn = chartData[0]?.A ?? 0;
           const quoteCount = chartData.find((r) => r.key === "quote")?.A ?? 0;
           const confirmedCount = chartData.find((r) => r.key === "confirmed")?.A ?? 0;
+          const completedCount = chartData.find((r) => r.key === "completed")?.A ?? 0;
           const conv = totalIn > 0 ? Math.round((confirmedCount / totalIn) * 100) : 0;
           const quotePct = totalIn > 0 ? Math.round((quoteCount / totalIn) * 100) : 0;
           return (
             <>
               <div className="space-y-1">
                 {chartData.map((row, i) => {
-                  const pctA = (row.A / maxVal) * 100;
-                  const pctB = (row.B / maxVal) * 100;
+                  // day mode: each row independent → width by max across rows
+                  // month mode: cumulative funnel → width by first
+                  const baseVal = isDayMode ? maxVal : firstA;
+                  const pctA = (row.A / baseVal) * 100;
+                  const pctB = (row.B / baseVal) * 100;
                   const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
+                  const prev = chartData[i - 1];
+                  const dropFromPrev = prev ? Math.max(0, prev.A - row.A) : 0;
                   return (
                     <div key={row.key}>
-
+                      {!isDayMode && i > 0 && (
+                        <div className="flex items-center gap-3 py-1 pl-[150px] hidden sm:flex">
+                          <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          <Badge variant="secondary" className="h-5 text-[10px] font-normal">
+                            ไปต่อ {row.A} คน
+                          </Badge>
+                          {dropFromPrev > 0 && (
+                            <Badge variant="outline" className="h-5 text-[10px] font-normal text-muted-foreground">
+                              หลุด {dropFromPrev} คน
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
@@ -539,14 +624,16 @@ function FunnelToday() {
                               </Badge>
                             )}
                           </div>
-                          <div className="text-[11px] text-muted-foreground tabular-nums leading-tight">
-                            {pctOfFirst}%
-                            {compare && (
-                              <span style={{ color: "#7F77DD" }} className="ml-1">
-                                ({pctOfFirstB}%)
-                              </span>
-                            )}
-                          </div>
+                          {!isDayMode && (
+                            <div className="text-[11px] text-muted-foreground tabular-nums leading-tight">
+                              {pctOfFirst}%
+                              {compare && (
+                                <span style={{ color: "#7F77DD" }} className="ml-1">
+                                  ({pctOfFirstB}%)
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -554,24 +641,47 @@ function FunnelToday() {
                 })}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
-                  <div className="text-[11px] text-muted-foreground">ทักเข้ามา</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
-                </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                  <div className="text-[11px] text-muted-foreground">ข้อมูลครบ</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">
-                    {quoteCount} <span className="text-sm text-muted-foreground">({quotePct}%)</span>
-                  </div>
-                </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
-                  <div className="text-[11px] text-muted-foreground">Conversion ทัก→คอนเฟิร์ม</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{conv}%</div>
-                </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#EAB308" }}>
-                  <div className="text-[11px] text-muted-foreground">ไปสอบถาม</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{inquiryA}</div>
-                </div>
+                {isDayMode ? (
+                  <>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
+                      <div className="text-[11px] text-muted-foreground">ลูกค้าใหม่</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
+                      <div className="text-[11px] text-muted-foreground">ได้ข้อมูลครบ</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteCount}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
+                      <div className="text-[11px] text-muted-foreground">คอนเฟิร์ม</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{confirmedCount}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#7F77DD" }}>
+                      <div className="text-[11px] text-muted-foreground">จัดงานเสร็จ</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{completedCount}</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
+                      <div className="text-[11px] text-muted-foreground">ทักเข้ามา</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
+                      <div className="text-[11px] text-muted-foreground">ข้อมูลครบ</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">
+                        {quoteCount} <span className="text-sm text-muted-foreground">({quotePct}%)</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
+                      <div className="text-[11px] text-muted-foreground">Conversion ทัก→คอนเฟิร์ม</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{conv}%</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#EAB308" }}>
+                      <div className="text-[11px] text-muted-foreground">ไปสอบถาม</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{inquiryA}</div>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           );
