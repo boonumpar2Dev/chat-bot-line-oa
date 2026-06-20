@@ -529,24 +529,43 @@ function FunnelToday() {
         )}
         {queryA.isLoading && <p className="text-sm text-muted-foreground">กำลังโหลด...</p>}
         {queryA.data && (() => {
+          const isDayMode = queryA.data.isDayMode;
           const firstA = chartData[0]?.A || 1;
           const maxVal = Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
           const totalIn = chartData[0]?.A ?? 0;
           const quoteCount = chartData.find((r) => r.key === "quote")?.A ?? 0;
           const confirmedCount = chartData.find((r) => r.key === "confirmed")?.A ?? 0;
+          const completedCount = chartData.find((r) => r.key === "completed")?.A ?? 0;
           const conv = totalIn > 0 ? Math.round((confirmedCount / totalIn) * 100) : 0;
           const quotePct = totalIn > 0 ? Math.round((quoteCount / totalIn) * 100) : 0;
           return (
             <>
               <div className="space-y-1">
                 {chartData.map((row, i) => {
-                  const pctA = (row.A / maxVal) * 100;
-                  const pctB = (row.B / maxVal) * 100;
+                  // day mode: each row independent → width by max across rows
+                  // month mode: cumulative funnel → width by first
+                  const baseVal = isDayMode ? maxVal : firstA;
+                  const pctA = (row.A / baseVal) * 100;
+                  const pctB = (row.B / baseVal) * 100;
                   const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
+                  const prev = chartData[i - 1];
+                  const dropFromPrev = prev ? Math.max(0, prev.A - row.A) : 0;
                   return (
                     <div key={row.key}>
-
+                      {!isDayMode && i > 0 && (
+                        <div className="flex items-center gap-3 py-1 pl-[150px] hidden sm:flex">
+                          <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
+                          <Badge variant="secondary" className="h-5 text-[10px] font-normal">
+                            ไปต่อ {row.A} คน
+                          </Badge>
+                          {dropFromPrev > 0 && (
+                            <Badge variant="outline" className="h-5 text-[10px] font-normal text-muted-foreground">
+                              หลุด {dropFromPrev} คน
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
@@ -605,14 +624,16 @@ function FunnelToday() {
                               </Badge>
                             )}
                           </div>
-                          <div className="text-[11px] text-muted-foreground tabular-nums leading-tight">
-                            {pctOfFirst}%
-                            {compare && (
-                              <span style={{ color: "#7F77DD" }} className="ml-1">
-                                ({pctOfFirstB}%)
-                              </span>
-                            )}
-                          </div>
+                          {!isDayMode && (
+                            <div className="text-[11px] text-muted-foreground tabular-nums leading-tight">
+                              {pctOfFirst}%
+                              {compare && (
+                                <span style={{ color: "#7F77DD" }} className="ml-1">
+                                  ({pctOfFirstB}%)
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -620,24 +641,47 @@ function FunnelToday() {
                 })}
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
-                  <div className="text-[11px] text-muted-foreground">ทักเข้ามา</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
-                </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                  <div className="text-[11px] text-muted-foreground">ข้อมูลครบ</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">
-                    {quoteCount} <span className="text-sm text-muted-foreground">({quotePct}%)</span>
-                  </div>
-                </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
-                  <div className="text-[11px] text-muted-foreground">Conversion ทัก→คอนเฟิร์ม</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{conv}%</div>
-                </div>
-                <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#EAB308" }}>
-                  <div className="text-[11px] text-muted-foreground">ไปสอบถาม</div>
-                  <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{inquiryA}</div>
-                </div>
+                {isDayMode ? (
+                  <>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
+                      <div className="text-[11px] text-muted-foreground">ลูกค้าใหม่</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
+                      <div className="text-[11px] text-muted-foreground">ได้ข้อมูลครบ</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteCount}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
+                      <div className="text-[11px] text-muted-foreground">คอนเฟิร์ม</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{confirmedCount}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#7F77DD" }}>
+                      <div className="text-[11px] text-muted-foreground">จัดงานเสร็จ</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{completedCount}</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
+                      <div className="text-[11px] text-muted-foreground">ทักเข้ามา</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
+                      <div className="text-[11px] text-muted-foreground">ข้อมูลครบ</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">
+                        {quoteCount} <span className="text-sm text-muted-foreground">({quotePct}%)</span>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
+                      <div className="text-[11px] text-muted-foreground">Conversion ทัก→คอนเฟิร์ม</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{conv}%</div>
+                    </div>
+                    <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#EAB308" }}>
+                      <div className="text-[11px] text-muted-foreground">ไปสอบถาม</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{inquiryA}</div>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           );
