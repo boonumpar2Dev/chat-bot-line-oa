@@ -299,12 +299,12 @@ function DailyReportTable() {
 
 /* ============= Section 3: Funnel Today + Backlog ============= */
 type FunnelMode = "day" | "month";
-const FUNNEL_STAGES: { key: string; label: string; color: string; subLabel?: string }[] = [
-  { key: "new", label: "ทักเข้ามา", color: "#378ADD" },
-  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "ข้อมูลครบ Admin ต้องทำ" },
-  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", subLabel: "ส่งใบแล้ว รอลูกค้าตอบ" },
-  { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75" },
-  { key: "completed", label: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close" },
+const FUNNEL_STAGES: { key: string; labelDay: string; labelMonth: string; color: string; subLabel?: string }[] = [
+  { key: "new", labelDay: "ลูกค้าใหม่วันนี้", labelMonth: "ลูกค้าใหม่เดือนนี้", color: "#378ADD", subLabel: "ทักเข้ามาครั้งแรก" },
+  { key: "quote", labelDay: "ได้ข้อมูลครบ (พร้อมทำใบ)", labelMonth: "ได้ข้อมูลครบ (พร้อมทำใบ)", color: "#E24B4A", subLabel: "เปลี่ยนเป็นรอใบเสนอราคา" },
+  { key: "confirm", labelDay: "Admin ส่งใบเสนอราคา", labelMonth: "Admin ส่งใบเสนอราคา", color: "#EF9F27", subLabel: "เปลี่ยนเป็นรอคอนเฟิร์ม" },
+  { key: "confirmed", labelDay: "ลูกค้าคอนเฟิร์ม", labelMonth: "ลูกค้าคอนเฟิร์ม", color: "#1D9E75", subLabel: "ปิดการขายได้" },
+  { key: "completed", labelDay: "จัดงานจบแล้ว", labelMonth: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close" },
 ];
 
 const FUNNEL_MIN_DATE = new Date(2026, 5, 19);
