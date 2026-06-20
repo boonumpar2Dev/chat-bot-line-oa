@@ -1444,7 +1444,6 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx:
       setItems([]);
       setDiagnosis("");
       if (feedbackRef.current) feedbackRef.current.value = "";
-      runAnalyze();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.text, ctx?.customerId]);
@@ -1518,18 +1517,27 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx:
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-xs">เพิ่มคำแนะนำ (ไม่บังคับ) — บอก AI ว่าอยากให้เน้นเรื่องอะไร</Label>
+            <Label className="text-xs font-medium">
+              อยากแก้ตรงไหน? เพราะอะไร? <span className="text-destructive">*</span>
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              บอก AI ก่อนว่าคำตอบนี้มีปัญหาอะไร เช่น "ราคาผิด ควรเป็น 350 ไม่ใช่ 300", "ไม่ควรขอเบอร์ซ้ำ", "ลืมถามจังหวัด"
+            </p>
             <Textarea
               ref={feedbackRef}
-              rows={2}
+              rows={3}
               defaultValue=""
-              placeholder={`เช่น "ดูที่ราคาผิด" หรือ "เน้นเรื่องค่าส่ง"`}
+              placeholder={`พิมพ์ปัญหา/สิ่งที่อยากให้ AI ปรับ…`}
               disabled={analyzing}
             />
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={()=>runAnalyze(feedbackRef.current?.value || "")} disabled={analyzing}>
-                {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
-                วิเคราะห์ใหม่
+              <Button size="sm" onClick={()=>{
+                const v = feedbackRef.current?.value?.trim() || "";
+                if (!v) { toast.error("กรุณาบอก AI ก่อนว่าอยากแก้ตรงไหน"); return; }
+                runAnalyze(v);
+              }} disabled={analyzing}>
+                {analyzing ? <Loader2 className="w-4 h-4 animate-spin mr-1.5"/> : <Sparkles className="w-4 h-4 mr-1.5"/>}
+                {diagnosis || items.length ? "วิเคราะห์ใหม่" : "🧠 ให้ AI วิเคราะห์"}
               </Button>
             </div>
           </div>
@@ -1665,16 +1673,16 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
     <div className={cn("flex flex-col gap-0.5 group min-w-0 flex-1", align)}>
 
       {showLabel && (
-        <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground px-2 flex items-center gap-1.5 flex-wrap">
           {label}{m.confidence_score != null && ` • ${m.confidence_score}%`}{m.is_fallback && " • fallback"}
           {m.sender === "ai" && cleaned && onTrainAI && (
-            <button onClick={()=>onTrainAI(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
-              <Brain className="w-3 h-3"/>สอน AI จากเคสนี้
+            <button onClick={()=>onTrainAI(cleaned)} className="inline-flex items-center gap-0.5 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-2 py-0.5 transition" title="ให้ AI วิเคราะห์ทั้งบทสนทนา + เสนอกฎ/ความรู้">
+              <Brain className="w-3 h-3"/>สอน AI
             </button>
           )}
           {isAdmin && cleaned && onTeachKb && (
-            <button onClick={()=>onTeachKb(cleaned)} className="opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5 text-[10px] text-primary hover:underline" title="บันทึกคำตอบนี้เป็นความรู้ AI">
-              <BookPlus className="w-3 h-3"/>เพิ่มเป็นความรู้ AI
+            <button onClick={()=>onTeachKb(cleaned)} className="inline-flex items-center gap-0.5 text-[10px] text-primary bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-full px-2 py-0.5 transition" title="บันทึกคำตอบนี้เป็นความรู้ AI">
+              <BookPlus className="w-3 h-3"/>เพิ่มเป็น KB
             </button>
           )}
         </span>
