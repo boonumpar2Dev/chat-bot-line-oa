@@ -1444,7 +1444,6 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx:
       setItems([]);
       setDiagnosis("");
       if (feedbackRef.current) feedbackRef.current.value = "";
-      runAnalyze();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ctx?.text, ctx?.customerId]);
