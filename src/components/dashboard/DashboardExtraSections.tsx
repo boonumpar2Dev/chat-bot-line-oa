@@ -309,9 +309,9 @@ const FUNNEL_STAGES: { key: string; labelDay: string; labelMonth: string; color:
 
 const FUNNEL_MIN_DATE = new Date(2026, 5, 19);
 
-async function fetchFunnel(mode: FunnelMode, date: Date) {
-  const from = mode === "day" ? startOfDay(date) : startOfMonth(date);
-  const to = mode === "day" ? endOfDay(date) : endOfMonth(date);
+async function fetchFunnelDay(date: Date) {
+  const from = startOfDay(date);
+  const to = endOfDay(date);
 
   const { count: newCount, error: e1 } = await supabase
     .from("customers")
@@ -338,13 +338,79 @@ async function fetchFunnel(mode: FunnelMode, date: Date) {
 
   return {
     stages: [
-      { key: "new", label: "ทักเข้ามา", count: newCount ?? 0 },
-      { key: "quote", label: "รอใบเสนอราคา", count: countDistinct(["pending_quote"]) },
-      { key: "confirm", label: "รอคอนเฟิร์ม", count: countDistinct(["pending_confirm"]) },
-      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: countDistinct(["confirmed", "confirmed_returning"]) },
-      { key: "completed", label: "จัดงานจบแล้ว", count: countDistinct(["completed"]) },
+      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newCount ?? 0 },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: countDistinct(["pending_quote"]) },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: countDistinct(["pending_confirm"]) },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: countDistinct(["confirmed", "confirmed_returning"]) },
+      { key: "completed", label: "จัดงานเสร็จ", count: countDistinct(["completed"]) },
     ],
-    inquiryCount: countDistinct(["inquiry"]),
+    inquiryCount: 0,
+    isDayMode: true as const,
+  };
+}
+
+async function fetchFunnelMonth(date: Date) {
+  const from = startOfMonth(date);
+  const to = endOfMonth(date);
+
+  const { data: custs, error: e1 } = await supabase
+    .from("customers")
+    .select("id")
+    .gte("created_at", from.toISOString())
+    .lte("created_at", to.toISOString())
+    .limit(10000);
+  if (e1) throw e1;
+  const idSet = new Set<string>((custs ?? []).map((c: any) => c.id));
+  const newCount = idSet.size;
+
+  const STAGE_RANK: Record<string, number> = {
+    inquiry: 1,
+    pending_quote: 2,
+    pending_confirm: 3,
+    confirmed: 4,
+    confirmed_returning: 4,
+    completed: 5,
+  };
+  const highest = new Map<string, number>();
+
+  if (idSet.size > 0) {
+    const { data: logs, error: e2 } = await supabase
+      .from("customer_status_log")
+      .select("customer_id, new_status")
+      .in("customer_id", Array.from(idSet))
+      .limit(10000);
+    if (e2) throw e2;
+    (logs ?? []).forEach((r: any) => {
+      const rank = STAGE_RANK[r.new_status];
+      if (!rank) return;
+      const prev = highest.get(r.customer_id) ?? 0;
+      if (rank > prev) highest.set(r.customer_id, rank);
+    });
+  }
+
+  const countAtLeast = (n: number) => {
+    let c = 0;
+    highest.forEach((v) => {
+      if (v >= n) c++;
+    });
+    return c;
+  };
+
+  const quoteOrAbove = countAtLeast(2);
+  const confirmOrAbove = countAtLeast(3);
+  const confirmedOrAbove = countAtLeast(4);
+  const completedOrAbove = countAtLeast(5);
+
+  return {
+    stages: [
+      { key: "new", label: "ทักเข้ามา", count: newCount },
+      { key: "quote", label: "รอใบเสนอราคา", count: quoteOrAbove },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmOrAbove },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedOrAbove },
+      { key: "completed", label: "จัดงานจบแล้ว", count: completedOrAbove },
+    ],
+    inquiryCount: Math.max(0, newCount - quoteOrAbove),
+    isDayMode: false as const,
   };
 }
 
