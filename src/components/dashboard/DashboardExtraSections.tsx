@@ -448,7 +448,7 @@ function FunnelToday() {
     return FUNNEL_STAGES.map((stage, i) => {
       return {
         key: stage.key,
-        label: mode === "day" ? stage.labelDay : stage.labelMonth,
+        label: a[i]?.label ?? (mode === "day" ? stage.labelDay : stage.labelMonth),
         subLabel: stage.subLabel,
         color: stage.color,
         A: a[i]?.count ?? 0,
