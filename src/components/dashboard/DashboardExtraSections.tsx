@@ -345,7 +345,7 @@ async function fetchFunnelDay(date: Date) {
       { key: "completed", label: "จัดงานเสร็จ", count: countDistinct(["completed"]) },
     ],
     inquiryCount: 0,
-    isDayMode: true as const,
+    isDayMode: true as boolean,
   };
 }
 
@@ -410,7 +410,7 @@ async function fetchFunnelMonth(date: Date) {
       { key: "completed", label: "จัดงานจบแล้ว", count: completedOrAbove },
     ],
     inquiryCount: Math.max(0, newCount - quoteOrAbove),
-    isDayMode: false as const,
+    isDayMode: false as boolean,
   };
 }
 
