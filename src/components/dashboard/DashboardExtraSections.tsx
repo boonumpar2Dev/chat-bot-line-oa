@@ -27,7 +27,7 @@ import {
   GitCompare,
   FileText,
   Activity,
-  ArrowDown,
+  
   AlertTriangle,
 } from "lucide-react";
 
@@ -299,12 +299,12 @@ function DailyReportTable() {
 
 /* ============= Section 3: Funnel Today + Backlog ============= */
 type FunnelMode = "day" | "month";
-const FUNNEL_STAGES: { key: string; label: string; color: string; subLabel?: string }[] = [
-  { key: "new", label: "ทักเข้ามา", color: "#378ADD" },
-  { key: "quote", label: "รอใบเสนอราคา", color: "#E24B4A", subLabel: "ข้อมูลครบ Admin ต้องทำ" },
-  { key: "confirm", label: "รอคอนเฟิร์ม", color: "#EF9F27", subLabel: "ส่งใบแล้ว รอลูกค้าตอบ" },
-  { key: "confirmed", label: "คอนเฟิร์มแล้ว", color: "#1D9E75" },
-  { key: "completed", label: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close" },
+const FUNNEL_STAGES: { key: string; labelDay: string; labelMonth: string; color: string; subLabel?: string }[] = [
+  { key: "new", labelDay: "ลูกค้าใหม่วันนี้", labelMonth: "ลูกค้าใหม่เดือนนี้", color: "#378ADD", subLabel: "ทักเข้ามาครั้งแรก" },
+  { key: "quote", labelDay: "ได้ข้อมูลครบ (พร้อมทำใบ)", labelMonth: "ได้ข้อมูลครบ (พร้อมทำใบ)", color: "#E24B4A", subLabel: "เปลี่ยนเป็นรอใบเสนอราคา" },
+  { key: "confirm", labelDay: "Admin ส่งใบเสนอราคา", labelMonth: "Admin ส่งใบเสนอราคา", color: "#EF9F27", subLabel: "เปลี่ยนเป็นรอคอนเฟิร์ม" },
+  { key: "confirmed", labelDay: "ลูกค้าคอนเฟิร์ม", labelMonth: "ลูกค้าคอนเฟิร์ม", color: "#1D9E75", subLabel: "ปิดการขายได้" },
+  { key: "completed", labelDay: "จัดงานจบแล้ว", labelMonth: "จัดงานจบแล้ว", color: "#7F77DD", subLabel: "auto-close" },
 ];
 
 const FUNNEL_MIN_DATE = new Date(2026, 5, 19);
@@ -379,19 +379,18 @@ function FunnelToday() {
   const chartData = useMemo(() => {
     const a = queryA.data?.stages ?? [];
     const b = queryB.data?.stages ?? [];
-    return a.map((row, i) => {
-      const stage = FUNNEL_STAGES[i];
+    return FUNNEL_STAGES.map((stage, i) => {
       return {
         key: stage.key,
-        label: row.label,
+        label: mode === "day" ? stage.labelDay : stage.labelMonth,
         subLabel: stage.subLabel,
         color: stage.color,
-        A: row.count,
+        A: a[i]?.count ?? 0,
         B: compare ? b[i]?.count ?? 0 : 0,
-        diff: compare ? row.count - (b[i]?.count ?? 0) : 0,
+        diff: compare ? (a[i]?.count ?? 0) - (b[i]?.count ?? 0) : 0,
       };
     });
-  }, [queryA.data, queryB.data, compare]);
+  }, [queryA.data, queryB.data, compare, mode]);
 
   const inquiryA = queryA.data?.inquiryCount ?? 0;
 
@@ -433,7 +432,7 @@ function FunnelToday() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-semibold">📊 Funnel วันนี้ — เกิดอะไรขึ้น</h2>
+            <h2 className="font-display font-semibold">📊 {mode === "day" ? "กิจกรรมวันนี้" : "กิจกรรมเดือนนี้"} — เกิดอะไรขึ้น</h2>
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant={mode === "day" ? "default" : "outline"} onClick={() => setMode("day")}>
@@ -481,29 +480,7 @@ function FunnelToday() {
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
                   return (
                     <div key={row.key}>
-                      {i > 0 && (
-                        <div className="flex items-center gap-2 sm:pl-[160px] py-1.5 flex-wrap">
-                          <ArrowDown className="w-3.5 h-3.5 text-muted-foreground" />
-                          {i === 1 ? (
-                            <Badge
-                              variant="outline"
-                              className="h-5 px-2 text-[11px] font-medium border-0 bg-amber-100 text-amber-700"
-                            >
-                              ไปสอบถาม {inquiryA} คน (ยังไม่ให้ข้อมูลครบ)
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="h-5 px-2 text-[11px] font-medium border-0 bg-emerald-100 text-emerald-700"
-                            >
-                              ไปต่อ {row.A} คน
-                              {row.key === "confirm" && " (รอลูกค้าตอบ)"}
-                              {row.key === "confirmed" && " (ปิดการขายได้)"}
-                              {row.key === "completed" && " (จัดงานเสร็จ)"}
-                            </Badge>
-                          )}
-                        </div>
-                      )}
+
                       <div className="flex items-center gap-3">
                         <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
