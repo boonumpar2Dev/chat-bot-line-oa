@@ -434,11 +434,11 @@ function FunnelToday() {
 
   const queryA = useQuery({
     queryKey: ["funnel-today", mode, ymd(dateA)],
-    queryFn: () => fetchFunnel(mode, dateA),
+    queryFn: () => (mode === "day" ? fetchFunnelDay(dateA) : fetchFunnelMonth(dateA)),
   });
   const queryB = useQuery({
     queryKey: ["funnel-today", mode, ymd(dateB)],
-    queryFn: () => fetchFunnel(mode, dateB),
+    queryFn: () => (mode === "day" ? fetchFunnelDay(dateB) : fetchFunnelMonth(dateB)),
     enabled: compare,
   });
 
