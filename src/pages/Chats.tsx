@@ -1517,18 +1517,27 @@ const TrainAIDialog = React.memo(function TrainAIDialog({ ctx, onClose }: { ctx:
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-xs">เพิ่มคำแนะนำ (ไม่บังคับ) — บอก AI ว่าอยากให้เน้นเรื่องอะไร</Label>
+            <Label className="text-xs font-medium">
+              อยากแก้ตรงไหน? เพราะอะไร? <span className="text-destructive">*</span>
+            </Label>
+            <p className="text-[11px] text-muted-foreground">
+              บอก AI ก่อนว่าคำตอบนี้มีปัญหาอะไร เช่น "ราคาผิด ควรเป็น 350 ไม่ใช่ 300", "ไม่ควรขอเบอร์ซ้ำ", "ลืมถามจังหวัด"
+            </p>
             <Textarea
               ref={feedbackRef}
-              rows={2}
+              rows={3}
               defaultValue=""
-              placeholder={`เช่น "ดูที่ราคาผิด" หรือ "เน้นเรื่องค่าส่ง"`}
+              placeholder={`พิมพ์ปัญหา/สิ่งที่อยากให้ AI ปรับ…`}
               disabled={analyzing}
             />
             <div className="flex justify-end">
-              <Button size="sm" variant="outline" onClick={()=>runAnalyze(feedbackRef.current?.value || "")} disabled={analyzing}>
-                {analyzing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Sparkles className="w-4 h-4"/>}
-                วิเคราะห์ใหม่
+              <Button size="sm" onClick={()=>{
+                const v = feedbackRef.current?.value?.trim() || "";
+                if (!v) { toast.error("กรุณาบอก AI ก่อนว่าอยากแก้ตรงไหน"); return; }
+                runAnalyze(v);
+              }} disabled={analyzing}>
+                {analyzing ? <Loader2 className="w-4 h-4 animate-spin mr-1.5"/> : <Sparkles className="w-4 h-4 mr-1.5"/>}
+                {diagnosis || items.length ? "วิเคราะห์ใหม่" : "🧠 ให้ AI วิเคราะห์"}
               </Button>
             </div>
           </div>
