@@ -379,19 +379,18 @@ function FunnelToday() {
   const chartData = useMemo(() => {
     const a = queryA.data?.stages ?? [];
     const b = queryB.data?.stages ?? [];
-    return a.map((row, i) => {
-      const stage = FUNNEL_STAGES[i];
+    return FUNNEL_STAGES.map((stage, i) => {
       return {
         key: stage.key,
-        label: row.label,
+        label: mode === "day" ? stage.labelDay : stage.labelMonth,
         subLabel: stage.subLabel,
         color: stage.color,
-        A: row.count,
+        A: a[i]?.count ?? 0,
         B: compare ? b[i]?.count ?? 0 : 0,
-        diff: compare ? row.count - (b[i]?.count ?? 0) : 0,
+        diff: compare ? (a[i]?.count ?? 0) - (b[i]?.count ?? 0) : 0,
       };
     });
-  }, [queryA.data, queryB.data, compare]);
+  }, [queryA.data, queryB.data, compare, mode]);
 
   const inquiryA = queryA.data?.inquiryCount ?? 0;
 
