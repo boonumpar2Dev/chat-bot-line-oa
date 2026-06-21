@@ -369,6 +369,7 @@ async function fetchFunnelMonth(date: Date) {
   if (e1) throw e1;
   const idSet = new Set<string>((custs ?? []).map((c: any) => c.id));
   const newCount = idSet.size;
+  const newIds = Array.from(idSet);
 
   const STAGE_RANK: Record<string, number> = {
     inquiry: 1,
@@ -395,28 +396,28 @@ async function fetchFunnelMonth(date: Date) {
     });
   }
 
-  const countAtLeast = (n: number) => {
-    let c = 0;
-    highest.forEach((v) => {
-      if (v >= n) c++;
+  const idsAtLeast = (n: number) => {
+    const result: string[] = [];
+    highest.forEach((v, id) => {
+      if (v >= n) result.push(id);
     });
-    return c;
+    return result;
   };
 
-  const quoteOrAbove = countAtLeast(2);
-  const confirmOrAbove = countAtLeast(3);
-  const confirmedOrAbove = countAtLeast(4);
-  const completedOrAbove = countAtLeast(5);
+  const quoteIds = idsAtLeast(2);
+  const confirmIds = idsAtLeast(3);
+  const confirmedIds = idsAtLeast(4);
+  const completedIds = idsAtLeast(5);
 
   return {
     stages: [
-      { key: "new", label: "ทักเข้ามา", count: newCount },
-      { key: "quote", label: "รอใบเสนอราคา", count: quoteOrAbove },
-      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmOrAbove },
-      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedOrAbove },
-      { key: "completed", label: "จัดงานจบแล้ว", count: completedOrAbove },
+      { key: "new", label: "ทักเข้ามา", count: newCount, customerIds: newIds },
+      { key: "quote", label: "รอใบเสนอราคา", count: quoteIds.length, customerIds: quoteIds },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmIds.length, customerIds: confirmIds },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedIds.length, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานจบแล้ว", count: completedIds.length, customerIds: completedIds },
     ],
-    inquiryCount: Math.max(0, newCount - quoteOrAbove),
+    inquiryCount: Math.max(0, newCount - quoteIds.length),
     isDayMode: false as boolean,
   };
 }
