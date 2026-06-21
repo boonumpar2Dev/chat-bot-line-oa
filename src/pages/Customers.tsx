@@ -56,6 +56,7 @@ const toCsv = (arr: string[]) => arr.join(",");
 export default function Customers() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
+  const funnelParam = sp.get("funnel");
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
