@@ -175,31 +175,58 @@ export default function AiTokens() {
       </div>
 
       {/* Cost summary cards */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: "วันนี้", cost: stats.cost.today, calls: stats.calls.today, tokens: stats.tokens.today, gradient: true },
-          { label: "7 วันที่ผ่านมา", cost: stats.cost.d7, calls: stats.calls.d7, tokens: stats.tokens.d7 },
-          { label: "30 วันที่ผ่านมา", cost: stats.cost.d30, calls: stats.calls.d30, tokens: stats.tokens.d30 },
-        ].map((s, i) => (
-          <Card key={i} className={`p-5 shadow-soft border-border/60 ${s.gradient ? "bg-brand-gradient text-primary-foreground" : ""}`}>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wide opacity-80">
-              <DollarSign className="w-3.5 h-3.5"/>{s.label}
-            </div>
-            <p className="font-display text-3xl font-semibold mt-1">{fmtThb(s.cost)}</p>
-            <p className={`text-xs mt-0.5 ${s.gradient ? "opacity-80" : "text-muted-foreground"}`}>
-              ({fmtUsd(s.cost)} USD)
-            </p>
-            <div className={`flex gap-4 mt-3 text-xs ${s.gradient ? "opacity-90" : "text-muted-foreground"}`}>
-              <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3"/>{s.calls.toLocaleString()} ครั้ง</span>
-              <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3"/>{s.tokens.toLocaleString()} tokens</span>
-            </div>
-          </Card>
-        ))}
+          { label: "วันนี้", cost: stats.cost.today, calls: stats.calls.today, tokens: stats.tokens.today, gradient: true, icon: DollarSign },
+          { label: "7 วันที่ผ่านมา", cost: stats.cost.d7, calls: stats.calls.d7, tokens: stats.tokens.d7, icon: DollarSign },
+          { label: "30 วันที่ผ่านมา", cost: stats.cost.d30, calls: stats.calls.d30, tokens: stats.tokens.d30, icon: DollarSign },
+          { label: "ยอดรวมทั้งหมด", cost: allTime?.cost ?? 0, calls: allTime?.calls ?? 0, tokens: allTime?.tokens ?? 0, icon: InfinityIcon, accent: true },
+        ].map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <Card key={i} className={`p-5 shadow-soft border-border/60 ${s.gradient ? "bg-brand-gradient text-primary-foreground" : ""} ${s.accent ? "border-primary/40 bg-primary/5" : ""}`}>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-wide opacity-80">
+                <Icon className="w-3.5 h-3.5"/>{s.label}
+              </div>
+              <p className="font-display text-3xl font-semibold mt-1">{fmtThb(s.cost)}</p>
+              <p className={`text-xs mt-0.5 ${s.gradient ? "opacity-80" : "text-muted-foreground"}`}>
+                ({fmtUsd(s.cost)} USD)
+              </p>
+              <div className={`flex gap-4 mt-3 text-xs ${s.gradient ? "opacity-90" : "text-muted-foreground"}`}>
+                <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3"/>{s.calls.toLocaleString()} ครั้ง</span>
+                <span className="flex items-center gap-1"><TrendingUp className="w-3 h-3"/>{s.tokens.toLocaleString()} tokens</span>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <p className="text-[11px] text-muted-foreground -mt-3">
         💡 ราคา USD แปลงเป็นบาทที่อัตรา ฿{USD_TO_THB}/USD (โดยประมาณ) · ราคาคำนวณตามอัตรา Lovable AI Gateway ปัจจุบัน
       </p>
+
+      {/* Date range picker */}
+      <Card className="p-4 shadow-soft border-border/60">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-[140px]">
+            <Label htmlFor="from-date" className="text-xs text-muted-foreground">จากวันที่</Label>
+            <Input id="from-date" type="date" value={fromDate} max={toDate} onChange={(e) => setFromDate(e.target.value)} />
+          </div>
+          <div className="flex-1 min-w-[140px]">
+            <Label htmlFor="to-date" className="text-xs text-muted-foreground">ถึงวันที่</Label>
+            <Input id="to-date" type="date" value={toDate} min={fromDate} max={todayStr()} onChange={(e) => setToDate(e.target.value)} />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            <Button size="sm" variant="outline" onClick={() => { setFromDate(todayStr()); setToDate(todayStr()); }}>วันนี้</Button>
+            <Button size="sm" variant="outline" onClick={() => { setFromDate(daysAgoStr(7)); setToDate(todayStr()); }}>7 วัน</Button>
+            <Button size="sm" variant="outline" onClick={() => { setFromDate(daysAgoStr(30)); setToDate(todayStr()); }}>30 วัน</Button>
+            <Button size="sm" variant="outline" onClick={() => { setFromDate(daysAgoStr(90)); setToDate(todayStr()); }}>90 วัน</Button>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-2">
+          ตารางด้านล่างแสดงข้อมูลตามช่วงวันที่เลือก ({usage.length.toLocaleString()} รายการ)
+        </p>
+      </Card>
 
       <Tabs defaultValue="model" className="space-y-3">
         <TabsList>
