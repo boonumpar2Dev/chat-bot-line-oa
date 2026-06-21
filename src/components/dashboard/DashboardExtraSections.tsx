@@ -462,6 +462,8 @@ function FunnelToday() {
         A: a[i]?.count ?? 0,
         B: compare ? b[i]?.count ?? 0 : 0,
         diff: compare ? (a[i]?.count ?? 0) - (b[i]?.count ?? 0) : 0,
+        customerIdsA: a[i]?.customerIds ?? [],
+        customerIdsB: b[i]?.customerIds ?? [],
       };
     });
   }, [queryA.data, queryB.data, compare, mode]);
