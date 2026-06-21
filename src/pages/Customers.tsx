@@ -56,6 +56,7 @@ const toCsv = (arr: string[]) => arr.join(",");
 export default function Customers() {
   const nav = useNavigate();
   const [sp, setSp] = useSearchParams();
+  const funnelParam = sp.get("funnel");
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -127,6 +128,23 @@ export default function Customers() {
     setLoading(true); setPage(0); setHasMore(true);
     setSelected(new Set());
     (async () => {
+      if (funnelParam) {
+        const raw = sessionStorage.getItem("funnel_customer_ids");
+        const ids = raw ? (JSON.parse(raw) as string[]) : [];
+        if (ids.length > 0) {
+          const { data, error } = await supabase
+            .from("customers")
+            .select("*")
+            .in("id", ids)
+            .order("last_message_at", { ascending: false, nullsFirst: false });
+          if (!active) return;
+          if (error) { console.error("funnel query error", error); setCustomers([]); }
+          else { setCustomers(data || []); }
+          setHasMore(false);
+          setLoading(false);
+          return;
+        }
+      }
       let q = supabase.from("customers").select("*").order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
         const s = debounced.replace(/[%,]/g, "");
@@ -147,7 +165,7 @@ export default function Customers() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debounced, isSearching, statusFilter, tagFilter, monthFilter]);
+  }, [debounced, isSearching, statusFilter, tagFilter, monthFilter, funnelParam]);
 
   // Load master tags
   useEffect(() => {
@@ -181,7 +199,7 @@ export default function Customers() {
   }, []);
 
   const loadMore = async () => {
-    if (loadingMore || !hasMore || isSearching) return;
+    if (loadingMore || !hasMore || isSearching || funnelParam) return;
     setLoadingMore(true);
     const np = page + 1;
     const pageSize = monthFilter.length ? 500 : PAGE_SIZE;
@@ -196,11 +214,11 @@ export default function Customers() {
   };
 
   useEffect(() => {
-    if (!sentinelRef.current || isSearching || !hasMore) return;
+    if (!sentinelRef.current || isSearching || !hasMore || funnelParam) return;
     const obs = new IntersectionObserver(es => { if (es[0].isIntersecting) loadMore(); }, { rootMargin: "200px" });
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
-  }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter]);
+  }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter, funnelParam]);
 
   const filtered = useMemo(() => {
     return customers.filter(c => {
@@ -520,6 +538,21 @@ export default function Customers() {
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+      )}
+
+      {funnelParam && (
+        <div className="border-b bg-primary/5 px-4 lg:px-6 py-2.5 flex items-center justify-between gap-3">
+          <span className="text-sm font-medium">
+            {sessionStorage.getItem("funnel_label") || "กรองจาก Dashboard"}
+          </span>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
+            sessionStorage.removeItem("funnel_customer_ids");
+            sessionStorage.removeItem("funnel_label");
+            nav("/customers");
+          }}>
+            ล้างตัวกรอง
+          </Button>
         </div>
       )}
 

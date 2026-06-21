@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
@@ -313,9 +314,9 @@ async function fetchFunnelDay(date: Date) {
   const from = startOfDay(date);
   const to = endOfDay(date);
 
-  const { count: newCount, error: e1 } = await supabase
+  const { data: newCustomers, error: e1 } = await supabase
     .from("customers")
-    .select("*", { count: "exact", head: true })
+    .select("id")
     .gte("created_at", from.toISOString())
     .lte("created_at", to.toISOString());
   if (e1) throw e1;
@@ -328,21 +329,27 @@ async function fetchFunnelDay(date: Date) {
     .limit(10000);
   if (e2) throw e2;
 
-  const countDistinct = (statuses: string[]) => {
+  const getIds = (statuses: string[]) => {
     const ids = new Set<string>();
     (logs ?? []).forEach((r: any) => {
       if (statuses.includes(r.new_status)) ids.add(r.customer_id);
     });
-    return ids.size;
+    return Array.from(ids);
   };
+
+  const newIds = (newCustomers ?? []).map((c: any) => c.id);
+  const quoteIds = getIds(["pending_quote"]);
+  const confirmIds = getIds(["pending_confirm"]);
+  const confirmedIds = getIds(["confirmed", "confirmed_returning"]);
+  const completedIds = getIds(["completed"]);
 
   return {
     stages: [
-      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newCount ?? 0 },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: countDistinct(["pending_quote"]) },
-      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: countDistinct(["pending_confirm"]) },
-      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: countDistinct(["confirmed", "confirmed_returning"]) },
-      { key: "completed", label: "จัดงานเสร็จ", count: countDistinct(["completed"]) },
+      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, customerIds: newIds },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, customerIds: quoteIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, customerIds: confirmIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, customerIds: completedIds },
     ],
     inquiryCount: 0,
     isDayMode: true as boolean,
@@ -362,6 +369,7 @@ async function fetchFunnelMonth(date: Date) {
   if (e1) throw e1;
   const idSet = new Set<string>((custs ?? []).map((c: any) => c.id));
   const newCount = idSet.size;
+  const newIds = Array.from(idSet);
 
   const STAGE_RANK: Record<string, number> = {
     inquiry: 1,
@@ -388,33 +396,34 @@ async function fetchFunnelMonth(date: Date) {
     });
   }
 
-  const countAtLeast = (n: number) => {
-    let c = 0;
-    highest.forEach((v) => {
-      if (v >= n) c++;
+  const idsAtLeast = (n: number) => {
+    const result: string[] = [];
+    highest.forEach((v, id) => {
+      if (v >= n) result.push(id);
     });
-    return c;
+    return result;
   };
 
-  const quoteOrAbove = countAtLeast(2);
-  const confirmOrAbove = countAtLeast(3);
-  const confirmedOrAbove = countAtLeast(4);
-  const completedOrAbove = countAtLeast(5);
+  const quoteIds = idsAtLeast(2);
+  const confirmIds = idsAtLeast(3);
+  const confirmedIds = idsAtLeast(4);
+  const completedIds = idsAtLeast(5);
 
   return {
     stages: [
-      { key: "new", label: "ทักเข้ามา", count: newCount },
-      { key: "quote", label: "รอใบเสนอราคา", count: quoteOrAbove },
-      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmOrAbove },
-      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedOrAbove },
-      { key: "completed", label: "จัดงานจบแล้ว", count: completedOrAbove },
+      { key: "new", label: "ทักเข้ามา", count: newCount, customerIds: newIds },
+      { key: "quote", label: "รอใบเสนอราคา", count: quoteIds.length, customerIds: quoteIds },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmIds.length, customerIds: confirmIds },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedIds.length, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานจบแล้ว", count: completedIds.length, customerIds: completedIds },
     ],
-    inquiryCount: Math.max(0, newCount - quoteOrAbove),
+    inquiryCount: Math.max(0, newCount - quoteIds.length),
     isDayMode: false as boolean,
   };
 }
 
 function FunnelToday() {
+  const nav = useNavigate();
   const [mode, setMode] = useState<FunnelMode>("day");
   const [dateA, setDateA] = useState<Date>(new Date());
   const [compare, setCompare] = useState(false);
@@ -454,6 +463,8 @@ function FunnelToday() {
         A: a[i]?.count ?? 0,
         B: compare ? b[i]?.count ?? 0 : 0,
         diff: compare ? (a[i]?.count ?? 0) - (b[i]?.count ?? 0) : 0,
+        customerIdsA: a[i]?.customerIds ?? [],
+        customerIdsB: b[i]?.customerIds ?? [],
       };
     });
   }, [queryA.data, queryB.data, compare, mode]);
@@ -566,7 +577,15 @@ function FunnelToday() {
                           )}
                         </div>
                       )}
-                      <div className="flex items-center gap-3">
+                      <div
+                        className={cn("flex items-center gap-3", row.A > 0 && "cursor-pointer hover:bg-muted/20 rounded-md transition-colors")}
+                        onClick={() => {
+                          if (row.A === 0 || !row.customerIdsA?.length) return;
+                          sessionStorage.setItem("funnel_customer_ids", JSON.stringify(row.customerIdsA));
+                          sessionStorage.setItem("funnel_label", `${row.label} — ${fmtPicker(dateA)}`);
+                          nav("/customers?funnel=1");
+                        }}
+                      >
                         <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
                           {row.subLabel && (
