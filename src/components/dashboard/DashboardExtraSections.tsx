@@ -423,6 +423,7 @@ async function fetchFunnelMonth(date: Date) {
 }
 
 function FunnelToday() {
+  const nav = useNavigate();
   const [mode, setMode] = useState<FunnelMode>("day");
   const [dateA, setDateA] = useState<Date>(new Date());
   const [compare, setCompare] = useState(false);
