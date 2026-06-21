@@ -214,11 +214,11 @@ export default function Customers() {
   };
 
   useEffect(() => {
-    if (!sentinelRef.current || isSearching || !hasMore) return;
+    if (!sentinelRef.current || isSearching || !hasMore || funnelParam) return;
     const obs = new IntersectionObserver(es => { if (es[0].isIntersecting) loadMore(); }, { rootMargin: "200px" });
     obs.observe(sentinelRef.current);
     return () => obs.disconnect();
-  }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter]);
+  }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter, funnelParam]);
 
   const filtered = useMemo(() => {
     return customers.filter(c => {
