@@ -271,7 +271,7 @@ export default function AiTokens() {
 
         <TabsContent value="source">
           <Card className="p-6 shadow-soft border-border/60">
-            <h2 className="font-display text-lg font-semibold mb-4">ค่าใช้จ่ายตามฟีเจอร์ (30 วัน)</h2>
+            <h2 className="font-display text-lg font-semibold mb-4">ค่าใช้จ่ายตามฟีเจอร์ <span className="text-xs font-normal text-muted-foreground">({fromDate} → {toDate})</span></h2>
             {bySource.length === 0 ? (
               <p className="text-sm text-muted-foreground py-4 text-center">ยังไม่มีข้อมูล</p>
             ) : (
