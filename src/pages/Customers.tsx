@@ -199,7 +199,7 @@ export default function Customers() {
   }, []);
 
   const loadMore = async () => {
-    if (loadingMore || !hasMore || isSearching) return;
+    if (loadingMore || !hasMore || isSearching || funnelParam) return;
     setLoadingMore(true);
     const np = page + 1;
     const pageSize = monthFilter.length ? 500 : PAGE_SIZE;
