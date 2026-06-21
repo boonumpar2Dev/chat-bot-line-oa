@@ -122,7 +122,6 @@ const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "man
   { key: "unread", label: "🔴 ยังไม่ได้อ่าน", countKey: "unread" },
   { key: "all", label: "ทั้งหมด" },
   { key: "first_priority", label: "🔥 First Priority", countKey: "first_priority" },
-  { key: "awaiting_admin", label: "🤖 รอแอดมิน", countKey: "awaiting_admin" },
   { key: "manual", label: "🤖 Manual", countKey: "manual" },
   { key: "read", label: "อ่านแล้ว" },
 ];
