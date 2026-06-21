@@ -541,6 +541,21 @@ export default function Customers() {
         </div>
       )}
 
+      {funnelParam && (
+        <div className="border-b bg-primary/5 px-4 lg:px-6 py-2.5 flex items-center justify-between gap-3">
+          <span className="text-sm font-medium">
+            {sessionStorage.getItem("funnel_label") || "กรองจาก Dashboard"}
+          </span>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => {
+            sessionStorage.removeItem("funnel_customer_ids");
+            sessionStorage.removeItem("funnel_label");
+            nav("/customers");
+          }}>
+            ล้างตัวกรอง
+          </Button>
+        </div>
+      )}
+
       {/* List */}
       <div className="flex-1 overflow-auto">
         {loading ? (
