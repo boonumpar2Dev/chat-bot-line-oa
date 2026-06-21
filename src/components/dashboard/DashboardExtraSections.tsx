@@ -314,9 +314,9 @@ async function fetchFunnelDay(date: Date) {
   const from = startOfDay(date);
   const to = endOfDay(date);
 
-  const { count: newCount, error: e1 } = await supabase
+  const { data: newCustomers, error: e1 } = await supabase
     .from("customers")
-    .select("*", { count: "exact", head: true })
+    .select("id")
     .gte("created_at", from.toISOString())
     .lte("created_at", to.toISOString());
   if (e1) throw e1;
@@ -329,21 +329,27 @@ async function fetchFunnelDay(date: Date) {
     .limit(10000);
   if (e2) throw e2;
 
-  const countDistinct = (statuses: string[]) => {
+  const getIds = (statuses: string[]) => {
     const ids = new Set<string>();
     (logs ?? []).forEach((r: any) => {
       if (statuses.includes(r.new_status)) ids.add(r.customer_id);
     });
-    return ids.size;
+    return Array.from(ids);
   };
+
+  const newIds = (newCustomers ?? []).map((c: any) => c.id);
+  const quoteIds = getIds(["pending_quote"]);
+  const confirmIds = getIds(["pending_confirm"]);
+  const confirmedIds = getIds(["confirmed", "confirmed_returning"]);
+  const completedIds = getIds(["completed"]);
 
   return {
     stages: [
-      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newCount ?? 0 },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: countDistinct(["pending_quote"]) },
-      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: countDistinct(["pending_confirm"]) },
-      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: countDistinct(["confirmed", "confirmed_returning"]) },
-      { key: "completed", label: "จัดงานเสร็จ", count: countDistinct(["completed"]) },
+      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, customerIds: newIds },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, customerIds: quoteIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, customerIds: confirmIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, customerIds: completedIds },
     ],
     inquiryCount: 0,
     isDayMode: true as boolean,
