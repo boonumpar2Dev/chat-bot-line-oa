@@ -577,7 +577,15 @@ function FunnelToday() {
                           )}
                         </div>
                       )}
-                      <div className="flex items-center gap-3">
+                      <div
+                        className={cn("flex items-center gap-3", row.A > 0 && "cursor-pointer hover:bg-muted/20 rounded-md transition-colors")}
+                        onClick={() => {
+                          if (row.A === 0 || !row.customerIdsA?.length) return;
+                          sessionStorage.setItem("funnel_customer_ids", JSON.stringify(row.customerIdsA));
+                          sessionStorage.setItem("funnel_label", `${row.label} — ${fmtPicker(dateA)}`);
+                          nav("/customers?funnel=1");
+                        }}
+                      >
                         <div className="hidden sm:block w-[150px] shrink-0 min-w-0">
                           <div className="text-sm font-medium truncate">{row.label}</div>
                           {row.subLabel && (
