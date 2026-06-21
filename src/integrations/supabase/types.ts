@@ -1259,6 +1259,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      ai_token_usage_totals: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: {
+          total_calls: number
+          total_cost: number
+          total_tokens: number
+        }[]
+      }
       bulk_add_tag: {
         Args: { _customer_ids: string[]; _tag_name: string }
         Returns: number
