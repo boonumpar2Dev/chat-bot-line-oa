@@ -127,7 +127,7 @@ export default function AiTokens() {
     const tokens = { today: 0, d7: 0, d30: 0 } as Record<string, number>;
     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
-    for (const r of usage) {
+    for (const r of usage30) {
       const t = new Date(r.created_at).getTime();
       const age = now - t;
       buckets.d30 += r.cost_usd; calls.d30++; tokens.d30 += r.total_tokens;
@@ -135,7 +135,7 @@ export default function AiTokens() {
       if (t >= todayStart.getTime()) { buckets.today += r.cost_usd; calls.today++; tokens.today += r.total_tokens; }
     }
     return { cost: buckets, calls, tokens };
-  }, [usage]);
+  }, [usage30]);
 
   const byModel = useMemo(() => {
     const map = new Map<string, { calls: number; prompt: number; completion: number; cost: number }>();
