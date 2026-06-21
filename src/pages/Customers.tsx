@@ -128,6 +128,23 @@ export default function Customers() {
     setLoading(true); setPage(0); setHasMore(true);
     setSelected(new Set());
     (async () => {
+      if (funnelParam) {
+        const raw = sessionStorage.getItem("funnel_customer_ids");
+        const ids = raw ? (JSON.parse(raw) as string[]) : [];
+        if (ids.length > 0) {
+          const { data, error } = await supabase
+            .from("customers")
+            .select("*")
+            .in("id", ids)
+            .order("last_message_at", { ascending: false, nullsFirst: false });
+          if (!active) return;
+          if (error) { console.error("funnel query error", error); setCustomers([]); }
+          else { setCustomers(data || []); }
+          setHasMore(false);
+          setLoading(false);
+          return;
+        }
+      }
       let q = supabase.from("customers").select("*").order("last_message_at", { ascending: false, nullsFirst: false });
       if (isSearching) {
         const s = debounced.replace(/[%,]/g, "");
@@ -148,7 +165,7 @@ export default function Customers() {
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debounced, isSearching, statusFilter, tagFilter, monthFilter]);
+  }, [debounced, isSearching, statusFilter, tagFilter, monthFilter, funnelParam]);
 
   // Load master tags
   useEffect(() => {
