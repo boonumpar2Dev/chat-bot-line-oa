@@ -51,22 +51,52 @@ function fmtThb(n: number) { return `฿${(n * USD_TO_THB).toLocaleString(undefi
 export default function AiTokens() {
   const [cacheRows, setCacheRows] = useState<any[]>([]);
   const [usage, setUsage] = useState<UsageRow[]>([]);
+  const [usage30, setUsage30] = useState<UsageRow[]>([]);
+  const [allTime, setAllTime] = useState<{ cost: number; tokens: number; calls: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Date range (default = last 30 days)
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const daysAgoStr = (d: number) => new Date(Date.now() - d * 86400_000).toISOString().slice(0, 10);
+  const [fromDate, setFromDate] = useState<string>(daysAgoStr(30));
+  const [toDate, setToDate] = useState<string>(todayStr());
+
+  const loadUsageRange = async (from: string, to: string) => {
+    const fromIso = new Date(from + "T00:00:00").toISOString();
+    const toIso = new Date(to + "T23:59:59.999").toISOString();
+    const { data } = await supabase.from("ai_token_usage")
+      .select("id, model, source, prompt_tokens, completion_tokens, total_tokens, cost_usd, created_at")
+      .gte("created_at", fromIso).lte("created_at", toIso)
+      .order("created_at", { ascending: false }).limit(5000);
+    setUsage((data || []) as UsageRow[]);
+  };
+
   const load = async () => {
     setLoading(true);
-    const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
-    const [cacheRes, usageRes] = await Promise.all([
+    const since30 = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+    const [cacheRes, usage30Res, totalsRes] = await Promise.all([
       supabase.from("ai_context_cache").select("*").order("key"),
-      supabase.from("ai_token_usage").select("id, model, source, prompt_tokens, completion_tokens, total_tokens, cost_usd, created_at")
-        .gte("created_at", since).order("created_at", { ascending: false }).limit(2000),
+      supabase.from("ai_token_usage")
+        .select("id, model, source, prompt_tokens, completion_tokens, total_tokens, cost_usd, created_at")
+        .gte("created_at", since30).order("created_at", { ascending: false }).limit(5000),
+      supabase.rpc("ai_token_usage_totals", { p_from: null, p_to: null }),
     ]);
     setCacheRows(cacheRes.data || []);
-    setUsage((usageRes.data || []) as UsageRow[]);
+    setUsage30((usage30Res.data || []) as UsageRow[]);
+    const t = (totalsRes.data as any)?.[0];
+    setAllTime(t ? { cost: Number(t.total_cost) || 0, tokens: Number(t.total_tokens) || 0, calls: Number(t.total_calls) || 0 } : { cost: 0, tokens: 0, calls: 0 });
+    await loadUsageRange(fromDate, toDate);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  // Re-load just the range table when dates change (after initial load)
+  useEffect(() => {
+    if (loading) return;
+    loadUsageRange(fromDate, toDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromDate, toDate]);
 
   const rebuild = async () => {
     setBusy(true);
