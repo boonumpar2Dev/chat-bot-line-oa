@@ -21,7 +21,7 @@ const STATUS_OPTIONS = [
 
 // pending_confirm → บอทเปิด (strict grounding mode) ไม่ปิด เพื่อรับ chitchat/คำถามต่อโดยไม่เดา
 const AI_OFF_STATUSES = ["pending_quote", "confirmed", "confirmed_returning"];
-const AI_ON_STATUSES = ["postponed", "pending_confirm"];
+const AI_ON_STATUSES = ["postponed", "pending_confirm", "inquiry"];
 // สถานะที่ต้อง "ล้าง admin_bot_override" — กลับมาทำงานตามปกติ
 const CLEAR_OVERRIDE_STATUSES = ["completed", "cancelled", "pending_quote", "new", "inquiry", "returning", "pending_confirm"];
 
