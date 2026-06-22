@@ -344,13 +344,13 @@ export default function Customers() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative flex-1 max-w-md h-10 flex items-center">
+            <Search className="w-4 h-4 absolute left-3 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="ค้นหาชื่อ / เบอร์ / เลขผู้เสียภาษี"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-10 w-full"
             />
           </div>
 
