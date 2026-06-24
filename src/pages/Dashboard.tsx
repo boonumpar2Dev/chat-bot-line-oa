@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSnippet } from "@/lib/snippet";
@@ -8,6 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 const STATUS_LABELS: Record<string, string> = {
@@ -36,8 +38,8 @@ export default function Dashboard() {
         supabase.from("customers").select("clv_amount"),
         supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
         supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "new").gte("created_at", todayStart),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("updated_at", todayStart),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("created_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("last_message_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("last_message_at", todayStart),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
@@ -144,35 +146,37 @@ export default function Dashboard() {
 
       <div className="space-y-2">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-[#378ADD] shrink-0"/>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">New Lead วันนี้</p>
-              <p className="font-display font-semibold text-xl">{stats?.newToday ?? "—"}</p>
-              <p className="text-[10px] text-muted-foreground">ลูกค้าใหม่จริงๆ</p>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-[#7F77DD] shrink-0"/>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Returning Lead วันนี้</p>
-              <p className="font-display font-semibold text-xl">{stats?.returningToday ?? "—"}</p>
-              <p className="text-[10px] text-muted-foreground">ลูกค้าเก่ากลับมาจัดอีก</p>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3 opacity-60">
-            <div className="w-3 h-3 rounded-full bg-[#888780] shrink-0"/>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Legacy วันนี้</p>
-              <p className="font-display font-semibold text-xl">{stats?.legacyToday ?? "—"}</p>
-              <p className="text-[10px] text-muted-foreground">ก่อนเปิดระบบ (ไม่นับเป็น lead)</p>
-            </div>
-          </div>
+          <LeadOriginCard
+            color="#378ADD"
+            label="New Lead วันนี้"
+            value={stats?.newToday}
+            hint="ลูกค้าใหม่จริงๆ"
+            origin="new"
+            mode="created"
+          />
+          <LeadOriginCard
+            color="#7F77DD"
+            label="Returning Lead วันนี้"
+            value={stats?.returningToday}
+            hint="ลูกค้าเก่ากลับมาทักวันนี้"
+            origin="returning"
+            mode="last_message"
+          />
+          <LeadOriginCard
+            color="#888780"
+            label="Legacy วันนี้"
+            value={stats?.legacyToday}
+            hint="ก่อนเปิดระบบ (ไม่นับเป็น lead)"
+            origin="legacy"
+            mode="last_message"
+            dimmed
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Active Leads วันนี้: <strong>{stats?.activeLeadsToday ?? "—"} คน</strong> (New + Returning)
         </p>
       </div>
+
 
 
 
@@ -284,3 +288,93 @@ export default function Dashboard() {
     </div>
   );
 }
+
+function LeadOriginCard({
+  color, label, value, hint, origin, mode, dimmed,
+}: {
+  color: string;
+  label: string;
+  value: number | undefined;
+  hint: string;
+  origin: "new" | "returning" | "legacy";
+  mode: "created" | "last_message";
+  dimmed?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const { data: list, isLoading } = useQuery({
+    queryKey: ["lead-origin-list", origin, mode, open],
+    enabled: open,
+    queryFn: async () => {
+      const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
+      const field = mode === "created" ? "created_at" : "last_message_at";
+      const { data } = await supabase
+        .from("customers")
+        .select("id, display_name, nickname, last_message_at, created_at, status")
+        .eq("customer_origin", origin)
+        .gte(field, todayStart)
+        .order(field, { ascending: false })
+        .limit(200);
+      return data ?? [];
+    },
+  });
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${dimmed ? "opacity-60" : ""}`}
+      >
+        <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="font-display font-semibold text-xl">{value ?? "—"}</p>
+          <p className="text-[10px] text-muted-foreground">{hint} · คลิกดูรายชื่อ</p>
+        </div>
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ background: color }} />
+              {label} ({value ?? 0} คน)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto -mx-6 px-6">
+            {isLoading && <p className="text-sm text-muted-foreground py-4">กำลังโหลด…</p>}
+            {!isLoading && list && list.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีรายชื่อ</p>
+            )}
+            <div className="divide-y">
+              {list?.map((r: any) => {
+                const ts = mode === "created" ? r.created_at : r.last_message_at;
+                return (
+                  <Link
+                    key={r.id}
+                    to={`/chats?customer=${r.id}`}
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
+                      {(r.nickname || r.display_name || "?")[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{r.nickname || r.display_name || "—"}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {ts ? formatDistanceToNow(new Date(ts), { addSuffix: true, locale: th }) : "—"}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
