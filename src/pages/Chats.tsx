@@ -595,7 +595,6 @@ export default function Chats() {
     if (isRoomSwitch) {
       // มีตำแหน่งที่บันทึกไว้ (เช่น กลับมาจากหน้าอื่น) → คืนตำแหน่งเดิม ไม่ดึงลงล่าง
       const saved = selectedId ? chatScrollPositions.get(selectedId) : undefined;
-      console.log("[DBG] switch", { selectedId, saved, size: chatScrollPositions.size });
       if (saved !== undefined && saved >= 0) {
         const restore = () => { viewport.scrollTop = saved; };
         requestAnimationFrame(() => {
