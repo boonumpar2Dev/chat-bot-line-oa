@@ -6,24 +6,31 @@ import { cn } from "@/lib/utils";
 import { syncTagsForStatusChange } from "@/lib/statusTags";
 
 
+// หมายเหตุ: ลบ "ลูกค้าเก่า" (returning) และ "คอนเฟิร์ม(ลูกค้าเก่า)" (confirmed_returning) ออกแล้ว
+// — ใช้ "หมวดลูกค้า" (customer_origin) แยกแทน เพราะมันคือตัวคน ไม่ใช่สถานะงาน
+// ข้อมูลเก่าที่ยังเป็น 2 ค่านี้จะยังแสดงผลได้ปกติผ่าน STATUS_LABEL อื่นๆ
 const STATUS_OPTIONS = [
   { value: "new", label: "ลูกค้าใหม่", color: "bg-blue-100 text-blue-700", dot: "bg-blue-500" },
   { value: "inquiry", label: "สอบถาม", color: "bg-cyan-100 text-cyan-700", dot: "bg-cyan-500" },
-  { value: "returning", label: "ลูกค้าเก่า", color: "bg-purple-100 text-purple-700", dot: "bg-purple-500" },
   { value: "pending_quote", label: "รอเสนอราคา", color: "bg-orange-100 text-orange-700", dot: "bg-orange-500" },
   { value: "pending_confirm", label: "รอคอนเฟิร์ม", color: "bg-yellow-100 text-yellow-700", dot: "bg-yellow-500" },
   { value: "confirmed", label: "คอนเฟิร์ม", color: "bg-green-100 text-green-700", dot: "bg-green-500" },
-  { value: "confirmed_returning", label: "คอนเฟิร์ม (ลูกค้าเก่า)", color: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-600" },
   { value: "postponed", label: "เลื่อนวันจัดงาน(มัดจำแล้ว)", color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-600" },
   { value: "completed", label: "ปิดงาน", color: "bg-slate-200 text-slate-700", dot: "bg-slate-500" },
   { value: "cancelled", label: "ยกเลิก", color: "bg-red-100 text-red-700", dot: "bg-red-500" },
 ] as const;
 
+// Legacy labels เผื่อ render ค่า status เก่าที่อยู่ใน DB
+const LEGACY_LABELS: Record<string, { label: string; color: string }> = {
+  returning: { label: "ลูกค้าเก่า", color: "bg-purple-100 text-purple-700" },
+  confirmed_returning: { label: "คอนเฟิร์ม (ลูกค้าเก่า)", color: "bg-emerald-100 text-emerald-800" },
+};
+
 // pending_confirm → บอทเปิด (strict grounding mode) ไม่ปิด เพื่อรับ chitchat/คำถามต่อโดยไม่เดา
 const AI_OFF_STATUSES = ["pending_quote", "confirmed", "confirmed_returning"];
 const AI_ON_STATUSES = ["postponed", "pending_confirm", "inquiry"];
 // สถานะที่ต้อง "ล้าง admin_bot_override" — กลับมาทำงานตามปกติ
-const CLEAR_OVERRIDE_STATUSES = ["completed", "cancelled", "pending_quote", "new", "inquiry", "returning", "pending_confirm"];
+const CLEAR_OVERRIDE_STATUSES = ["completed", "cancelled", "pending_quote", "new", "inquiry", "pending_confirm"];
 
 export default function StatusSelector({ customer, onUpdate }: { customer: any; onUpdate: (c: any) => void }) {
   const [open, setOpen] = useState(false);
@@ -76,7 +83,10 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
   };
 
 
-  const current = STATUS_OPTIONS.find(s => s.value === customer.status) || STATUS_OPTIONS[0];
+  const current = STATUS_OPTIONS.find(s => s.value === customer.status)
+    || (LEGACY_LABELS[customer.status]
+        ? { value: customer.status, label: LEGACY_LABELS[customer.status].label, color: LEGACY_LABELS[customer.status].color, dot: "bg-muted-foreground" }
+        : STATUS_OPTIONS[0]);
 
   return (
     <div className="relative">
