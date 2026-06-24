@@ -552,9 +552,14 @@ function FunnelToday() {
         {queryA.data && (() => {
           const isDayMode = queryA.data.isDayMode;
           const firstA = chartData[0]?.A || 1;
-          const maxVal = Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
+          const maxVal = isDayMode
+            ? Math.max(...chartData.map((r) => Math.max(r.totalCount, r.B)), 1)
+            : Math.max(...chartData.map((r) => Math.max(r.A, r.B)), 1);
           const totalIn = chartData[0]?.A ?? 0;
-          const quoteCount = chartData.find((r) => r.key === "quote")?.A ?? 0;
+          const quoteStage = chartData.find((r) => r.key === "quote");
+          const quoteCount = quoteStage?.A ?? 0;
+          const quoteTotal = quoteStage?.totalCount ?? 0;
+          const quoteCarry = quoteStage?.carryOver ?? 0;
           const confirmedCount = chartData.find((r) => r.key === "confirmed")?.A ?? 0;
           const completedCount = chartData.find((r) => r.key === "completed")?.A ?? 0;
           const conv = totalIn > 0 ? Math.round((confirmedCount / totalIn) * 100) : 0;
@@ -563,10 +568,14 @@ function FunnelToday() {
             <>
               <div className="space-y-1">
                 {chartData.map((row, i) => {
-                  // day mode: each row independent → width by max across rows
-                  // month mode: cumulative funnel → width by first
                   const baseVal = isDayMode ? maxVal : firstA;
-                  const pctA = (row.A / baseVal) * 100;
+                  const hasCarry = isDayMode && row.carryOver > 0;
+                  const dayDisplay = isDayMode ? row.totalCount : row.A;
+                  const pctA = isDayMode
+                    ? (row.totalCount / baseVal) * 100
+                    : (row.A / baseVal) * 100;
+                  const pctNewSeg = hasCarry ? (row.A / baseVal) * 100 : 0;
+                  const pctCarrySeg = hasCarry ? (row.carryOver / baseVal) * 100 : 0;
                   const pctB = (row.B / baseVal) * 100;
                   const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
@@ -614,16 +623,46 @@ function FunnelToday() {
                             )}
                           </div>
                           <div className="relative h-9 bg-muted/40 rounded-md overflow-hidden">
-                            <div
-                              className="absolute inset-y-0 left-0 rounded-md transition-all flex items-center px-3"
-                              style={{ width: `${pctA}%`, backgroundColor: row.color }}
-                            >
-                              {pctA > 12 && (
-                                <span className="text-xs font-semibold text-white tabular-nums">
-                                  {row.A} คน
-                                </span>
-                              )}
-                            </div>
+                            {hasCarry ? (
+                              <>
+                                <div
+                                  className="absolute inset-y-0 left-0 transition-all flex items-center px-3"
+                                  style={{ width: `${pctNewSeg}%`, backgroundColor: row.color }}
+                                >
+                                  {pctNewSeg > 10 && (
+                                    <span className="text-xs font-semibold text-white tabular-nums">
+                                      +{row.A}
+                                    </span>
+                                  )}
+                                </div>
+                                <div
+                                  className="absolute inset-y-0 transition-all flex items-center px-2"
+                                  style={{
+                                    left: `${pctNewSeg}%`,
+                                    width: `${pctCarrySeg}%`,
+                                    backgroundColor: row.color,
+                                    opacity: 0.4,
+                                  }}
+                                >
+                                  {pctCarrySeg > 10 && (
+                                    <span className="text-xs font-semibold text-white tabular-nums">
+                                      {row.carryOver}
+                                    </span>
+                                  )}
+                                </div>
+                              </>
+                            ) : (
+                              <div
+                                className="absolute inset-y-0 left-0 rounded-md transition-all flex items-center px-3"
+                                style={{ width: `${pctA}%`, backgroundColor: row.color }}
+                              >
+                                {pctA > 12 && (
+                                  <span className="text-xs font-semibold text-white tabular-nums">
+                                    {isDayMode ? row.totalCount : row.A} คน
+                                  </span>
+                                )}
+                              </div>
+                            )}
                             {compare && (
                               <div
                                 className="absolute left-0 rounded-md transition-all"
@@ -637,11 +676,18 @@ function FunnelToday() {
                               />
                             )}
                           </div>
+                          {hasCarry && (
+                            <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
+                              <span>ค้างก่อนวันนี้ <strong>{row.carryOver}</strong></span>
+                              <span>ใหม่วันนี้ <strong>+{row.A}</strong></span>
+                              <span>รวมตอนนี้ <strong>{row.totalCount}</strong></span>
+                            </div>
+                          )}
                         </div>
                         <div className="w-[90px] sm:w-[130px] shrink-0 text-right">
                           <div className="flex items-center justify-end gap-1.5">
                             <span className="font-display font-bold text-lg tabular-nums leading-none">
-                              {row.A}
+                              {isDayMode ? dayDisplay : row.A}
                             </span>
                             {compare && row.diff !== 0 && (
                               <Badge
@@ -677,8 +723,11 @@ function FunnelToday() {
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                      <div className="text-[11px] text-muted-foreground">ได้ข้อมูลครบ</div>
-                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteCount}</div>
+                      <div className="text-[11px] text-muted-foreground">รอใบเสนอราคา</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteTotal}</div>
+                      <div className="text-[10px] text-muted-foreground mt-0.5">
+                        ค้าง {quoteCarry} + ใหม่ {quoteCount}
+                      </div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
                       <div className="text-[11px] text-muted-foreground">คอนเฟิร์ม</div>
@@ -689,6 +738,7 @@ function FunnelToday() {
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{completedCount}</div>
                     </div>
                   </>
+
                 ) : (
                   <>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#378ADD" }}>
