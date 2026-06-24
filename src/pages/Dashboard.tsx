@@ -28,13 +28,16 @@ export default function Dashboard() {
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      const [c, u, conv, today, clv, confirmed] = await Promise.all([
+      const [c, u, conv, today, clv, confirmed, newToday, returningToday, legacyToday] = await Promise.all([
         supabase.from("customers").select("*", { count: "exact", head: true }),
         supabase.from("customers").select("*", { count: "exact", head: true }).gt("unread_count", 0),
         supabase.from("conversations").select("*", { count: "exact", head: true }),
         supabase.from("conversations").select("*", { count: "exact", head: true }).gte("created_at", todayStart),
         supabase.from("customers").select("clv_amount"),
         supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "new").gte("created_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("updated_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("created_at", todayStart),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
@@ -44,6 +47,10 @@ export default function Dashboard() {
         todayMsg: today.count ?? 0,
         totalClv,
         confirmed: confirmed.count ?? 0,
+        newToday: newToday.count ?? 0,
+        returningToday: returningToday.count ?? 0,
+        legacyToday: legacyToday.count ?? 0,
+        activeLeadsToday: (newToday.count ?? 0) + (returningToday.count ?? 0),
       };
     },
   });
@@ -134,6 +141,39 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-[#378ADD] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">New Lead วันนี้</p>
+              <p className="font-display font-semibold text-xl">{stats?.newToday ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">ลูกค้าใหม่จริงๆ</p>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-[#7F77DD] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Returning Lead วันนี้</p>
+              <p className="font-display font-semibold text-xl">{stats?.returningToday ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">ลูกค้าเก่ากลับมาจัดอีก</p>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 flex items-center gap-3 opacity-60">
+            <div className="w-3 h-3 rounded-full bg-[#888780] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Legacy วันนี้</p>
+              <p className="font-display font-semibold text-xl">{stats?.legacyToday ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">ก่อนเปิดระบบ (ไม่นับเป็น lead)</p>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Active Leads วันนี้: <strong>{stats?.activeLeadsToday ?? "—"} คน</strong> (New + Returning)
+        </p>
+      </div>
+
 
 
       {/* SLA Breaches */}

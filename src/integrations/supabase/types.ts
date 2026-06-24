@@ -781,6 +781,7 @@ export type Database = {
           conversation_summary: string | null
           created_at: string
           customer_notes: Json
+          customer_origin: string | null
           display_name: string | null
           event_date: string | null
           event_month: string | null
@@ -821,6 +822,7 @@ export type Database = {
           conversation_summary?: string | null
           created_at?: string
           customer_notes?: Json
+          customer_origin?: string | null
           display_name?: string | null
           event_date?: string | null
           event_month?: string | null
@@ -861,6 +863,7 @@ export type Database = {
           conversation_summary?: string | null
           created_at?: string
           customer_notes?: Json
+          customer_origin?: string | null
           display_name?: string | null
           event_date?: string | null
           event_month?: string | null

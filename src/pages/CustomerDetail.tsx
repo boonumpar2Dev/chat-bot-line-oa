@@ -5,10 +5,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, MessageSquare, Crown, History, Sparkles, Calendar, Users as UsersIcon, MapPin, Receipt } from "lucide-react";
+import { Loader2, ArrowLeft, MessageSquare, Crown, History, Sparkles, Calendar, Users as UsersIcon, MapPin, Receipt, Tag } from "lucide-react";
 import { format } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import CustomerInfoPanel from "@/components/customers/CustomerInfoPanel";
 import { useSmartBack } from "@/hooks/useSmartBack";
 
@@ -107,6 +108,36 @@ export default function CustomerDetail() {
       <div className="max-w-6xl mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         {/* Left: data panel */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Customer origin action */}
+          <Card className="p-3 flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-muted-foreground">ประเภทลูกค้า:</span>
+            {customer.customer_origin === "legacy" ? (
+              <Badge variant="secondary" className="bg-muted text-muted-foreground">Legacy · ก่อนเปิดระบบ</Badge>
+            ) : customer.customer_origin === "returning" ? (
+              <Badge className="bg-[#7F77DD] text-white hover:bg-[#7F77DD]/90">Returning · ลูกค้าเก่ากลับมา</Badge>
+            ) : (
+              <>
+                <Badge variant="outline">New Lead</Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("customers")
+                      .update({ customer_origin: "legacy" })
+                      .eq("id", customer.id);
+                    if (error) { toast.error("ทำเครื่องหมายไม่สำเร็จ"); return; }
+                    updateCustomer({ customer_origin: "legacy" });
+                    toast.success("ทำเครื่องหมาย Legacy แล้ว");
+                  }}
+                >
+                  <Tag className="w-3.5 h-3.5 mr-1.5"/> ทำเครื่องหมายลูกค้าเก่า (ก่อนเปิดระบบ)
+                </Button>
+              </>
+            )}
+          </Card>
+
           {/* Summary */}
           {customer.conversation_summary && (
             <Card className="p-4">
