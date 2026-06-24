@@ -473,6 +473,8 @@ function FunnelToday() {
         diff: compare ? (a[i]?.count ?? 0) - (b[i]?.count ?? 0) : 0,
         customerIdsA: a[i]?.customerIds ?? [],
         customerIdsB: b[i]?.customerIds ?? [],
+        carryOver: a[i]?.carryOver ?? 0,
+        totalCount: a[i]?.totalCount ?? a[i]?.count ?? 0,
       };
     });
   }, [queryA.data, queryB.data, compare, mode]);
