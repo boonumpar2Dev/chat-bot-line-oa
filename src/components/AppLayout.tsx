@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon, Megaphone, Activity, MoreHorizontal, Sparkles } from "lucide-react";
+import { LayoutDashboard, MessageSquare, BookOpen, Users, Settings, LogOut, ChevronLeft, Menu, Zap, Plug, Bot, UserCircle2, Tag as TagIcon, Megaphone, Activity, MoreHorizontal, Sparkles, BarChart2 } from "lucide-react";
 import boonumparLogo from "@/assets/boonumpar-logo.png.asset.json";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuPermissions, MenuKey } from "@/hooks/useMenuPermissions";
@@ -16,6 +16,7 @@ type NavGroup = { label?: string; items: NavItem[] };
 const navGroups: NavGroup[] = [
   { items: [
     { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true, key: "dashboard" },
+    { to: "/reports", label: "รายงาน", icon: BarChart2, exact: true, key: "dashboard" },
   ]},
   { label: "ลูกค้า", items: [
     { to: "/chats", label: "จัดการแชท", icon: MessageSquare, key: "chats" },
