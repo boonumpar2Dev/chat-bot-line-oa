@@ -467,11 +467,11 @@ async function fetchFunnelMonth(date: Date) {
 
   return {
     stages: [
-      { key: "new", label: "ทักเข้ามา", count: newCount, totalCount: newCount, carryOver: 0, customerIds: newIds },
-      { key: "quote", label: "รอใบเสนอราคา", count: quoteIds.length, totalCount: quoteIds.length, carryOver: 0, customerIds: quoteIds },
-      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmIds.length, totalCount: confirmIds.length, carryOver: 0, customerIds: confirmIds },
-      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, customerIds: confirmedIds },
-      { key: "completed", label: "จัดงานจบแล้ว", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, customerIds: completedIds },
+      { key: "new", label: "ทักเข้ามา", count: newCount, totalCount: newCount, carryOver: 0, newToday: newCount, outToday: 0, customerIds: newIds },
+      { key: "quote", label: "รอใบเสนอราคา", count: quoteIds.length, totalCount: quoteIds.length, carryOver: 0, newToday: quoteIds.length, outToday: 0, customerIds: quoteIds },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmIds.length, totalCount: confirmIds.length, carryOver: 0, newToday: confirmIds.length, outToday: 0, customerIds: confirmIds },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานจบแล้ว", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds },
     ],
     inquiryCount: Math.max(0, newCount - quoteIds.length),
     isDayMode: false as boolean,
