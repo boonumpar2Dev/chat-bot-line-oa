@@ -578,6 +578,7 @@ export default function Chats() {
 
 
   const lastScrolledIdRef = useRef<string | null>(null);
+  const restoredRoomRef = useRef<string | null>(null);
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
@@ -590,15 +591,29 @@ export default function Chats() {
     let timers: ReturnType<typeof setTimeout>[] = [];
     let observer: ResizeObserver | null = null;
     let stopTimer: ReturnType<typeof setTimeout> | null = null;
-    requestAnimationFrame(() => {
-      scrollToBottom(isRoomSwitch ? "auto" : "smooth");
-      if (isRoomSwitch) {
-        // ยิงซ้ำตามช่วงเวลาเดิม (กันกรณี layout ขยับเล็กน้อย)
+
+    if (isRoomSwitch) {
+      // มีตำแหน่งที่บันทึกไว้ (เช่น กลับมาจากหน้าอื่น) → คืนตำแหน่งเดิม ไม่ดึงลงล่าง
+      const saved = selectedId ? chatScrollPositions.get(selectedId) : undefined;
+      if (saved !== undefined && saved >= 0) {
+        const restore = () => { viewport.scrollTop = saved; };
+        requestAnimationFrame(() => {
+          restore();
+          // ยิงซ้ำกัน layout ขยับเล็กน้อยตอนรูป/วิดีโอโหลด
+          timers = [50, 150, 350, 700].map(ms => setTimeout(restore, ms));
+        });
+        restoredRoomRef.current = selectedId;
+        return () => {
+          timers.forEach(clearTimeout);
+        };
+      }
+      // ไม่มีตำแหน่งเดิม → เพิ่งคลิกเข้ามาห้องนี้ครั้งแรก → เลื่อนลงล่างสุด
+      restoredRoomRef.current = null;
+      requestAnimationFrame(() => {
+        scrollToBottom("auto");
         timers = [50, 150, 350, 700, 1200, 2000].map(ms =>
           setTimeout(() => scrollToBottom("auto"), ms)
         );
-        // เพิ่ม: ฟัง resize ของ content (รูป/วิดีโอโหลดเสร็จ → ความสูงเพิ่ม → เลื่อนลงล่างอีก)
-        // ทำงานสูงสุด 5 วินาทีหลังเปลี่ยนห้อง แล้วหยุด เพื่อไม่รบกวนการ scroll ของผู้ใช้
         const content = viewport.firstElementChild as HTMLElement | null;
         if (content && typeof ResizeObserver !== "undefined") {
           observer = new ResizeObserver(() => scrollToBottom("auto"));
@@ -608,14 +623,55 @@ export default function Chats() {
             observer = null;
           }, 5000);
         }
+      });
+    } else {
+      // ข้อความใหม่เข้ามาในห้องเดิม → เลื่อนลงล่างเฉพาะกรณีที่ผู้ใช้อยู่ใกล้ล่างอยู่แล้ว
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      if (distanceFromBottom < 120) {
+        requestAnimationFrame(() => scrollToBottom("smooth"));
       }
-    });
+    }
+
     return () => {
       timers.forEach(clearTimeout);
       if (stopTimer) clearTimeout(stopTimer);
       observer?.disconnect();
     };
   }, [messages, selectedId]);
+
+  // บันทึกตำแหน่ง scroll ของห้องปัจจุบัน เพื่อคืนค่าตอนกลับมาจากหน้าอื่น
+  useEffect(() => {
+    const root = scrollRef.current;
+    const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
+    if (!viewport || !selectedId) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        // ถ้าอยู่ติดล่างสุด ไม่ต้องเก็บ (จะได้ default = ลงล่างตอนกลับมา)
+        const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+        if (distanceFromBottom < 40) {
+          chatScrollPositions.delete(selectedId);
+        } else {
+          chatScrollPositions.set(selectedId, viewport.scrollTop);
+        }
+      });
+    };
+    viewport.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      viewport.removeEventListener("scroll", onScroll);
+      // บันทึกครั้งสุดท้ายก่อน unmount/เปลี่ยนห้อง
+      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+      if (distanceFromBottom < 40) {
+        chatScrollPositions.delete(selectedId);
+      } else {
+        chatScrollPositions.set(selectedId, viewport.scrollTop);
+      }
+    };
+  }, [selectedId]);
+
+
 
   // Customers found by searching inside message content
   const [msgMatchIds, setMsgMatchIds] = useState<Set<string>>(new Set());
