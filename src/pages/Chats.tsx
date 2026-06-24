@@ -833,6 +833,8 @@ export default function Chats() {
         },
       });
       if (error) throw error;
+      // แอดมินตอบแล้ว → reset admin_seen_at เพื่อปลด badge "รอแอดมิน"
+      supabase.from("customers").update({ admin_seen_at: new Date().toISOString() }).eq("id", selected.id).then();
       setReply("");
       const sentFiles = [...stagedFiles];
       setStagedFiles([]);
