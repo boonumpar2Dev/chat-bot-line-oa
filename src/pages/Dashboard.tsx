@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSnippet } from "@/lib/snippet";
@@ -8,6 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 const STATUS_LABELS: Record<string, string> = {
@@ -144,35 +146,37 @@ export default function Dashboard() {
 
       <div className="space-y-2">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-[#378ADD] shrink-0"/>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">New Lead วันนี้</p>
-              <p className="font-display font-semibold text-xl">{stats?.newToday ?? "—"}</p>
-              <p className="text-[10px] text-muted-foreground">ลูกค้าใหม่จริงๆ</p>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full bg-[#7F77DD] shrink-0"/>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Returning Lead วันนี้</p>
-              <p className="font-display font-semibold text-xl">{stats?.returningToday ?? "—"}</p>
-              <p className="text-[10px] text-muted-foreground">ลูกค้าเก่ากลับมาจัดอีก</p>
-            </div>
-          </div>
-          <div className="rounded-lg border bg-card p-3 flex items-center gap-3 opacity-60">
-            <div className="w-3 h-3 rounded-full bg-[#888780] shrink-0"/>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">Legacy วันนี้</p>
-              <p className="font-display font-semibold text-xl">{stats?.legacyToday ?? "—"}</p>
-              <p className="text-[10px] text-muted-foreground">ก่อนเปิดระบบ (ไม่นับเป็น lead)</p>
-            </div>
-          </div>
+          <LeadOriginCard
+            color="#378ADD"
+            label="New Lead วันนี้"
+            value={stats?.newToday}
+            hint="ลูกค้าใหม่จริงๆ"
+            origin="new"
+            mode="created"
+          />
+          <LeadOriginCard
+            color="#7F77DD"
+            label="Returning Lead วันนี้"
+            value={stats?.returningToday}
+            hint="ลูกค้าเก่ากลับมาทักวันนี้"
+            origin="returning"
+            mode="last_message"
+          />
+          <LeadOriginCard
+            color="#888780"
+            label="Legacy วันนี้"
+            value={stats?.legacyToday}
+            hint="ก่อนเปิดระบบ (ไม่นับเป็น lead)"
+            origin="legacy"
+            mode="last_message"
+            dimmed
+          />
         </div>
         <p className="text-xs text-muted-foreground">
           Active Leads วันนี้: <strong>{stats?.activeLeadsToday ?? "—"} คน</strong> (New + Returning)
         </p>
       </div>
+
 
 
 
