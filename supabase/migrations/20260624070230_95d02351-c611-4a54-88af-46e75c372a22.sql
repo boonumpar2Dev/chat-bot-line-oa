@@ -1,0 +1,1 @@
+CREATE POLICY "Staff view all profiles" ON public.profiles FOR SELECT USING (public.is_staff_member(auth.uid()));
