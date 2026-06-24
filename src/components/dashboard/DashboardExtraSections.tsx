@@ -381,7 +381,6 @@ async function fetchFunnelDay(date: Date) {
   // ใหม่วันนี้ที่ยังอยู่ใน stage
   const quoteNewIds = filterByCurrent(quoteLogIds, ["pending_quote"]);
   const confirmNewIds = filterByCurrent(confirmLogIds, ["pending_confirm"]);
-  const confirmedIds = filterByCurrent(confirmedLogIds, ["confirmed", "confirmed_returning"]);
   const completedIds = filterByCurrent(completedLogIds, ["completed"]);
 
   // 4) ดึง "ทุกคน" ที่ตอนนี้ status = stage (รายชื่อจริงสำหรับคลิก, ไม่ใช่แค่ count)
@@ -398,18 +397,46 @@ async function fetchFunnelDay(date: Date) {
   const quoteCarry = Math.max(0, quoteTotalCount - quoteNewSet.size);
   const confirmCarry = Math.max(0, confirmTotalCount - confirmNewSet.size);
 
+  // 5) Confirmed วันนี้ = คนที่เข้า confirmed/confirmed_returning วันนี้
+  // แยก: ส่งใบวันนี้+คอนเฟิร์มวันนี้ (sameDay) vs ส่งใบวันก่อน+คอนเฟิร์มวันนี้ (carry)
+  const confirmedTodayIds = Array.from(confirmedLogIds);
+  let confirmedSameDay = 0;
+  let confirmedCarry = 0;
+  if (confirmedTodayIds.length > 0) {
+    const { data: pclogs, error: e4 } = await supabase
+      .from("customer_status_log")
+      .select("customer_id, changed_at")
+      .in("customer_id", confirmedTodayIds)
+      .eq("new_status", "pending_confirm")
+      .lte("changed_at", to.toISOString())
+      .limit(10000);
+    if (e4) throw e4;
+    const lastPending = new Map<string, string>();
+    (pclogs ?? []).forEach((r: any) => {
+      const prev = lastPending.get(r.customer_id);
+      if (!prev || r.changed_at > prev) lastPending.set(r.customer_id, r.changed_at);
+    });
+    confirmedTodayIds.forEach((id) => {
+      const lp = lastPending.get(id);
+      if (lp && new Date(lp) >= from) confirmedSameDay++;
+      else if (lp) confirmedCarry++;
+      else confirmedSameDay++; // ไม่มี log pending_confirm = นับเป็นวันนี้
+    });
+  }
+
   return {
     stages: [
       { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, totalCount: newIds.length, carryOver: 0, newToday: newIds.length, outToday: 0, customerIds: newIds },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteNewSet.size, totalCount: quoteTotalCount, carryOver: quoteCarry, newToday: quoteNewSet.size, outToday: quoteOutToday, customerIds: quoteAllIds },
-      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmNewSet.size, totalCount: confirmTotalCount, carryOver: confirmCarry, newToday: confirmNewSet.size, outToday: confirmOutToday, customerIds: confirmAllIds },
-      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteNewSet.size, totalCount: quoteTotalCount, carryOver: quoteCarry, newToday: quoteNewSet.size, outToday: 0, customerIds: quoteAllIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmNewSet.size, totalCount: confirmTotalCount, carryOver: confirmCarry, newToday: confirmNewSet.size, outToday: 0, customerIds: confirmAllIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedTodayIds.length, totalCount: confirmedTodayIds.length, carryOver: confirmedCarry, newToday: confirmedSameDay, outToday: 0, customerIds: confirmedTodayIds },
       { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds },
     ],
     inquiryCount: 0,
     isDayMode: true as boolean,
   };
 }
+
 
 
 async function fetchFunnelMonth(date: Date) {
