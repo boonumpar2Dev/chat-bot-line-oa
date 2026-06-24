@@ -185,12 +185,17 @@ function DailyReportTable() {
       if (days.length === 0) days.push(startOfDay(DASHBOARD_MIN_DATE));
       const since = days[0].toISOString();
 
-      const [custRes, convRes] = await Promise.all([
+      const [custRes, logRes, convRes] = await Promise.all([
         supabase
           .from("customers")
-          .select("created_at,updated_at,status,phone,event_date,guest_count")
-          .or(`created_at.gte.${since},updated_at.gte.${since}`)
+          .select("created_at")
+          .gte("created_at", since)
           .limit(10000),
+        supabase
+          .from("customer_status_log")
+          .select("customer_id, new_status, changed_at")
+          .gte("changed_at", since)
+          .limit(20000),
         supabase
           .from("conversations")
           .select("created_at,sender")
@@ -198,30 +203,23 @@ function DailyReportTable() {
           .eq("sender", "ai"),
       ]);
       if (custRes.error) throw custRes.error;
+      if (logRes.error) throw logRes.error;
       if (convRes.error) throw convRes.error;
+
+      const uniqueByStatus = (rows: any[], statuses: string[]) =>
+        new Set(rows.filter((l) => statuses.includes(l.new_status)).map((l) => l.customer_id)).size;
 
       return days.map((day) => {
         const dayKey = ymd(day);
         const newCount = (custRes.data ?? []).filter(
           (c: any) => ymd(new Date(c.created_at)) === dayKey
         ).length;
-        const completeCount = (custRes.data ?? []).filter(
-          (c: any) =>
-            ymd(new Date(c.created_at)) === dayKey &&
-            c.phone &&
-            c.event_date &&
-            c.guest_count
-        ).length;
-        const quoteCount = (custRes.data ?? []).filter(
-          (c: any) =>
-            c.status === "pending_confirm" &&
-            ymd(new Date(c.updated_at)) === dayKey
-        ).length;
-        const confirmedCount = (custRes.data ?? []).filter(
-          (c: any) =>
-            (c.status === "confirmed" || c.status === "confirmed_returning") &&
-            ymd(new Date(c.updated_at)) === dayKey
-        ).length;
+        const logsToday = (logRes.data ?? []).filter(
+          (l: any) => ymd(new Date(l.changed_at)) === dayKey
+        );
+        const completeCount = uniqueByStatus(logsToday, ["pending_quote"]);
+        const quoteCount = uniqueByStatus(logsToday, ["pending_confirm"]);
+        const confirmedCount = uniqueByStatus(logsToday, ["confirmed", "confirmed_returning"]);
         const botCount = (convRes.data ?? []).filter(
           (c: any) => ymd(new Date(c.created_at)) === dayKey
         ).length;
@@ -237,6 +235,7 @@ function DailyReportTable() {
       });
     },
   });
+
 
   const todayKey = ymd(startOfDay(new Date()));
 
@@ -381,7 +380,6 @@ async function fetchFunnelDay(date: Date) {
   // ใหม่วันนี้ที่ยังอยู่ใน stage
   const quoteNewIds = filterByCurrent(quoteLogIds, ["pending_quote"]);
   const confirmNewIds = filterByCurrent(confirmLogIds, ["pending_confirm"]);
-  const confirmedIds = filterByCurrent(confirmedLogIds, ["confirmed", "confirmed_returning"]);
   const completedIds = filterByCurrent(completedLogIds, ["completed"]);
 
   // 4) ดึง "ทุกคน" ที่ตอนนี้ status = stage (รายชื่อจริงสำหรับคลิก, ไม่ใช่แค่ count)
@@ -398,18 +396,46 @@ async function fetchFunnelDay(date: Date) {
   const quoteCarry = Math.max(0, quoteTotalCount - quoteNewSet.size);
   const confirmCarry = Math.max(0, confirmTotalCount - confirmNewSet.size);
 
+  // 5) Confirmed วันนี้ = คนที่เข้า confirmed/confirmed_returning วันนี้
+  // แยก: ส่งใบวันนี้+คอนเฟิร์มวันนี้ (sameDay) vs ส่งใบวันก่อน+คอนเฟิร์มวันนี้ (carry)
+  const confirmedTodayIds = Array.from(confirmedLogIds);
+  let confirmedSameDay = 0;
+  let confirmedCarry = 0;
+  if (confirmedTodayIds.length > 0) {
+    const { data: pclogs, error: e4 } = await supabase
+      .from("customer_status_log")
+      .select("customer_id, changed_at")
+      .in("customer_id", confirmedTodayIds)
+      .eq("new_status", "pending_confirm")
+      .lte("changed_at", to.toISOString())
+      .limit(10000);
+    if (e4) throw e4;
+    const lastPending = new Map<string, string>();
+    (pclogs ?? []).forEach((r: any) => {
+      const prev = lastPending.get(r.customer_id);
+      if (!prev || r.changed_at > prev) lastPending.set(r.customer_id, r.changed_at);
+    });
+    confirmedTodayIds.forEach((id) => {
+      const lp = lastPending.get(id);
+      if (lp && new Date(lp) >= from) confirmedSameDay++;
+      else if (lp) confirmedCarry++;
+      else confirmedSameDay++; // ไม่มี log pending_confirm = นับเป็นวันนี้
+    });
+  }
+
   return {
     stages: [
       { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, totalCount: newIds.length, carryOver: 0, newToday: newIds.length, outToday: 0, customerIds: newIds },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteNewSet.size, totalCount: quoteTotalCount, carryOver: quoteCarry, newToday: quoteNewSet.size, outToday: quoteOutToday, customerIds: quoteAllIds },
-      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmNewSet.size, totalCount: confirmTotalCount, carryOver: confirmCarry, newToday: confirmNewSet.size, outToday: confirmOutToday, customerIds: confirmAllIds },
-      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteNewSet.size, totalCount: quoteTotalCount, carryOver: quoteCarry, newToday: quoteNewSet.size, outToday: 0, customerIds: quoteAllIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmNewSet.size, totalCount: confirmTotalCount, carryOver: confirmCarry, newToday: confirmNewSet.size, outToday: 0, customerIds: confirmAllIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedTodayIds.length, totalCount: confirmedTodayIds.length, carryOver: confirmedCarry, newToday: confirmedSameDay, outToday: 0, customerIds: confirmedTodayIds },
       { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds },
     ],
     inquiryCount: 0,
     isDayMode: true as boolean,
   };
 }
+
 
 
 async function fetchFunnelMonth(date: Date) {
@@ -727,17 +753,22 @@ function FunnelToday() {
                               />
                             )}
                           </div>
-                          {isDayMode && (row.key === "quote" || row.key === "confirm") && (row.carryOver > 0 || row.newToday > 0 || row.outToday > 0) && (
+                          {isDayMode && (row.key === "quote" || row.key === "confirm" || row.key === "confirmed") && (row.carryOver > 0 || row.newToday > 0) && (
                             <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
-                              <span>วันก่อน <strong>{row.carryOver}</strong></span>
-                              <span>+ ใหม่วันนี้ <strong>{row.newToday}</strong></span>
-                              {row.outToday > 0 && (
-                                <span className="text-emerald-600 dark:text-emerald-400">
-                                  วันนี้{row.key === "quote" ? "ส่งใบไป" : "ปิดดีล"} <strong>{row.outToday}</strong> คน
-                                </span>
+                              {row.key === "confirmed" ? (
+                                <>
+                                  <span>ส่งใบวันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ส่งใบวันก่อน <strong>{row.carryOver}</strong></span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>ใหม่วันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ค้างวันก่อน <strong>{row.carryOver}</strong></span>
+                                </>
                               )}
                             </div>
                           )}
+
                         </div>
                         <div className="w-[90px] sm:w-[130px] shrink-0 text-right">
                           <div className="flex items-center justify-end gap-1.5">
@@ -778,16 +809,17 @@ function FunnelToday() {
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                      <div className="text-[11px] text-muted-foreground">รอใบเสนอราคา</div>
+                      <div className="text-[11px] text-muted-foreground">รอใบเสนอราคา (คงค้าง)</div>
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteTotal}</div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">
-                        ค้าง {quoteCarry} + ใหม่ {quoteCount}
+                        ใหม่ {quoteCount} + ค้าง {quoteCarry}
                       </div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
-                      <div className="text-[11px] text-muted-foreground">คอนเฟิร์ม</div>
+                      <div className="text-[11px] text-muted-foreground">วันนี้คอนเฟิร์ม</div>
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{confirmedCount}</div>
                     </div>
+
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#7F77DD" }}>
                       <div className="text-[11px] text-muted-foreground">จัดงานเสร็จ</div>
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{completedCount}</div>
