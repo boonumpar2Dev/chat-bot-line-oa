@@ -314,13 +314,16 @@ async function fetchFunnelDay(date: Date) {
   const from = startOfDay(date);
   const to = endOfDay(date);
 
+  // 1) ลูกค้าใหม่วันนี้ (created today)
   const { data: newCustomers, error: e1 } = await supabase
     .from("customers")
     .select("id")
     .gte("created_at", from.toISOString())
     .lte("created_at", to.toISOString());
   if (e1) throw e1;
+  const newIds = (newCustomers ?? []).map((c: any) => c.id);
 
+  // 2) ดึง transition log ของวันนี้
   const { data: logs, error: e2 } = await supabase
     .from("customer_status_log")
     .select("customer_id, new_status")
@@ -329,25 +332,51 @@ async function fetchFunnelDay(date: Date) {
     .limit(10000);
   if (e2) throw e2;
 
-  const getIds = (statuses: string[]) => {
+  const collectIds = (statuses: string[]) => {
     const ids = new Set<string>();
     (logs ?? []).forEach((r: any) => {
       if (statuses.includes(r.new_status)) ids.add(r.customer_id);
     });
-    return Array.from(ids);
+    return ids;
   };
 
-  const newIds = (newCustomers ?? []).map((c: any) => c.id);
-  const quoteIds = getIds(["pending_quote"]);
-  const confirmIds = getIds(["pending_confirm"]);
-  const confirmedIds = getIds(["confirmed", "confirmed_returning"]);
-  const completedIds = getIds(["completed"]);
+  const quoteLogIds = collectIds(["pending_quote"]);
+  const confirmLogIds = collectIds(["pending_confirm"]);
+  const confirmedLogIds = collectIds(["confirmed", "confirmed_returning"]);
+  const completedLogIds = collectIds(["completed"]);
 
+  // 3) ดึง current status ของลูกค้าที่อยู่ใน log วันนี้ — กรองเฉพาะที่ปัจจุบันยังตรงกับ stage
+  const allLogIds = Array.from(
+    new Set<string>([
+      ...quoteLogIds,
+      ...confirmLogIds,
+      ...confirmedLogIds,
+      ...completedLogIds,
+    ])
+  );
+  const currentStatus = new Map<string, string>();
+  if (allLogIds.length > 0) {
+    const { data: cs, error: e3 } = await supabase
+      .from("customers")
+      .select("id,status")
+      .in("id", allLogIds);
+    if (e3) throw e3;
+    (cs ?? []).forEach((c: any) => currentStatus.set(c.id, c.status));
+  }
+
+  const filterByCurrent = (ids: Set<string>, allowed: string[]) =>
+    Array.from(ids).filter((id) => allowed.includes(currentStatus.get(id) ?? ""));
+
+  const quoteIds = filterByCurrent(quoteLogIds, ["pending_quote"]);
+  const confirmIds = filterByCurrent(confirmLogIds, ["pending_confirm"]);
+  const confirmedIds = filterByCurrent(confirmedLogIds, ["confirmed", "confirmed_returning"]);
+  const completedIds = filterByCurrent(completedLogIds, ["completed"]);
+
+  // 4) Total ของ stage ที่มี carryOver (ของค้างก่อนวันนี้ + ใหม่วันนี้ = total ปัจจุบัน)
   const [quoteTotal, confirmTotal] = await Promise.all([
     supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "pending_quote"),
     supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "pending_confirm"),
   ]);
-
   const quoteTotalCount = quoteTotal.count ?? 0;
   const confirmTotalCount = confirmTotal.count ?? 0;
 
