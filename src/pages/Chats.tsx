@@ -212,6 +212,10 @@ const appendReadyFilesToDraft = (userId: string | undefined, customerId: string 
   saveDraft(userId, customerId, { ...current, files: merged });
 };
 
+// เก็บตำแหน่ง scroll ของแต่ละห้องไว้ระหว่างที่ผู้ใช้ออกไปหน้าอื่นแล้วกลับมา
+// (module-level → คงอยู่ตลอด session ของ SPA, หายเมื่อ full reload)
+const chatScrollPositions = new Map<string, number>();
+
 export default function Chats() {
   const { user } = useAuth();
   const userId = user?.id;
