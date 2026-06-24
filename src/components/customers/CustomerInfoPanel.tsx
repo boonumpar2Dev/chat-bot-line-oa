@@ -236,7 +236,8 @@ export default function CustomerInfoPanel({
         event_month: null,
         event_date: null,
         last_sent_image_titles: [],
-        status: "returning" as const,
+        status: "inquiry" as const,
+        customer_origin: "returning" as const,
       };
       const { error: updErr } = await supabase
         .from("customers")
