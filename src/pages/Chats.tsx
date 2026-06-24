@@ -672,7 +672,7 @@ export default function Chats() {
         console.log("[SCROLL DBG] cleanup save", { selectedId, top: viewport.scrollTop });
       }
     };
-  }, [selectedId]);
+  }, [selectedId, messages.length > 0]);
 
 
 
