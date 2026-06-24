@@ -727,11 +727,15 @@ function FunnelToday() {
                               />
                             )}
                           </div>
-                          {hasCarry && (
+                          {isDayMode && (row.key === "quote" || row.key === "confirm") && (row.carryOver > 0 || row.newToday > 0 || row.outToday > 0) && (
                             <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
-                              <span>ค้างก่อนวันนี้ <strong>{row.carryOver}</strong></span>
-                              <span>ใหม่วันนี้ <strong>+{row.A}</strong></span>
-                              <span>รวมตอนนี้ <strong>{row.totalCount}</strong></span>
+                              <span>วันก่อน <strong>{row.carryOver}</strong></span>
+                              <span>+ ใหม่วันนี้ <strong>{row.newToday}</strong></span>
+                              {row.outToday > 0 && (
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  วันนี้{row.key === "quote" ? "ส่งใบไป" : "ปิดดีล"} <strong>{row.outToday}</strong> คน
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
