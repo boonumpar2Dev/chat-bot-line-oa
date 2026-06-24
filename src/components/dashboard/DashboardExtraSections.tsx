@@ -624,8 +624,9 @@ function FunnelToday() {
                   const pctA = isDayMode
                     ? (row.totalCount / baseVal) * 100
                     : (row.A / baseVal) * 100;
-                  const pctNewSeg = hasCarry ? (row.A / baseVal) * 100 : 0;
+                  const pctNewSeg = hasCarry ? (row.newToday / baseVal) * 100 : 0;
                   const pctCarrySeg = hasCarry ? (row.carryOver / baseVal) * 100 : 0;
+                  const clickable = isDayMode ? row.totalCount > 0 : row.A > 0;
                   const pctB = (row.B / baseVal) * 100;
                   const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
