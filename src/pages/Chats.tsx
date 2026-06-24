@@ -463,7 +463,9 @@ export default function Chats() {
       if (active) setMessages(data || []);
     };
     load();
-    supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
+    // เปิดแชท: เคลียร์ unread count อย่างเดียว — ห้าม reset admin_seen_at เพราะจะทำให้ badge "รอแอดมิน" หายทันที
+    // admin_seen_at จะ reset เมื่อแอดมินตอบจริงๆ (ดูใน sendMessage handler)
+    supabase.from("customers").update({ unread_count: 0 }).eq("id", selectedId).then();
     const ch = supabase.channel(`conv-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations", filter: `customer_id=eq.${selectedId}` },
         (payload) => setMessages(prev => [...prev, payload.new as Conversation]))
@@ -831,6 +833,8 @@ export default function Chats() {
         },
       });
       if (error) throw error;
+      // แอดมินตอบแล้ว → reset admin_seen_at เพื่อปลด badge "รอแอดมิน"
+      supabase.from("customers").update({ admin_seen_at: new Date().toISOString() }).eq("id", selected.id).then();
       setReply("");
       const sentFiles = [...stagedFiles];
       setStagedFiles([]);
