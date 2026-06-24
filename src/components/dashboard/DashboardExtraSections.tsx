@@ -323,10 +323,10 @@ async function fetchFunnelDay(date: Date) {
   if (e1) throw e1;
   const newIds = (newCustomers ?? []).map((c: any) => c.id);
 
-  // 2) ดึง transition log ของวันนี้
+  // 2) ดึง transition log ของวันนี้ (รวม old_status เพื่อนับ "ออกไปวันนี้")
   const { data: logs, error: e2 } = await supabase
     .from("customer_status_log")
-    .select("customer_id, new_status")
+    .select("customer_id, old_status, new_status")
     .gte("changed_at", from.toISOString())
     .lte("changed_at", to.toISOString())
     .limit(10000);
@@ -345,7 +345,18 @@ async function fetchFunnelDay(date: Date) {
   const confirmedLogIds = collectIds(["confirmed", "confirmed_returning"]);
   const completedLogIds = collectIds(["completed"]);
 
-  // 3) ดึง current status ของลูกค้าที่อยู่ใน log วันนี้ — กรองเฉพาะที่ปัจจุบันยังตรงกับ stage
+  // ออกจาก stage วันนี้ (old_status = stage นั้น, new_status ≠ stage นั้น)
+  const countOut = (stage: string) => {
+    const ids = new Set<string>();
+    (logs ?? []).forEach((r: any) => {
+      if (r.old_status === stage && r.new_status !== stage) ids.add(r.customer_id);
+    });
+    return ids.size;
+  };
+  const quoteOutToday = countOut("pending_quote");
+  const confirmOutToday = countOut("pending_confirm");
+
+  // 3) ดึง current status ของลูกค้าที่อยู่ใน log วันนี้ (เพื่อนับ "ใหม่วันนี้ที่ยังอยู่")
   const allLogIds = Array.from(
     new Set<string>([
       ...quoteLogIds,
@@ -367,31 +378,39 @@ async function fetchFunnelDay(date: Date) {
   const filterByCurrent = (ids: Set<string>, allowed: string[]) =>
     Array.from(ids).filter((id) => allowed.includes(currentStatus.get(id) ?? ""));
 
-  const quoteIds = filterByCurrent(quoteLogIds, ["pending_quote"]);
-  const confirmIds = filterByCurrent(confirmLogIds, ["pending_confirm"]);
+  // ใหม่วันนี้ที่ยังอยู่ใน stage
+  const quoteNewIds = filterByCurrent(quoteLogIds, ["pending_quote"]);
+  const confirmNewIds = filterByCurrent(confirmLogIds, ["pending_confirm"]);
   const confirmedIds = filterByCurrent(confirmedLogIds, ["confirmed", "confirmed_returning"]);
   const completedIds = filterByCurrent(completedLogIds, ["completed"]);
 
-  // 4) Total ของ stage ที่มี carryOver (ของค้างก่อนวันนี้ + ใหม่วันนี้ = total ปัจจุบัน)
-  const [quoteTotal, confirmTotal] = await Promise.all([
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "pending_quote"),
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "pending_confirm"),
+  // 4) ดึง "ทุกคน" ที่ตอนนี้ status = stage (รายชื่อจริงสำหรับคลิก, ไม่ใช่แค่ count)
+  const [quoteAll, confirmAll] = await Promise.all([
+    supabase.from("customers").select("id").eq("status", "pending_quote").limit(10000),
+    supabase.from("customers").select("id").eq("status", "pending_confirm").limit(10000),
   ]);
-  const quoteTotalCount = quoteTotal.count ?? 0;
-  const confirmTotalCount = confirmTotal.count ?? 0;
+  const quoteAllIds = (quoteAll.data ?? []).map((c: any) => c.id);
+  const confirmAllIds = (confirmAll.data ?? []).map((c: any) => c.id);
+  const quoteTotalCount = quoteAllIds.length;
+  const confirmTotalCount = confirmAllIds.length;
+  const quoteNewSet = new Set(quoteNewIds);
+  const confirmNewSet = new Set(confirmNewIds);
+  const quoteCarry = Math.max(0, quoteTotalCount - quoteNewSet.size);
+  const confirmCarry = Math.max(0, confirmTotalCount - confirmNewSet.size);
 
   return {
     stages: [
-      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, totalCount: newIds.length, carryOver: 0, customerIds: newIds },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, totalCount: quoteTotalCount, carryOver: Math.max(0, quoteTotalCount - quoteIds.length), customerIds: quoteIds },
-      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, totalCount: confirmTotalCount, carryOver: Math.max(0, confirmTotalCount - confirmIds.length), customerIds: confirmIds },
-      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, customerIds: confirmedIds },
-      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, customerIds: completedIds },
+      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, totalCount: newIds.length, carryOver: 0, newToday: newIds.length, outToday: 0, customerIds: newIds },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteNewSet.size, totalCount: quoteTotalCount, carryOver: quoteCarry, newToday: quoteNewSet.size, outToday: quoteOutToday, customerIds: quoteAllIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmNewSet.size, totalCount: confirmTotalCount, carryOver: confirmCarry, newToday: confirmNewSet.size, outToday: confirmOutToday, customerIds: confirmAllIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds },
     ],
     inquiryCount: 0,
     isDayMode: true as boolean,
   };
 }
+
 
 async function fetchFunnelMonth(date: Date) {
   const from = startOfMonth(date);
@@ -448,11 +467,11 @@ async function fetchFunnelMonth(date: Date) {
 
   return {
     stages: [
-      { key: "new", label: "ทักเข้ามา", count: newCount, totalCount: newCount, carryOver: 0, customerIds: newIds },
-      { key: "quote", label: "รอใบเสนอราคา", count: quoteIds.length, totalCount: quoteIds.length, carryOver: 0, customerIds: quoteIds },
-      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmIds.length, totalCount: confirmIds.length, carryOver: 0, customerIds: confirmIds },
-      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, customerIds: confirmedIds },
-      { key: "completed", label: "จัดงานจบแล้ว", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, customerIds: completedIds },
+      { key: "new", label: "ทักเข้ามา", count: newCount, totalCount: newCount, carryOver: 0, newToday: newCount, outToday: 0, customerIds: newIds },
+      { key: "quote", label: "รอใบเสนอราคา", count: quoteIds.length, totalCount: quoteIds.length, carryOver: 0, newToday: quoteIds.length, outToday: 0, customerIds: quoteIds },
+      { key: "confirm", label: "รอคอนเฟิร์ม", count: confirmIds.length, totalCount: confirmIds.length, carryOver: 0, newToday: confirmIds.length, outToday: 0, customerIds: confirmIds },
+      { key: "confirmed", label: "คอนเฟิร์มแล้ว", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานจบแล้ว", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds },
     ],
     inquiryCount: Math.max(0, newCount - quoteIds.length),
     isDayMode: false as boolean,
@@ -504,6 +523,8 @@ function FunnelToday() {
         customerIdsB: b[i]?.customerIds ?? [],
         carryOver: a[i]?.carryOver ?? 0,
         totalCount: a[i]?.totalCount ?? a[i]?.count ?? 0,
+        newToday: a[i]?.newToday ?? 0,
+        outToday: a[i]?.outToday ?? 0,
       };
     });
   }, [queryA.data, queryB.data, compare, mode]);
@@ -603,8 +624,9 @@ function FunnelToday() {
                   const pctA = isDayMode
                     ? (row.totalCount / baseVal) * 100
                     : (row.A / baseVal) * 100;
-                  const pctNewSeg = hasCarry ? (row.A / baseVal) * 100 : 0;
+                  const pctNewSeg = hasCarry ? (row.newToday / baseVal) * 100 : 0;
                   const pctCarrySeg = hasCarry ? (row.carryOver / baseVal) * 100 : 0;
+                  const clickable = isDayMode ? row.totalCount > 0 : row.A > 0;
                   const pctB = (row.B / baseVal) * 100;
                   const pctOfFirst = firstA > 0 ? Math.round((row.A / firstA) * 100) : 0;
                   const pctOfFirstB = compare && firstA > 0 ? Math.round((row.B / firstA) * 100) : 0;
@@ -626,9 +648,9 @@ function FunnelToday() {
                         </div>
                       )}
                       <div
-                        className={cn("flex items-center gap-3", row.A > 0 && "cursor-pointer hover:bg-muted/20 rounded-md transition-colors")}
+                        className={cn("flex items-center gap-3", clickable && "cursor-pointer hover:bg-muted/20 rounded-md transition-colors")}
                         onClick={() => {
-                          if (row.A === 0 || !row.customerIdsA?.length) return;
+                          if (!clickable || !row.customerIdsA?.length) return;
                           sessionStorage.setItem("funnel_customer_ids", JSON.stringify(row.customerIdsA));
                           sessionStorage.setItem("funnel_label", `${row.label} — ${fmtPicker(dateA)}`);
                           nav("/customers?funnel=1");
@@ -660,7 +682,7 @@ function FunnelToday() {
                                 >
                                   {pctNewSeg > 10 && (
                                     <span className="text-xs font-semibold text-white tabular-nums">
-                                      +{row.A}
+                                      +{row.newToday}
                                     </span>
                                   )}
                                 </div>
@@ -705,11 +727,15 @@ function FunnelToday() {
                               />
                             )}
                           </div>
-                          {hasCarry && (
+                          {isDayMode && (row.key === "quote" || row.key === "confirm") && (row.carryOver > 0 || row.newToday > 0 || row.outToday > 0) && (
                             <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
-                              <span>ค้างก่อนวันนี้ <strong>{row.carryOver}</strong></span>
-                              <span>ใหม่วันนี้ <strong>+{row.A}</strong></span>
-                              <span>รวมตอนนี้ <strong>{row.totalCount}</strong></span>
+                              <span>วันก่อน <strong>{row.carryOver}</strong></span>
+                              <span>+ ใหม่วันนี้ <strong>{row.newToday}</strong></span>
+                              {row.outToday > 0 && (
+                                <span className="text-emerald-600 dark:text-emerald-400">
+                                  วันนี้{row.key === "quote" ? "ส่งใบไป" : "ปิดดีล"} <strong>{row.outToday}</strong> คน
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
