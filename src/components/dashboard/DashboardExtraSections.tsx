@@ -810,16 +810,17 @@ function FunnelToday() {
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{totalIn}</div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
-                      <div className="text-[11px] text-muted-foreground">รอใบเสนอราคา</div>
+                      <div className="text-[11px] text-muted-foreground">รอใบเสนอราคา (คงค้าง)</div>
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteTotal}</div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">
-                        ค้าง {quoteCarry} + ใหม่ {quoteCount}
+                        ใหม่ {quoteCount} + ค้าง {quoteCarry}
                       </div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
-                      <div className="text-[11px] text-muted-foreground">คอนเฟิร์ม</div>
+                      <div className="text-[11px] text-muted-foreground">วันนี้คอนเฟิร์ม</div>
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{confirmedCount}</div>
                     </div>
+
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#7F77DD" }}>
                       <div className="text-[11px] text-muted-foreground">จัดงานเสร็จ</div>
                       <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{completedCount}</div>
