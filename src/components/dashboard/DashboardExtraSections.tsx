@@ -343,13 +343,21 @@ async function fetchFunnelDay(date: Date) {
   const confirmedIds = getIds(["confirmed", "confirmed_returning"]);
   const completedIds = getIds(["completed"]);
 
+  const [quoteTotal, confirmTotal] = await Promise.all([
+    supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "pending_quote"),
+    supabase.from("customers").select("*", { count: "exact", head: true }).eq("status", "pending_confirm"),
+  ]);
+
+  const quoteTotalCount = quoteTotal.count ?? 0;
+  const confirmTotalCount = confirmTotal.count ?? 0;
+
   return {
     stages: [
-      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, customerIds: newIds },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, customerIds: quoteIds },
-      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, customerIds: confirmIds },
-      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, customerIds: confirmedIds },
-      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, customerIds: completedIds },
+      { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, totalCount: newIds.length, carryOver: 0, customerIds: newIds },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, totalCount: quoteTotalCount, carryOver: Math.max(0, quoteTotalCount - quoteIds.length), customerIds: quoteIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, totalCount: confirmTotalCount, carryOver: Math.max(0, confirmTotalCount - confirmIds.length), customerIds: confirmIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, customerIds: confirmedIds },
+      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, customerIds: completedIds },
     ],
     inquiryCount: 0,
     isDayMode: true as boolean,
