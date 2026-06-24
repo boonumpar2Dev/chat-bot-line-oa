@@ -661,15 +661,11 @@ export default function Chats() {
     return () => {
       if (raf) cancelAnimationFrame(raf);
       viewport.removeEventListener("scroll", onScroll);
-      // บันทึกครั้งสุดท้ายก่อน unmount/เปลี่ยนห้อง
-      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      if (distanceFromBottom < 40) {
-        chatScrollPositions.delete(selectedId);
-      } else {
-        chatScrollPositions.set(selectedId, viewport.scrollTop);
-      }
+      // หมายเหตุ: ไม่อ่าน scrollTop ตอน unmount เพราะ DOM อาจถูกรีเซ็ตเป็น 0 ก่อน
+      // ทำให้เผลอลบตำแหน่งที่ scroll listener เพิ่งบันทึกไป
+      // → พึ่ง onScroll ที่เก็บค่าแบบ real-time ก็พอ
     };
-  }, [selectedId]);
+  }, [selectedId, messages.length > 0]);
 
 
 
