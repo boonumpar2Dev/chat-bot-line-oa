@@ -185,12 +185,17 @@ function DailyReportTable() {
       if (days.length === 0) days.push(startOfDay(DASHBOARD_MIN_DATE));
       const since = days[0].toISOString();
 
-      const [custRes, convRes] = await Promise.all([
+      const [custRes, logRes, convRes] = await Promise.all([
         supabase
           .from("customers")
-          .select("created_at,updated_at,status,phone,event_date,guest_count")
-          .or(`created_at.gte.${since},updated_at.gte.${since}`)
+          .select("created_at")
+          .gte("created_at", since)
           .limit(10000),
+        supabase
+          .from("customer_status_log")
+          .select("customer_id, new_status, changed_at")
+          .gte("changed_at", since)
+          .limit(20000),
         supabase
           .from("conversations")
           .select("created_at,sender")
@@ -198,30 +203,23 @@ function DailyReportTable() {
           .eq("sender", "ai"),
       ]);
       if (custRes.error) throw custRes.error;
+      if (logRes.error) throw logRes.error;
       if (convRes.error) throw convRes.error;
+
+      const uniqueByStatus = (rows: any[], statuses: string[]) =>
+        new Set(rows.filter((l) => statuses.includes(l.new_status)).map((l) => l.customer_id)).size;
 
       return days.map((day) => {
         const dayKey = ymd(day);
         const newCount = (custRes.data ?? []).filter(
           (c: any) => ymd(new Date(c.created_at)) === dayKey
         ).length;
-        const completeCount = (custRes.data ?? []).filter(
-          (c: any) =>
-            ymd(new Date(c.created_at)) === dayKey &&
-            c.phone &&
-            c.event_date &&
-            c.guest_count
-        ).length;
-        const quoteCount = (custRes.data ?? []).filter(
-          (c: any) =>
-            c.status === "pending_confirm" &&
-            ymd(new Date(c.updated_at)) === dayKey
-        ).length;
-        const confirmedCount = (custRes.data ?? []).filter(
-          (c: any) =>
-            (c.status === "confirmed" || c.status === "confirmed_returning") &&
-            ymd(new Date(c.updated_at)) === dayKey
-        ).length;
+        const logsToday = (logRes.data ?? []).filter(
+          (l: any) => ymd(new Date(l.changed_at)) === dayKey
+        );
+        const completeCount = uniqueByStatus(logsToday, ["pending_quote"]);
+        const quoteCount = uniqueByStatus(logsToday, ["pending_confirm"]);
+        const confirmedCount = uniqueByStatus(logsToday, ["confirmed", "confirmed_returning"]);
         const botCount = (convRes.data ?? []).filter(
           (c: any) => ymd(new Date(c.created_at)) === dayKey
         ).length;
@@ -237,6 +235,7 @@ function DailyReportTable() {
       });
     },
   });
+
 
   const todayKey = ymd(startOfDay(new Date()));
 
