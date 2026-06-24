@@ -24,6 +24,7 @@ import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import StatusSelector from "@/components/chats/StatusSelector";
+import CustomerOriginBadge from "@/components/customers/CustomerOriginBadge";
 import { STICKER_PACK_ID, STICKER_IDS, stickerPreviewUrl } from "@/lib/line-stickers";
 import ManualTimerBanner from "@/components/chats/ManualTimerBanner";
 import StagedMessageBar from "@/components/chats/StagedMessageBar";
@@ -1144,8 +1145,9 @@ export default function Chats() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate text-sm sm:text-base leading-tight">{selected.nickname || selected.display_name}</p>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   <StatusSelector customer={selected} onUpdate={updateLocalCustomer}/>
+                  <CustomerOriginBadge customer={selected} onUpdate={updateLocalCustomer}/>
                   {selected.phone && <span className="text-xs text-muted-foreground hidden sm:inline">{selected.phone}</span>}
                 </div>
               </div>
