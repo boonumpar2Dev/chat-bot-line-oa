@@ -754,17 +754,22 @@ function FunnelToday() {
                               />
                             )}
                           </div>
-                          {isDayMode && (row.key === "quote" || row.key === "confirm") && (row.carryOver > 0 || row.newToday > 0 || row.outToday > 0) && (
+                          {isDayMode && (row.key === "quote" || row.key === "confirm" || row.key === "confirmed") && (row.carryOver > 0 || row.newToday > 0) && (
                             <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
-                              <span>วันก่อน <strong>{row.carryOver}</strong></span>
-                              <span>+ ใหม่วันนี้ <strong>{row.newToday}</strong></span>
-                              {row.outToday > 0 && (
-                                <span className="text-emerald-600 dark:text-emerald-400">
-                                  วันนี้{row.key === "quote" ? "ส่งใบไป" : "ปิดดีล"} <strong>{row.outToday}</strong> คน
-                                </span>
+                              {row.key === "confirmed" ? (
+                                <>
+                                  <span>ส่งใบวันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ส่งใบวันก่อน <strong>{row.carryOver}</strong></span>
+                                </>
+                              ) : (
+                                <>
+                                  <span>ใหม่วันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ค้างวันก่อน <strong>{row.carryOver}</strong></span>
+                                </>
                               )}
                             </div>
                           )}
+
                         </div>
                         <div className="w-[90px] sm:w-[130px] shrink-0 text-right">
                           <div className="flex items-center justify-end gap-1.5">
