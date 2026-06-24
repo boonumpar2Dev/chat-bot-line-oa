@@ -128,6 +128,38 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">ติดตามสถานะแชทบอทและลูกค้า LINE OA</p>
       </div>
 
+      <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-[#378ADD] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">New Lead วันนี้</p>
+              <p className="font-display font-semibold text-xl">{stats?.newToday ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">ลูกค้าใหม่จริงๆ</p>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full bg-[#7F77DD] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Returning Lead วันนี้</p>
+              <p className="font-display font-semibold text-xl">{stats?.returningToday ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">ลูกค้าเก่ากลับมาจัดอีก</p>
+            </div>
+          </div>
+          <div className="rounded-lg border bg-card p-3 flex items-center gap-3 opacity-60">
+            <div className="w-3 h-3 rounded-full bg-[#888780] shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Legacy วันนี้</p>
+              <p className="font-display font-semibold text-xl">{stats?.legacyToday ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground">ก่อนเปิดระบบ (ไม่นับเป็น lead)</p>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Active Leads วันนี้: <strong>{stats?.activeLeadsToday ?? "—"} คน</strong> (New + Returning)
+        </p>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {cards.map(c => (
           <Card key={c.label} className="p-3 sm:p-5 shadow-soft border-border/60 hover:shadow-elevated transition-shadow min-w-0">
