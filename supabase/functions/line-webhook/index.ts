@@ -1354,6 +1354,7 @@ ${pastLines}
     comparisonSection,
     tagInstructions,
     customerNotes,
+    customerOrigin: freshCustomer?.customer_origin || "new",
   });
 
 
