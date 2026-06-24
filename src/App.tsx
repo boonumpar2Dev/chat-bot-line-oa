@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import Reports from "./pages/Reports";
 import Chats from "./pages/Chats";
 import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/liff" element={<LiffPanel />} />
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                 <Route path="/" element={<ProtectedRoute menuKey="dashboard"><Dashboard /></ProtectedRoute>} />
+                <Route path="/reports" element={<ProtectedRoute menuKey="dashboard"><Reports /></ProtectedRoute>} />
                 <Route path="/chats" element={<ProtectedRoute menuKey="chats"><Chats /></ProtectedRoute>} />
                 <Route path="/customers" element={<ProtectedRoute menuKey="chats"><Customers /></ProtectedRoute>} />
                 <Route path="/customers/:id" element={<ProtectedRoute menuKey="chats"><CustomerDetail /></ProtectedRoute>} />

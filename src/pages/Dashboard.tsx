@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import DashboardExtraSections from "@/components/dashboard/DashboardExtraSections";
+
 
 const STATUS_LABELS: Record<string, string> = {
   new: "ลูกค้าใหม่",
@@ -281,8 +281,6 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
-
-      <DashboardExtraSections />
     </div>
   );
 }
