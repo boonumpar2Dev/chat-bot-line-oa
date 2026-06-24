@@ -22,6 +22,7 @@ export interface BuildPromptInput {
   jsonSchemaHint?: string;
   tagInstructions?: string;
   customerNotes?: string;
+  customerOrigin?: "new" | "returning" | "legacy" | string | null;
 }
 
 
@@ -64,6 +65,23 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     ? `\n\n📝 โน้ตเฉพาะลูกค้ารายนี้ (แอดมินบันทึก — ถือเป็นข้อเท็จจริง, สำคัญกว่า KB กลาง ถ้าขัดกัน):\n${i.customerNotes.trim()}`
     : "";
 
+  // 👤 หมวดลูกค้า (customer_origin) — บอก AI ว่าลูกค้าคนนี้เป็นใคร เพื่อปรับโทนการทักทาย
+  const originBlock = (() => {
+    const o = (i.customerOrigin || "new").toString();
+    if (o === "returning") {
+      return `\n\n👤 หมวดลูกค้า: **ลูกค้าเก่ากลับมา (Returning)** — เคยจัดงานกับเราในระบบนี้แล้ว
+- ทักทายแบบคุ้นเคย เช่น "สวัสดีค่ะ ยินดีต้อนรับกลับมานะคะ 🙏"
+- **ห้าม**ถามชื่อ/เบอร์ซ้ำถ้ามีในข้อมูลแล้ว
+- **ห้าม**แนะนำร้านซ้ำ เริ่มเข้าเรื่องงานใหม่ได้เลย`;
+    }
+    if (o === "legacy") {
+      return `\n\n👤 หมวดลูกค้า: **ลูกค้าเก่าก่อนเปิดระบบ (Legacy)** — แอดมินทำเครื่องหมายว่าเคยเป็นลูกค้ามาก่อน
+- ทักทายแบบคุ้นเคย เช่น "ขอบคุณที่กลับมาใช้บริการอีกครั้งนะคะ 🙏"
+- ระบบอาจยังไม่มีประวัติงานเก่าในฐานข้อมูล — ถ้าจำเป็นต้องถามข้อมูลเก่า ให้ขอแบบสุภาพ`;
+    }
+    return ""; // new = default, ไม่ต้องเพิ่ม block
+  })();
+
 
 
   // วันที่ปัจจุบัน (Asia/Bangkok) เพื่อกัน AI สกัด event_date ผิดปี
@@ -78,7 +96,7 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${dateBlock}
+  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด — ขึ้นเหนือทุกกฎ):
 - ตอบจาก KB / แคตตาล็อกแพ็กเกจ / โปรโมชัน / ข้อมูลลูกค้าที่เก็บไว้แล้ว / โน้ตเฉพาะลูกค้า **เท่านั้น** — ห้ามเดา ห้ามแต่ง ห้ามคิดเอง ห้ามอนุมานจากความรู้ทั่วไป

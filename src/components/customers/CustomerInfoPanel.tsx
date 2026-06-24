@@ -236,7 +236,8 @@ export default function CustomerInfoPanel({
         event_month: null,
         event_date: null,
         last_sent_image_titles: [],
-        status: "returning" as const,
+        status: "inquiry" as const,
+        customer_origin: "returning" as const,
       };
       const { error: updErr } = await supabase
         .from("customers")
@@ -487,8 +488,8 @@ export default function CustomerInfoPanel({
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground flex-1">
-                  ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน แล้ว
-                  reset ช่องงาน + เปลี่ยนสถานะ "returning"
+                  ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน
+                  แล้ว reset ช่องงาน + เปลี่ยนสถานะเป็น "สอบถาม" + ตั้งหมวดเป็น "ลูกค้าเก่า"
                 </p>
                 <Button
                   size="sm"
