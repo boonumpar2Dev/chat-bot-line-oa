@@ -666,8 +666,10 @@ export default function Chats() {
       const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
       if (distanceFromBottom < 40) {
         chatScrollPositions.delete(selectedId);
+        console.log("[SCROLL DBG] cleanup delete", { selectedId });
       } else {
         chatScrollPositions.set(selectedId, viewport.scrollTop);
+        console.log("[SCROLL DBG] cleanup save", { selectedId, top: viewport.scrollTop });
       }
     };
   }, [selectedId]);
