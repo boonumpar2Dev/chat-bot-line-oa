@@ -523,6 +523,8 @@ function FunnelToday() {
         customerIdsB: b[i]?.customerIds ?? [],
         carryOver: a[i]?.carryOver ?? 0,
         totalCount: a[i]?.totalCount ?? a[i]?.count ?? 0,
+        newToday: a[i]?.newToday ?? 0,
+        outToday: a[i]?.outToday ?? 0,
       };
     });
   }, [queryA.data, queryB.data, compare, mode]);
