@@ -731,6 +731,7 @@ async function processEvent(event: any, supabase: any) {
       const newTags = Array.from(new Set([...tags, "ลูกค้าเก่า"]));
       await supabase.from("customers").update({
         status: "returning",
+        customer_origin: "returning",
         tags: newTags,
       }).eq("id", freshCustomer.id);
       freshCustomer.status = "returning";
@@ -746,6 +747,7 @@ async function processEvent(event: any, supabase: any) {
     const newTags = Array.from(new Set([...tags, "ลูกค้าเก่า"]));
     await supabase.from("customers").update({
       status: "returning",
+      customer_origin: "returning",
       tags: newTags,
     }).eq("id", freshCustomer.id);
     freshCustomer.status = "returning";
