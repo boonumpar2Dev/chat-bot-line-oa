@@ -666,8 +666,6 @@ export default function Chats() {
       // → พึ่ง onScroll ที่เก็บค่าแบบ real-time ก็พอ
     };
   }, [selectedId, messages.length > 0]);
-    };
-  }, [selectedId, messages.length > 0]);
 
 
 
