@@ -643,12 +643,12 @@ export default function Chats() {
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
-    console.log("[DBG] save effect", { selectedId, hasViewport: !!viewport, msgs: messages.length });
     if (!viewport || !selectedId) return;
     let raf = 0;
     const onScroll = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
+        // ถ้าอยู่ติดล่างสุด ไม่ต้องเก็บ (จะได้ default = ลงล่างตอนกลับมา)
         const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
         if (distanceFromBottom < 40) {
           chatScrollPositions.delete(selectedId);
@@ -661,13 +661,11 @@ export default function Chats() {
     return () => {
       if (raf) cancelAnimationFrame(raf);
       viewport.removeEventListener("scroll", onScroll);
-      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      console.log("[DBG] cleanup", { selectedId, top: viewport.scrollTop, dist: distanceFromBottom });
-      if (distanceFromBottom < 40) {
-        chatScrollPositions.delete(selectedId);
-      } else {
-        chatScrollPositions.set(selectedId, viewport.scrollTop);
-      }
+      // หมายเหตุ: ไม่อ่าน scrollTop ตอน unmount เพราะ DOM อาจถูกรีเซ็ตเป็น 0 ก่อน
+      // ทำให้เผลอลบตำแหน่งที่ scroll listener เพิ่งบันทึกไป
+      // → พึ่ง onScroll ที่เก็บค่าแบบ real-time ก็พอ
+    };
+  }, [selectedId, messages.length > 0]);
     };
   }, [selectedId, messages.length > 0]);
 
