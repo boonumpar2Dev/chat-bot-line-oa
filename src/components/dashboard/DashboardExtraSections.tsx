@@ -1055,7 +1055,6 @@ function CurrentStatusGrid() {
 export default function DashboardExtraSections() {
   return (
     <>
-      <NewCustomersChart />
       <DailyReportTable />
       <FunnelToday />
       <BacklogCard />

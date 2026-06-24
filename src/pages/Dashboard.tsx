@@ -36,8 +36,8 @@ export default function Dashboard() {
         supabase.from("customers").select("clv_amount"),
         supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
         supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "new").gte("created_at", todayStart),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("updated_at", todayStart),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("created_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("last_message_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("last_message_at", todayStart),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
