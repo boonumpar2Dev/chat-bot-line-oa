@@ -28,13 +28,16 @@ export default function Dashboard() {
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      const [c, u, conv, today, clv, confirmed] = await Promise.all([
+      const [c, u, conv, today, clv, confirmed, newToday, returningToday, legacyToday] = await Promise.all([
         supabase.from("customers").select("*", { count: "exact", head: true }),
         supabase.from("customers").select("*", { count: "exact", head: true }).gt("unread_count", 0),
         supabase.from("conversations").select("*", { count: "exact", head: true }),
         supabase.from("conversations").select("*", { count: "exact", head: true }).gte("created_at", todayStart),
         supabase.from("customers").select("clv_amount"),
         supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "new").gte("created_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("updated_at", todayStart),
+        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("created_at", todayStart),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
@@ -44,6 +47,10 @@ export default function Dashboard() {
         todayMsg: today.count ?? 0,
         totalClv,
         confirmed: confirmed.count ?? 0,
+        newToday: newToday.count ?? 0,
+        returningToday: returningToday.count ?? 0,
+        legacyToday: legacyToday.count ?? 0,
+        activeLeadsToday: (newToday.count ?? 0) + (returningToday.count ?? 0),
       };
     },
   });
