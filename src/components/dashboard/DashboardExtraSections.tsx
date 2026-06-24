@@ -682,7 +682,7 @@ function FunnelToday() {
                                 >
                                   {pctNewSeg > 10 && (
                                     <span className="text-xs font-semibold text-white tabular-nums">
-                                      +{row.A}
+                                      +{row.newToday}
                                     </span>
                                   )}
                                 </div>
