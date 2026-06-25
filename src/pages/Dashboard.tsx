@@ -10,6 +10,7 @@ import { th } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DashboardRealtimeSections } from "@/components/dashboard/DashboardExtraSections";
 
 
 const STATUS_LABELS: Record<string, string> = {
