@@ -40,6 +40,10 @@ ${text}`
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const __auth = await requireStaffOrService(req);
+  if (!__auth.ok) return Response.json({ error: __auth.error }, { status: __auth.status || 401, headers: corsHeaders });
+
   try {
     const { customer_id } = await req.json();
     if (!customer_id) return Response.json({ error: "missing customer_id" }, { status: 400, headers: corsHeaders });
