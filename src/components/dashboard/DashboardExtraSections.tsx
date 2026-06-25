@@ -750,8 +750,7 @@ function FunnelToday() {
           const totalIn = chartData[0]?.A ?? 0;
           const quoteStage = chartData.find((r) => r.key === "quote");
           const quoteCount = quoteStage?.A ?? 0;
-          const quoteTotal = quoteStage?.totalCount ?? 0;
-          const quoteCarry = quoteStage?.carryOver ?? 0;
+          const quoteBacklog = quoteStage?.backlogCount ?? 0;
           const confirmedCount = chartData.find((r) => r.key === "confirmed")?.A ?? 0;
           const completedCount = chartData.find((r) => r.key === "completed")?.A ?? 0;
           const conv = totalIn > 0 ? Math.round((confirmedCount / totalIn) * 100) : 0;
