@@ -502,6 +502,14 @@ async function fetchFunnelDay(date: Date) {
   const confirmSentTodayNew = confirmSentTodayIds.filter((id) => newIdSet.has(id)).length;
   const confirmSentTodayCarry = confirmSentTodayIds.length - confirmSentTodayNew;
 
+  // Quote row (ได้ข้อมูลครบ): ใช้ pattern เดียวกับ confirm row
+  // - quoteTodayNew = ครบวันนี้ และลูกค้าทักมาวันนี้
+  // - quoteTodayCarry = ครบวันนี้ แต่ลูกค้าทักมาวันก่อน
+  // - backlog = ทั้งหมดที่ status=pending_quote ตอนนี้ (ไม่จำกัดวัน)
+  const quoteSentTodayIds = Array.from(quoteLogIds);
+  const quoteSentTodayNew = quoteSentTodayIds.filter((id) => newIdSet.has(id)).length;
+  const quoteSentTodayCarry = quoteSentTodayIds.length - quoteSentTodayNew;
+
   // 5) Confirmed วันนี้ = คนที่เข้า confirmed/confirmed_returning วันนี้
   // แยก: ส่งใบวันนี้+คอนเฟิร์มวันนี้ (sameDay) vs ส่งใบวันก่อน+คอนเฟิร์มวันนี้ (carry)
   const confirmedTodayIds = Array.from(confirmedLogIds);
