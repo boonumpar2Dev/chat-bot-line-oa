@@ -5,6 +5,7 @@
 //   { rebuild: true }         → re-embed every active row in all 3 tables
 //   { text: "..." }           → just return an embedding for ad-hoc query (used internally)
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { requireStaffOrService } from "../_shared/auth-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -71,6 +72,9 @@ async function embedRow(supabase: any, table: string, id: string): Promise<{ id:
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const __auth = await requireStaffOrService(req);
+  if (!__auth.ok) return Response.json({ error: __auth.error }, { status: __auth.status || 401, headers: corsHeaders });
   try {
     const body = await req.json().catch(() => ({}));
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);

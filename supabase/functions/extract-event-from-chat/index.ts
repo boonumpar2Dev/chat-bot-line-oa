@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
+import { requireStaffOrService } from "../_shared/auth-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,9 @@ const MAX_MESSAGES = 60;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const __auth = await requireStaffOrService(req);
+  if (!__auth.ok) return Response.json({ error: __auth.error }, { status: __auth.status || 401, headers: corsHeaders });
   try {
     const { customer_id } = await req.json();
     if (!customer_id) return Response.json({ error: "missing customer_id" }, { status: 400, headers: corsHeaders });

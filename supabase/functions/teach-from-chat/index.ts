@@ -1,6 +1,7 @@
 // Analyze a customer's full chat → diagnose why AI replied wrong → propose rules/KB items
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
+import { requireStaffOrService } from "../_shared/auth-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +43,9 @@ const SYSTEM_PROMPT = `คุณคือ AI Coach วินิจฉัย AI �
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const __auth = await requireStaffOrService(req);
+  if (!__auth.ok) return Response.json({ error: __auth.error }, { status: __auth.status || 401, headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));
