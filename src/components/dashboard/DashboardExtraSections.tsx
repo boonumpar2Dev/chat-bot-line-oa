@@ -764,12 +764,31 @@ function FunnelToday() {
                               />
                             )}
                           </div>
-                          {isDayMode && (row.key === "quote" || row.key === "confirm" || row.key === "confirmed") && (row.carryOver > 0 || row.newToday > 0) && (
-                            <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap">
+                          {isDayMode && (row.key === "quote" || row.key === "confirm" || row.key === "confirmed") && (row.carryOver > 0 || row.newToday > 0 || row.backlogCount > 0) && (
+                            <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap items-center">
                               {row.key === "confirmed" ? (
                                 <>
                                   <span>ส่งใบวันนี้ <strong>{row.newToday}</strong></span>
                                   <span>+ ส่งใบวันก่อน <strong>{row.carryOver}</strong></span>
+                                </>
+                              ) : row.key === "confirm" ? (
+                                <>
+                                  <span>ทักวันนี้+ส่งวันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ค้างเก่า+ส่งวันนี้ <strong>{row.carryOver}</strong></span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!row.backlogIds?.length) return;
+                                      sessionStorage.setItem("funnel_customer_ids", JSON.stringify(row.backlogIds));
+                                      sessionStorage.setItem("funnel_label", `คงเหลือรอคอนเฟิร์ม (ทั้งหมด) — ${fmtPicker(dateA)}`);
+                                      nav("/customers?funnel=1");
+                                    }}
+                                    className="text-primary hover:underline disabled:no-underline disabled:text-muted-foreground"
+                                    disabled={!row.backlogCount}
+                                  >
+                                    คงเหลือรอคอนเฟิร์ม <strong>{row.backlogCount}</strong> →
+                                  </button>
                                 </>
                               ) : (
                                 <>
