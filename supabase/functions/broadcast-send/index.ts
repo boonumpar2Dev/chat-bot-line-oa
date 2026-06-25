@@ -1,6 +1,7 @@
 // Broadcast send — query targets → push LINE messages → log per-recipient
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getLineConfig } from "../_shared/line-config.ts";
+import { requireStaffOrService } from "../_shared/auth-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -205,6 +206,9 @@ function normalizeMessages(input: any[]): any[] {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const auth = await requireStaffOrService(req);
+  if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status || 401, headers: corsHeaders });
 
   try {
     const body = await req.json().catch(() => ({}));

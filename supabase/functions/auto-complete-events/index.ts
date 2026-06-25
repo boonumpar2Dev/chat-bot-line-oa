@@ -2,6 +2,7 @@
 // รันทุกวัน 00:05 Bangkok time (= 17:05 UTC วันก่อนหน้า)
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { requireStaffOrService } from "../_shared/auth-guard.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -15,6 +16,9 @@ function bangkokTodayIso(): string {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const __auth = await requireStaffOrService(req);
+  if (!__auth.ok) return Response.json({ error: __auth.error }, { status: __auth.status || 401, headers: corsHeaders });
 
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY);

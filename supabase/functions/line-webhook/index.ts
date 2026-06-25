@@ -1773,7 +1773,7 @@ Deno.serve(async (req) => {
     const signature = req.headers.get("x-line-signature") || "";
     const cfg = await getLineConfig();
     LINE_TOKEN = cfg.channel_access_token;
-    if (cfg.channel_secret && signature && !(await verifySignature(body, signature, cfg.channel_secret))) {
+    if (cfg.channel_secret && (!signature || !(await verifySignature(body, signature, cfg.channel_secret)))) {
       return Response.json({ error: "Invalid signature" }, { status: 401 });
     }
     const { events = [] } = JSON.parse(body || "{}");
