@@ -1750,11 +1750,12 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       )}
       {quotedMessage && (
         <div className={cn(
-          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground"
+          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground [overflow-wrap:anywhere]"
         )}>
           <div className="font-medium text-primary mb-0.5">↩ {quotedSenderLabel}</div>
           <div className="truncate">{quotedSnippet}</div>
         </div>
+
       )}
       {stickerUrls.length > 0 && (
         <div className="flex flex-col gap-1.5">
@@ -1807,7 +1808,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       )}
       {cleaned && (
         <div className={cn(
-          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words shadow-sm",
+          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-sm",
           isCustomer && "rounded-tl-md",
           (isAdmin || !isCustomer) && "rounded-tr-md",
           bg
@@ -1826,7 +1827,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       </div>
     </div>
   );
-  if (!isCustomer) return bubble;
+  if (!isCustomer) return <div className="flex w-full justify-end">{bubble}</div>;
   return (
     <div className="flex items-start gap-2">
       <Avatar className="w-8 h-8 shrink-0 mt-0.5">
