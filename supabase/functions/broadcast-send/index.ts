@@ -1,6 +1,7 @@
 // Broadcast send — query targets → push LINE messages → log per-recipient
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getLineConfig } from "../_shared/line-config.ts";
+import { requireStaffOrService } from "../_shared/auth-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
