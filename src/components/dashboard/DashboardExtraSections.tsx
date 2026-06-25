@@ -560,6 +560,8 @@ function FunnelToday() {
         totalCount: a[i]?.totalCount ?? a[i]?.count ?? 0,
         newToday: a[i]?.newToday ?? 0,
         outToday: a[i]?.outToday ?? 0,
+        backlogCount: a[i]?.backlogCount ?? 0,
+        backlogIds: a[i]?.backlogIds ?? [],
       };
     });
   }, [queryA.data, queryB.data, compare, mode]);
