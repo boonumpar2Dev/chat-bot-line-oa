@@ -1750,11 +1750,12 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       )}
       {quotedMessage && (
         <div className={cn(
-          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground"
+          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground [overflow-wrap:anywhere]"
         )}>
           <div className="font-medium text-primary mb-0.5">↩ {quotedSenderLabel}</div>
           <div className="truncate">{quotedSnippet}</div>
         </div>
+
       )}
       {stickerUrls.length > 0 && (
         <div className="flex flex-col gap-1.5">
