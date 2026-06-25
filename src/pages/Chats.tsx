@@ -1827,7 +1827,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       </div>
     </div>
   );
-  if (!isCustomer) return bubble;
+  if (!isCustomer) return <div className="flex w-full justify-end">{bubble}</div>;
   return (
     <div className="flex items-start gap-2">
       <Avatar className="w-8 h-8 shrink-0 mt-0.5">
