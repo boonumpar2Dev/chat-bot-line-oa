@@ -895,6 +895,25 @@ function FunnelToday() {
                                     คงเหลือรอคอนเฟิร์ม <strong>{row.backlogCount}</strong> →
                                   </button>
                                 </>
+                              ) : row.key === "quote" ? (
+                                <>
+                                  <span>ทักวันนี้+ครบวันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ค้างเก่า+ครบวันนี้ <strong>{row.carryOver}</strong></span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (!row.backlogIds?.length) return;
+                                      sessionStorage.setItem("funnel_customer_ids", JSON.stringify(row.backlogIds));
+                                      sessionStorage.setItem("funnel_label", `คงเหลือรอทำใบ (ทั้งหมด) — ${fmtPicker(dateA)}`);
+                                      nav("/customers?funnel=1");
+                                    }}
+                                    className="text-primary hover:underline disabled:no-underline disabled:text-muted-foreground"
+                                    disabled={!row.backlogCount}
+                                  >
+                                    คงเหลือรอทำใบ <strong>{row.backlogCount}</strong> →
+                                  </button>
+                                </>
                               ) : (
                                 <>
                                   <span>ใหม่วันนี้ <strong>{row.newToday}</strong></span>
