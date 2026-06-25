@@ -180,6 +180,8 @@ export default function Dashboard() {
 
 
 
+      {/* Realtime งานค้างตอนนี้ — คลิกเคลียได้ */}
+      <DashboardRealtimeSections />
 
       {/* SLA Breaches */}
       <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive min-w-0 overflow-hidden">
