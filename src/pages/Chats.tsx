@@ -1808,7 +1808,7 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       )}
       {cleaned && (
         <div className={cn(
-          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words shadow-sm",
+          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-sm",
           isCustomer && "rounded-tl-md",
           (isAdmin || !isCustomer) && "rounded-tr-md",
           bg
