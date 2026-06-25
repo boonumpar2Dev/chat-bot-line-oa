@@ -1325,14 +1325,29 @@ function CurrentStatusGrid() {
   );
 }
 
-/* ============= Wrapper ============= */
-export default function DashboardExtraSections() {
+/* ============= Wrappers ============= */
+// Realtime view สำหรับแอดมิน — งานค้างตอนนี้ คลิกเคลียได้
+export function DashboardRealtimeSections() {
   return (
     <>
-      <DailyReportTable />
-      <FunnelToday />
       <BacklogCard />
       <CurrentStatusGrid />
     </>
   );
+}
+
+// Log view สำหรับผู้บริหาร — log รายวัน frozen + กราฟ trend + funnel
+export function ReportsLogSections() {
+  return (
+    <>
+      <DailyReportTable />
+      <NewCustomersChart />
+      <FunnelToday />
+    </>
+  );
+}
+
+// Legacy export (เผื่อมีที่อื่นเรียกใช้) — ใช้ Log view เป็น default
+export default function DashboardExtraSections() {
+  return <ReportsLogSections />;
 }
