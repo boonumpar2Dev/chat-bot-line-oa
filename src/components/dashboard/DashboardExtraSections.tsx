@@ -963,9 +963,9 @@ function FunnelToday() {
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#E24B4A" }}>
                       <div className="text-[11px] text-muted-foreground">รอใบเสนอราคา (คงค้าง)</div>
-                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteTotal}</div>
+                      <div className="font-display font-bold text-2xl tabular-nums mt-0.5">{quoteBacklog}</div>
                       <div className="text-[10px] text-muted-foreground mt-0.5">
-                        ใหม่ {quoteCount} + ค้าง {quoteCarry}
+                        ครบวันนี้ {quoteCount}
                       </div>
                     </div>
                     <div className="rounded-lg border bg-card p-3 border-l-4" style={{ borderLeftColor: "#1D9E75" }}>
