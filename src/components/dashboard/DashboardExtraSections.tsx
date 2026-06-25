@@ -170,13 +170,16 @@ function NewCustomersChart() {
   );
 }
 
-/* ============= Section 2: Daily Report Table ============= */
+/* ============= Section 2: Daily Report Table (Executive Log) ============= */
+type ReportRange = 7 | 14 | 30;
+
 function DailyReportTable() {
+  const [range, setRange] = useState<ReportRange>(7);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["daily-report-7d-v2"],
+    queryKey: ["daily-report-v3", range],
     queryFn: async () => {
       const days: Date[] = [];
-      for (let i = 6; i >= 0; i--) {
+      for (let i = range - 1; i >= 0; i--) {
         const d = startOfDay(new Date());
         d.setDate(d.getDate() - i);
         if (d < DASHBOARD_MIN_DATE) continue;
@@ -184,80 +187,168 @@ function DailyReportTable() {
       }
       if (days.length === 0) days.push(startOfDay(DASHBOARD_MIN_DATE));
       const since = days[0].toISOString();
+      const untilEnd = endOfDay(days[days.length - 1]).toISOString();
 
-      const [custRes, logRes, convRes] = await Promise.all([
+      const [custRes, logRes, convRes, custForBacklogRes] = await Promise.all([
         supabase
           .from("customers")
-          .select("created_at")
+          .select("id, created_at")
           .gte("created_at", since)
-          .limit(10000),
+          .limit(20000),
         supabase
           .from("customer_status_log")
-          .select("customer_id, new_status, changed_at")
+          .select("customer_id, old_status, new_status, changed_at")
           .gte("changed_at", since)
-          .limit(20000),
+          .lte("changed_at", untilEnd)
+          .limit(50000),
         supabase
           .from("conversations")
           .select("created_at,sender")
           .gte("created_at", since)
+          .lte("created_at", untilEnd)
           .eq("sender", "ai"),
+        // log ทั้งหมดตั้งแต่ต้นจนถึงสิ้นช่วง — ใช้ reconstruct backlog สิ้นวัน
+        supabase
+          .from("customer_status_log")
+          .select("customer_id, old_status, new_status, changed_at")
+          .lte("changed_at", untilEnd)
+          .limit(100000),
       ]);
       if (custRes.error) throw custRes.error;
       if (logRes.error) throw logRes.error;
       if (convRes.error) throw convRes.error;
+      if (custForBacklogRes.error) throw custForBacklogRes.error;
 
-      const uniqueByStatus = (rows: any[], statuses: string[]) =>
-        new Set(rows.filter((l) => statuses.includes(l.new_status)).map((l) => l.customer_id)).size;
+      const newByDay: Record<string, Set<string>> = {};
+      (custRes.data ?? []).forEach((c: any) => {
+        const k = ymd(new Date(c.created_at));
+        if (!newByDay[k]) newByDay[k] = new Set();
+        newByDay[k].add(c.id);
+      });
+
+      const allLogs = (custForBacklogRes.data ?? []).slice().sort((a: any, b: any) =>
+        a.changed_at < b.changed_at ? -1 : 1
+      );
+
+      const reconstructBacklogAt = (eod: Date, status: string) => {
+        const cutoff = eod.toISOString();
+        const ids = new Set<string>();
+        for (const l of allLogs as any[]) {
+          if (l.changed_at > cutoff) break;
+          if (l.new_status === status) ids.add(l.customer_id);
+          else if (l.old_status === status) ids.delete(l.customer_id);
+        }
+        return ids.size;
+      };
 
       return days.map((day) => {
         const dayKey = ymd(day);
-        const newCount = (custRes.data ?? []).filter(
-          (c: any) => ymd(new Date(c.created_at)) === dayKey
-        ).length;
+        const eod = endOfDay(day);
+        const newSet = newByDay[dayKey] ?? new Set();
+        const newCount = newSet.size;
+
         const logsToday = (logRes.data ?? []).filter(
           (l: any) => ymd(new Date(l.changed_at)) === dayKey
         );
-        const completeCount = uniqueByStatus(logsToday, ["pending_quote"]);
-        const quoteCount = uniqueByStatus(logsToday, ["pending_confirm"]);
-        const confirmedCount = uniqueByStatus(logsToday, ["confirmed", "confirmed_returning"]);
+
+        const buildSplit = (statuses: string[]) => {
+          const ids = new Set<string>();
+          logsToday.forEach((l: any) => {
+            if (statuses.includes(l.new_status)) ids.add(l.customer_id);
+          });
+          let same = 0;
+          let carry = 0;
+          ids.forEach((id) => {
+            if (newSet.has(id)) same++;
+            else carry++;
+          });
+          return { same, carry, total: ids.size };
+        };
+
+        const complete = buildSplit(["pending_quote"]);
+        const quote = buildSplit(["pending_confirm"]);
+        const confirmed = buildSplit(["confirmed", "confirmed_returning"]);
+
         const botCount = (convRes.data ?? []).filter(
           (c: any) => ymd(new Date(c.created_at)) === dayKey
         ).length;
+
+        const backlogQuote = reconstructBacklogAt(eod, "pending_quote");
+        const backlogConfirm = reconstructBacklogAt(eod, "pending_confirm");
+
         return {
           day,
           dayKey,
           newCount,
-          completeCount,
-          quoteCount,
-          confirmedCount,
+          complete,
+          quote,
+          confirmed,
           botCount,
+          backlogQuote,
+          backlogConfirm,
         };
       });
     },
   });
 
-
   const todayKey = ymd(startOfDay(new Date()));
+
+  const SplitCell = ({ s }: { s: { same: number; carry: number; total: number } }) => (
+    <div className="text-right tabular-nums leading-tight">
+      <div className="font-semibold">{s.total}</div>
+      {s.total > 0 && (
+        <div className="text-[10px] text-muted-foreground">
+          ใหม่ {s.same} · ค้าง {s.carry}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
-      <div className="p-5 border-b flex items-center gap-2">
-        <FileText className="w-4 h-4 text-muted-foreground" />
-        <h2 className="font-display font-semibold">รายงานรายวัน ({data?.length ?? 7} วันล่าสุด)</h2>
+      <div className="p-5 border-b flex items-center gap-2 flex-wrap justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          <div>
+            <h2 className="font-display font-semibold">รายงานรายวัน (log)</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              ตัวเลข frozen ตามวันจริง — ใหม่/ค้าง = ทักวันนี้ / ค้างวันก่อน
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          {([7, 14, 30] as ReportRange[]).map((r) => (
+            <Button
+              key={r}
+              size="sm"
+              variant={range === r ? "default" : "outline"}
+              onClick={() => setRange(r)}
+            >
+              {r} วัน
+            </Button>
+          ))}
+        </div>
       </div>
       <div className="overflow-x-auto">
         {error && <p className="p-5 text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
         {isLoading && <p className="p-5 text-sm text-muted-foreground">กำลังโหลด...</p>}
         {data && (
-          <table className="w-full text-sm min-w-[640px]">
+          <table className="w-full text-sm min-w-[860px]">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
-                <th className="text-left p-3 font-medium">วันที่</th>
-                <th className="text-right p-3 font-medium">ลูกค้าใหม่</th>
-                <th className="text-right p-3 font-medium">ข้อมูลครบ</th>
-                <th className="text-right p-3 font-medium">ออกใบเสนอราคา</th>
-                <th className="text-right p-3 font-medium">คอนเฟิร์ม</th>
-                <th className="text-right p-3 font-medium">Bot ตอบ</th>
+                <th className="text-left p-3 font-medium" rowSpan={2}>วันที่</th>
+                <th className="text-right p-3 font-medium" rowSpan={2}>ลูกค้าใหม่</th>
+                <th className="text-right p-3 font-medium" rowSpan={2}>ได้ข้อมูลครบ</th>
+                <th className="text-right p-3 font-medium" rowSpan={2}>ส่งใบเสนอราคา</th>
+                <th className="text-right p-3 font-medium" rowSpan={2}>คอนเฟิร์ม</th>
+                <th className="text-center p-3 font-medium border-l bg-muted/20" colSpan={2}>
+                  คงค้างสิ้นวัน
+                </th>
+                <th className="text-right p-3 font-medium" rowSpan={2}>Bot ตอบ</th>
+              </tr>
+              <tr className="text-[10px]">
+                <th className="text-right p-1.5 font-normal border-l bg-muted/20">รอทำใบ</th>
+                <th className="text-right p-1.5 font-normal bg-muted/20">รอคอนเฟิร์ม</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -282,10 +373,16 @@ function DailyReportTable() {
                       </div>
                     </td>
                     <td className="text-right p-3 tabular-nums">{row.newCount}</td>
-                    <td className="text-right p-3 tabular-nums">{row.completeCount}</td>
-                    <td className="text-right p-3 tabular-nums">{row.quoteCount}</td>
-                    <td className="text-right p-3 tabular-nums">{row.confirmedCount}</td>
-                    <td className="text-right p-3 tabular-nums">{row.botCount}</td>
+                    <td className="p-3"><SplitCell s={row.complete} /></td>
+                    <td className="p-3"><SplitCell s={row.quote} /></td>
+                    <td className="p-3"><SplitCell s={row.confirmed} /></td>
+                    <td className="text-right p-3 tabular-nums border-l bg-muted/10 text-amber-700 dark:text-amber-300 font-semibold">
+                      {row.backlogQuote}
+                    </td>
+                    <td className="text-right p-3 tabular-nums bg-muted/10 text-orange-700 dark:text-orange-300 font-semibold">
+                      {row.backlogConfirm}
+                    </td>
+                    <td className="text-right p-3 tabular-nums text-muted-foreground">{row.botCount}</td>
                   </tr>
                 );
               })}
