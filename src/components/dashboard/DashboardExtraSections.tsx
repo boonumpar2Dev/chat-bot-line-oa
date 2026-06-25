@@ -540,7 +540,7 @@ async function fetchFunnelDay(date: Date) {
   return {
     stages: [
       { key: "new", label: "ลูกค้าใหม่วันนี้", count: newIds.length, totalCount: newIds.length, carryOver: 0, newToday: newIds.length, outToday: 0, customerIds: newIds, backlogCount: 0, backlogIds: [] as string[] },
-      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteNewSet.size, totalCount: quoteTotalCount, carryOver: quoteCarry, newToday: quoteNewSet.size, outToday: 0, customerIds: quoteAllIds, backlogCount: 0, backlogIds: [] as string[] },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteSentTodayIds.length, totalCount: quoteSentTodayIds.length, carryOver: quoteSentTodayCarry, newToday: quoteSentTodayNew, outToday: 0, customerIds: quoteSentTodayIds, backlogCount: quoteTotalCount, backlogIds: quoteAllIds },
       { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmSentTodayIds.length, totalCount: confirmSentTodayIds.length, carryOver: confirmSentTodayCarry, newToday: confirmSentTodayNew, outToday: 0, customerIds: confirmSentTodayIds, backlogCount: confirmTotalCount, backlogIds: confirmAllIds },
       { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedTodayIds.length, totalCount: confirmedTodayIds.length, carryOver: confirmedCarry, newToday: confirmedSameDay, outToday: 0, customerIds: confirmedTodayIds, backlogCount: 0, backlogIds: [] as string[] },
       { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds, backlogCount: 0, backlogIds: [] as string[] },
