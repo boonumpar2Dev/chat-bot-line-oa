@@ -152,6 +152,9 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">ติดตามสถานะแชทบอทและลูกค้า LINE OA</p>
       </div>
 
+      {/* Realtime งานค้างตอนนี้ — คลิกเคลียได้ (ขึ้นบนสุดเพื่อให้แอดมินเห็นก่อน) */}
+      <DashboardRealtimeSections />
+
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {cards.map(c => (
           <Card key={c.label} className="p-3 sm:p-5 shadow-soft border-border/60 hover:shadow-elevated transition-shadow min-w-0">
@@ -214,10 +217,6 @@ export default function Dashboard() {
         )}
       </div>
 
-
-
-      {/* Realtime งานค้างตอนนี้ — คลิกเคลียได้ */}
-      <DashboardRealtimeSections />
 
       {/* SLA Breaches */}
       <Card className="shadow-soft border-border/60 border-l-4 border-l-destructive min-w-0 overflow-hidden">
