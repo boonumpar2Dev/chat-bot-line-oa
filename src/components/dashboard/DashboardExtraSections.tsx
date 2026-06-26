@@ -170,31 +170,68 @@ function NewCustomersChart() {
   );
 }
 
-/* ============= Section 2: Daily Report Table (Executive Log) ============= */
+/* ============= Section 2: Daily Report Table (Sales Pipeline log) =============
+ * Timezone: Asia/Bangkok (คงที่; ถ้าวันหลังเพิ่ม app_settings.timezone ค่อย override)
+ * แหล่งข้อมูลหลัก: customer_status_log (event รายวัน) + customers (created_at) + conversations (bot count แยก)
+ */
 type ReportRange = 7 | 14 | 30;
+
+const TZ = "Asia/Bangkok";
+// Asia/Bangkok = UTC+7 คงที่ (ไม่มี DST) → ใช้ offset literal +07:00 ปลอดภัย
+const tzYmd = (d: Date) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  const day = parts.find((p) => p.type === "day")!.value;
+  return `${y}-${m}-${day}`;
+};
+const tzStartOfDay = (d: Date) => new Date(`${tzYmd(d)}T00:00:00+07:00`);
+const tzEndOfDay = (d: Date) => new Date(`${tzYmd(d)}T23:59:59.999+07:00`);
+const tzAddDays = (d: Date, n: number) => {
+  const x = tzStartOfDay(d);
+  x.setUTCDate(x.getUTCDate() + n);
+  return tzStartOfDay(x);
+};
+const fmtDayTH_BKK = (d: Date) => {
+  // แสดงผลวันที่ตาม BKK (ใช้ formatToParts กัน browser TZ เพี้ยน)
+  const p = new Intl.DateTimeFormat("th-TH", { timeZone: TZ, day: "numeric", month: "short" })
+    .format(d);
+  return p;
+};
 
 function DailyReportTable() {
   const [range, setRange] = useState<ReportRange>(7);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["daily-report-v3", range],
+    queryKey: ["daily-report-v4", range],
     queryFn: async () => {
+      // สร้างรายการ "วัน" (BKK) ตั้งแต่ today-range+1 → today
+      const today = tzStartOfDay(new Date());
       const days: Date[] = [];
       for (let i = range - 1; i >= 0; i--) {
-        const d = startOfDay(new Date());
-        d.setDate(d.getDate() - i);
-        if (d < DASHBOARD_MIN_DATE) continue;
+        const d = tzAddDays(today, -i);
+        if (d < tzStartOfDay(DASHBOARD_MIN_DATE)) continue;
         days.push(d);
       }
-      if (days.length === 0) days.push(startOfDay(DASHBOARD_MIN_DATE));
-      const since = days[0].toISOString();
-      const untilEnd = endOfDay(days[days.length - 1]).toISOString();
+      if (days.length === 0) days.push(tzStartOfDay(DASHBOARD_MIN_DATE));
 
-      const [custRes, logRes, convRes, custForBacklogRes] = await Promise.all([
+      const firstDay = days[0];
+      const lastDay = days[days.length - 1];
+      const since = firstDay.toISOString();
+      const untilEnd = tzEndOfDay(lastDay).toISOString();
+
+      const [custRes, logRes, convRes, custForBacklogRes, currentStatusRes] = await Promise.all([
+        // ใช้ดูว่าลูกค้าที่มี event วันนี้ "ทักครั้งแรกวันไหน"
         supabase
           .from("customers")
           .select("id, created_at")
           .gte("created_at", since)
           .limit(20000),
+        // log เฉพาะช่วงรายงาน (ใช้นับ event รายวัน)
         supabase
           .from("customer_status_log")
           .select("customer_id, old_status, new_status, changed_at")
@@ -207,102 +244,138 @@ function DailyReportTable() {
           .gte("created_at", since)
           .lte("created_at", untilEnd)
           .eq("sender", "ai"),
-        // log ทั้งหมดตั้งแต่ต้นจนถึงสิ้นช่วง — ใช้ reconstruct backlog สิ้นวัน
+        // log ทั้งหมดตั้งแต่ต้นจนถึงสิ้นช่วง — ใช้ reconstruct backlog ณ สิ้นวันใด ๆ
         supabase
           .from("customer_status_log")
           .select("customer_id, old_status, new_status, changed_at")
           .lte("changed_at", untilEnd)
           .limit(100000),
+        // ดึง status ปัจจุบัน — ใช้ sanity check backlog ของ "วันนี้"
+        supabase.from("customers").select("id, status").limit(20000),
       ]);
       if (custRes.error) throw custRes.error;
       if (logRes.error) throw logRes.error;
       if (convRes.error) throw convRes.error;
       if (custForBacklogRes.error) throw custForBacklogRes.error;
+      if (currentStatusRes.error) throw currentStatusRes.error;
 
-      const newByDay: Record<string, Set<string>> = {};
+      // index: created_at วัน (BKK) ของลูกค้าใหม่
+      const createdDayById: Record<string, string> = {};
       (custRes.data ?? []).forEach((c: any) => {
-        const k = ymd(new Date(c.created_at));
-        if (!newByDay[k]) newByDay[k] = new Set();
-        newByDay[k].add(c.id);
+        createdDayById[c.id] = tzYmd(new Date(c.created_at));
       });
 
       const allLogs = (custForBacklogRes.data ?? []).slice().sort((a: any, b: any) =>
         a.changed_at < b.changed_at ? -1 : 1
       );
 
-      const reconstructBacklogAt = (eod: Date, status: string) => {
-        const cutoff = eod.toISOString();
+      // reconstruct unique customer_id ที่อยู่ใน status ที่กำหนด ณ ช่วงเวลา cutoff
+      const reconstructBacklogAt = (cutoffDate: Date, status: string) => {
+        const cutoff = cutoffDate.toISOString();
         const ids = new Set<string>();
         for (const l of allLogs as any[]) {
           if (l.changed_at > cutoff) break;
           if (l.new_status === status) ids.add(l.customer_id);
           else if (l.old_status === status) ids.delete(l.customer_id);
         }
-        return ids.size;
+        return ids;
       };
 
-      return days.map((day) => {
-        const dayKey = ymd(day);
-        const eod = endOfDay(day);
-        const newSet = newByDay[dayKey] ?? new Set();
-        const newCount = newSet.size;
+      // current pending_quote ids (สำหรับ sanity check วันนี้)
+      const todayKey = tzYmd(today);
+      const currentPendingQuoteIds = new Set<string>(
+        (currentStatusRes.data ?? [])
+          .filter((c: any) => c.status === "pending_quote")
+          .map((c: any) => c.id)
+      );
 
+      return days.map((day) => {
+        const dayKey = tzYmd(day);
+        const eod = tzEndOfDay(day);
+        const prevEod = tzEndOfDay(tzAddDays(day, -1));
+
+        // logs วันนี้ (BKK)
         const logsToday = (logRes.data ?? []).filter(
-          (l: any) => ymd(new Date(l.changed_at)) === dayKey
+          (l: any) => tzYmd(new Date(l.changed_at)) === dayKey
         );
 
-        const buildSplit = (statuses: string[]) => {
-          const ids = new Set<string>();
-          logsToday.forEach((l: any) => {
-            if (statuses.includes(l.new_status)) ids.add(l.customer_id);
-          });
-          let same = 0;
-          let carry = 0;
-          ids.forEach((id) => {
-            if (newSet.has(id)) same++;
-            else carry++;
-          });
-          return { same, carry, total: ids.size };
-        };
+        // ===== Col2: ได้ข้อมูลครบใหม่วันนี้ (unique → pending_quote วันนี้) =====
+        const completeIds = new Set<string>();
+        logsToday.forEach((l: any) => {
+          if (l.new_status === "pending_quote") completeIds.add(l.customer_id);
+        });
+        let completeSameDay = 0; // ทักวันนี้
+        let completeCarry = 0; // ทักก่อนหน้า
+        completeIds.forEach((id) => {
+          if (createdDayById[id] === dayKey) completeSameDay++;
+          else completeCarry++;
+        });
+        const completeTotal = completeIds.size;
 
-        const complete = buildSplit(["pending_quote"]);
-        const quote = buildSplit(["pending_confirm"]);
-        const confirmed = buildSplit(["confirmed", "confirmed_returning"]);
+        // ===== Col3: ค้างทำใบจากก่อนหน้า = reconstructBacklogAt(prevEod, pending_quote) =====
+        const carryQuoteIds = reconstructBacklogAt(prevEod, "pending_quote");
+        const carryQuote = carryQuoteIds.size;
 
+        // ===== Col4: รวมต้องทำใบวันนี้ = col3 + col2.total =====
+        const mustQuoteToday = carryQuote + completeTotal;
+
+        // ===== Col5: ส่งใบเสนอราคาแล้ววันนี้ = unique customer_id เข้า pending_confirm วันนี้ =====
+        // (Set จะ unique อยู่แล้ว — กันนับซ้ำเคสคนเดิมเปลี่ยน status หลายรอบ)
+        const sentQuoteIds = new Set<string>();
+        logsToday.forEach((l: any) => {
+          if (l.new_status === "pending_confirm") sentQuoteIds.add(l.customer_id);
+        });
+        const sentQuote = sentQuoteIds.size;
+
+        // ===== Col6: ค้างทำใบสิ้นวัน — สูตร: carryQuote + completeTotal - sentQuote =====
+        const pendingQuoteEodFormula = Math.max(0, mustQuoteToday - sentQuote);
+        // sanity check: เทียบ snapshot reconstruct
+        const pendingQuoteEodSnapshot = reconstructBacklogAt(eod, "pending_quote").size;
+        if (pendingQuoteEodFormula !== pendingQuoteEodSnapshot) {
+          // อาจมี transition ที่ไม่ไหลตรง pending_quote → pending_confirm
+          // (เช่น ข้ามไป cancelled/postponed/confirmed โดยตรง หรือ status ถูก set จากด้านอื่น)
+          console.warn(
+            `[DailyReportTable] backlog mismatch @ ${dayKey}: formula=${pendingQuoteEodFormula} snapshot=${pendingQuoteEodSnapshot}`,
+            { carryQuote, completeTotal, sentQuote }
+          );
+        }
+        // วันล่าสุด (วันนี้) — sanity check เพิ่มเทียบ customers.status ปัจจุบัน
+        if (dayKey === todayKey) {
+          if (pendingQuoteEodSnapshot !== currentPendingQuoteIds.size) {
+            console.warn(
+              `[DailyReportTable] today snapshot mismatch with customers.status: reconstruct=${pendingQuoteEodSnapshot} live=${currentPendingQuoteIds.size}`
+            );
+          }
+        }
+        // ใช้ snapshot เป็นค่าหลัก (แม่นกว่า — ครอบคลุม transition แปลก ๆ ด้วย)
+        const pendingQuoteEod = pendingQuoteEodSnapshot;
+
+        // ===== Col7: รอคอนเฟิร์มสิ้นวัน = reconstructBacklogAt(eod, pending_confirm) =====
+        const pendingConfirmEod = reconstructBacklogAt(eod, "pending_confirm").size;
+
+        // ===== Col8 (separated): Bot ตอบ =====
         const botCount = (convRes.data ?? []).filter(
-          (c: any) => ymd(new Date(c.created_at)) === dayKey
+          (c: any) => tzYmd(new Date(c.created_at)) === dayKey
         ).length;
-
-        const backlogQuote = reconstructBacklogAt(eod, "pending_quote");
-        const backlogConfirm = reconstructBacklogAt(eod, "pending_confirm");
 
         return {
           day,
           dayKey,
-          newCount,
-          complete,
-          quote,
-          confirmed,
+          completeSameDay,
+          completeCarry,
+          completeTotal,
+          carryQuote,
+          mustQuoteToday,
+          sentQuote,
+          pendingQuoteEod,
+          pendingConfirmEod,
           botCount,
-          backlogQuote,
-          backlogConfirm,
         };
       });
     },
   });
 
-  const todayKey = ymd(startOfDay(new Date()));
-
-  const SplitCell = ({ s }: { s: { same: number; carry: number; total: number } }) => (
-    <div className="text-right tabular-nums leading-tight">
-      <div className="font-semibold">{s.total}</div>
-      {s.total > 0 && (
-        <div className="text-[10px] text-muted-foreground">
-          ใหม่ {s.same} · ค้าง {s.carry}
-        </div>
-      )}
-    </div>
-  );
+  const todayKey = tzYmd(tzStartOfDay(new Date()));
 
   return (
     <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
@@ -310,9 +383,9 @@ function DailyReportTable() {
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-muted-foreground" />
           <div>
-            <h2 className="font-display font-semibold">รายงานรายวัน (log)</h2>
+            <h2 className="font-display font-semibold">รายงานรายวัน — Sales Pipeline (ใบเสนอราคา)</h2>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              ตัวเลข frozen ตามวันจริง — ใหม่/ค้าง = ทักวันนี้ / ค้างวันก่อน
+              event รายวันจาก customer_status_log · timezone Asia/Bangkok · Bot ตอบ = ข้อมูลเสริม ไม่อยู่ใน pipeline
             </p>
           </div>
         </div>
@@ -333,22 +406,17 @@ function DailyReportTable() {
         {error && <p className="p-5 text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
         {isLoading && <p className="p-5 text-sm text-muted-foreground">กำลังโหลด...</p>}
         {data && (
-          <table className="w-full text-sm min-w-[860px]">
+          <table className="w-full text-sm min-w-[1080px]">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
-                <th className="text-left p-3 font-medium" rowSpan={2}>วันที่</th>
-                <th className="text-right p-3 font-medium" rowSpan={2}>ลูกค้าใหม่</th>
-                <th className="text-right p-3 font-medium" rowSpan={2}>ได้ข้อมูลครบ</th>
-                <th className="text-right p-3 font-medium" rowSpan={2}>ส่งใบเสนอราคา</th>
-                <th className="text-right p-3 font-medium" rowSpan={2}>คอนเฟิร์ม</th>
-                <th className="text-center p-3 font-medium border-l bg-muted/20" colSpan={2}>
-                  คงค้างสิ้นวัน
-                </th>
-                <th className="text-right p-3 font-medium" rowSpan={2}>Bot ตอบ</th>
-              </tr>
-              <tr className="text-[10px]">
-                <th className="text-right p-1.5 font-normal border-l bg-muted/20">รอทำใบ</th>
-                <th className="text-right p-1.5 font-normal bg-muted/20">รอคอนเฟิร์ม</th>
+                <th className="text-left p-3 font-medium">วันที่</th>
+                <th className="text-right p-3 font-medium">ได้ข้อมูลครบใหม่วันนี้</th>
+                <th className="text-right p-3 font-medium">ค้างทำใบจากก่อนหน้า</th>
+                <th className="text-right p-3 font-medium bg-muted/20">รวมต้องทำใบวันนี้</th>
+                <th className="text-right p-3 font-medium">ส่งใบเสนอราคาแล้ววันนี้</th>
+                <th className="text-right p-3 font-medium bg-muted/20">ค้างทำใบสิ้นวัน</th>
+                <th className="text-right p-3 font-medium">รอคอนเฟิร์มสิ้นวัน</th>
+                <th className="text-right p-3 font-medium border-l text-muted-foreground/80">Bot ตอบ</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -364,7 +432,7 @@ function DailyReportTable() {
                   >
                     <td className="p-3">
                       <div className="flex items-center gap-2">
-                        <span>{fmtDayTH(row.day)}</span>
+                        <span>{fmtDayTH_BKK(row.day)}</span>
                         {isToday && (
                           <Badge variant="default" className="h-4 px-1 text-[10px]">
                             วันนี้
@@ -372,17 +440,32 @@ function DailyReportTable() {
                         )}
                       </div>
                     </td>
-                    <td className="text-right p-3 tabular-nums">{row.newCount}</td>
-                    <td className="p-3"><SplitCell s={row.complete} /></td>
-                    <td className="p-3"><SplitCell s={row.quote} /></td>
-                    <td className="p-3"><SplitCell s={row.confirmed} /></td>
-                    <td className="text-right p-3 tabular-nums border-l bg-muted/10 text-amber-700 dark:text-amber-300 font-semibold">
-                      {row.backlogQuote}
+                    <td className="p-3 text-right tabular-nums leading-tight">
+                      <div className="font-semibold">{row.completeTotal}</div>
+                      {row.completeTotal > 0 && (
+                        <div className="text-[10px] text-muted-foreground">
+                          ทักวันนี้ {row.completeSameDay} · ทักก่อนหน้า {row.completeCarry}
+                        </div>
+                      )}
                     </td>
-                    <td className="text-right p-3 tabular-nums bg-muted/10 text-orange-700 dark:text-orange-300 font-semibold">
-                      {row.backlogConfirm}
+                    <td className="text-right p-3 tabular-nums text-amber-700 dark:text-amber-300">
+                      {row.carryQuote}
                     </td>
-                    <td className="text-right p-3 tabular-nums text-muted-foreground">{row.botCount}</td>
+                    <td className="text-right p-3 tabular-nums bg-muted/10 font-semibold">
+                      {row.mustQuoteToday}
+                    </td>
+                    <td className="text-right p-3 tabular-nums text-green-700 dark:text-green-300 font-semibold">
+                      {row.sentQuote}
+                    </td>
+                    <td className="text-right p-3 tabular-nums bg-muted/10 text-amber-700 dark:text-amber-300 font-semibold">
+                      {row.pendingQuoteEod}
+                    </td>
+                    <td className="text-right p-3 tabular-nums text-orange-700 dark:text-orange-300 font-semibold">
+                      {row.pendingConfirmEod}
+                    </td>
+                    <td className="text-right p-3 tabular-nums text-muted-foreground border-l">
+                      {row.botCount}
+                    </td>
                   </tr>
                 );
               })}
