@@ -336,6 +336,8 @@ export default function Chats() {
 
   // Initial load + reload when search/filter changes
   useEffect(() => {
+    // ถ้าอยู่โหมด lead filter แต่ยังโหลด ids ไม่เสร็จ → รอ
+    if (leadParam && leadIds === null) { setLoading(true); return; }
     let active = true;
     setLoading(true);
     setPage(0);
@@ -343,7 +345,13 @@ export default function Chats() {
     (async () => {
       let q: any = supabase.from("customers").select("*")
         .order("last_message_at", { ascending: false, nullsFirst: false });
-      if (isSearching) {
+      if (leadParam) {
+        if ((leadIds?.length || 0) === 0) {
+          if (!active) return;
+          setCustomers([]); setHasMore(false); setLoading(false); return;
+        }
+        q = q.in("id", leadIds!).limit(leadIds!.length);
+      } else if (isSearching) {
         const s = debouncedSearch.replace(/[%,]/g, "");
         q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
@@ -352,11 +360,12 @@ export default function Chats() {
       const { data } = await q;
       if (!active) return;
       setCustomers(data || []);
-      setHasMore(!isSearching && (data?.length || 0) === PAGE_SIZE);
+      setHasMore(!isSearching && !leadParam && (data?.length || 0) === PAGE_SIZE);
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debouncedSearch, isSearching, filter]);
+  }, [debouncedSearch, isSearching, filter, leadParam, leadIds]);
+
 
   // Fetch counts for filter pills
   const refreshCounts = async () => {
