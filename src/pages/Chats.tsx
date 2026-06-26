@@ -417,6 +417,17 @@ export default function Chats() {
           return;
         }
         if (!newRow?.id) return;
+        // Lead mode: ถ้ามีการเปลี่ยน status/customer_origin → ถือว่าจัดการแล้ว ให้หายจากรายการ
+        if (leadParam && leadIds?.includes(newRow.id)) {
+          const statusChanged = oldRow && oldRow.status !== newRow.status;
+          const originChanged = oldRow && oldRow.customer_origin !== newRow.customer_origin;
+          if (statusChanged || originChanged) {
+            setHandledIds(prev => {
+              if (prev.has(newRow.id)) return prev;
+              const next = new Set(prev); next.add(newRow.id); return next;
+            });
+          }
+        }
         // Refresh counts (debounced via microtask is overkill; cheap enough)
         refreshCounts();
         setCustomers(prev => {
@@ -431,6 +442,8 @@ export default function Chats() {
               new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
             );
           }
+          // Lead mode: ห้ามเพิ่มลูกค้าใหม่เข้ารายการ (snapshot mode)
+          if (leadParam) return prev;
           if (payload.eventType === "INSERT" && !isSearching && stillMatches) return [newRow, ...prev];
           return prev;
         });
