@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 import { formatSnippet } from "@/lib/snippet";
 
 import { Card } from "@/components/ui/card";
