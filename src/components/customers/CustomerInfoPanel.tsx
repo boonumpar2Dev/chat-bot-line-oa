@@ -524,16 +524,17 @@ export default function CustomerInfoPanel({
         >
           <BookmarkCheck className="w-3 h-3 mr-1" /> ปิดงาน / บันทึกประวัติ
         </Button>
-        <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <Dialog open={archiveOpen} onOpenChange={(o) => { setArchiveOpen(o); if (!o) setEditEventId(null); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>ตรวจข้อมูลก่อนบันทึกเข้าประวัติ</DialogTitle>
+              <DialogTitle>{editEventId ? "แก้ไขประวัติงาน" : "ตรวจข้อมูลก่อนบันทึกเข้าประวัติ"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground flex-1">
-                  ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน
-                  แล้ว reset ช่องงาน + เปลี่ยนสถานะเป็น "สอบถาม" + ตั้งหมวดเป็น "ลูกค้าเก่า"
+                  {editEventId
+                    ? "แก้ไขข้อมูลประวัติงานนี้ — จะอัปเดตเฉพาะรายการในประวัติ ไม่กระทบสถานะปัจจุบันของลูกค้า"
+                    : 'ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน แล้ว reset ช่องงาน + เปลี่ยนสถานะเป็น "สอบถาม" + ตั้งหมวดเป็น "ลูกค้าเก่า"'}
                 </p>
                 <Button
                   size="sm"
