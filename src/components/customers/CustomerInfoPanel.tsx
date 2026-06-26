@@ -662,7 +662,7 @@ export default function CustomerInfoPanel({
               </Button>
               <Button onClick={archiveCurrentEvent} disabled={archiving}>
                 {archiving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                บันทึก
+                {editEventId ? "บันทึกการแก้ไข" : "บันทึก"}
               </Button>
             </DialogFooter>
           </DialogContent>
