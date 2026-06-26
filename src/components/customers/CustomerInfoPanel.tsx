@@ -219,12 +219,35 @@ export default function CustomerInfoPanel({
     }
     setArchiving(true);
     try {
-      const adminPatch = {
+      const eventPayload = {
         event_type: d.event_type || null,
         guest_count: d.guest_count ? parseInt(d.guest_count) : null,
         event_date: d.event_date || null,
         venue: d.venue || null,
-        clv_amount: parseFloat(d.total_amount) || 0,
+        total_amount: parseFloat(d.total_amount) || 0,
+        notes: d.notes || null,
+      };
+
+      if (editEventId) {
+        // โหมดแก้ไขประวัติงานเดิม — ไม่แตะ customers, ไม่ reset สถานะ
+        const { error: updErr } = await supabase
+          .from("customer_events")
+          .update(eventPayload)
+          .eq("id", editEventId);
+        if (updErr) throw updErr;
+        toast.success("แก้ไขประวัติงานแล้ว");
+        setArchiveOpen(false);
+        setEditEventId(null);
+        loadEvents();
+        return;
+      }
+
+      const adminPatch = {
+        event_type: eventPayload.event_type,
+        guest_count: eventPayload.guest_count,
+        event_date: eventPayload.event_date,
+        venue: eventPayload.venue,
+        clv_amount: eventPayload.total_amount,
       };
       const { error: preErr } = await supabase
         .from("customers")
@@ -234,14 +257,9 @@ export default function CustomerInfoPanel({
 
       const { error: insErr } = await supabase.from("customer_events").insert({
         customer_id: customer.id,
-        event_type: adminPatch.event_type,
-        guest_count: adminPatch.guest_count,
-        event_date: adminPatch.event_date,
-        venue: adminPatch.venue,
+        ...eventPayload,
         package_name: null,
-        total_amount: adminPatch.clv_amount,
         status: "completed",
-        notes: d.notes || null,
       });
       if (insErr) throw insErr;
 
