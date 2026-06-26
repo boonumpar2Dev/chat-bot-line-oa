@@ -127,6 +127,7 @@ export default function CustomerInfoPanel({
 
   const openArchiveDialog = () => {
     const intent = intentData || {};
+    setEditEventId(null);
     setArchiveDraft({
       event_type: customer.event_type || intent.event_type || intent.service_type || "",
       guest_count: customer.guest_count || intent.guest_count || "",
@@ -137,6 +138,20 @@ export default function CustomerInfoPanel({
     });
     setArchiveOpen(true);
   };
+
+  const openEditEventDialog = (e: any) => {
+    setEditEventId(e.id);
+    setArchiveDraft({
+      event_type: e.event_type || "",
+      guest_count: e.guest_count || "",
+      event_date: e.event_date || "",
+      venue: e.venue || "",
+      total_amount: e.total_amount ?? 0,
+      notes: e.notes || "",
+    });
+    setArchiveOpen(true);
+  };
+
 
   const extractFromChat = async () => {
     setExtracting(true);
