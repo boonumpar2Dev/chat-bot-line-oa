@@ -180,22 +180,22 @@ export default function Dashboard() {
           <LeadTypeCard
             leadKey="new"
             color="#378ADD"
-            label="New Lead"
+            label="New Contact"
             hint="ลูกค้าใหม่จริง (created วันนี้)"
             rows={leadByType("new")}
           />
           <LeadTypeCard
             leadKey="reactivated"
             color="#22A06B"
-            label="Reactivated"
+            label="Reactivated Contact"
             hint="เคยทักไว้ เงียบ ≥ 30 วัน แล้วกลับมา"
             rows={leadByType("reactivated")}
           />
           <LeadTypeCard
             leadKey="returning"
             color="#7F77DD"
-            label="Returning"
-            hint="มีประวัติงานในระบบ (customer_events)"
+            label="Returning Contact"
+            hint="มีประวัติงานในระบบ (อาจเป็น follow-up หลังงาน ไม่ใช่ Lead ใหม่)"
             rows={leadByType("returning")}
           />
           <LeadTypeCard
