@@ -412,7 +412,7 @@ function DailyReportTable() {
         {error && <p className="p-5 text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
         {isLoading && <p className="p-5 text-sm text-muted-foreground">กำลังโหลด...</p>}
         {data && (
-          <table className="w-full text-sm min-w-[1080px]">
+          <table className="w-full text-sm min-w-[1200px]">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left p-3 font-medium">วันที่</th>
