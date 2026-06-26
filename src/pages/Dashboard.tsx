@@ -41,6 +41,7 @@ type LeadRow = {
 };
 
 export default function Dashboard() {
+  useDashboardRealtime();
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
