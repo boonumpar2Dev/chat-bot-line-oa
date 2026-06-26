@@ -246,6 +246,7 @@ export type Database = {
           kb_suggest_last_scan_at: string | null
           kb_suggest_strictness: string
           key: string
+          lead_type_logic_start_date: string | null
           location_keywords: string[]
           manual_chat_hours: number
           max_images_per_reply: number
@@ -319,6 +320,7 @@ export type Database = {
           kb_suggest_last_scan_at?: string | null
           kb_suggest_strictness?: string
           key: string
+          lead_type_logic_start_date?: string | null
           location_keywords?: string[]
           manual_chat_hours?: number
           max_images_per_reply?: number
@@ -392,6 +394,7 @@ export type Database = {
           kb_suggest_last_scan_at?: string | null
           kb_suggest_strictness?: string
           key?: string
+          lead_type_logic_start_date?: string | null
           location_keywords?: string[]
           manual_chat_hours?: number
           max_images_per_reply?: number
@@ -1292,6 +1295,21 @@ export type Database = {
             }
             Returns: string[]
           }
+      dashboard_lead_types_today: {
+        Args: never
+        Returns: {
+          created_at: string
+          customer_id: string
+          customer_origin: string
+          display_name: string
+          has_events: boolean
+          last_message_at: string
+          lead_type: string
+          nickname: string
+          prev_message_at: string
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
