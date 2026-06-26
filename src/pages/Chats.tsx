@@ -635,12 +635,18 @@ export default function Chats() {
 
   const lastScrolledIdRef = useRef<string | null>(null);
   const restoredRoomRef = useRef<string | null>(null);
+  const lastMsgIdRef = useRef<string | null>(null);
+  const wasNearBottomRef = useRef<boolean>(true);
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
     if (!viewport || messages.length === 0) return;
     const isRoomSwitch = lastScrolledIdRef.current !== selectedId;
+    const prevLastId = lastMsgIdRef.current;
+    const currLastId = (messages[messages.length - 1] as any)?.id ?? null;
+    const hasNewMessage = !isRoomSwitch && prevLastId !== currLastId;
     lastScrolledIdRef.current = selectedId;
+    lastMsgIdRef.current = currLastId;
     const scrollToBottom = (behavior: ScrollBehavior) => {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior });
     };
@@ -659,12 +665,14 @@ export default function Chats() {
           timers = [50, 150, 350, 700].map(ms => setTimeout(restore, ms));
         });
         restoredRoomRef.current = selectedId;
+        wasNearBottomRef.current = false;
         return () => {
           timers.forEach(clearTimeout);
         };
       }
       // ไม่มีตำแหน่งเดิม → เพิ่งคลิกเข้ามาห้องนี้ครั้งแรก → เลื่อนลงล่างสุด
       restoredRoomRef.current = null;
+      wasNearBottomRef.current = true;
       requestAnimationFrame(() => {
         scrollToBottom("auto");
         timers = [50, 150, 350, 700, 1200, 2000].map(ms =>
@@ -680,11 +688,26 @@ export default function Chats() {
           }, 5000);
         }
       });
-    } else {
-      // ข้อความใหม่เข้ามาในห้องเดิม → เลื่อนลงล่างเฉพาะกรณีที่ผู้ใช้อยู่ใกล้ล่างอยู่แล้ว
-      const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
-      if (distanceFromBottom < 120) {
+    } else if (hasNewMessage) {
+      // มีข้อความใหม่จริง ๆ ในห้องเดิม → เลื่อนลงเฉพาะกรณีที่ผู้ใช้อยู่ใกล้ล่าง "ก่อน" ข้อความนี้เข้ามา
+      if (wasNearBottomRef.current) {
         requestAnimationFrame(() => scrollToBottom("smooth"));
+      } else {
+        // อยู่ข้างบนกำลังอ่าน → คงตำแหน่งเดิม (กัน layout shift จาก message ใหม่ดึง scrollTop)
+        const saved = chatScrollPositions.get(selectedId);
+        if (saved !== undefined && saved >= 0 && Math.abs(viewport.scrollTop - saved) > 4) {
+          viewport.scrollTop = saved;
+        }
+      }
+    } else {
+      // ไม่มีข้อความใหม่ (เช่น refetch หลังกลับมาจาก tab อื่น) → กู้ตำแหน่งเดิมถ้ามี
+      const saved = chatScrollPositions.get(selectedId);
+      if (saved !== undefined && saved >= 0) {
+        const restore = () => { viewport.scrollTop = saved; };
+        requestAnimationFrame(() => {
+          restore();
+          timers = [50, 150].map(ms => setTimeout(restore, ms));
+        });
       }
     }
 
@@ -704,8 +727,9 @@ export default function Chats() {
     const onScroll = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        // ถ้าอยู่ติดล่างสุด ไม่ต้องเก็บ (จะได้ default = ลงล่างตอนกลับมา)
         const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+        wasNearBottomRef.current = distanceFromBottom < 120;
+        // ถ้าอยู่ติดล่างสุด ไม่ต้องเก็บ (จะได้ default = ลงล่างตอนกลับมา)
         if (distanceFromBottom < 40) {
           chatScrollPositions.delete(selectedId);
         } else {
@@ -714,14 +738,26 @@ export default function Chats() {
       });
     };
     viewport.addEventListener("scroll", onScroll, { passive: true });
+
+    // เมื่อ tab กลับมา visible → restore ตำแหน่งทันที (กัน refetch ทำให้กระโดด)
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      const saved = chatScrollPositions.get(selectedId);
+      if (saved === undefined || saved < 0) return;
+      const restore = () => { viewport.scrollTop = saved; };
+      restore();
+      [50, 150, 350, 700].forEach(ms => setTimeout(restore, ms));
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       if (raf) cancelAnimationFrame(raf);
       viewport.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onVisible);
       // หมายเหตุ: ไม่อ่าน scrollTop ตอน unmount เพราะ DOM อาจถูกรีเซ็ตเป็น 0 ก่อน
-      // ทำให้เผลอลบตำแหน่งที่ scroll listener เพิ่งบันทึกไป
-      // → พึ่ง onScroll ที่เก็บค่าแบบ real-time ก็พอ
     };
   }, [selectedId, messages.length > 0]);
+
 
 
 
