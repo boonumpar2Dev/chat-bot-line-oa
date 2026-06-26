@@ -76,7 +76,7 @@ const fmtDayTH = (d: Date) => format(d, "d MMM", { locale: th });
 /* ============= Section 1: (removed) New customers per day chart ============= */
 const DASHBOARD_MIN_DATE = new Date(2026, 5, 19);
 
-}
+
 
 /* ============= Section 2: Daily Report Table (Sales Pipeline log) =============
  * Timezone: Asia/Bangkok (คงที่; ถ้าวันหลังเพิ่ม app_settings.timezone ค่อย override)
