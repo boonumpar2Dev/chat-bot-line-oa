@@ -52,6 +52,7 @@ export default function CustomerInfoPanel({
   const [intentFields, setIntentFields] = useState<any[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveDraft, setArchiveDraft] = useState<any>({});
+  const [editEventId, setEditEventId] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractingPanel, setExtractingPanel] = useState(false);
 
