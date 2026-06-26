@@ -299,6 +299,11 @@ function DailyReportTable() {
           (l: any) => tzYmd(new Date(l.changed_at)) === dayKey
         );
 
+        // ===== Col2a: ลูกค้าใหม่วันนี้ (created_at วัน BKK = day) =====
+        const newCustomersToday = Object.values(createdDayById).filter(
+          (k) => k === dayKey
+        ).length;
+
         // ===== Col2: ได้ข้อมูลครบใหม่วันนี้ (unique → pending_quote วันนี้) =====
         const completeIds = new Set<string>();
         logsToday.forEach((l: any) => {
