@@ -495,12 +495,22 @@ export default function CustomerInfoPanel({
                     {e.event_date || "—"} {e.venue ? `· ${e.venue}` : ""}
                   </div>
                 </div>
-                <button
-                  onClick={() => deleteEvent(e.id)}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => openEditEventDialog(e)}
+                    className="text-muted-foreground hover:text-primary"
+                    title="แก้ไข"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => deleteEvent(e.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                    title="ลบ"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
