@@ -319,48 +319,30 @@ export default function Dashboard() {
   );
 }
 
-function LeadOriginCard({
-  color, label, value, hint, origin, mode, dimmed,
+function LeadTypeCard({
+  color, label, hint, rows, highlight,
 }: {
   color: string;
   label: string;
-  value: number | undefined;
   hint: string;
-  origin: "new" | "returning" | "legacy";
-  mode: "created" | "last_message";
-  dimmed?: boolean;
+  rows: LeadRow[];
+  highlight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-
-  const { data: list, isLoading } = useQuery({
-    queryKey: ["lead-origin-list", origin, mode, open],
-    enabled: open,
-    queryFn: async () => {
-      const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      const field = mode === "created" ? "created_at" : "last_message_at";
-      const { data } = await supabase
-        .from("customers")
-        .select("id, display_name, nickname, last_message_at, created_at, status")
-        .eq("customer_origin", origin)
-        .gte(field, todayStart)
-        .order(field, { ascending: false })
-        .limit(200);
-      return data ?? [];
-    },
-  });
+  const value = rows.length;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${dimmed ? "opacity-60" : ""}`}
+        className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${highlight ? "border-amber-300 dark:border-amber-700/60" : ""}`}
       >
         <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="font-display font-semibold text-xl">{value ?? "—"}</p>
-          <p className="text-[10px] text-muted-foreground">{hint} · คลิกดูรายชื่อ</p>
+          <p className="font-display font-semibold text-xl">{value}</p>
+          <p className="text-[10px] text-muted-foreground line-clamp-2">{hint}</p>
         </div>
       </button>
 
@@ -369,37 +351,35 @@ function LeadOriginCard({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full" style={{ background: color }} />
-              {label} ({value ?? 0} คน)
+              {label} ({value} คน)
             </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-1">{hint}</p>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto -mx-6 px-6">
-            {isLoading && <p className="text-sm text-muted-foreground py-4">กำลังโหลด…</p>}
-            {!isLoading && list && list.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีรายชื่อ</p>
+            {value === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีรายชื่อในวันนี้</p>
             )}
             <div className="divide-y">
-              {list?.map((r: any) => {
-                const ts = mode === "created" ? r.created_at : r.last_message_at;
-                return (
-                  <Link
-                    key={r.id}
-                    to={`/chats?customer=${r.id}`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
-                      {(r.nickname || r.display_name || "?")[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{r.nickname || r.display_name || "—"}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {ts ? formatDistanceToNow(new Date(ts), { addSuffix: true, locale: th }) : "—"}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
-                  </Link>
-                );
-              })}
+              {rows.map(r => (
+                <Link
+                  key={r.customer_id}
+                  to={`/chats?customer=${r.customer_id}`}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
+                    {(r.nickname || r.display_name || "?")[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{r.nickname || r.display_name || "—"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : "—"}
+                      {r.prev_message_at && ` · เคยทัก ${formatDistanceToNow(new Date(r.prev_message_at), { addSuffix: true, locale: th })}`}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
+                </Link>
+              ))}
             </div>
           </div>
         </DialogContent>
@@ -407,4 +387,5 @@ function LeadOriginCard({
     </>
   );
 }
+
 
