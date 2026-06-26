@@ -479,7 +479,7 @@ export default function Chats() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching, filter, selectedId]);
+  }, [isSearching, filter, selectedId, leadParam, leadIds]);
 
 
   // Infinite scroll
