@@ -173,24 +173,28 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <LeadTypeCard
+            leadKey="new"
             color="#378ADD"
             label="New Lead"
             hint="ลูกค้าใหม่จริง (created วันนี้)"
             rows={leadByType("new")}
           />
           <LeadTypeCard
+            leadKey="reactivated"
             color="#22A06B"
             label="Reactivated"
             hint="เคยทักไว้ เงียบ ≥ 30 วัน แล้วกลับมา"
             rows={leadByType("reactivated")}
           />
           <LeadTypeCard
+            leadKey="returning"
             color="#7F77DD"
             label="Returning"
             hint="มีประวัติงานในระบบ (customer_events)"
             rows={leadByType("returning")}
           />
           <LeadTypeCard
+            leadKey="needs_review"
             color="#D97706"
             label="Needs Review"
             hint="ข้อมูลเก่าไม่ครบ ต้องเช็กก่อนจัดกลุ่ม"
@@ -320,71 +324,29 @@ export default function Dashboard() {
 }
 
 function LeadTypeCard({
-  color, label, hint, rows, highlight,
+  color, label, hint, rows, highlight, leadKey,
 }: {
   color: string;
   label: string;
   hint: string;
   rows: LeadRow[];
   highlight?: boolean;
+  leadKey: "new" | "reactivated" | "returning" | "needs_review";
 }) {
-  const [open, setOpen] = useState(false);
   const value = rows.length;
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${highlight ? "border-amber-300 dark:border-amber-700/60" : ""}`}
-      >
-        <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="font-display font-semibold text-xl">{value}</p>
-          <p className="text-[10px] text-muted-foreground line-clamp-2">{hint}</p>
-        </div>
-      </button>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ background: color }} />
-              {label} ({value} คน)
-            </DialogTitle>
-            <p className="text-xs text-muted-foreground mt-1">{hint}</p>
-          </DialogHeader>
-          <div className="flex-1 overflow-y-auto -mx-6 px-6">
-            {value === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีรายชื่อในวันนี้</p>
-            )}
-            <div className="divide-y">
-              {rows.map(r => (
-                <Link
-                  key={r.customer_id}
-                  to={`/chats?customer=${r.customer_id}`}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
-                >
-                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
-                    {(r.nickname || r.display_name || "?")[0]}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{r.nickname || r.display_name || "—"}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : "—"}
-                      {r.prev_message_at && ` · เคยทัก ${formatDistanceToNow(new Date(r.prev_message_at), { addSuffix: true, locale: th })}`}
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Link
+      to={`/chats?lead=${leadKey}`}
+      className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${highlight ? "border-amber-300 dark:border-amber-700/60" : ""}`}
+    >
+      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="font-display font-semibold text-xl">{value}</p>
+        <p className="text-[10px] text-muted-foreground line-clamp-2">{hint}</p>
+      </div>
+    </Link>
   );
 }
 

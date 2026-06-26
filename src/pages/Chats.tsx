@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -263,6 +263,39 @@ export default function Chats() {
       setFilter(filterParam as FilterKind);
     }
   }, []);
+
+  // Lead-type filter (มาจาก Dashboard เช่น /chats?lead=needs_review)
+  const leadParam = sp.get("lead") as null | "new" | "reactivated" | "returning" | "needs_review";
+  const [leadIds, setLeadIds] = useState<string[] | null>(null);
+  const [handledIds, setHandledIds] = useState<Set<string>>(new Set());
+  const LEAD_LABEL: Record<string, string> = {
+    new: "New Lead",
+    reactivated: "Reactivated",
+    returning: "Returning",
+    needs_review: "Needs Review",
+  };
+  useEffect(() => {
+    setHandledIds(new Set());
+    if (!leadParam) { setLeadIds(null); return; }
+    let active = true;
+    (async () => {
+      const { data, error } = await supabase.rpc("dashboard_lead_types_today" as any);
+      if (!active) return;
+      if (error) { setLeadIds([]); return; }
+      const ids = ((data ?? []) as any[])
+        .filter(r => r.lead_type === leadParam)
+        .map(r => r.customer_id as string);
+      setLeadIds(ids);
+    })();
+    return () => { active = false; };
+  }, [leadParam]);
+  const clearLeadFilter = () => {
+    setSp(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete("lead");
+      return next;
+    }, { replace: true });
+  };
   const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
@@ -303,6 +336,8 @@ export default function Chats() {
 
   // Initial load + reload when search/filter changes
   useEffect(() => {
+    // ถ้าอยู่โหมด lead filter แต่ยังโหลด ids ไม่เสร็จ → รอ
+    if (leadParam && leadIds === null) { setLoading(true); return; }
     let active = true;
     setLoading(true);
     setPage(0);
@@ -310,7 +345,13 @@ export default function Chats() {
     (async () => {
       let q: any = supabase.from("customers").select("*")
         .order("last_message_at", { ascending: false, nullsFirst: false });
-      if (isSearching) {
+      if (leadParam) {
+        if ((leadIds?.length || 0) === 0) {
+          if (!active) return;
+          setCustomers([]); setHasMore(false); setLoading(false); return;
+        }
+        q = q.in("id", leadIds!).limit(leadIds!.length);
+      } else if (isSearching) {
         const s = debouncedSearch.replace(/[%,]/g, "");
         q = q.or(`display_name.ilike.%${s}%,nickname.ilike.%${s}%,phone.ilike.%${s}%,line_user_id.ilike.%${s}%`).limit(100);
       } else {
@@ -319,11 +360,12 @@ export default function Chats() {
       const { data } = await q;
       if (!active) return;
       setCustomers(data || []);
-      setHasMore(!isSearching && (data?.length || 0) === PAGE_SIZE);
+      setHasMore(!isSearching && !leadParam && (data?.length || 0) === PAGE_SIZE);
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [debouncedSearch, isSearching, filter]);
+  }, [debouncedSearch, isSearching, filter, leadParam, leadIds]);
+
 
   // Fetch counts for filter pills
   const refreshCounts = async () => {
@@ -375,6 +417,17 @@ export default function Chats() {
           return;
         }
         if (!newRow?.id) return;
+        // Lead mode: ถ้ามีการเปลี่ยน status/customer_origin → ถือว่าจัดการแล้ว ให้หายจากรายการ
+        if (leadParam && leadIds?.includes(newRow.id)) {
+          const statusChanged = oldRow && oldRow.status !== newRow.status;
+          const originChanged = oldRow && oldRow.customer_origin !== newRow.customer_origin;
+          if (statusChanged || originChanged) {
+            setHandledIds(prev => {
+              if (prev.has(newRow.id)) return prev;
+              const next = new Set(prev); next.add(newRow.id); return next;
+            });
+          }
+        }
         // Refresh counts (debounced via microtask is overkill; cheap enough)
         refreshCounts();
         setCustomers(prev => {
@@ -389,6 +442,8 @@ export default function Chats() {
               new Date(b.last_message_at || 0).getTime() - new Date(a.last_message_at || 0).getTime()
             );
           }
+          // Lead mode: ห้ามเพิ่มลูกค้าใหม่เข้ารายการ (snapshot mode)
+          if (leadParam) return prev;
           if (payload.eventType === "INSERT" && !isSearching && stillMatches) return [newRow, ...prev];
           return prev;
         });
@@ -424,7 +479,7 @@ export default function Chats() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [isSearching, filter, selectedId]);
+  }, [isSearching, filter, selectedId, leadParam, leadIds]);
 
 
   // Infinite scroll
@@ -709,22 +764,34 @@ export default function Chats() {
   }, [msgMatchIds]);
 
   const filtered = useMemo(() => {
+    const base = handledIds.size > 0 ? customers.filter(c => !handledIds.has(c.id)) : customers;
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(c =>
+    if (!q) return base;
+    return base.filter(c =>
       (c.display_name || "").toLowerCase().includes(q) ||
       (c.nickname || "").toLowerCase().includes(q) ||
       (c.phone || "").includes(q) ||
       (c.line_user_id || "").toLowerCase().includes(q) ||
       msgMatchIds.has(c.id)
     );
-  }, [customers, search, msgMatchIds]);
+  }, [customers, search, msgMatchIds, handledIds]);
 
   const updateLocalCustomer = (patch: any) => {
     setCustomers(prev => {
       const idx = prev.findIndex(c => c.id === selectedId);
       if (idx < 0) return prev;
       const merged = { ...prev[idx], ...patch };
+      // Lead mode: ถ้าเปลี่ยน status / customer_origin → mark handled (จะหายจากรายการ)
+      if (leadParam && selectedId && leadIds?.includes(selectedId)) {
+        const statusChanged = patch.status !== undefined && patch.status !== prev[idx].status;
+        const originChanged = patch.customer_origin !== undefined && patch.customer_origin !== prev[idx].customer_origin;
+        if (statusChanged || originChanged) {
+          setHandledIds(p => {
+            if (p.has(selectedId)) return p;
+            const n = new Set(p); n.add(selectedId); return n;
+          });
+        }
+      }
       const stillMatches = isSearching || matchesFilter(merged, filter);
       if (!stillMatches) return prev.filter(c => c.id !== selectedId);
       const next = [...prev];
@@ -1007,6 +1074,17 @@ export default function Chats() {
       {/* Customer list */}
       <aside className={cn("w-full lg:w-80 border-r flex flex-col bg-card", selectedId && "hidden lg:flex")}>
         <div className="p-3 border-b space-y-2">
+          {leadParam && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] flex items-center gap-2 flex-wrap">
+              <Link to="/" className="text-muted-foreground hover:underline shrink-0">← Dashboard</Link>
+              <span className="shrink-0">กรอง: <b>{LEAD_LABEL[leadParam]}</b></span>
+              <span className="text-muted-foreground shrink-0">
+                เหลือ {Math.max(0, (leadIds?.length || 0) - handledIds.size)}/{leadIds?.length || 0}
+                {handledIds.size > 0 && ` · จัดการแล้ว ${handledIds.size}`}
+              </span>
+              <button onClick={clearLeadFilter} className="ml-auto text-primary hover:underline shrink-0">✕ ล้างตัวกรอง</button>
+            </div>
+          )}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
             <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
