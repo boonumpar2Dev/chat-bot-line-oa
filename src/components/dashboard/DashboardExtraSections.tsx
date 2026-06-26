@@ -447,7 +447,11 @@ function DailyReportTable() {
                         )}
                       </div>
                     </td>
+                    <td className="p-3 text-right tabular-nums font-semibold text-sky-700 dark:text-sky-300">
+                      {row.newCustomersToday}
+                    </td>
                     <td className="p-3 text-right tabular-nums leading-tight">
+
                       <div className="font-semibold">{row.completeTotal}</div>
                       {row.completeTotal > 0 && (
                         <div className="text-[10px] text-muted-foreground">
