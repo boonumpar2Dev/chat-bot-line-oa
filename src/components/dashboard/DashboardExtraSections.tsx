@@ -1461,8 +1461,8 @@ export function ReportsLogSections() {
   return (
     <>
       <DailyReportTable />
-      <NewCustomersChart />
       <FunnelToday />
+
     </>
   );
 }
