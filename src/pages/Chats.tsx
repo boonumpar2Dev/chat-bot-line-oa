@@ -1074,6 +1074,17 @@ export default function Chats() {
       {/* Customer list */}
       <aside className={cn("w-full lg:w-80 border-r flex flex-col bg-card", selectedId && "hidden lg:flex")}>
         <div className="p-3 border-b space-y-2">
+          {leadParam && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-[11px] flex items-center gap-2 flex-wrap">
+              <Link to="/" className="text-muted-foreground hover:underline shrink-0">← Dashboard</Link>
+              <span className="shrink-0">กรอง: <b>{LEAD_LABEL[leadParam]}</b></span>
+              <span className="text-muted-foreground shrink-0">
+                เหลือ {Math.max(0, (leadIds?.length || 0) - handledIds.size)}/{leadIds?.length || 0}
+                {handledIds.size > 0 && ` · จัดการแล้ว ${handledIds.size}`}
+              </span>
+              <button onClick={clearLeadFilter} className="ml-auto text-primary hover:underline shrink-0">✕ ล้างตัวกรอง</button>
+            </div>
+          )}
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground"/>
             <Input placeholder="ค้นหาชื่อ / เบอร์ / UID / ข้อความ" value={search} onChange={e => setSearch(e.target.value)} className="pl-9"/>
