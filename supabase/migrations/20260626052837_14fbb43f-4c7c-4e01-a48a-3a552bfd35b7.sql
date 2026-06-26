@@ -1,0 +1,1 @@
+UPDATE public.customers SET manual_chat_until = NULL, ai_active = true, ai_resumed_at = now() WHERE line_user_id = 'Ufe2388f504d81e050f8936c76aa356ff';
