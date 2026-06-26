@@ -1308,47 +1308,6 @@ function CurrentStatusGrid() {
         </div>
       </Card>
 
-      <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
-        <div className="p-5 border-b flex items-center gap-2">
-          <FileText className="w-4 h-4 text-amber-600" />
-          <h2 className="font-display font-semibold">ใบเสนอราคา</h2>
-        </div>
-        <div className="p-5 space-y-3">
-          {error && <p className="text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
-          {isLoading && <p className="text-sm text-muted-foreground">กำลังโหลด...</p>}
-          {quoteCard && (
-            <>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10">
-                <div>
-                  <p className="text-xs text-muted-foreground">รอออกใบเสนอราคา</p>
-                  <p className="font-display text-2xl font-semibold mt-1 text-amber-700 dark:text-amber-300 tabular-nums">
-                    {quoteCard.pending_quote}
-                  </p>
-                </div>
-                <FileText className="w-8 h-8 text-amber-500/40" />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-orange-500/10">
-                <div>
-                  <p className="text-xs text-muted-foreground">ส่งใบเสนอราคาแล้ว · รอคอนเฟิร์ม</p>
-                  <p className="font-display text-2xl font-semibold mt-1 text-orange-700 dark:text-orange-300 tabular-nums">
-                    {quoteCard.pending_confirm}
-                  </p>
-                </div>
-                <FileText className="w-8 h-8 text-orange-500/40" />
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10">
-                <div>
-                  <p className="text-xs text-muted-foreground">คอนเฟิร์มแล้ว</p>
-                  <p className="font-display text-2xl font-semibold mt-1 text-green-700 dark:text-green-300 tabular-nums">
-                    {quoteCard.confirmed}
-                  </p>
-                </div>
-                <FileText className="w-8 h-8 text-green-500/40" />
-              </div>
-            </>
-          )}
-        </div>
-      </Card>
     </div>
   );
 }
