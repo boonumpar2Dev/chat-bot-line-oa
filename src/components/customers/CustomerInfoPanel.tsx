@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import {
   Tag, X, Copy, ExternalLink, Smartphone, BookmarkCheck, History,
-  Phone, MapPin, Users as UsersIcon, Calendar, Loader2, Sparkles
+  Phone, MapPin, Users as UsersIcon, Calendar, Loader2, Sparkles, Pencil
 } from "lucide-react";
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
@@ -52,6 +52,7 @@ export default function CustomerInfoPanel({
   const [intentFields, setIntentFields] = useState<any[]>([]);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveDraft, setArchiveDraft] = useState<any>({});
+  const [editEventId, setEditEventId] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractingPanel, setExtractingPanel] = useState(false);
 
@@ -126,6 +127,7 @@ export default function CustomerInfoPanel({
 
   const openArchiveDialog = () => {
     const intent = intentData || {};
+    setEditEventId(null);
     setArchiveDraft({
       event_type: customer.event_type || intent.event_type || intent.service_type || "",
       guest_count: customer.guest_count || intent.guest_count || "",
@@ -136,6 +138,20 @@ export default function CustomerInfoPanel({
     });
     setArchiveOpen(true);
   };
+
+  const openEditEventDialog = (e: any) => {
+    setEditEventId(e.id);
+    setArchiveDraft({
+      event_type: e.event_type || "",
+      guest_count: e.guest_count || "",
+      event_date: e.event_date || "",
+      venue: e.venue || "",
+      total_amount: e.total_amount ?? 0,
+      notes: e.notes || "",
+    });
+    setArchiveOpen(true);
+  };
+
 
   const extractFromChat = async () => {
     setExtracting(true);
@@ -203,12 +219,35 @@ export default function CustomerInfoPanel({
     }
     setArchiving(true);
     try {
-      const adminPatch = {
+      const eventPayload = {
         event_type: d.event_type || null,
         guest_count: d.guest_count ? parseInt(d.guest_count) : null,
         event_date: d.event_date || null,
         venue: d.venue || null,
-        clv_amount: parseFloat(d.total_amount) || 0,
+        total_amount: parseFloat(d.total_amount) || 0,
+        notes: d.notes || null,
+      };
+
+      if (editEventId) {
+        // โหมดแก้ไขประวัติงานเดิม — ไม่แตะ customers, ไม่ reset สถานะ
+        const { error: updErr } = await supabase
+          .from("customer_events")
+          .update(eventPayload)
+          .eq("id", editEventId);
+        if (updErr) throw updErr;
+        toast.success("แก้ไขประวัติงานแล้ว");
+        setArchiveOpen(false);
+        setEditEventId(null);
+        loadEvents();
+        return;
+      }
+
+      const adminPatch = {
+        event_type: eventPayload.event_type,
+        guest_count: eventPayload.guest_count,
+        event_date: eventPayload.event_date,
+        venue: eventPayload.venue,
+        clv_amount: eventPayload.total_amount,
       };
       const { error: preErr } = await supabase
         .from("customers")
@@ -218,14 +257,9 @@ export default function CustomerInfoPanel({
 
       const { error: insErr } = await supabase.from("customer_events").insert({
         customer_id: customer.id,
-        event_type: adminPatch.event_type,
-        guest_count: adminPatch.guest_count,
-        event_date: adminPatch.event_date,
-        venue: adminPatch.venue,
+        ...eventPayload,
         package_name: null,
-        total_amount: adminPatch.clv_amount,
         status: "completed",
-        notes: d.notes || null,
       });
       if (insErr) throw insErr;
 
@@ -461,12 +495,22 @@ export default function CustomerInfoPanel({
                     {e.event_date || "—"} {e.venue ? `· ${e.venue}` : ""}
                   </div>
                 </div>
-                <button
-                  onClick={() => deleteEvent(e.id)}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={() => openEditEventDialog(e)}
+                    className="text-muted-foreground hover:text-primary"
+                    title="แก้ไข"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                  <button
+                    onClick={() => deleteEvent(e.id)}
+                    className="text-muted-foreground hover:text-destructive"
+                    title="ลบ"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -480,16 +524,17 @@ export default function CustomerInfoPanel({
         >
           <BookmarkCheck className="w-3 h-3 mr-1" /> ปิดงาน / บันทึกประวัติ
         </Button>
-        <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <Dialog open={archiveOpen} onOpenChange={(o) => { setArchiveOpen(o); if (!o) setEditEventId(null); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>ตรวจข้อมูลก่อนบันทึกเข้าประวัติ</DialogTitle>
+              <DialogTitle>{editEventId ? "แก้ไขประวัติงาน" : "ตรวจข้อมูลก่อนบันทึกเข้าประวัติ"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground flex-1">
-                  ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน
-                  แล้ว reset ช่องงาน + เปลี่ยนสถานะเป็น "สอบถาม" + ตั้งหมวดเป็น "ลูกค้าเก่า"
+                  {editEventId
+                    ? "แก้ไขข้อมูลประวัติงานนี้ — จะอัปเดตเฉพาะรายการในประวัติ ไม่กระทบสถานะปัจจุบันของลูกค้า"
+                    : 'ตรวจ/แก้ให้ถูกก่อนบันทึก — ค่าที่แก้จะอัปเดต customer + เก็บเข้าประวัติงาน แล้ว reset ช่องงาน + เปลี่ยนสถานะเป็น "สอบถาม" + ตั้งหมวดเป็น "ลูกค้าเก่า"'}
                 </p>
                 <Button
                   size="sm"
@@ -617,7 +662,7 @@ export default function CustomerInfoPanel({
               </Button>
               <Button onClick={archiveCurrentEvent} disabled={archiving}>
                 {archiving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                บันทึก
+                {editEventId ? "บันทึกการแก้ไข" : "บันทึก"}
               </Button>
             </DialogFooter>
           </DialogContent>
