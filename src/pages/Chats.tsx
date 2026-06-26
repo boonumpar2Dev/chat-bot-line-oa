@@ -528,7 +528,14 @@ export default function Chats() {
     supabase.from("customers").update({ unread_count: 0, admin_unseen: false }).eq("id", selectedId).then();
     const ch = supabase.channel(`conv-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations", filter: `customer_id=eq.${selectedId}` },
-        (payload) => setMessages(prev => [...prev, payload.new as Conversation]))
+        (payload) => {
+          const msg = payload.new as Conversation;
+          setMessages(prev => [...prev, msg]);
+          // ถ้าเป็นข้อความใหม่จากลูกค้าขณะแอดมินเปิดแชทอยู่ → เคลียร์ unread/admin_unseen ทันที
+          if (msg.sender === "customer") {
+            supabase.from("customers").update({ unread_count: 0, admin_unseen: false, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
+          }
+        })
       .subscribe();
     return () => { active = false; supabase.removeChannel(ch); };
   }, [selectedId]);
