@@ -366,6 +366,7 @@ function DailyReportTable() {
         return {
           day,
           dayKey,
+          newCustomersToday,
           completeSameDay,
           completeCarry,
           completeTotal,
