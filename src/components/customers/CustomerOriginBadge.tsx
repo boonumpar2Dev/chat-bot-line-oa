@@ -141,7 +141,7 @@ export default function CustomerOriginBadge({ customer, onUpdate, size = "sm" }:
               );
             })}
             <div className="px-3 py-1.5 text-[10px] text-muted-foreground border-t bg-muted/30">
-              💡 ระบบจะตั้ง "ลูกค้าเก่า" ให้อัตโนมัติเมื่อลูกค้าจัดงานจบแล้วทักกลับมา
+              💡 มีประวัติงาน (customer_events) = Returning · ข้อมูลเก่าไม่ครบ = Needs Review (แอดมินกดยืนยันเป็น New/Returning/Reactivated ได้)
             </div>
           </div>
         </>
