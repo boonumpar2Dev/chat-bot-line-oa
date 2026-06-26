@@ -14,7 +14,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { toast } from "sonner";
 import {
   Tag, X, Copy, ExternalLink, Smartphone, BookmarkCheck, History,
-  Phone, MapPin, Users as UsersIcon, Calendar, Loader2, Sparkles
+  Phone, MapPin, Users as UsersIcon, Calendar, Loader2, Sparkles, Pencil
 } from "lucide-react";
 
 const LIFF_ID = (import.meta as any).env?.VITE_LIFF_ID || "";
