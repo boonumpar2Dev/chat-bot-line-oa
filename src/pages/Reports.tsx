@@ -1,6 +1,8 @@
 import { ReportsLogSections } from "@/components/dashboard/DashboardExtraSections";
+import { useDashboardRealtime } from "@/hooks/useDashboardRealtime";
 
 export default function Reports() {
+  useDashboardRealtime();
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       <div>
