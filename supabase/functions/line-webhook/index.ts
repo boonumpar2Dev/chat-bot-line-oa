@@ -1455,6 +1455,31 @@ ${pastLines}
     imageTitles = expanded.slice(0, 8);
   }
 
+  // 🎬 Auto-attach VDO — ถ้า AI เลือก KB/แพ็ก/โปร ใดมา และไอเทมนั้นมีวิดีโออยู่ → แนบ VDO: ... ให้อัตโนมัติ
+  // (AI ไม่ค่อยเลือก VDO เอง เพราะ field ชื่อ image_titles; categorization ของแอดมินถูกแล้ว ส่งทุกอย่างที่มี)
+  if (imageTitles.length > 0) {
+    const withVideos = [...imageTitles];
+    const addOnce = (t: string) => { if (t && !withVideos.includes(t)) withVideos.push(t); };
+    for (const title of imageTitles) {
+      if (title.startsWith("VDO")) continue;
+      if (title.startsWith("แพ็กเกจ: ")) {
+        // tier ref ("แพ็กเกจ: ชื่อ — tier") หรือ package-level ("แพ็กเกจ: ชื่อ")
+        const rest = title.replace("แพ็กเกจ: ", "");
+        const pkgName = rest.split(" — ")[0];
+        const p = pkgsWithVideos.find((x: any) => x.name === pkgName);
+        if (p) addOnce(`VDO แพ็กเกจ: ${p.name}`);
+      } else if (title.startsWith("โปรโมชั่น: ")) {
+        const name = title.replace("โปรโมชั่น: ", "");
+        const pr = promosWithVideos.find((x: any) => x.name === name);
+        if (pr) addOnce(`VDO โปรโมชั่น: ${pr.name}`);
+      } else {
+        const k = kbWithVideos.find((x: any) => x.title === title);
+        if (k) addOnce(`VDO: ${k.title}`);
+      }
+    }
+    imageTitles = withVideos.slice(0, 8);
+  }
+
   // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
   const intent = aiResp.intent || {};
   const intentUpdate: any = {};
