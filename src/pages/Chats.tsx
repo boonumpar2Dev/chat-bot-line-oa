@@ -764,22 +764,34 @@ export default function Chats() {
   }, [msgMatchIds]);
 
   const filtered = useMemo(() => {
+    const base = handledIds.size > 0 ? customers.filter(c => !handledIds.has(c.id)) : customers;
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(c =>
+    if (!q) return base;
+    return base.filter(c =>
       (c.display_name || "").toLowerCase().includes(q) ||
       (c.nickname || "").toLowerCase().includes(q) ||
       (c.phone || "").includes(q) ||
       (c.line_user_id || "").toLowerCase().includes(q) ||
       msgMatchIds.has(c.id)
     );
-  }, [customers, search, msgMatchIds]);
+  }, [customers, search, msgMatchIds, handledIds]);
 
   const updateLocalCustomer = (patch: any) => {
     setCustomers(prev => {
       const idx = prev.findIndex(c => c.id === selectedId);
       if (idx < 0) return prev;
       const merged = { ...prev[idx], ...patch };
+      // Lead mode: ถ้าเปลี่ยน status / customer_origin → mark handled (จะหายจากรายการ)
+      if (leadParam && selectedId && leadIds?.includes(selectedId)) {
+        const statusChanged = patch.status !== undefined && patch.status !== prev[idx].status;
+        const originChanged = patch.customer_origin !== undefined && patch.customer_origin !== prev[idx].customer_origin;
+        if (statusChanged || originChanged) {
+          setHandledIds(p => {
+            if (p.has(selectedId)) return p;
+            const n = new Set(p); n.add(selectedId); return n;
+          });
+        }
+      }
       const stillMatches = isSearching || matchesFilter(merged, filter);
       if (!stillMatches) return prev.filter(c => c.id !== selectedId);
       const next = [...prev];
