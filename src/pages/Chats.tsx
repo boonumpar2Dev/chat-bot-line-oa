@@ -143,7 +143,7 @@ function applyFilter(q: any, filter: FilterKind) {
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
-  if (filter === "first_priority") return q.not("phone", "is", null).or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)");
+  if (filter === "first_priority") return q.not("phone", "is", null).neq("phone", "").or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)");
 
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
@@ -373,7 +373,7 @@ export default function Chats() {
     const [u, m, fp, aa] = await Promise.all([
       base().gt("unread_count", 0),
       base().eq("ai_active", false),
-      base().not("phone", "is", null).or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)"),
+      base().not("phone", "is", null).neq("phone", "").or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)"),
       base().eq("last_sender", "ai").eq("admin_unseen", true),
     ]);
     setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
@@ -523,9 +523,9 @@ export default function Chats() {
       if (active) setMessages(data || []);
     };
     load();
-    // เปิดแชท: เคลียร์ unread count อย่างเดียว — ห้าม reset admin_seen_at เพราะจะทำให้ badge "รอแอดมิน" หายทันที
-    // admin_seen_at จะ reset เมื่อแอดมินตอบจริงๆ (ดูใน sendMessage handler)
-    supabase.from("customers").update({ unread_count: 0 }).eq("id", selectedId).then();
+    // เปิดแชท: เคลียร์ unread count + admin_unseen (badge "รอแอดมิน" หาย เมื่อแอดมินเห็นแล้ว)
+    // หมายเหตุ: เคส status=pending_quote จะยังโชว์ใน First Priority จนกว่าจะเปลี่ยน status
+    supabase.from("customers").update({ unread_count: 0, admin_unseen: false }).eq("id", selectedId).then();
     const ch = supabase.channel(`conv-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations", filter: `customer_id=eq.${selectedId}` },
         (payload) => setMessages(prev => [...prev, payload.new as Conversation]))
