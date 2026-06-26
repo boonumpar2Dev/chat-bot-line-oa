@@ -26,21 +26,31 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "ยกเลิก",
 };
 
+type LeadRow = {
+  customer_id: string;
+  lead_type: "new" | "returning" | "reactivated" | "needs_review" | "other";
+  display_name: string | null;
+  nickname: string | null;
+  status: string;
+  customer_origin: string;
+  last_message_at: string;
+  created_at: string;
+  prev_message_at: string | null;
+  has_events: boolean;
+};
+
 export default function Dashboard() {
   const { data: stats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      const [c, u, conv, today, clv, confirmed, newToday, returningToday, legacyToday] = await Promise.all([
+      const [c, u, conv, today, clv, confirmed] = await Promise.all([
         supabase.from("customers").select("*", { count: "exact", head: true }),
         supabase.from("customers").select("*", { count: "exact", head: true }).gt("unread_count", 0),
         supabase.from("conversations").select("*", { count: "exact", head: true }),
         supabase.from("conversations").select("*", { count: "exact", head: true }).gte("created_at", todayStart),
         supabase.from("customers").select("clv_amount"),
         supabase.from("customers").select("*", { count: "exact", head: true }).in("status", ["confirmed", "confirmed_returning"]),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "new").gte("created_at", todayStart),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "returning").gte("last_message_at", todayStart),
-        supabase.from("customers").select("*", { count: "exact", head: true }).eq("customer_origin", "legacy").gte("last_message_at", todayStart),
       ]);
       const totalClv = (clv.data ?? []).reduce((s, r: any) => s + Number(r.clv_amount || 0), 0);
       return {
@@ -50,13 +60,22 @@ export default function Dashboard() {
         todayMsg: today.count ?? 0,
         totalClv,
         confirmed: confirmed.count ?? 0,
-        newToday: newToday.count ?? 0,
-        returningToday: returningToday.count ?? 0,
-        legacyToday: legacyToday.count ?? 0,
-        activeLeadsToday: (newToday.count ?? 0) + (returningToday.count ?? 0),
       };
     },
   });
+
+  // Phase 2: Lead Type ของลูกค้าที่ทักเข้ามาวันนี้ — มาจาก RPC dashboard_lead_types_today()
+  const { data: leadTypes } = useQuery({
+    queryKey: ["dashboard-lead-types-today"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("dashboard_lead_types_today" as any);
+      if (error) throw error;
+      return (data ?? []) as LeadRow[];
+    },
+    refetchInterval: 60_000,
+  });
+
+  const leadByType = (t: LeadRow["lead_type"]) => (leadTypes ?? []).filter(r => r.lead_type === t);
 
   // SLA breaches: คำนวณ on-the-fly จาก last_message_at + sla_hours (app_settings)
   // เงื่อนไข: ยังไม่ได้อ่าน (unread_count > 0), ไม่ใช่ confirmed/cancelled, และเกินเวลา SLA
@@ -146,36 +165,44 @@ export default function Dashboard() {
       </div>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <LeadOriginCard
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="font-display text-base font-semibold">Lead Type วันนี้</h2>
+          <p className="text-[11px] text-muted-foreground">
+            นับเฉพาะลูกค้าที่ทักเข้ามาวันนี้ (Asia/Bangkok) · คลิกการ์ดดูรายชื่อ
+          </p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <LeadTypeCard
             color="#378ADD"
-            label="New Lead วันนี้"
-            value={stats?.newToday}
-            hint="ลูกค้าใหม่จริงๆ"
-            origin="new"
-            mode="created"
+            label="New Lead"
+            hint="ลูกค้าใหม่จริง (created วันนี้)"
+            rows={leadByType("new")}
           />
-          <LeadOriginCard
+          <LeadTypeCard
+            color="#22A06B"
+            label="Reactivated"
+            hint="เคยทักไว้ เงียบ ≥ 30 วัน แล้วกลับมา"
+            rows={leadByType("reactivated")}
+          />
+          <LeadTypeCard
             color="#7F77DD"
-            label="Returning Lead วันนี้"
-            value={stats?.returningToday}
-            hint="ลูกค้าเก่ากลับมาทักวันนี้"
-            origin="returning"
-            mode="last_message"
+            label="Returning"
+            hint="มีประวัติงานในระบบ (customer_events)"
+            rows={leadByType("returning")}
           />
-          <LeadOriginCard
-            color="#888780"
-            label="Legacy วันนี้"
-            value={stats?.legacyToday}
-            hint="ก่อนเปิดระบบ (ไม่นับเป็น lead)"
-            origin="legacy"
-            mode="last_message"
-            dimmed
+          <LeadTypeCard
+            color="#D97706"
+            label="Needs Review"
+            hint="ข้อมูลเก่าไม่ครบ ต้องเช็กก่อนจัดกลุ่ม"
+            rows={leadByType("needs_review")}
+            highlight
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Active Leads วันนี้: <strong>{stats?.activeLeadsToday ?? "—"} คน</strong> (New + Returning)
-        </p>
+        {leadByType("other").length > 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            หมายเหตุ: มีลูกค้าอีก {leadByType("other").length} คนที่ยังจัดกลุ่มไม่ได้ (เช่น เงียบ &lt; 30 วันแล้วทักใหม่) — ไม่ถูกนับใน 4 การ์ดด้านบน
+          </p>
+        )}
       </div>
 
 
@@ -292,48 +319,30 @@ export default function Dashboard() {
   );
 }
 
-function LeadOriginCard({
-  color, label, value, hint, origin, mode, dimmed,
+function LeadTypeCard({
+  color, label, hint, rows, highlight,
 }: {
   color: string;
   label: string;
-  value: number | undefined;
   hint: string;
-  origin: "new" | "returning" | "legacy";
-  mode: "created" | "last_message";
-  dimmed?: boolean;
+  rows: LeadRow[];
+  highlight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-
-  const { data: list, isLoading } = useQuery({
-    queryKey: ["lead-origin-list", origin, mode, open],
-    enabled: open,
-    queryFn: async () => {
-      const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).toISOString();
-      const field = mode === "created" ? "created_at" : "last_message_at";
-      const { data } = await supabase
-        .from("customers")
-        .select("id, display_name, nickname, last_message_at, created_at, status")
-        .eq("customer_origin", origin)
-        .gte(field, todayStart)
-        .order(field, { ascending: false })
-        .limit(200);
-      return data ?? [];
-    },
-  });
+  const value = rows.length;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${dimmed ? "opacity-60" : ""}`}
+        className={`text-left rounded-lg border bg-card p-3 flex items-center gap-3 hover:bg-muted/40 hover:shadow-soft transition-all ${highlight ? "border-amber-300 dark:border-amber-700/60" : ""}`}
       >
         <div className="w-3 h-3 rounded-full shrink-0" style={{ background: color }} />
         <div className="flex-1 min-w-0">
           <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="font-display font-semibold text-xl">{value ?? "—"}</p>
-          <p className="text-[10px] text-muted-foreground">{hint} · คลิกดูรายชื่อ</p>
+          <p className="font-display font-semibold text-xl">{value}</p>
+          <p className="text-[10px] text-muted-foreground line-clamp-2">{hint}</p>
         </div>
       </button>
 
@@ -342,37 +351,35 @@ function LeadOriginCard({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full" style={{ background: color }} />
-              {label} ({value ?? 0} คน)
+              {label} ({value} คน)
             </DialogTitle>
+            <p className="text-xs text-muted-foreground mt-1">{hint}</p>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto -mx-6 px-6">
-            {isLoading && <p className="text-sm text-muted-foreground py-4">กำลังโหลด…</p>}
-            {!isLoading && list && list.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีรายชื่อ</p>
+            {value === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">ไม่มีรายชื่อในวันนี้</p>
             )}
             <div className="divide-y">
-              {list?.map((r: any) => {
-                const ts = mode === "created" ? r.created_at : r.last_message_at;
-                return (
-                  <Link
-                    key={r.id}
-                    to={`/chats?customer=${r.id}`}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
-                      {(r.nickname || r.display_name || "?")[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{r.nickname || r.display_name || "—"}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {ts ? formatDistanceToNow(new Date(ts), { addSuffix: true, locale: th }) : "—"}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
-                  </Link>
-                );
-              })}
+              {rows.map(r => (
+                <Link
+                  key={r.customer_id}
+                  to={`/chats?customer=${r.customer_id}`}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 py-2.5 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium shrink-0">
+                    {(r.nickname || r.display_name || "?")[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{r.nickname || r.display_name || "—"}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {r.last_message_at ? formatDistanceToNow(new Date(r.last_message_at), { addSuffix: true, locale: th }) : "—"}
+                      {r.prev_message_at && ` · เคยทัก ${formatDistanceToNow(new Date(r.prev_message_at), { addSuffix: true, locale: th })}`}
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] shrink-0">{r.status}</Badge>
+                </Link>
+              ))}
             </div>
           </div>
         </DialogContent>
@@ -380,4 +387,5 @@ function LeadOriginCard({
     </>
   );
 }
+
 
