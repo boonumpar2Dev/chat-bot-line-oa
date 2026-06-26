@@ -12,6 +12,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DashboardRealtimeSections } from "@/components/dashboard/DashboardExtraSections";
+import { QualifiedLeadTypeSection } from "@/components/dashboard/QualifiedLeadTypeSection";
 
 
 const STATUS_LABELS: Record<string, string> = {
