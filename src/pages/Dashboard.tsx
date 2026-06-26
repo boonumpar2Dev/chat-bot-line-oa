@@ -168,31 +168,34 @@ export default function Dashboard() {
 
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <h2 className="font-display text-base font-semibold">Lead Type วันนี้</h2>
+          <h2 className="font-display text-base font-semibold">ผู้ติดต่อวันนี้ (Contact Type Today)</h2>
           <p className="text-[11px] text-muted-foreground">
             นับเฉพาะลูกค้าที่ทักเข้ามาวันนี้ (Asia/Bangkok) · คลิกการ์ดดูรายชื่อ
           </p>
         </div>
+        <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 rounded px-2 py-1.5">
+          ⚠️ ตัวเลขนี้นับจากลูกค้าที่ทักเข้ามาวันนี้ ยังไม่ใช่จำนวน Lead ที่เข้า Pipeline — ดูตัวเลข Lead จริงได้ที่ Daily Sales Pipeline ด้านล่าง
+        </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <LeadTypeCard
             leadKey="new"
             color="#378ADD"
-            label="New Lead"
+            label="New Contact"
             hint="ลูกค้าใหม่จริง (created วันนี้)"
             rows={leadByType("new")}
           />
           <LeadTypeCard
             leadKey="reactivated"
             color="#22A06B"
-            label="Reactivated"
+            label="Reactivated Contact"
             hint="เคยทักไว้ เงียบ ≥ 30 วัน แล้วกลับมา"
             rows={leadByType("reactivated")}
           />
           <LeadTypeCard
             leadKey="returning"
             color="#7F77DD"
-            label="Returning"
-            hint="มีประวัติงานในระบบ (customer_events)"
+            label="Returning Contact"
+            hint="มีประวัติงานในระบบ (อาจเป็น follow-up หลังงาน ไม่ใช่ Lead ใหม่)"
             rows={leadByType("returning")}
           />
           <LeadTypeCard
