@@ -416,6 +416,7 @@ function DailyReportTable() {
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left p-3 font-medium">วันที่</th>
+                <th className="text-right p-3 font-medium">ลูกค้าใหม่วันนี้</th>
                 <th className="text-right p-3 font-medium">ได้ข้อมูลครบใหม่วันนี้</th>
                 <th className="text-right p-3 font-medium">ค้างทำใบจากก่อนหน้า</th>
                 <th className="text-right p-3 font-medium bg-muted/20">รวมต้องทำใบวันนี้</th>
