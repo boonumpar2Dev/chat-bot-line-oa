@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Sparkles, RotateCcw, History } from "lucide-react";
+import { ChevronDown, Sparkles, RotateCcw, History, AlertCircle, Repeat } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Origin = "new" | "returning" | "legacy";
+type Origin = "new" | "returning" | "reactivated" | "needs_review" | "legacy";
 
 const ORIGIN_OPTIONS: Array<{
   value: Origin;
@@ -26,20 +26,38 @@ const ORIGIN_OPTIONS: Array<{
   },
   {
     value: "returning",
-    label: "ลูกค้าเก่า (กลับมา)",
+    label: "ลูกค้าเก่า (มีประวัติงาน)",
     short: "ลูกค้าเก่า",
-    desc: "เคยจัดงานในระบบนี้แล้ว กลับมาทักใหม่",
+    desc: "มีประวัติงานในระบบ (customer_events) แล้วกลับมาทักใหม่",
     badgeClass: "bg-purple-100 text-purple-700 border-purple-200",
     dotClass: "bg-purple-500",
     icon: RotateCcw,
   },
   {
-    value: "legacy",
-    label: "ลูกค้าก่อนเปิดระบบ",
-    short: "ลูกค้าเก่า (Legacy)",
-    desc: "เคยจัดงานก่อนใช้ระบบนี้",
+    value: "reactivated",
+    label: "กลับมาทักใหม่",
+    short: "Reactivated",
+    desc: "เคยทักไว้ เงียบไป ≥ 30 วัน แล้วกลับมา",
+    badgeClass: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    dotClass: "bg-emerald-500",
+    icon: Repeat,
+  },
+  {
+    value: "needs_review",
+    label: "ต้องตรวจสอบ",
+    short: "Needs Review",
+    desc: "ข้อมูลเก่าไม่ครบ ต้องเช็กก่อนจัดกลุ่ม (legacy/returning ที่ไม่มี event/สถานะ complete แต่ไม่มี event)",
     badgeClass: "bg-amber-100 text-amber-800 border-amber-200",
     dotClass: "bg-amber-500",
+    icon: AlertCircle,
+  },
+  {
+    value: "legacy",
+    label: "ลูกค้าก่อนเปิดระบบ (เลิกใช้)",
+    short: "Legacy",
+    desc: "หมวดเก่า — ไม่ใช้แล้ว ระบบย้ายไป Needs Review",
+    badgeClass: "bg-slate-100 text-slate-600 border-slate-200",
+    dotClass: "bg-slate-400",
     icon: History,
   },
 ];
