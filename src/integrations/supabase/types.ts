@@ -1310,6 +1310,22 @@ export type Database = {
           status: string
         }[]
       }
+      dashboard_qualified_lead_types_today: {
+        Args: never
+        Returns: {
+          created_at: string
+          customer_id: string
+          customer_origin: string
+          display_name: string
+          entered_pending_at: string
+          has_events: boolean
+          last_message_at: string
+          lead_type: string
+          nickname: string
+          prev_message_at: string
+          status: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
