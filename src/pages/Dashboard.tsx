@@ -165,36 +165,44 @@ export default function Dashboard() {
       </div>
 
       <div className="space-y-2">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <LeadOriginCard
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h2 className="font-display text-base font-semibold">Lead Type วันนี้</h2>
+          <p className="text-[11px] text-muted-foreground">
+            นับเฉพาะลูกค้าที่ทักเข้ามาวันนี้ (Asia/Bangkok) · คลิกการ์ดดูรายชื่อ
+          </p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <LeadTypeCard
             color="#378ADD"
-            label="New Lead วันนี้"
-            value={stats?.newToday}
-            hint="ลูกค้าใหม่จริงๆ"
-            origin="new"
-            mode="created"
+            label="New Lead"
+            hint="ลูกค้าใหม่จริง (created วันนี้)"
+            rows={leadByType("new")}
           />
-          <LeadOriginCard
+          <LeadTypeCard
+            color="#22A06B"
+            label="Reactivated"
+            hint="เคยทักไว้ เงียบ ≥ 30 วัน แล้วกลับมา"
+            rows={leadByType("reactivated")}
+          />
+          <LeadTypeCard
             color="#7F77DD"
-            label="Returning Lead วันนี้"
-            value={stats?.returningToday}
-            hint="ลูกค้าเก่ากลับมาทักวันนี้"
-            origin="returning"
-            mode="last_message"
+            label="Returning"
+            hint="มีประวัติงานในระบบ (customer_events)"
+            rows={leadByType("returning")}
           />
-          <LeadOriginCard
-            color="#888780"
-            label="Legacy วันนี้"
-            value={stats?.legacyToday}
-            hint="ก่อนเปิดระบบ (ไม่นับเป็น lead)"
-            origin="legacy"
-            mode="last_message"
-            dimmed
+          <LeadTypeCard
+            color="#D97706"
+            label="Needs Review"
+            hint="ข้อมูลเก่าไม่ครบ ต้องเช็กก่อนจัดกลุ่ม"
+            rows={leadByType("needs_review")}
+            highlight
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Active Leads วันนี้: <strong>{stats?.activeLeadsToday ?? "—"} คน</strong> (New + Returning)
-        </p>
+        {leadByType("other").length > 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            หมายเหตุ: มีลูกค้าอีก {leadByType("other").length} คนที่ยังจัดกลุ่มไม่ได้ (เช่น เงียบ &lt; 30 วันแล้วทักใหม่) — ไม่ถูกนับใน 4 การ์ดด้านบน
+          </p>
+        )}
       </div>
 
 
