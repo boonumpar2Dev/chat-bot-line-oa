@@ -299,6 +299,11 @@ function DailyReportTable() {
           (l: any) => tzYmd(new Date(l.changed_at)) === dayKey
         );
 
+        // ===== Col2a: ลูกค้าใหม่วันนี้ (created_at วัน BKK = day) =====
+        const newCustomersToday = Object.values(createdDayById).filter(
+          (k) => k === dayKey
+        ).length;
+
         // ===== Col2: ได้ข้อมูลครบใหม่วันนี้ (unique → pending_quote วันนี้) =====
         const completeIds = new Set<string>();
         logsToday.forEach((l: any) => {
@@ -361,6 +366,7 @@ function DailyReportTable() {
         return {
           day,
           dayKey,
+          newCustomersToday,
           completeSameDay,
           completeCarry,
           completeTotal,
@@ -406,10 +412,11 @@ function DailyReportTable() {
         {error && <p className="p-5 text-sm text-destructive">โหลดข้อมูลไม่สำเร็จ</p>}
         {isLoading && <p className="p-5 text-sm text-muted-foreground">กำลังโหลด...</p>}
         {data && (
-          <table className="w-full text-sm min-w-[1080px]">
+          <table className="w-full text-sm min-w-[1200px]">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
                 <th className="text-left p-3 font-medium">วันที่</th>
+                <th className="text-right p-3 font-medium">ลูกค้าใหม่วันนี้</th>
                 <th className="text-right p-3 font-medium">ได้ข้อมูลครบใหม่วันนี้</th>
                 <th className="text-right p-3 font-medium">ค้างทำใบจากก่อนหน้า</th>
                 <th className="text-right p-3 font-medium bg-muted/20">รวมต้องทำใบวันนี้</th>
@@ -440,7 +447,11 @@ function DailyReportTable() {
                         )}
                       </div>
                     </td>
+                    <td className="p-3 text-right tabular-nums font-semibold text-sky-700 dark:text-sky-300">
+                      {row.newCustomersToday}
+                    </td>
                     <td className="p-3 text-right tabular-nums leading-tight">
+
                       <div className="font-semibold">{row.completeTotal}</div>
                       {row.completeTotal > 0 && (
                         <div className="text-[10px] text-muted-foreground">
