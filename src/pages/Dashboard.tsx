@@ -173,24 +173,28 @@ export default function Dashboard() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <LeadTypeCard
+            leadKey="new"
             color="#378ADD"
             label="New Lead"
             hint="ลูกค้าใหม่จริง (created วันนี้)"
             rows={leadByType("new")}
           />
           <LeadTypeCard
+            leadKey="reactivated"
             color="#22A06B"
             label="Reactivated"
             hint="เคยทักไว้ เงียบ ≥ 30 วัน แล้วกลับมา"
             rows={leadByType("reactivated")}
           />
           <LeadTypeCard
+            leadKey="returning"
             color="#7F77DD"
             label="Returning"
             hint="มีประวัติงานในระบบ (customer_events)"
             rows={leadByType("returning")}
           />
           <LeadTypeCard
+            leadKey="needs_review"
             color="#D97706"
             label="Needs Review"
             hint="ข้อมูลเก่าไม่ครบ ต้องเช็กก่อนจัดกลุ่ม"
