@@ -1668,13 +1668,21 @@ ${pastLines}
       if (k) for (const u of getItemImages(k)) mediaList.push({ type: "image", url: u });
     }
   }
-  // dedup URLs (กันรูปซ้ำ) + cap จาก Settings (max_images_per_reply, default 5)
-  const maxMedia = Math.max(1, Math.min(20, Number(cfg.max_images_per_reply) || 5));
+  // dedup URLs (กันรูปซ้ำ) + cap แยกระหว่างรูป/วิดีโอ
+  // - รูป: cap จาก Settings (max_images_per_reply, default 5) กัน spam
+  // - วิดีโอ: ส่งทุกตัวที่ AI เลือก (cap แยก 3 คลิป) เพราะวิดีโอสำคัญ ต้องไปถึงลูกค้า
+  const maxImages = Math.max(1, Math.min(20, Number(cfg.max_images_per_reply) || 5));
+  const maxVideos = 3;
   const seenUrls = new Set<string>();
-  const allMedia = mediaList.filter(m => {
+  const dedupMedia = mediaList.filter(m => {
     if (seenUrls.has(m.url)) return false;
     seenUrls.add(m.url); return true;
-  }).slice(0, maxMedia);
+  });
+  const videos = dedupMedia.filter(m => m.type === "video").slice(0, maxVideos);
+  const images = dedupMedia.filter(m => m.type === "image").slice(0, maxImages);
+  // ส่งวิดีโอก่อนรูป เพื่อให้ลูกค้าเห็นวิดีโอเด่นในแชท
+  const allMedia = [...videos, ...images];
+
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
   const mediaToSend = sameTitles ? [] : allMedia;
