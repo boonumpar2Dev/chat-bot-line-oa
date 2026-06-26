@@ -143,7 +143,7 @@ function applyFilter(q: any, filter: FilterKind) {
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
-  if (filter === "first_priority") return q.not("phone", "is", null).or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)");
+  if (filter === "first_priority") return q.not("phone", "is", null).neq("phone", "").or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)");
 
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
