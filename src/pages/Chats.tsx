@@ -263,6 +263,39 @@ export default function Chats() {
       setFilter(filterParam as FilterKind);
     }
   }, []);
+
+  // Lead-type filter (มาจาก Dashboard เช่น /chats?lead=needs_review)
+  const leadParam = sp.get("lead") as null | "new" | "reactivated" | "returning" | "needs_review";
+  const [leadIds, setLeadIds] = useState<string[] | null>(null);
+  const [handledIds, setHandledIds] = useState<Set<string>>(new Set());
+  const LEAD_LABEL: Record<string, string> = {
+    new: "New Lead",
+    reactivated: "Reactivated",
+    returning: "Returning",
+    needs_review: "Needs Review",
+  };
+  useEffect(() => {
+    setHandledIds(new Set());
+    if (!leadParam) { setLeadIds(null); return; }
+    let active = true;
+    (async () => {
+      const { data, error } = await supabase.rpc("dashboard_lead_types_today" as any);
+      if (!active) return;
+      if (error) { setLeadIds([]); return; }
+      const ids = ((data ?? []) as any[])
+        .filter(r => r.lead_type === leadParam)
+        .map(r => r.customer_id as string);
+      setLeadIds(ids);
+    })();
+    return () => { active = false; };
+  }, [leadParam]);
+  const clearLeadFilter = () => {
+    setSp(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete("lead");
+      return next;
+    }, { replace: true });
+  };
   const [filterCounts, setFilterCounts] = useState<{ unread: number; manual: number; first_priority: number; awaiting_admin: number }>({ unread: 0, manual: 0, first_priority: 0, awaiting_admin: 0 });
   const [reply, setReply] = useState<string>(() => readDraft(user?.id, sp.get("customer")).text || "");
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>(() => readDraft(user?.id, sp.get("customer")).files || []);
