@@ -1213,7 +1213,12 @@ export default function Chats() {
             const isFirstPriority = getFirstPriority(c);
             const isAwaitingAdmin = !isFirstPriority && getAwaitingAdmin(c);
             return (
-            <button key={c.id} onClick={() => setSelectedId(c.id)}
+            <button key={c.id} onClick={() => {
+              // กดเลือกจากลิสต์ → ลงล่างสุดเสมอ + เคลียร์ unread ทันที (กันค้างถ้าคลิกห้องเดิมซ้ำจาก notification)
+              chatScrollPositions.delete(c.id);
+              markCustomerSeen(c.id);
+              setSelectedId(c.id);
+            }}
               className={cn(
                 "w-full text-left p-3 flex gap-3 border-b hover:bg-accent/50 transition",
                 selectedId === c.id && "bg-accent",
