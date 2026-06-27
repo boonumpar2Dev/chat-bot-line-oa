@@ -648,6 +648,11 @@ export default function Chats() {
   const restoredRoomRef = useRef<string | null>(null);
   const lastMsgIdRef = useRef<string | null>(null);
   const wasNearBottomRef = useRef<boolean>(true);
+  // true เฉพาะ render แรกหลัง mount → ใช้แยก "กลับมาจากหน้าอื่น" ออกจาก "สลับห้องระหว่างอยู่หน้า Chats"
+  const justMountedRef = useRef<boolean>(true);
+  useEffect(() => {
+    return () => { justMountedRef.current = true; };
+  }, []);
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
