@@ -689,6 +689,28 @@ export default function Chats() {
       // ไม่มีตำแหน่งเดิม → เพิ่งคลิกเข้ามาห้องนี้ครั้งแรก → เลื่อนลงล่างสุด
       restoredRoomRef.current = null;
       wasNearBottomRef.current = true;
+    if (isRoomSwitch) {
+      // กลับมาจากหน้าอื่น (mount ใหม่) + มีตำแหน่งบันทึก → restore
+      // สลับห้องระหว่างอยู่หน้า Chats → ไปล่างสุดเสมอ + ล้าง saved ของห้องนั้น
+      const cameFromOtherPage = justMountedRef.current;
+      justMountedRef.current = false;
+      const saved = selectedId ? chatScrollPositions.get(selectedId) : undefined;
+      if (cameFromOtherPage && saved !== undefined && saved >= 0) {
+        const restore = () => { viewport.scrollTop = saved; };
+        requestAnimationFrame(() => {
+          restore();
+          timers = [50, 150, 350, 700].map(ms => setTimeout(restore, ms));
+        });
+        restoredRoomRef.current = selectedId;
+        wasNearBottomRef.current = false;
+        return () => {
+          timers.forEach(clearTimeout);
+        };
+      }
+      // สลับห้อง หรือเข้าห้องครั้งแรก → ลงล่างสุด
+      if (selectedId) chatScrollPositions.delete(selectedId);
+      restoredRoomRef.current = null;
+      wasNearBottomRef.current = true;
       requestAnimationFrame(() => {
         scrollToBottom("auto");
         timers = [50, 150, 350, 700, 1200, 2000].map(ms =>
