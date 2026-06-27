@@ -648,6 +648,11 @@ export default function Chats() {
   const restoredRoomRef = useRef<string | null>(null);
   const lastMsgIdRef = useRef<string | null>(null);
   const wasNearBottomRef = useRef<boolean>(true);
+  // true เฉพาะ render แรกหลัง mount → ใช้แยก "กลับมาจากหน้าอื่น" ออกจาก "สลับห้องระหว่างอยู่หน้า Chats"
+  const justMountedRef = useRef<boolean>(true);
+  useEffect(() => {
+    return () => { justMountedRef.current = true; };
+  }, []);
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
@@ -666,13 +671,15 @@ export default function Chats() {
     let stopTimer: ReturnType<typeof setTimeout> | null = null;
 
     if (isRoomSwitch) {
-      // มีตำแหน่งที่บันทึกไว้ (เช่น กลับมาจากหน้าอื่น) → คืนตำแหน่งเดิม ไม่ดึงลงล่าง
+      // กลับมาจากหน้าอื่น (mount ใหม่) + มีตำแหน่งบันทึก → restore
+      // สลับห้องระหว่างอยู่หน้า Chats → ไปล่างสุดเสมอ + ล้าง saved ของห้องนั้น
+      const cameFromOtherPage = justMountedRef.current;
+      justMountedRef.current = false;
       const saved = selectedId ? chatScrollPositions.get(selectedId) : undefined;
-      if (saved !== undefined && saved >= 0) {
+      if (cameFromOtherPage && saved !== undefined && saved >= 0) {
         const restore = () => { viewport.scrollTop = saved; };
         requestAnimationFrame(() => {
           restore();
-          // ยิงซ้ำกัน layout ขยับเล็กน้อยตอนรูป/วิดีโอโหลด
           timers = [50, 150, 350, 700].map(ms => setTimeout(restore, ms));
         });
         restoredRoomRef.current = selectedId;
@@ -681,7 +688,8 @@ export default function Chats() {
           timers.forEach(clearTimeout);
         };
       }
-      // ไม่มีตำแหน่งเดิม → เพิ่งคลิกเข้ามาห้องนี้ครั้งแรก → เลื่อนลงล่างสุด
+      // สลับห้อง หรือเข้าห้องครั้งแรก → ลงล่างสุด
+      if (selectedId) chatScrollPositions.delete(selectedId);
       restoredRoomRef.current = null;
       wasNearBottomRef.current = true;
       requestAnimationFrame(() => {
