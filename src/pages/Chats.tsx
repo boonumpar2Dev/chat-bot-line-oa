@@ -386,7 +386,7 @@ export default function Chats() {
     setCustomers(prev => {
       const idx = prev.findIndex(c => c.id === id);
       if (idx < 0) return prev;
-      if ((prev[idx].unread_count || 0) === 0 && prev[idx].last_sender !== "ai") return prev;
+      if ((prev[idx].unread_count || 0) === 0 && prev[idx].admin_unseen !== true && prev[idx].last_sender !== "ai") return prev;
       const next = [...prev];
       next[idx] = { ...next[idx], unread_count: 0, admin_seen_at: new Date().toISOString(), admin_unseen: false };
       return next;
