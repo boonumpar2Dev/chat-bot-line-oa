@@ -132,6 +132,9 @@ Deno.serve(async (req) => {
         manual_chat_until: until,
         last_message_at: new Date().toISOString(),
         last_message_snippet: `👤 ${text.slice(0, 120)}`,
+        unread_count: 0,
+        admin_unseen: false,
+        admin_seen_at: new Date().toISOString(),
       }).eq("id", customer_id);
 
       // Fire-and-forget: ถ้าลูกค้ายังไม่มีเบอร์ ให้ AI ลอง extract จากบทสนทนา (ไม่ block admin)
