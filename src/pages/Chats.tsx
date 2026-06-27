@@ -380,6 +380,23 @@ export default function Chats() {
   };
   useEffect(() => { refreshCounts(); }, []);
 
+  // เคลียร์ unread ของลูกค้าหนึ่งราย: optimistic UI + อัปเดต DB (admin_unseen เป็น generated → ใช้ admin_seen_at)
+  const markCustomerSeen = (id: string | null | undefined) => {
+    if (!id) return;
+    setCustomers(prev => {
+      const idx = prev.findIndex(c => c.id === id);
+      if (idx < 0) return prev;
+      if ((prev[idx].unread_count || 0) === 0 && prev[idx].last_sender !== "ai") return prev;
+      const next = [...prev];
+      next[idx] = { ...next[idx], unread_count: 0, admin_seen_at: new Date().toISOString() };
+      return next;
+    });
+    supabase.from("customers")
+      .update({ unread_count: 0, admin_seen_at: new Date().toISOString() })
+      .eq("id", id)
+      .then(() => { refreshCounts(); });
+  };
+
   // Polling fallback + refocus → keep filter counts fresh even if realtime drops
   useEffect(() => {
     const interval = setInterval(() => {
