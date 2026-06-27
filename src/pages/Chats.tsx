@@ -430,7 +430,7 @@ export default function Chats() {
         }
         // Safety net: ถ้าเป็นห้องที่แอดมินกำลังเปิดอยู่ แต่ยังมี unread/admin_unseen ค้าง → เคลียร์ซ้ำ
         if (newRow.id === selectedId && ((newRow.unread_count || 0) > 0 || newRow.admin_unseen === true)) {
-          supabase.from("customers").update({ unread_count: 0, admin_unseen: false, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
+          supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
         }
         // Refresh counts (debounced via microtask is overkill; cheap enough)
         refreshCounts();
@@ -529,7 +529,7 @@ export default function Chats() {
     load();
     // เปิดแชท: เคลียร์ unread count + admin_unseen (badge "รอแอดมิน" หาย เมื่อแอดมินเห็นแล้ว)
     // หมายเหตุ: เคส status=pending_quote จะยังโชว์ใน First Priority จนกว่าจะเปลี่ยน status
-    supabase.from("customers").update({ unread_count: 0, admin_unseen: false }).eq("id", selectedId).then();
+    supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
     const ch = supabase.channel(`conv-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations", filter: `customer_id=eq.${selectedId}` },
         (payload) => {
@@ -537,7 +537,7 @@ export default function Chats() {
           setMessages(prev => [...prev, msg]);
           // ถ้าเป็นข้อความใหม่จากลูกค้าขณะแอดมินเปิดแชทอยู่ → เคลียร์ unread/admin_unseen ทันที
           if (msg.sender === "customer") {
-            supabase.from("customers").update({ unread_count: 0, admin_unseen: false, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
+            supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
           }
         })
       .subscribe();
@@ -1005,7 +1005,7 @@ export default function Chats() {
       });
       if (error) throw error;
       // แอดมินตอบแล้ว → เคลียร์ unread + admin_unseen + อัปเดต admin_seen_at เพื่อปลด badge ทั้งหมด
-      supabase.from("customers").update({ unread_count: 0, admin_unseen: false, admin_seen_at: new Date().toISOString() }).eq("id", selected.id).then();
+      supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selected.id).then();
       setReply("");
       const sentFiles = [...stagedFiles];
       setStagedFiles([]);

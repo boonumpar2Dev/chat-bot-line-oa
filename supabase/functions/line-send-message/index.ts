@@ -133,7 +133,6 @@ Deno.serve(async (req) => {
         last_message_at: new Date().toISOString(),
         last_message_snippet: `👤 ${text.slice(0, 120)}`,
         unread_count: 0,
-        admin_unseen: false,
         admin_seen_at: new Date().toISOString(),
       }).eq("id", customer_id);
 
