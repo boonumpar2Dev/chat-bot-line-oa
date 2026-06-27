@@ -428,6 +428,10 @@ export default function Chats() {
             });
           }
         }
+        // Safety net: ถ้าเป็นห้องที่แอดมินกำลังเปิดอยู่ แต่ยังมี unread/admin_unseen ค้าง → เคลียร์ซ้ำ
+        if (newRow.id === selectedId && ((newRow.unread_count || 0) > 0 || newRow.admin_unseen === true)) {
+          supabase.from("customers").update({ unread_count: 0, admin_unseen: false, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
+        }
         // Refresh counts (debounced via microtask is overkill; cheap enough)
         refreshCounts();
         setCustomers(prev => {
