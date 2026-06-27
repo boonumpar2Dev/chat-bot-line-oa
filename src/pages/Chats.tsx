@@ -537,6 +537,8 @@ export default function Chats() {
   // Messages + realtime
   useEffect(() => {
     if (!selectedId) { setMessages([]); return; }
+    // ล้าง messages ของห้องเก่าทันทีกัน useEffect scroll ทำงานกับข้อมูลค้าง
+    setMessages([]);
     let active = true;
     const load = async () => {
       const { data } = await supabase.from("conversations").select("*")
@@ -544,21 +546,27 @@ export default function Chats() {
       if (active) setMessages(data || []);
     };
     load();
-    // เปิดแชท: เคลียร์ unread count + admin_unseen (badge "รอแอดมิน" หาย เมื่อแอดมินเห็นแล้ว)
-    // หมายเหตุ: เคส status=pending_quote จะยังโชว์ใน First Priority จนกว่าจะเปลี่ยน status
-    supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
+    // เปิดแชท: เคลียร์ unread + อัปเดต admin_seen_at (badge "รอแอดมิน" หาย)
+    markCustomerSeen(selectedId);
     const ch = supabase.channel(`conv-${selectedId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversations", filter: `customer_id=eq.${selectedId}` },
         (payload) => {
           const msg = payload.new as Conversation;
           setMessages(prev => [...prev, msg]);
-          // ถ้าเป็นข้อความใหม่จากลูกค้าขณะแอดมินเปิดแชทอยู่ → เคลียร์ unread/admin_unseen ทันที
-          if (msg.sender === "customer") {
-            supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
-          }
+          // ข้อความใหม่จากลูกค้าขณะแอดมินเปิดแชทอยู่ → เคลียร์ unread ทันที
+          if (msg.sender === "customer") markCustomerSeen(selectedId);
         })
       .subscribe();
-    return () => { active = false; supabase.removeChannel(ch); };
+    // เมื่อกลับมา tab แล้วยังเปิดห้องนี้อยู่ → เคลียร์ซ้ำ (กันค้างจาก notification ที่เข้ามาขณะ tab ซ่อน)
+    const onVis = () => {
+      if (document.visibilityState === "visible") markCustomerSeen(selectedId);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      active = false;
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, [selectedId]);
 
   // Draft persistence: save outgoing typed message + staged files per (userId, customer) in localStorage
