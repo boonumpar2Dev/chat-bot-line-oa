@@ -386,9 +386,9 @@ export default function Chats() {
     setCustomers(prev => {
       const idx = prev.findIndex(c => c.id === id);
       if (idx < 0) return prev;
-      if ((prev[idx].unread_count || 0) === 0 && prev[idx].last_sender !== "ai") return prev;
+      if ((prev[idx].unread_count || 0) === 0 && prev[idx].admin_unseen !== true && prev[idx].last_sender !== "ai") return prev;
       const next = [...prev];
-      next[idx] = { ...next[idx], unread_count: 0, admin_seen_at: new Date().toISOString() };
+      next[idx] = { ...next[idx], unread_count: 0, admin_seen_at: new Date().toISOString(), admin_unseen: false };
       return next;
     });
     supabase.from("customers")
@@ -1038,7 +1038,7 @@ export default function Chats() {
       });
       if (error) throw error;
       // แอดมินตอบแล้ว → เคลียร์ unread + admin_unseen + อัปเดต admin_seen_at เพื่อปลด badge ทั้งหมด
-      supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selected.id).then();
+      markCustomerSeen(selected.id);
       setReply("");
       const sentFiles = [...stagedFiles];
       setStagedFiles([]);
