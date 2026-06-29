@@ -378,7 +378,18 @@ export default function Chats() {
     ]);
     setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
-  useEffect(() => { refreshCounts(); }, []);
+  // Debounced version: รวม burst หลาย realtime event เป็น refresh รอบเดียว (1500ms)
+  // ใช้กับ realtime channel เท่านั้น — ไม่ใช้กับ focus/visibility/markCustomerSeen ที่ต้องการ refresh ทันที
+  const refreshCountsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefreshCounts = () => {
+    if (refreshCountsTimerRef.current) clearTimeout(refreshCountsTimerRef.current);
+    refreshCountsTimerRef.current = setTimeout(() => { refreshCounts(); }, 1500);
+  };
+  useEffect(() => {
+    refreshCounts();
+    return () => { if (refreshCountsTimerRef.current) clearTimeout(refreshCountsTimerRef.current); };
+  }, []);
+
 
   // เคลียร์ unread ของลูกค้าหนึ่งราย: optimistic UI + อัปเดต DB (admin_unseen เป็น generated → ใช้ admin_seen_at)
   const markCustomerSeen = (id: string | null | undefined) => {
