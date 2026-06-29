@@ -412,6 +412,10 @@ export default function Settings() {
       {/* Notification sound */}
       <NotificationSoundCard />
 
+      {/* Quotation auto-detection */}
+      <QuotationAutoDetectionCard />
+
+
 
       {/* Linked pages */}
       <Card className="p-6 shadow-soft border-border/60 bg-primary/5">
