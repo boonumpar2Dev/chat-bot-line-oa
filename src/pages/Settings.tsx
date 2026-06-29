@@ -551,9 +551,7 @@ function QuotationAutoDetectionCard() {
   const validate = (s: string): { ok: boolean; obj?: any; error?: string } => {
     let obj: any;
     try { obj = JSON.parse(s); } catch (e: any) { return { ok: false, error: "JSON ไม่ถูก: " + e.message }; }
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const mod = require("@/lib/quotationDetection") as typeof import("@/lib/quotationDetection");
-    const v = mod.validateQuotationConfig(obj);
+    const v = validateQuotationConfig(obj);
     if (!v.ok) return { ok: false, error: (v as any).error };
     return { ok: true, obj: (v as any).config };
   };
