@@ -378,7 +378,18 @@ export default function Chats() {
     ]);
     setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
-  useEffect(() => { refreshCounts(); }, []);
+  // Debounced version: รวม burst หลาย realtime event เป็น refresh รอบเดียว (1500ms)
+  // ใช้กับ realtime channel เท่านั้น — ไม่ใช้กับ focus/visibility/markCustomerSeen ที่ต้องการ refresh ทันที
+  const refreshCountsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefreshCounts = () => {
+    if (refreshCountsTimerRef.current) clearTimeout(refreshCountsTimerRef.current);
+    refreshCountsTimerRef.current = setTimeout(() => { refreshCounts(); }, 1500);
+  };
+  useEffect(() => {
+    refreshCounts();
+    return () => { if (refreshCountsTimerRef.current) clearTimeout(refreshCountsTimerRef.current); };
+  }, []);
+
 
   // เคลียร์ unread ของลูกค้าหนึ่งราย: optimistic UI + อัปเดต DB (admin_unseen เป็น generated → ใช้ admin_seen_at)
   const markCustomerSeen = (id: string | null | undefined) => {
@@ -450,7 +461,7 @@ export default function Chats() {
           supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
         }
         // Refresh counts (debounced via microtask is overkill; cheap enough)
-        refreshCounts();
+        scheduleRefreshCounts();
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === newRow.id);
           const merged = idx >= 0 ? { ...prev[idx], ...newRow } : newRow;
@@ -481,7 +492,7 @@ export default function Chats() {
         }
         const { data: fresh } = await supabase.from("customers").select("*").eq("id", cid).maybeSingle();
         if (!fresh) return;
-        refreshCounts();
+        scheduleRefreshCounts();
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === cid);
           const merged = idx >= 0 ? { ...prev[idx], ...fresh } : fresh;
