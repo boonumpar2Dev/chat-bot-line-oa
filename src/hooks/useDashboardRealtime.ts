@@ -4,11 +4,24 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Hook for Dashboard / Reports pages: subscribe to postgres changes on the
- * tables that feed those pages and invalidate all react-query caches so the
- * UI re-fetches automatically (no manual refresh needed).
+ * tables that feed those pages and invalidate ONLY the relevant react-query
+ * caches (no global invalidateQueries — that caused refetch storms).
  *
- * Debounced (~500ms) to batch bursts of changes.
+ * Debounced (~2500ms) so a burst of realtime events triggers a single refetch.
  */
+const DASHBOARD_QUERY_KEYS: readonly (readonly unknown[])[] = [
+  ["dashboard-stats"],
+  ["dashboard-lead-types-today"],
+  ["dashboard-qualified-lead-types-today"],
+  ["sla-breached"],
+  ["top-clv"],
+  ["recent-customers"],
+  ["daily-report-v4"],
+  ["funnel-today"],
+  ["backlog-card"],
+  ["current-status-grid"],
+];
+
 export function useDashboardRealtime() {
   const qc = useQueryClient();
   useEffect(() => {
@@ -22,8 +35,11 @@ export function useDashboardRealtime() {
     const invalidate = () => {
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
-        qc.invalidateQueries();
-      }, 500);
+        // Invalidate only known dashboard/reports query keys (prefix match).
+        for (const key of DASHBOARD_QUERY_KEYS) {
+          qc.invalidateQueries({ queryKey: key as unknown[] });
+        }
+      }, 2500);
     };
 
     const channel = supabase.channel(`dashboard-rt-${Math.random().toString(36).slice(2, 8)}`);
