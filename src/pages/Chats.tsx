@@ -461,7 +461,7 @@ export default function Chats() {
           supabase.from("customers").update({ unread_count: 0, admin_seen_at: new Date().toISOString() }).eq("id", selectedId).then();
         }
         // Refresh counts (debounced via microtask is overkill; cheap enough)
-        refreshCounts();
+        scheduleRefreshCounts();
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === newRow.id);
           const merged = idx >= 0 ? { ...prev[idx], ...newRow } : newRow;
@@ -492,7 +492,7 @@ export default function Chats() {
         }
         const { data: fresh } = await supabase.from("customers").select("*").eq("id", cid).maybeSingle();
         if (!fresh) return;
-        refreshCounts();
+        scheduleRefreshCounts();
         setCustomers(prev => {
           const idx = prev.findIndex(c => c.id === cid);
           const merged = idx >= 0 ? { ...prev[idx], ...fresh } : fresh;
