@@ -481,19 +481,30 @@ async function fetchFunnelDay(date: Date) {
   const confirmNewIds = filterByCurrent(confirmLogIds, ["pending_confirm"]);
   const completedIds = filterByCurrent(completedLogIds, ["completed"]);
 
-  // 4) ดึง "ทุกคน" ที่ตอนนี้ status = stage (รายชื่อจริงสำหรับคลิก, ไม่ใช่แค่ count)
-  const [quoteAll, confirmAll] = await Promise.all([
-    supabase.from("customers").select("id").eq("status", "pending_quote").limit(10000),
-    supabase.from("customers").select("id").eq("status", "pending_confirm").limit(10000),
-  ]);
-  const quoteAllIds = (quoteAll.data ?? []).map((c: any) => c.id);
-  const confirmAllIds = (confirmAll.data ?? []).map((c: any) => c.id);
+  // 4) Backlog snapshot ณ endOfDay(date) — reconstruct จาก customer_status_log
+  //    (ห้ามใช้ customers.status ปัจจุบันเป็น source ของวันที่ย้อนหลัง)
+  const { data: allLogsUntilEod, error: eBacklog } = await supabase
+    .from("customer_status_log")
+    .select("customer_id, old_status, new_status, changed_at")
+    .lte("changed_at", to.toISOString())
+    .order("changed_at", { ascending: true })
+    .limit(100000);
+  if (eBacklog) throw eBacklog;
+
+  const reconstructAt = (targetStatus: string) => {
+    const set = new Set<string>();
+    (allLogsUntilEod ?? []).forEach((r: any) => {
+      if (r.new_status === targetStatus) set.add(r.customer_id);
+      else if (r.old_status === targetStatus) set.delete(r.customer_id);
+    });
+    return set;
+  };
+  const quoteBacklogSet = reconstructAt("pending_quote");
+  const confirmBacklogSet = reconstructAt("pending_confirm");
+  const quoteAllIds = Array.from(quoteBacklogSet);
+  const confirmAllIds = Array.from(confirmBacklogSet);
   const quoteTotalCount = quoteAllIds.length;
   const confirmTotalCount = confirmAllIds.length;
-  const quoteNewSet = new Set(quoteNewIds);
-  const confirmNewSet = new Set(confirmNewIds);
-  const quoteCarry = Math.max(0, quoteTotalCount - quoteNewSet.size);
-  const confirmCarry = Math.max(0, confirmTotalCount - confirmNewSet.size);
 
   // Confirm row (Admin ส่งใบ): สนใจ "วันนี้ส่งใบ" ไม่ใช่ "คงเหลือ"
   // - sentTodayNew = ส่งใบวันนี้ และลูกค้าทักมาวันนี้
