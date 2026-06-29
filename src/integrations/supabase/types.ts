@@ -256,6 +256,7 @@ export type Database = {
           phase2_instruction: string
           phone_mute_hours: number
           post_phone_max_replies: number
+          quotation_auto_detection: Json
           reply_bubbles: number
           reply_length: number
           schedule_days: number[] | null
@@ -330,6 +331,7 @@ export type Database = {
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
+          quotation_auto_detection?: Json
           reply_bubbles?: number
           reply_length?: number
           schedule_days?: number[] | null
@@ -404,6 +406,7 @@ export type Database = {
           phase2_instruction?: string
           phone_mute_hours?: number
           post_phone_max_replies?: number
+          quotation_auto_detection?: Json
           reply_bubbles?: number
           reply_length?: number
           schedule_days?: number[] | null
