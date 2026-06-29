@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
 import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
+import { validateQuotationConfig, invalidateQuotationConfigCache, DEFAULT_QUOTATION_CONFIG } from "@/lib/quotationDetection";
 
 const DRAFT_KEY = "settings:main";
 
