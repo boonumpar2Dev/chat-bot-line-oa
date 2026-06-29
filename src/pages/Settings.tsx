@@ -569,14 +569,12 @@ function QuotationAutoDetectionCard() {
     const { error: err } = await supabase.from("app_settings").update({ quotation_auto_detection: r.obj }).eq("key", "ai_config");
     setSaving(false);
     if (err) { toast.error(err.message); return; }
-    const { invalidateQuotationConfigCache } = await import("@/lib/quotationDetection");
     invalidateQuotationConfigCache();
     setInitial(text);
     toast.success("บันทึก config ใบเสนอราคาแล้ว");
   };
 
-  const reset = async () => {
-    const { DEFAULT_QUOTATION_CONFIG } = await import("@/lib/quotationDetection");
+  const reset = () => {
     setText(JSON.stringify(DEFAULT_QUOTATION_CONFIG, null, 2));
     setError(null);
   };
