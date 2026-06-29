@@ -884,14 +884,14 @@ function FunnelToday() {
                           {isDayMode && (row.key === "quote" || row.key === "confirm" || row.key === "confirmed") && (row.carryOver > 0 || row.newToday > 0 || row.backlogCount > 0) && (
                             <div className="text-[10px] text-muted-foreground mt-1 flex gap-3 flex-wrap items-center">
                               {row.key === "confirmed" ? (
-                                <>
-                                  <span>ส่งใบวันนี้ <strong>{row.newToday}</strong></span>
-                                  <span>+ ส่งใบวันก่อน <strong>{row.carryOver}</strong></span>
+                              <>
+                                  <span>จากใบวันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ จากใบก่อนหน้า <strong>{row.carryOver}</strong></span>
                                 </>
                               ) : row.key === "confirm" ? (
                                 <>
-                                  <span>ทักวันนี้+ส่งวันนี้ <strong>{row.newToday}</strong></span>
-                                  <span>+ ค้างเก่า+ส่งวันนี้ <strong>{row.carryOver}</strong></span>
+                                  <span>คิววันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ จากคิวเดิม <strong>{row.carryOver}</strong></span>
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -909,8 +909,8 @@ function FunnelToday() {
                                 </>
                               ) : row.key === "quote" ? (
                                 <>
-                                  <span>ทักวันนี้+ครบวันนี้ <strong>{row.newToday}</strong></span>
-                                  <span>+ ค้างเก่า+ครบวันนี้ <strong>{row.carryOver}</strong></span>
+                                  <span>ทักวันนี้ <strong>{row.newToday}</strong></span>
+                                  <span>+ ทักก่อนหน้า <strong>{row.carryOver}</strong></span>
                                   <button
                                     type="button"
                                     onClick={(e) => {
