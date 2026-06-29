@@ -547,27 +547,25 @@ function QuotationAutoDetectionCard() {
     });
   }, []);
 
-  const validate = (s: string): { ok: true; obj: any } | { ok: false; error: string } => {
+  const validate = (s: string): { ok: boolean; obj?: any; error?: string } => {
     let obj: any;
     try { obj = JSON.parse(s); } catch (e: any) { return { ok: false, error: "JSON ไม่ถูก: " + e.message }; }
-    // ใช้ validator เดียวกับ runtime
-    // dynamic import กัน bundle ลง async (ที่นี่ sync ก็ได้)
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { validateQuotationConfig } = require("@/lib/quotationDetection") as typeof import("@/lib/quotationDetection");
-    const v = validateQuotationConfig(obj);
-    if (!v.ok) return { ok: false, error: v.error };
-    return { ok: true, obj: v.config };
+    const mod = require("@/lib/quotationDetection") as typeof import("@/lib/quotationDetection");
+    const v = mod.validateQuotationConfig(obj);
+    if (!v.ok) return { ok: false, error: (v as any).error };
+    return { ok: true, obj: (v as any).config };
   };
 
   const onChange = (v: string) => {
     setText(v);
     const r = validate(v);
-    setError(r.ok ? null : r.error);
+    setError(r.ok ? null : (r.error ?? "invalid"));
   };
 
   const save = async () => {
     const r = validate(text);
-    if (!r.ok) { setError(r.error); toast.error("Config ไม่ถูกต้อง"); return; }
+    if (!r.ok) { setError(r.error ?? "invalid"); toast.error("Config ไม่ถูกต้อง"); return; }
     setSaving(true);
     const { error: err } = await supabase.from("app_settings").update({ quotation_auto_detection: r.obj }).eq("key", "ai_config");
     setSaving(false);
