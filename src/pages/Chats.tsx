@@ -1329,26 +1329,6 @@ export default function Chats() {
               <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
                 <Search className="w-4 h-4"/>
               </Button>
-              {/* Desktop: eraser inline */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" className="hidden sm:inline-flex" title="ล้างประวัติแชทของลูกค้านี้" disabled={clearingChat}>
-                    {clearingChat ? <Loader2 className="w-4 h-4 animate-spin"/> : <Eraser className="w-4 h-4"/>}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>ล้างประวัติแชทของลูกค้านี้?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      จะลบข้อความทั้งหมดของ <b>{selected.nickname || selected.display_name}</b> และรีเซ็ต context ที่ AI จำไว้ (ประเภทงาน, จำนวนคน, สถานที่, วันจัด, สรุปสนทนา) — ใช้สำหรับเทสต์ใหม่ ลูกค้ารายอื่นจะไม่ถูกกระทบ
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearThisChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">ล้างเลย</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
               <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
                 <SheetTrigger asChild>
                   <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9"><Info className="w-4 h-4"/></Button>
