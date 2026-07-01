@@ -1337,41 +1337,22 @@ export default function Chats() {
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
                 </SheetContent>
               </Sheet>
-              {/* Mobile: kebab with destructive action */}
-              <AlertDialog>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="sm:hidden h-9 w-9" title="เพิ่มเติม">
-                      <MoreVertical className="w-4 h-4"/>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setShowMsgSearch(s => !s)}>
-                      <Search className="w-4 h-4 mr-2"/>ค้นหาในแชท
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setInfoOpen(true)}>
-                      <Info className="w-4 h-4 mr-2"/>ข้อมูลลูกค้า
-                    </DropdownMenuItem>
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
-                        <Eraser className="w-4 h-4 mr-2"/>ล้างประวัติแชท
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>ล้างประวัติแชทของลูกค้านี้?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      จะลบข้อความทั้งหมดของ <b>{selected.nickname || selected.display_name}</b> และรีเซ็ต context ที่ AI จำไว้
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearThisChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">ล้างเลย</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {/* Mobile: kebab menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="sm:hidden h-9 w-9" title="เพิ่มเติม">
+                    <MoreVertical className="w-4 h-4"/>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setShowMsgSearch(s => !s)}>
+                    <Search className="w-4 h-4 mr-2"/>ค้นหาในแชท
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setInfoOpen(true)}>
+                    <Info className="w-4 h-4 mr-2"/>ข้อมูลลูกค้า
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Dialog open={pausePickerOpen} onOpenChange={setPausePickerOpen}>
                 <DialogContent className="max-w-xs">
                   <DialogHeader>
