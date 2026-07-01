@@ -44,6 +44,8 @@ export default function CustomerInfoPanel({
   onUpdate,
   statusLabels = DEFAULT_STATUS_LABELS,
 }: CustomerInfoPanelProps) {
+  const { role } = useAuth();
+  const canReset = role === "owner" || role === "admin";
   const [local, setLocal] = useState(customer);
   const [tagInput, setTagInput] = useState("");
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
@@ -56,6 +58,33 @@ export default function CustomerInfoPanel({
   const [editEventId, setEditEventId] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractingPanel, setExtractingPanel] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState("");
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (resetConfirm !== "RESET") {
+      toast.error("กรุณาพิมพ์ RESET เพื่อยืนยัน");
+      return;
+    }
+    setResetting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-customer-test-data", {
+        body: { customer_id: customer.id, confirmation: "RESET" },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success("รีเซ็ตข้อมูลลูกค้าเรียบร้อย");
+      setResetOpen(false);
+      setResetConfirm("");
+      // Trigger parent refresh via update ping
+      onUpdate({});
+    } catch (e: any) {
+      toast.error(`รีเซ็ตล้มเหลว: ${e?.message || e}`);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   useEffect(() => setLocal(customer), [customer.id]);
   // sync เฉพาะ field ที่โชว์ใน dropdown/ปุ่ม (status, ai_active, admin_bot_override, manual_chat_until)
