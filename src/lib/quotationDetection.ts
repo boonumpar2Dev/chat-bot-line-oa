@@ -101,14 +101,40 @@ export async function loadQuotationConfig(): Promise<QuotationConfig> {
 
 export function invalidateQuotationConfigCache() { cachedConfig = null; cachedAt = 0; }
 
-// parse date prefix DDMMBBBB → Date (ค.ศ.) | null ถ้า invalid
-function parseDatePrefix(fileName: string, cfg: QuotationConfig): Date | null {
+// ---- Bangkok date-only helpers ----------------------------------------------
+// เทียบวันแบบ date-only เขต Asia/Bangkok เพื่อกัน timezone ของ browser
+// ทำให้วันเหลื่อม (เช่น admin timezone UTC+0 → เที่ยงคืนไทยกลายเป็นวันก่อน)
+
+// แทนวันไทยเป็น "UTC-midnight ของวันไทยนั้น" เพื่อเทียบ/ลบเป็นจำนวนวันได้ตรง ๆ
+function bkkDateKeyFromYMD(y: number, m: number, d: number): number {
+  return Date.UTC(y, m - 1, d);
+}
+
+// แปลง Date (instant) → date-key ของวันไทยที่ instant นั้นตกอยู่
+function bkkDateKeyFromInstant(dt: Date): number {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Bangkok",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(dt);
+  const y = parseInt(parts.find(p => p.type === "year")!.value, 10);
+  const m = parseInt(parts.find(p => p.type === "month")!.value, 10);
+  const d = parseInt(parts.find(p => p.type === "day")!.value, 10);
+  return bkkDateKeyFromYMD(y, m, d);
+}
+
+function daysBetweenKeys(laterKey: number, earlierKey: number): number {
+  return Math.round((laterKey - earlierKey) / 86400000);
+}
+
+// parse date prefix DDMMBBBB → Bangkok date-key (UTC ms ของ 00:00 วันไทย) | null
+function parseDatePrefix(fileName: string, cfg: QuotationConfig): number | null {
   if (!cfg.datePrefix.enabled) return null;
   let re: RegExp;
   try { re = new RegExp(cfg.datePrefix.regex); } catch { return null; }
   const m = fileName.match(re);
   if (!m) return null;
-  // format DDMMBBBB เท่านั้นที่ support ตอนนี้
   if (cfg.datePrefix.format !== "DDMMBBBB") return null;
   const dd = parseInt(m[1], 10), mm = parseInt(m[2], 10), be = parseInt(m[3], 10);
   if (!dd || !mm || !be) return null;
@@ -116,10 +142,10 @@ function parseDatePrefix(fileName: string, cfg: QuotationConfig): Date | null {
   if (dd < 1 || dd > 31) return null;
   const yearCE = be - 543;
   if (yearCE < 2000 || yearCE > 2100) return null;
-  const d = new Date(yearCE, mm - 1, dd);
-  // validate: round-trip ต้องตรง (กัน 31/02 → 03/03)
-  if (d.getFullYear() !== yearCE || d.getMonth() !== mm - 1 || d.getDate() !== dd) return null;
-  return d;
+  // validate round-trip (กัน 31/02 → 03/03) โดยใช้ UTC เพื่อไม่ให้ timezone เพี้ยน
+  const probe = new Date(Date.UTC(yearCE, mm - 1, dd));
+  if (probe.getUTCFullYear() !== yearCE || probe.getUTCMonth() !== mm - 1 || probe.getUTCDate() !== dd) return null;
+  return bkkDateKeyFromYMD(yearCE, mm, dd);
 }
 
 type MarkResult = { result: DetectionResult; updated: boolean };
