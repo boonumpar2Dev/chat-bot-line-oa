@@ -968,7 +968,72 @@ export default function CustomerInfoPanel({
               ))}
           </div>
         )}
+
+        {canReset && (
+          <div className="pt-4 mt-4 border-t border-destructive/20">
+            <Label className="text-xs text-destructive flex items-center gap-1 mb-2">
+              <AlertTriangle className="w-3 h-3" /> Danger Zone
+            </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => setResetOpen(true)}
+            >
+              รีเซ็ตข้อมูลลูกค้า (ทดสอบ)
+            </Button>
+            <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+              ล้างแชท/สถานะ/ประวัติทั้งหมด กลับเป็นลูกค้าใหม่ (ใช้สำหรับทดสอบ flow เท่านั้น)
+            </p>
+          </div>
+        )}
       </div>
+
+      <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) setResetConfirm(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> ยืนยันการรีเซ็ตข้อมูลลูกค้า
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="space-y-3 pt-2 text-sm">
+                <p>การกระทำนี้จะ<strong className="text-destructive"> ลบข้อมูลถาวร </strong>ของลูกค้าคนนี้:</p>
+                <ul className="list-disc pl-5 space-y-0.5 text-xs">
+                  <li>ข้อความแชททั้งหมด (conversations)</li>
+                  <li>ประวัติงาน / event ที่เคยจัด (customer_events)</li>
+                  <li>ประวัติการเปลี่ยนสถานะ (customer_status_log)</li>
+                  <li>Logs AI ตอบกลับ / ส่งข้อความ</li>
+                </ul>
+                <p>และ<strong> รีเซ็ต </strong>ฟิลด์ต่างๆ ในโปรไฟล์ (สถานะ, เบอร์, tags, notes, intent, tier ฯลฯ) กลับเป็นค่าเริ่มต้น</p>
+                <p className="text-xs text-muted-foreground">คงไว้: LINE ID, ชื่อ, รูปโปรไฟล์ เพื่อให้รับ webhook ต่อได้</p>
+                <p className="text-destructive text-xs font-medium">⚠️ รายงานย้อนหลังของลูกค้าคนนี้จะเปลี่ยน — ใช้สำหรับทดสอบเท่านั้น</p>
+                <div className="pt-1">
+                  <Label className="text-xs">พิมพ์ <code className="px-1 bg-muted rounded">RESET</code> เพื่อยืนยัน:</Label>
+                  <Input
+                    value={resetConfirm}
+                    onChange={(e) => setResetConfirm(e.target.value)}
+                    placeholder="RESET"
+                    className="mt-1"
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetOpen(false)} disabled={resetting}>
+              ยกเลิก
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReset}
+              disabled={resetting || resetConfirm !== "RESET"}
+            >
+              {resetting ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> กำลังรีเซ็ต...</> : "รีเซ็ตข้อมูล"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
