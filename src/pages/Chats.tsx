@@ -1187,10 +1187,10 @@ export default function Chats() {
           </div>
           {!isSearching && (
             <div className="flex flex-nowrap gap-1.5 overflow-x-auto -mx-3 px-3 pb-1 scrollbar-thin [&::-webkit-scrollbar]:h-1">
-              {FILTER_PILLS.map(p => {
+              {FILTER_PILLS.map((p, idx) => {
                 const active = filter === p.key;
                 const count = p.countKey ? filterCounts[p.countKey] : 0;
-                return (
+                const pillBtn = (
                   <button key={p.key} onClick={() => setFilter(p.key)}
                     className={cn(
                       "text-[11px] px-2 py-1 rounded-full border transition flex items-center gap-1 shrink-0 whitespace-nowrap",
@@ -1202,22 +1202,31 @@ export default function Chats() {
                     )}
                   </button>
                 );
+                // แทรก dropdown สถานะ ต่อจาก First Priority
+                if (p.key === "first_priority") {
+                  return (
+                    <React.Fragment key={p.key}>
+                      {pillBtn}
+                      <Select key="status-filter" value={filter.startsWith("status:") ? filter : "__none"} onValueChange={(v) => v !== "__none" && setFilter(v as FilterKind)}>
+                        <SelectTrigger className={cn(
+                          "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1 shrink-0 whitespace-nowrap",
+                          filter.startsWith("status:") ? "bg-primary text-primary-foreground border-primary" : "bg-background"
+                        )}>
+                          <SelectValue placeholder="สถานะ ▾">
+                            {filter.startsWith("status:") ? `${STATUS_LABEL[filter.slice(7)] || filter.slice(7)}` : "สถานะ ▾"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                            <SelectItem key={k} value={`status:${k}`}>{v}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </React.Fragment>
+                  );
+                }
+                return pillBtn;
               })}
-              <Select value={filter.startsWith("status:") ? filter : "__none"} onValueChange={(v) => v !== "__none" && setFilter(v as FilterKind)}>
-                <SelectTrigger className={cn(
-                  "h-auto py-1 px-2 text-[11px] rounded-full border w-auto gap-1 shrink-0 whitespace-nowrap",
-                  filter.startsWith("status:") ? "bg-primary text-primary-foreground border-primary" : "bg-background"
-                )}>
-                  <SelectValue placeholder="สถานะ ▾">
-                    {filter.startsWith("status:") ? `${STATUS_LABEL[filter.slice(7)] || filter.slice(7)}` : "สถานะ ▾"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(STATUS_LABEL).map(([k, v]) => (
-                    <SelectItem key={k} value={`status:${k}`}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           )}
         </div>
