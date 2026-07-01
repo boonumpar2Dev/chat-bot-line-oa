@@ -42,6 +42,7 @@ export type DetectionResult =
         | "reference_prefix"
         | "no_pattern_matched"
         | "invalid_date_prefix"
+        | "future_quote_date"
         | "old_reference_quote"
         | "already_pending_confirm"
         | "active_confirmed_job"
