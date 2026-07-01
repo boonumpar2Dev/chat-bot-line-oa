@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Eraser, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Smile, Reply, CornerUpLeft, BookPlus, Image as ImageIcon } from "lucide-react";
+import { Loader2, Send, Search, Phone, MapPin, Users as UsersIcon, Calendar, Info, ArrowLeft, Tag, X, Copy, ExternalLink, Smartphone, Paperclip, MessageSquareText, Brain, FileText, Sparkles, BookmarkCheck, History, Download, Film, MoreVertical, Smile, Reply, CornerUpLeft, BookPlus, Image as ImageIcon } from "lucide-react";
 import { TeachToKbDialog, type TeachCtx } from "@/components/chats/TeachToKbDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -893,29 +893,6 @@ export default function Chats() {
     });
   };
 
-  const [clearingChat, setClearingChat] = useState(false);
-  const clearThisChat = async () => {
-    if (!selectedId) return;
-    setClearingChat(true);
-    try {
-      const { error: delErr } = await supabase.from("conversations").delete().eq("customer_id", selectedId);
-      if (delErr) throw delErr;
-      const resetPatch = {
-        event_type: null, guest_count: null, venue: null, event_month: null, event_date: null,
-        last_sent_image_titles: [], conversation_summary: null, summary_until_message_id: null,
-        last_message_snippet: null, last_message_at: null, unread_count: 0,
-      };
-      const { error: updErr } = await supabase.from("customers").update(resetPatch).eq("id", selectedId);
-      if (updErr) throw updErr;
-      setMessages([]);
-      updateLocalCustomer(resetPatch);
-      toast.success("ล้างประวัติแชท + context AI ของลูกค้านี้แล้ว");
-    } catch (e: any) {
-      toast.error(e.message);
-    } finally {
-      setClearingChat(false);
-    }
-  };
 
   const uploadFiles = async (files: File[]) => {
     if (!files.length) return;
@@ -1352,26 +1329,6 @@ export default function Chats() {
               <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9" onClick={() => setShowMsgSearch(s => !s)} title="ค้นหาในประวัติแชท">
                 <Search className="w-4 h-4"/>
               </Button>
-              {/* Desktop: eraser inline */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="icon" variant="ghost" className="hidden sm:inline-flex" title="ล้างประวัติแชทของลูกค้านี้" disabled={clearingChat}>
-                    {clearingChat ? <Loader2 className="w-4 h-4 animate-spin"/> : <Eraser className="w-4 h-4"/>}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>ล้างประวัติแชทของลูกค้านี้?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      จะลบข้อความทั้งหมดของ <b>{selected.nickname || selected.display_name}</b> และรีเซ็ต context ที่ AI จำไว้ (ประเภทงาน, จำนวนคน, สถานที่, วันจัด, สรุปสนทนา) — ใช้สำหรับเทสต์ใหม่ ลูกค้ารายอื่นจะไม่ถูกกระทบ
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearThisChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">ล้างเลย</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
               <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
                 <SheetTrigger asChild>
                   <Button size="icon" variant="ghost" className="hidden sm:inline-flex h-9 w-9"><Info className="w-4 h-4"/></Button>
@@ -1380,41 +1337,22 @@ export default function Chats() {
                   <CustomerInfoPanel customer={selected} onUpdate={updateCustomer} statusLabels={STATUS_LABEL}/>
                 </SheetContent>
               </Sheet>
-              {/* Mobile: kebab with destructive action */}
-              <AlertDialog>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button size="icon" variant="ghost" className="sm:hidden h-9 w-9" title="เพิ่มเติม">
-                      <MoreVertical className="w-4 h-4"/>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setShowMsgSearch(s => !s)}>
-                      <Search className="w-4 h-4 mr-2"/>ค้นหาในแชท
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setInfoOpen(true)}>
-                      <Info className="w-4 h-4 mr-2"/>ข้อมูลลูกค้า
-                    </DropdownMenuItem>
-                    <AlertDialogTrigger asChild>
-                      <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(e) => e.preventDefault()}>
-                        <Eraser className="w-4 h-4 mr-2"/>ล้างประวัติแชท
-                      </DropdownMenuItem>
-                    </AlertDialogTrigger>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>ล้างประวัติแชทของลูกค้านี้?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      จะลบข้อความทั้งหมดของ <b>{selected.nickname || selected.display_name}</b> และรีเซ็ต context ที่ AI จำไว้
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>ยกเลิก</AlertDialogCancel>
-                    <AlertDialogAction onClick={clearThisChat} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">ล้างเลย</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {/* Mobile: kebab menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="icon" variant="ghost" className="sm:hidden h-9 w-9" title="เพิ่มเติม">
+                    <MoreVertical className="w-4 h-4"/>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setShowMsgSearch(s => !s)}>
+                    <Search className="w-4 h-4 mr-2"/>ค้นหาในแชท
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setInfoOpen(true)}>
+                    <Info className="w-4 h-4 mr-2"/>ข้อมูลลูกค้า
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Dialog open={pausePickerOpen} onOpenChange={setPausePickerOpen}>
                 <DialogContent className="max-w-xs">
                   <DialogHeader>
