@@ -205,12 +205,13 @@ export async function markQuotationSent(args: {
         log({ action: "skipped", reason: "old_reference_quote" }, fileName);
         continue;
       }
-      if (diffDays < -1) {
-        // ไฟล์ลงวันที่อนาคตเกิน 1 วัน → น่าจะพิมพ์ผิด/ใบร่างล่วงหน้า
+      // อนุญาตใบวันที่อนาคต ≤ 2 ปี (ลูกค้าจองงานล่วงหน้าได้ปกติ เช่น งานแต่ง/งานบริษัทปีหน้า)
+      // เกิน 2 ปี → น่าจะพิมพ์ปี พ.ศ. ผิด (เช่น 2670 แทน 2570) → skip
+      if (diffDays < -730) {
         log({ action: "skipped", reason: "future_quote_date" }, fileName);
         continue;
       }
-      // diffDays ∈ [-1, allowedBackdateDays] → ผ่าน
+      // diffDays ∈ [-730, allowedBackdateDays] → ผ่าน
     } else {
       // fallback: ใช้ปี พ.ศ. จาก regex group 1 (default pattern group 1 = YYBE 4 หลัก)
       const yearStr = matched.m[1];
