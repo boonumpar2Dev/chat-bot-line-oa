@@ -196,15 +196,21 @@ export async function markQuotationSent(args: {
     }
     if (!matched) { log({ action: "skipped", reason: "no_pattern_matched" }, fileName); continue; }
 
-    // 3) date prefix → ใบเก่า?
-    const datePref = parseDatePrefix(fileName, cfg);
-    if (datePref) {
-      const diffDays = (messageSentAt.getTime() - datePref.getTime()) / 86400000;
+    // 3) date prefix → ใบเก่า / ใบวันที่อนาคต?
+    const datePrefKey = parseDatePrefix(fileName, cfg);
+    if (datePrefKey !== null) {
+      const sentKey = bkkDateKeyFromInstant(messageSentAt);
+      const diffDays = daysBetweenKeys(sentKey, datePrefKey); // + = backdate, - = future
       if (diffDays > cfg.allowedBackdateDays) {
         log({ action: "skipped", reason: "old_reference_quote" }, fileName);
         continue;
       }
-      // diffDays < 0 (ไฟล์ลงวันที่อนาคต) → ปล่อยผ่าน (ถือเป็นใบใหม่)
+      if (diffDays < -1) {
+        // ไฟล์ลงวันที่อนาคตเกิน 1 วัน → น่าจะพิมพ์ผิด/ใบร่างล่วงหน้า
+        log({ action: "skipped", reason: "future_quote_date" }, fileName);
+        continue;
+      }
+      // diffDays ∈ [-1, allowedBackdateDays] → ผ่าน
     } else {
       // fallback: ใช้ปี พ.ศ. จาก regex group 1 (default pattern group 1 = YYBE 4 หลัก)
       const yearStr = matched.m[1];
@@ -223,9 +229,9 @@ export async function markQuotationSent(args: {
     const isNewCycle = status === "completed";
     const reason: "new_quote_sent" | "new_cycle_after_completed" = isNewCycle ? "new_cycle_after_completed" : "new_quote_sent";
 
+    // หมายเหตุ: ไม่แตะ admin_seen_at ที่นี่ — Chats.tsx เรียก markCustomerSeen() ก่อนแล้ว
     const updateData: any = {
       status: "pending_confirm",
-      admin_seen_at: new Date().toISOString(),
       ai_active: true,
       manual_chat_until: null,
       admin_bot_override: false,
