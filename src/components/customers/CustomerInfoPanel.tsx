@@ -45,7 +45,7 @@ export default function CustomerInfoPanel({
   statusLabels = DEFAULT_STATUS_LABELS,
 }: CustomerInfoPanelProps) {
   const { role } = useAuth();
-  const canReset = role === "owner" || role === "admin";
+  const canReset = role === "owner";
   const [local, setLocal] = useState(customer);
   const [tagInput, setTagInput] = useState("");
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
