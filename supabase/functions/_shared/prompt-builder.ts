@@ -6,6 +6,8 @@
 // Other legacy fields (image_selection_rules, tier_special_rules, forbidden_terms,
 // intent_collection_order, allowed_service_types) were merged into strict_rules.
 
+import { buildLifecycleBlock, buildGuardrailBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
+
 export interface BuildPromptInput {
   cfg: any;
   kbContext: string;
@@ -23,6 +25,11 @@ export interface BuildPromptInput {
   tagInstructions?: string;
   customerNotes?: string;
   customerOrigin?: "new" | "returning" | "legacy" | string | null;
+  // Phase 2 — opt-in status-aware blocks. When any is missing / policyEnabled !== true,
+  // buildPrompt returns byte-identical output to the pre-Phase-2 baseline.
+  policyEnabled?: boolean;
+  lifecycle?: Lifecycle;
+  replyMode?: ReplyMode;
 }
 
 
