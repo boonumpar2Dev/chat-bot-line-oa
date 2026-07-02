@@ -33,17 +33,18 @@ Deno.serve(async (req) => {
       });
     }
     const userId = userData.user.id;
+    const userEmail = userData.user.email ?? null;
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Check role: owner or admin only
+    // Check role: OWNER ONLY (strict — backend is source of truth)
     const { data: roles } = await admin
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    const allowed = (roles || []).some((r: any) => r.role === "owner" || r.role === "admin");
-    if (!allowed) {
-      return new Response(JSON.stringify({ error: "forbidden: owner/admin only" }), {
+    const isOwner = (roles || []).some((r: any) => r.role === "owner");
+    if (!isOwner) {
+      return new Response(JSON.stringify({ error: "forbidden: owner only" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -51,6 +52,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const customerId = body?.customer_id;
     const confirmation = body?.confirmation;
+    const reason = typeof body?.reason === "string" ? body.reason.slice(0, 500) : null;
     if (!customerId || typeof customerId !== "string") {
       return new Response(JSON.stringify({ error: "customer_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -131,11 +133,30 @@ Deno.serve(async (req) => {
     }
     results.reset_customer = true;
 
+    // Insert audit log (best-effort — don't fail the request if this errors)
+    const { error: auditErr } = await admin.from("customer_reset_audit_logs").insert({
+      customer_id: customerId,
+      reset_by_user_id: userId,
+      reset_by_email: userEmail,
+      deleted_tables_summary: deletes.reduce((acc: Record<string, any>, t) => {
+        acc[t] = results[`deleted_${t}`];
+        return acc;
+      }, {}),
+      reset_fields_summary: { fields: Object.keys(resetPatch) },
+      reason,
+    });
+    if (auditErr) {
+      console.error("[reset-customer-test-data] audit log insert failed:", auditErr.message);
+      results.audit_log = { error: auditErr.message };
+    } else {
+      results.audit_log = "written";
+    }
+
     return new Response(JSON.stringify({ ok: true, customer_id: customerId, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e?.message || e) }), {
+    return new Response(JSON.stringify({ error: String((e as any)?.message || e) }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

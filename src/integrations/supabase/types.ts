@@ -736,6 +736,42 @@ export type Database = {
           },
         ]
       }
+      customer_reset_audit_logs: {
+        Row: {
+          created_at: string
+          customer_id: string
+          deleted_tables_summary: Json
+          id: string
+          reason: string | null
+          reset_at: string
+          reset_by_email: string | null
+          reset_by_user_id: string | null
+          reset_fields_summary: Json
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          deleted_tables_summary?: Json
+          id?: string
+          reason?: string | null
+          reset_at?: string
+          reset_by_email?: string | null
+          reset_by_user_id?: string | null
+          reset_fields_summary?: Json
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          deleted_tables_summary?: Json
+          id?: string
+          reason?: string | null
+          reset_at?: string
+          reset_by_email?: string | null
+          reset_by_user_id?: string | null
+          reset_fields_summary?: Json
+        }
+        Relationships: []
+      }
       customer_status_log: {
         Row: {
           changed_at: string | null
