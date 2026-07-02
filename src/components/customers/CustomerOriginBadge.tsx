@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Sparkles, RotateCcw, History, AlertCircle, Repeat } from "lucide-react";
+import { ChevronDown, Sparkles, RotateCcw, History, AlertCircle, Repeat, PartyPopper } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Origin = "new" | "returning" | "reactivated" | "needs_review" | "legacy";
+type Origin = "new" | "returning" | "reactivated" | "needs_review" | "legacy" | "post_event_followup";
 
 const ORIGIN_OPTIONS: Array<{
   value: Origin;
@@ -41,6 +41,15 @@ const ORIGIN_OPTIONS: Array<{
     badgeClass: "bg-emerald-100 text-emerald-700 border-emerald-200",
     dotClass: "bg-emerald-500",
     icon: Repeat,
+  },
+  {
+    value: "post_event_followup",
+    label: "หลังงาน (Post-event Follow-up)",
+    short: "หลังงาน",
+    desc: "งานเพิ่งจบภายใน N วัน (default 14) — ทักมา follow-up ไม่ใช่รอบขายใหม่",
+    badgeClass: "bg-pink-100 text-pink-700 border-pink-200",
+    dotClass: "bg-pink-500",
+    icon: PartyPopper,
   },
   {
     value: "needs_review",

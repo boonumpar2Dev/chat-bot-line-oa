@@ -265,7 +265,7 @@ export default function Chats() {
   }, []);
 
   // Lead-type filter (มาจาก Dashboard เช่น /chats?lead=needs_review)
-  const leadParam = sp.get("lead") as null | "new" | "reactivated" | "returning" | "needs_review";
+  const leadParam = sp.get("lead") as null | "new" | "reactivated" | "returning" | "needs_review" | "post_event_followup";
   const [leadIds, setLeadIds] = useState<string[] | null>(null);
   const [handledIds, setHandledIds] = useState<Set<string>>(new Set());
   const LEAD_LABEL: Record<string, string> = {
@@ -273,6 +273,7 @@ export default function Chats() {
     reactivated: "Reactivated",
     returning: "Returning",
     needs_review: "Needs Review",
+    post_event_followup: "Post-event Follow-up",
   };
   useEffect(() => {
     setHandledIds(new Set());
