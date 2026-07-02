@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
 import DraftBanner, { DraftSavedIndicator } from "@/components/knowledge/DraftBanner";
-import { validateQuotationConfig, invalidateQuotationConfigCache, DEFAULT_QUOTATION_CONFIG } from "@/lib/quotationDetection";
+
 
 const DRAFT_KEY = "settings:main";
 
@@ -526,89 +526,6 @@ function NotificationSoundCard() {
           </>
         )}
       </div>
-    </Card>
-  );
-}
-
-function QuotationAutoDetectionCard() {
-  const [text, setText] = useState<string>("");
-  const [initial, setInitial] = useState<string>("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.from("app_settings").select("quotation_auto_detection").limit(1).maybeSingle().then(({ data }) => {
-      const raw = (data as any)?.quotation_auto_detection ?? {};
-      const pretty = JSON.stringify(raw, null, 2);
-      setText(pretty);
-      setInitial(pretty);
-      setLoading(false);
-    });
-  }, []);
-
-  const validate = (s: string): { ok: boolean; obj?: any; error?: string } => {
-    let obj: any;
-    try { obj = JSON.parse(s); } catch (e: any) { return { ok: false, error: "JSON ไม่ถูก: " + e.message }; }
-    const v = validateQuotationConfig(obj);
-    if (!v.ok) return { ok: false, error: (v as any).error };
-    return { ok: true, obj: (v as any).config };
-  };
-
-  const onChange = (v: string) => {
-    setText(v);
-    const r = validate(v);
-    setError(r.ok ? null : (r.error ?? "invalid"));
-  };
-
-  const save = async () => {
-    const r = validate(text);
-    if (!r.ok) { setError(r.error ?? "invalid"); toast.error("Config ไม่ถูกต้อง"); return; }
-    setSaving(true);
-    const { error: err } = await supabase.from("app_settings").update({ quotation_auto_detection: r.obj }).eq("key", "ai_config");
-    setSaving(false);
-    if (err) { toast.error(err.message); return; }
-    invalidateQuotationConfigCache();
-    setInitial(text);
-    toast.success("บันทึก config ใบเสนอราคาแล้ว");
-  };
-
-  const reset = () => {
-    setText(JSON.stringify(DEFAULT_QUOTATION_CONFIG, null, 2));
-    setError(null);
-  };
-
-  const dirty = text !== initial;
-
-  return (
-    <Card className="p-6 shadow-soft border-border/60">
-      <div className="flex items-center gap-2 mb-1"><FlaskConical className="text-primary"/><h2 className="font-display text-lg font-semibold">ตั้งค่าการจับใบเสนอราคาอัตโนมัติ</h2></div>
-      <p className="text-xs text-muted-foreground mb-4">
-        เมื่อแอดมินส่งไฟล์ที่ตรง pattern ระบบจะเปลี่ยนสถานะลูกค้าเป็น "รอคอนเฟิร์ม" อัตโนมัติ — รองรับ BNP-N, BNP-V, H-N และวันที่หน้าชื่อไฟล์แบบ DDMMBBBB
-        <br/>กัน: ไฟล์อ้างอิงที่ขึ้นต้นด้วย OLD-/REF-/อ้างอิง-/ใบเก่า- หรือใบที่ลงวันที่ย้อนหลังเกิน <code>allowedBackdateDays</code>
-      </p>
-      {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : (
-        <>
-          <Textarea
-            value={text}
-            onChange={e => onChange(e.target.value)}
-            spellCheck={false}
-            className="font-mono text-xs min-h-[320px]"
-          />
-          {error && (
-            <p className="mt-2 text-xs text-destructive flex items-start gap-1">
-              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0"/>{error}
-            </p>
-          )}
-          <div className="flex items-center gap-2 mt-3">
-            <Button onClick={save} disabled={saving || !!error || !dirty} size="sm">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} บันทึก
-            </Button>
-            <Button onClick={reset} variant="outline" size="sm" disabled={saving}>คืนค่าเริ่มต้น</Button>
-            {dirty && !error && <span className="text-xs text-muted-foreground">มีการแก้ไขที่ยังไม่ได้บันทึก</span>}
-          </div>
-        </>
-      )}
     </Card>
   );
 }
