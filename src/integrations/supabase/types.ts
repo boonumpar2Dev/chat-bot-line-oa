@@ -255,6 +255,7 @@ export type Database = {
           out_of_hours_message_enabled: boolean
           phase2_instruction: string
           phone_mute_hours: number
+          post_event_followup_days: number
           post_phone_max_replies: number
           quotation_auto_detection: Json
           reply_bubbles: number
@@ -330,6 +331,7 @@ export type Database = {
           out_of_hours_message_enabled?: boolean
           phase2_instruction?: string
           phone_mute_hours?: number
+          post_event_followup_days?: number
           post_phone_max_replies?: number
           quotation_auto_detection?: Json
           reply_bubbles?: number
@@ -405,6 +407,7 @@ export type Database = {
           out_of_hours_message_enabled?: boolean
           phase2_instruction?: string
           phone_mute_hours?: number
+          post_event_followup_days?: number
           post_phone_max_replies?: number
           quotation_auto_detection?: Json
           reply_bubbles?: number
