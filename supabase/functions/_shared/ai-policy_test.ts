@@ -89,3 +89,43 @@ Deno.test("null ai_active treated as true (schema default)", () => {
   );
   assertEquals(p.canReply, true);
 });
+
+// --- Phase 1.5 additions ---
+
+Deno.test("idempotence: same input → same output across multiple calls", () => {
+  const customer = { ai_active: true, manual_chat_until: null };
+  const settings = { advanced_ai_status_policy_enabled: true };
+  const a = resolveAiReplyPolicy(customer, settings, ctx);
+  const b = resolveAiReplyPolicy(customer, settings, ctx);
+  const c = resolveAiReplyPolicy(customer, settings, ctx);
+  assertEquals(JSON.stringify(a), JSON.stringify(b));
+  assertEquals(JSON.stringify(b), JSON.stringify(c));
+});
+
+Deno.test("input immutability: customer/settings not mutated", () => {
+  const customer = { id: "c1", ai_active: true, manual_chat_until: null, status: "new" };
+  const settings = { advanced_ai_status_policy_enabled: true, ai_policy_config: { k: 1 } };
+  const customerSnap = JSON.stringify(customer);
+  const settingsSnap = JSON.stringify(settings);
+  resolveAiReplyPolicy(customer, settings, ctx);
+  assertEquals(JSON.stringify(customer), customerSnap);
+  assertEquals(JSON.stringify(settings), settingsSnap);
+});
+
+Deno.test("missing config fields: empty settings object still resolves legacy", () => {
+  const p = resolveAiReplyPolicy({ ai_active: true }, {}, ctx);
+  assertEquals(p.legacy, true);
+  assertEquals(p.canReply, true);
+  assertEquals(p.replyMode, "legacy");
+});
+
+Deno.test("missing config fields: flag=true but no ai_policy_config/manual_chat_minutes", () => {
+  const p = resolveAiReplyPolicy(
+    { ai_active: true, manual_chat_until: null },
+    { advanced_ai_status_policy_enabled: true },
+    ctx,
+  );
+  assertEquals(p.canReply, true);
+  assertEquals(p.legacy, false);
+});
+

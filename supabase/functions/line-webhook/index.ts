@@ -4,6 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
+import { resolveAiReplyPolicy } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -760,6 +761,43 @@ async function processEvent(event: any, supabase: any) {
   // 🚫 AI ปิดอยู่ / อยู่ในช่วง manual chat → เงียบสนิท ไม่ตอบอะไรเลย (ไม่ validate เบอร์/tax ด้วย)
   if (!freshCustomer.ai_active) return;
   if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) return;
+
+  // 🔎 Phase 1.5 — Observe-only AI policy hook.
+  // - Runs ONLY when advanced_ai_status_policy_enabled=true (default false → 100% legacy path).
+  // - Pure observation via console.log. Does NOT branch, mutate, or affect reply behavior.
+  // - Errors are swallowed so webhook continues exactly as before.
+  if (cfg?.advanced_ai_status_policy_enabled === true) {
+    try {
+      const policy = resolveAiReplyPolicy(
+        {
+          id: freshCustomer.id,
+          status: freshCustomer.status,
+          ai_active: freshCustomer.ai_active,
+          manual_chat_until: freshCustomer.manual_chat_until,
+          admin_bot_override: freshCustomer.admin_bot_override,
+          customer_origin: freshCustomer.customer_origin,
+        },
+        {
+          advanced_ai_status_policy_enabled: cfg.advanced_ai_status_policy_enabled,
+          ai_policy_config: cfg.ai_policy_config ?? null,
+          manual_chat_minutes: cfg.manual_chat_minutes ?? null,
+          manual_chat_hours: cfg.manual_chat_hours ?? null,
+        },
+      );
+      console.log("[AiPolicy:observe]", JSON.stringify({
+        customer_id: freshCustomer.id,
+        status: freshCustomer.status ?? null,
+        canReply: policy.canReply,
+        legacy: policy.legacy,
+        replyMode: policy.replyMode,
+        lifecycle: policy.lifecycle,
+        reason: policy.reason,
+      }));
+    } catch (e) {
+      console.error("[AiPolicy:observe] error (ignored):", (e as Error)?.message);
+    }
+  }
+
   if (freshCustomer.ai_resumed_at) {
     const msgMs = typeof event.timestamp === "number" ? event.timestamp : 0;
     if (msgMs > 0 && msgMs < new Date(freshCustomer.ai_resumed_at).getTime()) return;
