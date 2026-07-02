@@ -639,6 +639,9 @@ async function fetchFunnelRange(fromDate: Date, toDate: Date) {
     inquiryCount: 0,
     isDayMode: true as boolean,
   };
+}
+
+
 
 
 
