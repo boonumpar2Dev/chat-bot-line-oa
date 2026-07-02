@@ -721,22 +721,46 @@ function FunnelToday() {
     d.setDate(d.getDate() - 1);
     return d;
   });
+  // Range mode: from-to สำหรับช่วง A และช่วง B (compare)
+  const [rangeA, setRangeA] = useState<{ from: Date; to: Date }>(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 6); // 7 วันล่าสุด (รวมวันนี้)
+    return { from, to };
+  });
+  const [rangeB, setRangeB] = useState<{ from: Date; to: Date }>(() => {
+    const to = new Date();
+    to.setDate(to.getDate() - 7);
+    const from = new Date();
+    from.setDate(from.getDate() - 13);
+    return { from, to };
+  });
 
   const stepDate = (d: Date, dir: number) => {
     const nd = new Date(d);
     if (mode === "day") nd.setDate(nd.getDate() + dir);
-    else nd.setMonth(nd.getMonth() + dir);
+    else if (mode === "month") nd.setMonth(nd.getMonth() + dir);
     if (nd < FUNNEL_MIN_DATE) return d;
     return nd;
   };
 
+  const rangeKey = (r: { from: Date; to: Date }) => `${ymd(r.from)}_${ymd(r.to)}`;
+
   const queryA = useQuery({
-    queryKey: ["funnel-today", mode, ymd(dateA)],
-    queryFn: () => (mode === "day" ? fetchFunnelDay(dateA) : fetchFunnelMonth(dateA)),
+    queryKey: ["funnel-today", mode, mode === "range" ? rangeKey(rangeA) : ymd(dateA)],
+    queryFn: () => {
+      if (mode === "day") return fetchFunnelDay(dateA);
+      if (mode === "month") return fetchFunnelMonth(dateA);
+      return fetchFunnelRange(rangeA.from, rangeA.to);
+    },
   });
   const queryB = useQuery({
-    queryKey: ["funnel-today", mode, ymd(dateB)],
-    queryFn: () => (mode === "day" ? fetchFunnelDay(dateB) : fetchFunnelMonth(dateB)),
+    queryKey: ["funnel-today", mode, mode === "range" ? rangeKey(rangeB) : ymd(dateB), "B"],
+    queryFn: () => {
+      if (mode === "day") return fetchFunnelDay(dateB);
+      if (mode === "month") return fetchFunnelMonth(dateB);
+      return fetchFunnelRange(rangeB.from, rangeB.to);
+    },
     enabled: compare,
   });
 
@@ -746,7 +770,7 @@ function FunnelToday() {
     return FUNNEL_STAGES.map((stage, i) => {
       return {
         key: stage.key,
-        label: a[i]?.label ?? (mode === "day" ? stage.labelDay : stage.labelMonth),
+        label: a[i]?.label ?? (mode === "month" ? stage.labelMonth : stage.labelDay),
         subLabel: stage.subLabel,
         color: stage.color,
         A: a[i]?.count ?? 0,
@@ -768,6 +792,13 @@ function FunnelToday() {
 
   const fmtPicker = (d: Date) =>
     mode === "day" ? format(d, "d MMM yyyy", { locale: th }) : format(d, "MMM yyyy", { locale: th });
+
+  const fmtRange = (r: { from: Date; to: Date }) => {
+    const sameYear = r.from.getFullYear() === r.to.getFullYear();
+    const left = format(r.from, sameYear ? "d MMM" : "d MMM yyyy", { locale: th });
+    const right = format(r.to, "d MMM yyyy", { locale: th });
+    return `${left} – ${right}`;
+  };
 
   const DatePickerBtn = ({ value, onChange }: { value: Date; onChange: (d: Date) => void }) => (
     <div className="flex items-center gap-1">
@@ -797,6 +828,46 @@ function FunnelToday() {
       </Button>
     </div>
   );
+
+  const RangePickerBtn = ({ value, onChange }: { value: { from: Date; to: Date }; onChange: (r: { from: Date; to: Date }) => void }) => {
+    const applyPreset = (days: number) => {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - (days - 1));
+      onChange({ from, to });
+    };
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 justify-start text-left font-normal min-w-[180px]">
+            <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+            {fmtRange(value)}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <div className="flex gap-1 p-2 border-b flex-wrap">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyPreset(7)}>7 วัน</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyPreset(14)}>14 วัน</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyPreset(30)}>30 วัน</Button>
+          </div>
+          <Calendar
+            mode="range"
+            selected={{ from: value.from, to: value.to }}
+            onSelect={(r: any) => {
+              if (r?.from && r?.to) onChange({ from: r.from, to: r.to });
+              else if (r?.from) onChange({ from: r.from, to: r.from });
+            }}
+            numberOfMonths={2}
+            disabled={(date) => date < FUNNEL_MIN_DATE}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+
 
   return (
     <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
