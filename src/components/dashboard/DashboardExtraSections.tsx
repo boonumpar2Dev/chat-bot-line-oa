@@ -563,6 +563,83 @@ async function fetchFunnelDay(date: Date) {
   };
 }
 
+async function fetchFunnelRange(fromDate: Date, toDate: Date) {
+  const from = startOfDay(fromDate);
+  const to = endOfDay(toDate);
+
+  // 1) ลูกค้าใหม่ในช่วง (created within range)
+  const { data: newCustomers, error: e1 } = await supabase
+    .from("customers")
+    .select("id")
+    .gte("created_at", from.toISOString())
+    .lte("created_at", to.toISOString())
+    .limit(50000);
+  if (e1) throw e1;
+  const newIds = (newCustomers ?? []).map((c: any) => c.id);
+  const newIdSet = new Set(newIds);
+
+  // 2) transition log ในช่วง
+  const { data: logs, error: e2 } = await supabase
+    .from("customer_status_log")
+    .select("customer_id, old_status, new_status")
+    .gte("changed_at", from.toISOString())
+    .lte("changed_at", to.toISOString())
+    .limit(100000);
+  if (e2) throw e2;
+
+  const collectIds = (statuses: string[]) => {
+    const ids = new Set<string>();
+    (logs ?? []).forEach((r: any) => {
+      if (statuses.includes(r.new_status)) ids.add(r.customer_id);
+    });
+    return ids;
+  };
+  const quoteLogIds = collectIds(["pending_quote"]);
+  const confirmLogIds = collectIds(["pending_confirm"]);
+  const confirmedLogIds = collectIds(["confirmed", "confirmed_returning"]);
+  const completedLogIds = collectIds(["completed"]);
+
+  // 3) Backlog snapshot ณ ปลายช่วง (reconstruct)
+  const { data: allLogsUntilEnd, error: eB } = await supabase
+    .from("customer_status_log")
+    .select("customer_id, old_status, new_status, changed_at")
+    .lte("changed_at", to.toISOString())
+    .order("changed_at", { ascending: true })
+    .limit(200000);
+  if (eB) throw eB;
+  const reconstructAt = (targetStatus: string) => {
+    const set = new Set<string>();
+    (allLogsUntilEnd ?? []).forEach((r: any) => {
+      if (r.new_status === targetStatus) set.add(r.customer_id);
+      else if (r.old_status === targetStatus) set.delete(r.customer_id);
+    });
+    return set;
+  };
+  const quoteBacklogIds = Array.from(reconstructAt("pending_quote"));
+  const confirmBacklogIds = Array.from(reconstructAt("pending_confirm"));
+
+  const quoteIds = Array.from(quoteLogIds);
+  const confirmIds = Array.from(confirmLogIds);
+  const confirmedIds = Array.from(confirmedLogIds);
+  const completedIds = Array.from(completedLogIds);
+
+  const quoteNewInRange = quoteIds.filter((id) => newIdSet.has(id)).length;
+  const quoteCarry = quoteIds.length - quoteNewInRange;
+  const confirmNewInRange = confirmIds.filter((id) => newIdSet.has(id)).length;
+  const confirmCarry = confirmIds.length - confirmNewInRange;
+
+  return {
+    stages: [
+      { key: "new", label: "ลูกค้าใหม่ในช่วง", count: newIds.length, totalCount: newIds.length, carryOver: 0, newToday: newIds.length, outToday: 0, customerIds: newIds, backlogCount: 0, backlogIds: [] as string[] },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, totalCount: quoteIds.length, carryOver: quoteCarry, newToday: quoteNewInRange, outToday: 0, customerIds: quoteIds, backlogCount: quoteBacklogIds.length, backlogIds: quoteBacklogIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, totalCount: confirmIds.length, carryOver: confirmCarry, newToday: confirmNewInRange, outToday: 0, customerIds: confirmIds, backlogCount: confirmBacklogIds.length, backlogIds: confirmBacklogIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds, backlogCount: 0, backlogIds: [] as string[] },
+      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds, backlogCount: 0, backlogIds: [] as string[] },
+    ],
+    inquiryCount: 0,
+    isDayMode: true as boolean,
+  };
+
 
 
 async function fetchFunnelMonth(date: Date) {
