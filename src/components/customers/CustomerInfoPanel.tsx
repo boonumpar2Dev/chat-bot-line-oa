@@ -993,7 +993,7 @@ export default function CustomerInfoPanel({
         )}
       </div>
 
-      <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) setResetConfirm(""); }}>
+      <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) { setResetConfirm(""); setResetReason(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
