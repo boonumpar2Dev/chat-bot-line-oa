@@ -180,7 +180,7 @@ export default function Dashboard() {
         <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 rounded px-2 py-1.5">
           ⚠️ ตัวเลขนี้นับจากลูกค้าที่ทักเข้ามาวันนี้ ยังไม่ใช่จำนวน Lead ที่เข้า Pipeline — ดูตัวเลข Lead จริงได้ที่ Daily Sales Pipeline ด้านล่าง
         </p>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <LeadTypeCard
             leadKey="new"
             color="#378ADD"
@@ -201,6 +201,13 @@ export default function Dashboard() {
             label="Returning Contact"
             hint="มีประวัติงานในระบบ (อาจเป็น follow-up หลังงาน ไม่ใช่ Lead ใหม่)"
             rows={leadByType("returning")}
+          />
+          <LeadTypeCard
+            leadKey="post_event_followup"
+            color="#DB2777"
+            label="Post-event Follow-up"
+            hint="งานเพิ่งจบ ≤ 14 วัน ยังไม่มีรอบขายใหม่ — ไม่นับเป็น Returning Lead"
+            rows={leadByType("post_event_followup")}
           />
           <LeadTypeCard
             leadKey="needs_review"
