@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       customer_notes: [],
       last_sender: null,
       admin_seen_at: null,
-      admin_unseen: null,
+      
       admin_bot_override: false,
       customer_origin: "new",
       updated_at: new Date().toISOString(),
