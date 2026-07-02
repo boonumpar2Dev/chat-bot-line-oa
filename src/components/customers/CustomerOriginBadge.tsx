@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Sparkles, RotateCcw, History, AlertCircle, Repeat } from "lucide-react";
+import { ChevronDown, Sparkles, RotateCcw, History, AlertCircle, Repeat, PartyPopper } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Origin = "new" | "returning" | "reactivated" | "needs_review" | "legacy";
+type Origin = "new" | "returning" | "reactivated" | "needs_review" | "legacy" | "post_event_followup";
 
 const ORIGIN_OPTIONS: Array<{
   value: Origin;
