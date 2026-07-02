@@ -397,7 +397,7 @@ function DailyReportTable() {
 }
 
 /* ============= Section 3: Funnel Today + Backlog ============= */
-type FunnelMode = "day" | "month";
+type FunnelMode = "day" | "month" | "range";
 const FUNNEL_STAGES: { key: string; labelDay: string; labelMonth: string; color: string; subLabel?: string }[] = [
   { key: "new", labelDay: "ลูกค้าใหม่วันนี้", labelMonth: "ลูกค้าใหม่เดือนนี้", color: "#378ADD", subLabel: "ทักเข้ามาครั้งแรก" },
   { key: "quote", labelDay: "ได้ข้อมูลครบ (พร้อมทำใบ)", labelMonth: "ได้ข้อมูลครบ (พร้อมทำใบ)", color: "#E24B4A", subLabel: "เปลี่ยนเป็นรอใบเสนอราคา" },
@@ -563,6 +563,86 @@ async function fetchFunnelDay(date: Date) {
   };
 }
 
+async function fetchFunnelRange(fromDate: Date, toDate: Date) {
+  const from = startOfDay(fromDate);
+  const to = endOfDay(toDate);
+
+  // 1) ลูกค้าใหม่ในช่วง (created within range)
+  const { data: newCustomers, error: e1 } = await supabase
+    .from("customers")
+    .select("id")
+    .gte("created_at", from.toISOString())
+    .lte("created_at", to.toISOString())
+    .limit(50000);
+  if (e1) throw e1;
+  const newIds = (newCustomers ?? []).map((c: any) => c.id);
+  const newIdSet = new Set(newIds);
+
+  // 2) transition log ในช่วง
+  const { data: logs, error: e2 } = await supabase
+    .from("customer_status_log")
+    .select("customer_id, old_status, new_status")
+    .gte("changed_at", from.toISOString())
+    .lte("changed_at", to.toISOString())
+    .limit(100000);
+  if (e2) throw e2;
+
+  const collectIds = (statuses: string[]) => {
+    const ids = new Set<string>();
+    (logs ?? []).forEach((r: any) => {
+      if (statuses.includes(r.new_status)) ids.add(r.customer_id);
+    });
+    return ids;
+  };
+  const quoteLogIds = collectIds(["pending_quote"]);
+  const confirmLogIds = collectIds(["pending_confirm"]);
+  const confirmedLogIds = collectIds(["confirmed", "confirmed_returning"]);
+  const completedLogIds = collectIds(["completed"]);
+
+  // 3) Backlog snapshot ณ ปลายช่วง (reconstruct)
+  const { data: allLogsUntilEnd, error: eB } = await supabase
+    .from("customer_status_log")
+    .select("customer_id, old_status, new_status, changed_at")
+    .lte("changed_at", to.toISOString())
+    .order("changed_at", { ascending: true })
+    .limit(200000);
+  if (eB) throw eB;
+  const reconstructAt = (targetStatus: string) => {
+    const set = new Set<string>();
+    (allLogsUntilEnd ?? []).forEach((r: any) => {
+      if (r.new_status === targetStatus) set.add(r.customer_id);
+      else if (r.old_status === targetStatus) set.delete(r.customer_id);
+    });
+    return set;
+  };
+  const quoteBacklogIds = Array.from(reconstructAt("pending_quote"));
+  const confirmBacklogIds = Array.from(reconstructAt("pending_confirm"));
+
+  const quoteIds = Array.from(quoteLogIds);
+  const confirmIds = Array.from(confirmLogIds);
+  const confirmedIds = Array.from(confirmedLogIds);
+  const completedIds = Array.from(completedLogIds);
+
+  const quoteNewInRange = quoteIds.filter((id) => newIdSet.has(id)).length;
+  const quoteCarry = quoteIds.length - quoteNewInRange;
+  const confirmNewInRange = confirmIds.filter((id) => newIdSet.has(id)).length;
+  const confirmCarry = confirmIds.length - confirmNewInRange;
+
+  return {
+    stages: [
+      { key: "new", label: "ลูกค้าใหม่ในช่วง", count: newIds.length, totalCount: newIds.length, carryOver: 0, newToday: newIds.length, outToday: 0, customerIds: newIds, backlogCount: 0, backlogIds: [] as string[] },
+      { key: "quote", label: "ได้ข้อมูลครบ (พร้อมทำใบ)", count: quoteIds.length, totalCount: quoteIds.length, carryOver: quoteCarry, newToday: quoteNewInRange, outToday: 0, customerIds: quoteIds, backlogCount: quoteBacklogIds.length, backlogIds: quoteBacklogIds },
+      { key: "confirm", label: "Admin ส่งใบเสนอราคา", count: confirmIds.length, totalCount: confirmIds.length, carryOver: confirmCarry, newToday: confirmNewInRange, outToday: 0, customerIds: confirmIds, backlogCount: confirmBacklogIds.length, backlogIds: confirmBacklogIds },
+      { key: "confirmed", label: "ลูกค้าคอนเฟิร์ม", count: confirmedIds.length, totalCount: confirmedIds.length, carryOver: 0, newToday: confirmedIds.length, outToday: 0, customerIds: confirmedIds, backlogCount: 0, backlogIds: [] as string[] },
+      { key: "completed", label: "จัดงานเสร็จ", count: completedIds.length, totalCount: completedIds.length, carryOver: 0, newToday: completedIds.length, outToday: 0, customerIds: completedIds, backlogCount: 0, backlogIds: [] as string[] },
+    ],
+    inquiryCount: 0,
+    isDayMode: true as boolean,
+  };
+}
+
+
+
 
 
 async function fetchFunnelMonth(date: Date) {
@@ -641,22 +721,46 @@ function FunnelToday() {
     d.setDate(d.getDate() - 1);
     return d;
   });
+  // Range mode: from-to สำหรับช่วง A และช่วง B (compare)
+  const [rangeA, setRangeA] = useState<{ from: Date; to: Date }>(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 6); // 7 วันล่าสุด (รวมวันนี้)
+    return { from, to };
+  });
+  const [rangeB, setRangeB] = useState<{ from: Date; to: Date }>(() => {
+    const to = new Date();
+    to.setDate(to.getDate() - 7);
+    const from = new Date();
+    from.setDate(from.getDate() - 13);
+    return { from, to };
+  });
 
   const stepDate = (d: Date, dir: number) => {
     const nd = new Date(d);
     if (mode === "day") nd.setDate(nd.getDate() + dir);
-    else nd.setMonth(nd.getMonth() + dir);
+    else if (mode === "month") nd.setMonth(nd.getMonth() + dir);
     if (nd < FUNNEL_MIN_DATE) return d;
     return nd;
   };
 
+  const rangeKey = (r: { from: Date; to: Date }) => `${ymd(r.from)}_${ymd(r.to)}`;
+
   const queryA = useQuery({
-    queryKey: ["funnel-today", mode, ymd(dateA)],
-    queryFn: () => (mode === "day" ? fetchFunnelDay(dateA) : fetchFunnelMonth(dateA)),
+    queryKey: ["funnel-today", mode, mode === "range" ? rangeKey(rangeA) : ymd(dateA)],
+    queryFn: () => {
+      if (mode === "day") return fetchFunnelDay(dateA);
+      if (mode === "month") return fetchFunnelMonth(dateA);
+      return fetchFunnelRange(rangeA.from, rangeA.to);
+    },
   });
   const queryB = useQuery({
-    queryKey: ["funnel-today", mode, ymd(dateB)],
-    queryFn: () => (mode === "day" ? fetchFunnelDay(dateB) : fetchFunnelMonth(dateB)),
+    queryKey: ["funnel-today", mode, mode === "range" ? rangeKey(rangeB) : ymd(dateB), "B"],
+    queryFn: () => {
+      if (mode === "day") return fetchFunnelDay(dateB);
+      if (mode === "month") return fetchFunnelMonth(dateB);
+      return fetchFunnelRange(rangeB.from, rangeB.to);
+    },
     enabled: compare,
   });
 
@@ -666,7 +770,7 @@ function FunnelToday() {
     return FUNNEL_STAGES.map((stage, i) => {
       return {
         key: stage.key,
-        label: a[i]?.label ?? (mode === "day" ? stage.labelDay : stage.labelMonth),
+        label: a[i]?.label ?? (mode === "month" ? stage.labelMonth : stage.labelDay),
         subLabel: stage.subLabel,
         color: stage.color,
         A: a[i]?.count ?? 0,
@@ -688,6 +792,13 @@ function FunnelToday() {
 
   const fmtPicker = (d: Date) =>
     mode === "day" ? format(d, "d MMM yyyy", { locale: th }) : format(d, "MMM yyyy", { locale: th });
+
+  const fmtRange = (r: { from: Date; to: Date }) => {
+    const sameYear = r.from.getFullYear() === r.to.getFullYear();
+    const left = format(r.from, sameYear ? "d MMM" : "d MMM yyyy", { locale: th });
+    const right = format(r.to, "d MMM yyyy", { locale: th });
+    return `${left} – ${right}`;
+  };
 
   const DatePickerBtn = ({ value, onChange }: { value: Date; onChange: (d: Date) => void }) => (
     <div className="flex items-center gap-1">
@@ -718,13 +829,59 @@ function FunnelToday() {
     </div>
   );
 
+  const RangePickerBtn = ({ value, onChange }: { value: { from: Date; to: Date }; onChange: (r: { from: Date; to: Date }) => void }) => {
+    const applyPreset = (days: number) => {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - (days - 1));
+      onChange({ from, to });
+    };
+    return (
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 justify-start text-left font-normal min-w-[180px]">
+            <CalendarIcon className="w-3.5 h-3.5 mr-1.5" />
+            {fmtRange(value)}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <div className="flex gap-1 p-2 border-b flex-wrap">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyPreset(7)}>7 วัน</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyPreset(14)}>14 วัน</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => applyPreset(30)}>30 วัน</Button>
+          </div>
+          <Calendar
+            mode="range"
+            selected={{ from: value.from, to: value.to }}
+            onSelect={(r: any) => {
+              if (r?.from && r?.to) onChange({ from: r.from, to: r.to });
+              else if (r?.from) onChange({ from: r.from, to: r.from });
+            }}
+            numberOfMonths={2}
+            disabled={(date) => date < FUNNEL_MIN_DATE}
+            initialFocus
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
+
+
   return (
     <Card className="shadow-soft border-border/60 min-w-0 overflow-hidden">
       <div className="p-5 border-b space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-semibold">{mode === "day" ? "📊 กิจกรรมวันนี้ — เกิดอะไรขึ้น" : "📊 Funnel ลูกค้า — ติดตามกลุ่มเดือนนี้"}</h2>
+            <h2 className="font-display font-semibold">
+              {mode === "day"
+                ? "📊 กิจกรรมวันนี้ — เกิดอะไรขึ้น"
+                : mode === "month"
+                ? "📊 Funnel ลูกค้า — ติดตามกลุ่มเดือนนี้"
+                : "📊 กิจกรรมช่วงที่เลือก — สรุปรวม"}
+            </h2>
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant={mode === "day" ? "default" : "outline"} onClick={() => setMode("day")}>
@@ -733,10 +890,17 @@ function FunnelToday() {
             <Button size="sm" variant={mode === "month" ? "default" : "outline"} onClick={() => setMode("month")}>
               รายเดือน
             </Button>
+            <Button size="sm" variant={mode === "range" ? "default" : "outline"} onClick={() => setMode("range")}>
+              ช่วง
+            </Button>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <DatePickerBtn value={dateA} onChange={setDateA} />
+          {mode === "range" ? (
+            <RangePickerBtn value={rangeA} onChange={setRangeA} />
+          ) : (
+            <DatePickerBtn value={dateA} onChange={setDateA} />
+          )}
           <Button
             size="sm"
             variant={compare ? "default" : "outline"}
@@ -746,7 +910,10 @@ function FunnelToday() {
             <GitCompare className="w-3.5 h-3.5" />
             เปรียบเทียบ
           </Button>
-          {compare && <DatePickerBtn value={dateB} onChange={setDateB} />}
+          {compare && (mode === "range"
+            ? <RangePickerBtn value={rangeB} onChange={setRangeB} />
+            : <DatePickerBtn value={dateB} onChange={setDateB} />
+          )}
         </div>
       </div>
       <div className="p-5">
