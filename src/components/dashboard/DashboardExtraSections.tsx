@@ -875,7 +875,13 @@ function FunnelToday() {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
-            <h2 className="font-display font-semibold">{mode === "day" ? "📊 กิจกรรมวันนี้ — เกิดอะไรขึ้น" : "📊 Funnel ลูกค้า — ติดตามกลุ่มเดือนนี้"}</h2>
+            <h2 className="font-display font-semibold">
+              {mode === "day"
+                ? "📊 กิจกรรมวันนี้ — เกิดอะไรขึ้น"
+                : mode === "month"
+                ? "📊 Funnel ลูกค้า — ติดตามกลุ่มเดือนนี้"
+                : "📊 กิจกรรมช่วงที่เลือก — สรุปรวม"}
+            </h2>
           </div>
           <div className="flex gap-1">
             <Button size="sm" variant={mode === "day" ? "default" : "outline"} onClick={() => setMode("day")}>
@@ -884,10 +890,17 @@ function FunnelToday() {
             <Button size="sm" variant={mode === "month" ? "default" : "outline"} onClick={() => setMode("month")}>
               รายเดือน
             </Button>
+            <Button size="sm" variant={mode === "range" ? "default" : "outline"} onClick={() => setMode("range")}>
+              ช่วง
+            </Button>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <DatePickerBtn value={dateA} onChange={setDateA} />
+          {mode === "range" ? (
+            <RangePickerBtn value={rangeA} onChange={setRangeA} />
+          ) : (
+            <DatePickerBtn value={dateA} onChange={setDateA} />
+          )}
           <Button
             size="sm"
             variant={compare ? "default" : "outline"}
@@ -897,7 +910,10 @@ function FunnelToday() {
             <GitCompare className="w-3.5 h-3.5" />
             เปรียบเทียบ
           </Button>
-          {compare && <DatePickerBtn value={dateB} onChange={setDateB} />}
+          {compare && (mode === "range"
+            ? <RangePickerBtn value={rangeB} onChange={setRangeB} />
+            : <DatePickerBtn value={dateB} onChange={setDateB} />
+          )}
         </div>
       </div>
       <div className="p-5">
