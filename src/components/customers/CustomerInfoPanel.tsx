@@ -60,6 +60,7 @@ export default function CustomerInfoPanel({
   const [extractingPanel, setExtractingPanel] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirm, setResetConfirm] = useState("");
+  const [resetReason, setResetReason] = useState("");
   const [resetting, setResetting] = useState(false);
 
   const handleReset = async () => {
