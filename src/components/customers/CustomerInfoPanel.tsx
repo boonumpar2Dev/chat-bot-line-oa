@@ -70,14 +70,17 @@ export default function CustomerInfoPanel({
     }
     setResetting(true);
     try {
+      const payload: any = { customer_id: customer.id, confirmation: "RESET" };
+      if (resetReason.trim()) payload.reason = resetReason.trim().slice(0, 500);
       const { data, error } = await supabase.functions.invoke("reset-customer-test-data", {
-        body: { customer_id: customer.id, confirmation: "RESET" },
+        body: payload,
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success("รีเซ็ตข้อมูลลูกค้าเรียบร้อย");
       setResetOpen(false);
       setResetConfirm("");
+      setResetReason("");
       // Trigger parent refresh via update ping
       onUpdate({});
     } catch (e: any) {
