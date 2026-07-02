@@ -203,8 +203,10 @@ export type Database = {
       }
       app_settings: {
         Row: {
+          advanced_ai_status_policy_enabled: boolean
           ai_enabled: boolean
           ai_persona: string
+          ai_policy_config: Json
           ai_whitelist_enabled: boolean
           ai_whitelist_user_ids: string[]
           allowed_service_types: string[]
@@ -249,6 +251,7 @@ export type Database = {
           lead_type_logic_start_date: string | null
           location_keywords: string[]
           manual_chat_hours: number
+          manual_chat_minutes: number
           max_images_per_reply: number
           menu_request_keywords: string[]
           out_of_hours_message: string
@@ -279,8 +282,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          advanced_ai_status_policy_enabled?: boolean
           ai_enabled?: boolean
           ai_persona?: string
+          ai_policy_config?: Json
           ai_whitelist_enabled?: boolean
           ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
@@ -325,6 +330,7 @@ export type Database = {
           lead_type_logic_start_date?: string | null
           location_keywords?: string[]
           manual_chat_hours?: number
+          manual_chat_minutes?: number
           max_images_per_reply?: number
           menu_request_keywords?: string[]
           out_of_hours_message?: string
@@ -355,8 +361,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          advanced_ai_status_policy_enabled?: boolean
           ai_enabled?: boolean
           ai_persona?: string
+          ai_policy_config?: Json
           ai_whitelist_enabled?: boolean
           ai_whitelist_user_ids?: string[]
           allowed_service_types?: string[]
@@ -401,6 +409,7 @@ export type Database = {
           lead_type_logic_start_date?: string | null
           location_keywords?: string[]
           manual_chat_hours?: number
+          manual_chat_minutes?: number
           max_images_per_reply?: number
           menu_request_keywords?: string[]
           out_of_hours_message?: string
