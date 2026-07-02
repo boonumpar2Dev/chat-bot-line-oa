@@ -16,6 +16,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import Knowledge from "./pages/Knowledge";
 import KbSuggestions from "./pages/KbSuggestions";
 import Settings from "./pages/Settings";
+import QuotationSettings from "./pages/QuotationSettings";
 import AiSettings from "./pages/AiSettings";
 import Users from "./pages/Users";
 import LiffPanel from "./pages/LiffPanel";
@@ -49,6 +50,7 @@ const App = () => (
                 <Route path="/kb-suggestions" element={<ProtectedRoute menuKey="knowledge"><KbSuggestions /></ProtectedRoute>} />
                 <Route path="/ai-settings" element={<ProtectedRoute menuKey="ai_settings"><AiSettings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute menuKey="settings"><Settings /></ProtectedRoute>} />
+                <Route path="/settings/quotation" element={<ProtectedRoute menuKey="settings"><QuotationSettings /></ProtectedRoute>} />
                 <Route path="/tags" element={<ProtectedRoute menuKey="tags"><Tags /></ProtectedRoute>} />
                 <Route path="/broadcast" element={<ProtectedRoute menuKey="broadcast"><Broadcast /></ProtectedRoute>} />
                 <Route path="/users" element={<ProtectedRoute adminOnly><Users /></ProtectedRoute>} />

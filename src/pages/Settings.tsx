@@ -413,8 +413,7 @@ export default function Settings() {
       {/* Notification sound */}
       <NotificationSoundCard />
 
-      {/* Quotation auto-detection */}
-      <QuotationAutoDetectionCard />
+
 
 
 
