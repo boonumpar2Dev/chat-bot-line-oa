@@ -347,7 +347,7 @@ function LeadTypeCard({
   hint: string;
   rows: LeadRow[];
   highlight?: boolean;
-  leadKey: "new" | "reactivated" | "returning" | "needs_review";
+  leadKey: "new" | "reactivated" | "returning" | "needs_review" | "post_event_followup";
 }) {
   const value = rows.length;
 
