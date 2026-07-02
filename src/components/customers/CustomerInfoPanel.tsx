@@ -60,6 +60,7 @@ export default function CustomerInfoPanel({
   const [extractingPanel, setExtractingPanel] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetConfirm, setResetConfirm] = useState("");
+  const [resetReason, setResetReason] = useState("");
   const [resetting, setResetting] = useState(false);
 
   const handleReset = async () => {
@@ -69,14 +70,17 @@ export default function CustomerInfoPanel({
     }
     setResetting(true);
     try {
+      const payload: any = { customer_id: customer.id, confirmation: "RESET" };
+      if (resetReason.trim()) payload.reason = resetReason.trim().slice(0, 500);
       const { data, error } = await supabase.functions.invoke("reset-customer-test-data", {
-        body: { customer_id: customer.id, confirmation: "RESET" },
+        body: payload,
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       toast.success("รีเซ็ตข้อมูลลูกค้าเรียบร้อย");
       setResetOpen(false);
       setResetConfirm("");
+      setResetReason("");
       // Trigger parent refresh via update ping
       onUpdate({});
     } catch (e: any) {
@@ -989,7 +993,7 @@ export default function CustomerInfoPanel({
         )}
       </div>
 
-      <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) setResetConfirm(""); }}>
+      <Dialog open={resetOpen} onOpenChange={(o) => { setResetOpen(o); if (!o) { setResetConfirm(""); setResetReason(""); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
@@ -1016,6 +1020,19 @@ export default function CustomerInfoPanel({
                     className="mt-1"
                     autoFocus
                   />
+                </div>
+                <div>
+                  <Label className="text-xs">เหตุผลในการรีเซ็ต (ไม่บังคับ):</Label>
+                  <Textarea
+                    value={resetReason}
+                    onChange={(e) => setResetReason(e.target.value.slice(0, 500))}
+                    placeholder="เช่น รีเซ็ตเพื่อทดสอบ flow ใบเสนอราคา / ทดสอบลูกค้าเก่ากลับมาใหม่"
+                    rows={3}
+                    className="mt-1 text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    เหตุผลนี้จะถูกเก็บใน audit log สำหรับตรวจสอบย้อนหลัง
+                  </p>
                 </div>
               </div>
             </DialogDescription>
