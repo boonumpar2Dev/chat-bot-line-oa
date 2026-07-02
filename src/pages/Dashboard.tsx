@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 type LeadRow = {
   customer_id: string;
-  lead_type: "new" | "returning" | "reactivated" | "needs_review" | "other";
+  lead_type: "new" | "returning" | "reactivated" | "needs_review" | "post_event_followup" | "other";
   display_name: string | null;
   nickname: string | null;
   status: string;
