@@ -1021,6 +1021,19 @@ export default function CustomerInfoPanel({
                     autoFocus
                   />
                 </div>
+                <div>
+                  <Label className="text-xs">เหตุผลในการรีเซ็ต (ไม่บังคับ):</Label>
+                  <Textarea
+                    value={resetReason}
+                    onChange={(e) => setResetReason(e.target.value.slice(0, 500))}
+                    placeholder="เช่น รีเซ็ตเพื่อทดสอบ flow ใบเสนอราคา / ทดสอบลูกค้าเก่ากลับมาใหม่"
+                    rows={3}
+                    className="mt-1 text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+                    เหตุผลนี้จะถูกเก็บใน audit log สำหรับตรวจสอบย้อนหลัง
+                  </p>
+                </div>
               </div>
             </DialogDescription>
           </DialogHeader>
