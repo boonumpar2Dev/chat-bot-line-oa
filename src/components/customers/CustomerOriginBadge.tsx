@@ -43,6 +43,15 @@ const ORIGIN_OPTIONS: Array<{
     icon: Repeat,
   },
   {
+    value: "post_event_followup",
+    label: "หลังงาน (Post-event Follow-up)",
+    short: "หลังงาน",
+    desc: "งานเพิ่งจบภายใน N วัน (default 14) — ทักมา follow-up ไม่ใช่รอบขายใหม่",
+    badgeClass: "bg-pink-100 text-pink-700 border-pink-200",
+    dotClass: "bg-pink-500",
+    icon: PartyPopper,
+  },
+  {
     value: "needs_review",
     label: "ต้องตรวจสอบ",
     short: "Needs Review",
