@@ -4,7 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
-import { resolveAiReplyPolicy } from "../_shared/ai-policy.ts";
+import { resolveAiReplyPolicy, resolveLifecycle, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1377,6 +1377,71 @@ ${pastLines}
     console.warn("[customer_notes] parse failed:", e?.message);
   }
 
+  // 🎯 Phase 2 — resolve lifecycle ONLY for customers listed in ai_policy_config.test_customer_ids.
+  //   Fallback-safe: any error → lifecycle/replyMode = undefined → buildPrompt returns
+  //   byte-identical baseline prompt. Never blocks the webhook.
+  //   Guarantees:
+  //     - flag=false                       → block skipped (byte-identical baseline)
+  //     - flag=true + test_customer_ids=[] → block skipped (byte-identical baseline)
+  //     - flag=true + id ∈ test list       → inject [LIFECYCLE] + [GUARDRAIL] blocks
+  let __phase2_policyEnabled: boolean | undefined;
+  let __phase2_lifecycle: Lifecycle | undefined;
+  let __phase2_replyMode: ReplyMode | undefined;
+  if (cfg?.advanced_ai_status_policy_enabled === true) {
+    try {
+      const rawIds = (cfg as any)?.ai_policy_config?.test_customer_ids;
+      const testIds: string[] = Array.isArray(rawIds)
+        ? rawIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
+        : [];
+      if (testIds.length > 0 && freshCustomer?.id && testIds.includes(freshCustomer.id)) {
+        const [evRes, logRes] = await Promise.all([
+          supabase
+            .from("customer_events")
+            .select("event_date")
+            .eq("customer_id", freshCustomer.id)
+            .eq("status", "completed")
+            .not("event_date", "is", null)
+            .order("event_date", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          supabase
+            .from("customer_status_log")
+            .select("changed_at")
+            .eq("customer_id", freshCustomer.id)
+            .eq("new_status", "completed")
+            .order("changed_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        const result = resolveLifecycle({
+          customer: {
+            status: freshCustomer.status,
+            customer_origin: freshCustomer.customer_origin,
+            updated_at: (freshCustomer as any).updated_at ?? null,
+          },
+          latestCompletedEventDate: (evRes as any)?.data?.event_date ?? null,
+          latestCompletedStatusChangedAt: (logRes as any)?.data?.changed_at ?? null,
+          config: (cfg as any)?.ai_policy_config ?? null,
+        });
+        __phase2_policyEnabled = true;
+        __phase2_lifecycle = result.lifecycle;
+        __phase2_replyMode = result.replyMode;
+        console.log("[AiPolicy:phase2]", JSON.stringify({
+          customer_id: freshCustomer.id,
+          lifecycle: result.lifecycle,
+          replyMode: result.replyMode,
+          daysSinceCompletion: result.daysSinceCompletion,
+          reason: result.reason,
+        }));
+      }
+    } catch (e) {
+      console.error("[AiPolicy:phase2] error (ignored, using legacy prompt):", (e as Error)?.message);
+      __phase2_policyEnabled = undefined;
+      __phase2_lifecycle = undefined;
+      __phase2_replyMode = undefined;
+    }
+  }
+
   const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
     kbContext,
@@ -1393,6 +1458,9 @@ ${pastLines}
     tagInstructions,
     customerNotes,
     customerOrigin: freshCustomer?.customer_origin || "new",
+    policyEnabled: __phase2_policyEnabled,
+    lifecycle: __phase2_lifecycle,
+    replyMode: __phase2_replyMode,
   });
 
 

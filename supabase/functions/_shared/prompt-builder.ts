@@ -6,6 +6,8 @@
 // Other legacy fields (image_selection_rules, tier_special_rules, forbidden_terms,
 // intent_collection_order, allowed_service_types) were merged into strict_rules.
 
+import { buildLifecycleBlock, buildGuardrailBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
+
 export interface BuildPromptInput {
   cfg: any;
   kbContext: string;
@@ -23,6 +25,11 @@ export interface BuildPromptInput {
   tagInstructions?: string;
   customerNotes?: string;
   customerOrigin?: "new" | "returning" | "legacy" | string | null;
+  // Phase 2 — opt-in status-aware blocks. When any is missing / policyEnabled !== true,
+  // buildPrompt returns byte-identical output to the pre-Phase-2 baseline.
+  policyEnabled?: boolean;
+  lifecycle?: Lifecycle;
+  replyMode?: ReplyMode;
 }
 
 
@@ -92,11 +99,22 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
   const _todayHuman = `${_bkk.getUTCDate()} ${_thMonths[_bkk.getUTCMonth()]} ${_bkk.getUTCFullYear()}`;
   const dateBlock = `\n\n📅 วันนี้: ${_todayHuman} (${_todayStr}) — ถ้าลูกค้าบอกแค่ "วัน X เดือน Y" ไม่ระบุปี ให้ใช้ปีปัจจุบัน; ถ้าเดือนนั้นผ่านไปแล้วในปีนี้ ให้ใช้ปีถัดไป ห้ามใช้ปีในอดีตเด็ดขาด`;
 
+  // 🎯 Phase 2 — status-aware policy blocks (opt-in).
+  //    Byte-identical to baseline when: policyEnabled !== true OR lifecycle missing/"legacy".
+  //    Caller (line-webhook) only sets these fields for customers ∈ ai_policy_config.test_customer_ids.
+  const policyBlock = (() => {
+    if (i.policyEnabled !== true) return "";
+    const lc = buildLifecycleBlock(i.lifecycle);
+    if (!lc) return "";
+    const gr = buildGuardrailBlock();
+    return `\n\n${lc}\n\n${gr}`;
+  })();
+
   const turnLine = typeof i.customerTurns === "number" ? ` (ลูกค้าพูดมาแล้ว ${i.customerTurns} รอบ)` : "";
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}
+  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}${policyBlock}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด — ขึ้นเหนือทุกกฎ):
 - ตอบจาก KB / แคตตาล็อกแพ็กเกจ / โปรโมชัน / ข้อมูลลูกค้าที่เก็บไว้แล้ว / โน้ตเฉพาะลูกค้า **เท่านั้น** — ห้ามเดา ห้ามแต่ง ห้ามคิดเอง ห้ามอนุมานจากความรู้ทั่วไป
