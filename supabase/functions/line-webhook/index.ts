@@ -1442,6 +1442,7 @@ ${pastLines}
             tax_id: (freshCustomer as any).tax_id ?? null,
           },
           customerIntentData,
+          result.lifecycle,
         );
         __phase2_customerContextBlock = ctxRes.block || undefined;
 
