@@ -133,6 +133,12 @@ Deno.test("lifecycle block: exists for every non-legacy lifecycle", () => {
   assertEquals(buildLifecycleBlock(undefined as any), "");
 });
 
+Deno.test("lifecycle block: pending_confirm contains no-repeat + ask-only-missing guidance", () => {
+  const b = buildLifecycleBlock("pending_confirm");
+  assert(b.includes("ห้ามถามข้อมูลพื้นฐานซ้ำ"), "must instruct not to re-ask basic info");
+  assert(b.includes("ถามเฉพาะข้อมูลที่ขาดเท่านั้น"), "must instruct to ask only missing fields");
+});
+
 // ── buildPrompt byte-identical when disabled ─────────────────────────────────
 
 const baseInput: BuildPromptInput = {
