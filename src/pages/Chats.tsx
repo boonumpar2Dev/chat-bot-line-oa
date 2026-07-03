@@ -693,6 +693,10 @@ export default function Chats() {
   useEffect(() => {
     return () => { justMountedRef.current = true; };
   }, []);
+  // ติดตามห้องล่าสุดที่ผู้ใช้ดูอยู่ → ใช้แยก "กลับมาห้องเดิม" vs "เปิดห้องอื่น" ตอน mount รอบถัดไป
+  useEffect(() => {
+    if (selectedId) lastActiveRoomBeforeUnmount = selectedId;
+  }, [selectedId]);
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
