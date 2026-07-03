@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      _bak_live_rollout_20260703: {
+        Row: {
+          admin_bot_override: boolean | null
+          ai_active: boolean | null
+          ai_resumed_at: string | null
+          backed_up_at: string | null
+          customer_id: string | null
+          display_name: string | null
+          last_message_at: string | null
+          manual_chat_until: string | null
+          nickname: string | null
+          status: string | null
+        }
+        Insert: {
+          admin_bot_override?: boolean | null
+          ai_active?: boolean | null
+          ai_resumed_at?: string | null
+          backed_up_at?: string | null
+          customer_id?: string | null
+          display_name?: string | null
+          last_message_at?: string | null
+          manual_chat_until?: string | null
+          nickname?: string | null
+          status?: string | null
+        }
+        Update: {
+          admin_bot_override?: boolean | null
+          ai_active?: boolean | null
+          ai_resumed_at?: string | null
+          backed_up_at?: string | null
+          customer_id?: string | null
+          display_name?: string | null
+          last_message_at?: string | null
+          manual_chat_until?: string | null
+          nickname?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       ai_context_cache: {
         Row: {
           content: string
