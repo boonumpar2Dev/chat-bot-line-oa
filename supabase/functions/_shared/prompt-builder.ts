@@ -110,7 +110,10 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const lc = buildLifecycleBlock(i.lifecycle);
     if (!lc) return "";
     const gr = buildGuardrailBlock();
-    return `\n\n${lc}\n\n${gr}`;
+    const scope = buildServiceScopeBlock();
+    const defer = buildDeferDetectionBlock();
+    const grounded = buildContextGroundedBlock();
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
