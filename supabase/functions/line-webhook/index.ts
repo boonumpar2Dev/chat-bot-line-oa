@@ -1463,15 +1463,16 @@ ${pastLines}
           reason: result.reason,
           contextFields: ctxRes.fieldNames, // keys only — no values (safe to log)
         }));
+      } catch (e) {
+        console.error("[AiPolicy:phase2] error (ignored, using legacy prompt):", (e as Error)?.message);
+        __phase2_policyEnabled = undefined;
+        __phase2_lifecycle = undefined;
+        __phase2_replyMode = undefined;
+        __phase2_customerContextBlock = undefined;
       }
-    } catch (e) {
-      console.error("[AiPolicy:phase2] error (ignored, using legacy prompt):", (e as Error)?.message);
-      __phase2_policyEnabled = undefined;
-      __phase2_lifecycle = undefined;
-      __phase2_replyMode = undefined;
-      __phase2_customerContextBlock = undefined;
     }
   }
+
 
   const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
