@@ -6,7 +6,7 @@
 // Other legacy fields (image_selection_rules, tier_special_rules, forbidden_terms,
 // intent_collection_order, allowed_service_types) were merged into strict_rules.
 
-import { buildLifecycleBlock, buildGuardrailBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
+import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
 
 export interface BuildPromptInput {
   cfg: any;
@@ -110,7 +110,10 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const lc = buildLifecycleBlock(i.lifecycle);
     if (!lc) return "";
     const gr = buildGuardrailBlock();
-    return `\n\n${lc}\n\n${gr}`;
+    const scope = buildServiceScopeBlock();
+    const defer = buildDeferDetectionBlock();
+    const grounded = buildContextGroundedBlock();
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
