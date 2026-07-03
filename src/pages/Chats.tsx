@@ -216,6 +216,9 @@ const appendReadyFilesToDraft = (userId: string | undefined, customerId: string 
 // เก็บตำแหน่ง scroll ของแต่ละห้องไว้ระหว่างที่ผู้ใช้ออกไปหน้าอื่นแล้วกลับมา
 // (module-level → คงอยู่ตลอด session ของ SPA, หายเมื่อ full reload)
 const chatScrollPositions = new Map<string, number>();
+// ห้องที่ผู้ใช้ดูอยู่ล่าสุดก่อน Chats จะ unmount → ใช้แยก "กลับมาห้องเดิม" (restore)
+// ออกจาก "เปิดห้องอื่นครั้งแรกใน session" (ควรลงล่างสุด แม้จะมี saved position เก่าค้าง)
+let lastActiveRoomBeforeUnmount: string | null = null;
 
 export default function Chats() {
   const { user } = useAuth();
