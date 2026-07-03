@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getLineConfig } from "../_shared/line-config.ts";
+import { resolveAdminPauseMs } from "../_shared/admin-pause.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -111,9 +112,11 @@ Deno.serve(async (req) => {
         }
         return `[${m.type}]`;
       }).join("\n");
-      const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours").eq("key", "ai_config").limit(1);
-      const manualHours = cfgArr?.[0]?.manual_chat_hours || 360;
-      const until = new Date(Date.now() + manualHours * 3600000).toISOString();
+      const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours, ai_policy_config").eq("key", "ai_config").limit(1);
+      const pauseSettings = cfgArr?.[0] || null;
+      const pause = resolveAdminPauseMs(customer_id, pauseSettings, new Date());
+      const until = new Date(Date.now() + pause.ms).toISOString();
+      console.log(`[admin-pause] customer=${customer_id} mode=${pause.mode} minutes=${pause.minutes}`);
 
       // ใช้ quoteToken แรกที่ได้กลับมา (สำหรับ reply ต่อ admin message นี้ในอนาคต)
       const firstQuoteToken = sentQuoteTokens.find((t) => !!t) || null;
