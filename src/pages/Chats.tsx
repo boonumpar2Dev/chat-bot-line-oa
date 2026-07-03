@@ -137,6 +137,21 @@ export function getFirstPriority(c: any): boolean {
   if (c?.status === "pending_quote") return true;
   return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
+// Handoff needed — AI ขอส่งต่อทีมงาน หรือ lifecycle ที่ต้อง admin ดูแลใกล้ชิด
+export function getNeedsHandoff(c: any): boolean {
+  const snippet = String(c?.last_message_snippet || "");
+  if (c?.last_sender === "ai" && /ประสานงานทีมงาน/.test(snippet)) return true;
+  const status = String(c?.status || "");
+  if (status === "confirmed" || status === "confirmed_returning" || status === "postponed") return true;
+  if (status === "completed") {
+    const d = c?.event_date ? new Date(c.event_date) : (c?.updated_at ? new Date(c.updated_at) : null);
+    if (d && !isNaN(d.getTime())) {
+      const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (days >= 0 && days <= 30) return true;
+    }
+  }
+  return false;
+}
 
 function applyFilter(q: any, filter: FilterKind) {
   if (filter === "unread") return q.gt("unread_count", 0);
@@ -1215,6 +1230,7 @@ export default function Chats() {
             const isUnread = (c.unread_count || 0) > 0;
             const isFirstPriority = getFirstPriority(c);
             const isAwaitingAdmin = !isFirstPriority && getAwaitingAdmin(c);
+            const needsHandoff = getNeedsHandoff(c);
             return (
             <button key={c.id} onClick={() => {
               // กดเลือกจากลิสต์ → ลงล่างสุดเสมอ + เคลียร์ unread ทันที (กันค้างถ้าคลิกห้องเดิมซ้ำจาก notification)
@@ -1257,6 +1273,9 @@ export default function Chats() {
                   )}
                   {isAwaitingAdmin && (
                     <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#F59E0B] text-white hover:bg-[#F59E0B] border-0">🤖 รอแอดมิน</Badge>
+                  )}
+                  {needsHandoff && (
+                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#7C3AED] text-white hover:bg-[#7C3AED] border-0">🙋 แอดมินดูแลต่อ</Badge>
                   )}
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && !(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
