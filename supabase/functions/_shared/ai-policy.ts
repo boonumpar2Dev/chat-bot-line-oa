@@ -283,7 +283,8 @@ export interface CustomerContextColumns {
   tax_id?: string | null;
 }
 
-const COLUMN_ORDER: Array<[keyof CustomerContextColumns, string]> = [
+// Labels for CURRENT (active) events
+const COLUMN_ORDER_CURRENT: Array<[keyof CustomerContextColumns, string]> = [
   ["name", "ชื่อ"],
   ["nickname", "ชื่อเล่น"],
   ["phone", "เบอร์โทร"],
@@ -295,8 +296,26 @@ const COLUMN_ORDER: Array<[keyof CustomerContextColumns, string]> = [
   ["tax_id", "เลขผู้เสียภาษี"],
 ];
 
+// Labels for PAST events (completed_*) — event-related fields become "ครั้งก่อน"
+const COLUMN_ORDER_PAST: Array<[keyof CustomerContextColumns, string]> = [
+  ["name", "ชื่อ"],
+  ["nickname", "ชื่อเล่น"],
+  ["phone", "เบอร์โทร"],
+  ["event_type", "ประเภทงานครั้งก่อน"],
+  ["event_date", "วันจัดงานครั้งก่อน"],
+  ["guest_count", "จำนวนคนครั้งก่อน"],
+  ["venue", "สถานที่ครั้งก่อน"],
+  ["province", "จังหวัดครั้งก่อน"],
+  ["tax_id", "เลขผู้เสียภาษี"],
+];
+
+// intent_data key → past-mode Thai label (event-related only)
+const PAST_INTENT_LABEL: Record<string, string> = {
+  service_type: "รูปแบบอาหาร/บริการครั้งก่อน",
+};
+
 const RESERVED_INTENT_KEYS = new Set<string>([
-  ...COLUMN_ORDER.map(([k]) => k as string),
+  ...COLUMN_ORDER_CURRENT.map(([k]) => k as string),
   "venue_location", // rendered separately in webhook
   "_pilot_marker",
 ]);
@@ -313,25 +332,38 @@ export interface CurrentCustomerContextResult {
   fieldNames: string[];
 }
 
+function isPastLifecycle(lifecycle?: Lifecycle | null): boolean {
+  if (!lifecycle) return false;
+  return lifecycle === "completed_recent"
+    || lifecycle === "completed_warm"
+    || lifecycle === "completed_old"
+    || lifecycle === "completed_unknown";
+}
+
 /**
  * Pure block builder — merges customer columns + intent_data (columns take priority).
  * - Empty/blank values are skipped.
  * - Never mutates inputs.
  * - Returns `{ block: "", fieldNames: [] }` when no data → caller can skip injection.
  * - Complex object values in intent_data (e.g. venue_location) are skipped (rendered elsewhere).
+ * - Phase 2.1.1: when `lifecycle` is completed_* → render as [PAST_EVENT_CONTEXT] with
+ *   "ครั้งก่อน" labels and past-event rules (event is over, do NOT treat as current).
  */
 export function buildCurrentCustomerContextBlock(
   columns: CustomerContextColumns | null | undefined,
   intentData: Record<string, unknown> | null | undefined,
+  lifecycle?: Lifecycle | null,
 ): CurrentCustomerContextResult {
   const cols = columns ?? {};
   const intent = (intentData && typeof intentData === "object") ? intentData : {};
+  const past = isPastLifecycle(lifecycle);
+  const columnOrder = past ? COLUMN_ORDER_PAST : COLUMN_ORDER_CURRENT;
 
   const lines: string[] = [];
   const fieldNames: string[] = [];
 
   // 1. Columns first (primary source)
-  for (const [key, label] of COLUMN_ORDER) {
+  for (const [key, label] of columnOrder) {
     const v = (cols as Record<string, unknown>)[key];
     if (isPresent(v)) {
       lines.push(`- ${label}: ${String(v).trim()}`);
@@ -346,7 +378,8 @@ export function buildCurrentCustomerContextBlock(
     if (RESERVED_INTENT_KEYS.has(key)) continue;
     if (!isPresent(val)) continue;
     if (typeof val === "object") continue;
-    lines.push(`- ${key}: ${String(val).trim()}`);
+    const label = past ? (PAST_INTENT_LABEL[key] ?? key) : key;
+    lines.push(`- ${label}: ${String(val).trim()}`);
     fieldNames.push(key);
   }
 
@@ -354,7 +387,20 @@ export function buildCurrentCustomerContextBlock(
     return { block: "", fieldNames: [] };
   }
 
-  const block = `[CURRENT_CUSTOMER_CONTEXT] ข้อมูลลูกค้ารายนี้ (คอลัมน์หลัก + intent_data — คอลัมน์เป็นหลัก):
+  const block = past
+    ? `[PAST_EVENT_CONTEXT] งานที่ลูกค้าเคยจัดกับเรา:
+หมายเหตุ: งานนี้จบแล้ว ห้ามถือว่าเป็นงานปัจจุบันของลูกค้า
+${lines.join("\n")}
+
+กฎการใช้ข้อมูล (สำคัญมาก):
+- ใช้ข้อมูลนี้เพื่อเข้าใจประวัติลูกค้าและช่วยให้คุยต่อได้ง่ายขึ้น
+- ห้ามถือว่าข้อมูลนี้เป็นรายละเอียดของงานใหม่
+- ถ้าลูกค้าพูดถึงงานใหม่ ให้ถือว่าเป็นงานใหม่ และสามารถถามรายละเอียดใหม่ได้ เช่น วันจัดงาน จำนวนคน สถานที่ รูปแบบอาหาร
+- อย่าอ้างวัน/จำนวนคน/สถานที่เดิมเป็นค่าเริ่มต้นของงานใหม่ เว้นแต่ลูกค้าพูดชัดว่า "เหมือนเดิม", "แบบเดิม", "สถานที่เดิม", "จำนวนเท่าเดิม"
+- ถ้าลูกค้าถามราคาเดิม/เงื่อนไขเดิม/คิวใหม่ ให้ส่งต่อทีมงาน ห้ามยืนยันเอง
+- ถ้าลูกค้าถามหลายประเด็นในข้อความเดียว ให้ตอบทีละประเด็น — ห้ามยัดทุกประเด็นในบับเบิลเดียว
+- ถ้าประเด็นใดเป็น high-risk (ตาม [GUARDRAIL]) ให้ส่งต่อทีมงานเฉพาะประเด็นนั้น ประเด็นอื่นตอบตามปกติ`
+    : `[CURRENT_CUSTOMER_CONTEXT] ข้อมูลลูกค้ารายนี้ (คอลัมน์หลัก + intent_data — คอลัมน์เป็นหลัก):
 ${lines.join("\n")}
 
 กฎการใช้ context นี้ (สำคัญมาก):
