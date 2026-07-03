@@ -1937,16 +1937,27 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
           })}
         </div>
       )}
-      {cleaned && (
-        <div className={cn(
-          "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-sm",
-          isCustomer && "rounded-tl-md",
-          (isAdmin || !isCustomer) && "rounded-tr-md",
-          bg
-        )} title={fullTime}>
-          {renderText(cleaned)}
-        </div>
-      )}
+      {cleaned && (() => {
+        const isAI = m.sender === "ai";
+        const parts = isAI
+          ? cleaned.split(/\s*---\s*/).map(s => s.trim()).filter(Boolean)
+          : [cleaned];
+        const segments = parts.length > 0 ? parts : [cleaned];
+        return (
+          <div className={cn("flex flex-col gap-1", isCustomer ? "items-start" : "items-end")}>
+            {segments.map((seg, i) => (
+              <div key={i} className={cn(
+                "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-sm",
+                isCustomer && "rounded-tl-md",
+                (isAdmin || !isCustomer) && "rounded-tr-md",
+                bg
+              )} title={fullTime}>
+                {renderText(seg)}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <div className={cn("flex items-center gap-1.5 px-2", isCustomer ? "flex-row" : "flex-row-reverse")}>
         <span className="text-[10px] text-muted-foreground/70" title={fullTime}>{timeShort}</span>
         {canReply && (
