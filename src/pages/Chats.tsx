@@ -716,7 +716,10 @@ export default function Chats() {
       const cameFromOtherPage = justMountedRef.current;
       justMountedRef.current = false;
       const saved = selectedId ? chatScrollPositions.get(selectedId) : undefined;
-      if (cameFromOtherPage && saved !== undefined && saved >= 0) {
+      // restore เฉพาะ "กลับมาห้องเดิมที่เพิ่งดูอยู่ก่อน unmount" เท่านั้น
+      // ถ้าเปิดห้องอื่นครั้งแรกใน session → ลงล่างสุด (ไม่สนใจ saved เก่าที่ค้างใน Map)
+      const isSameRoomAsBeforeUnmount = !!selectedId && selectedId === lastActiveRoomBeforeUnmount;
+      if (cameFromOtherPage && isSameRoomAsBeforeUnmount && saved !== undefined && saved >= 0) {
         const restore = () => { viewport.scrollTop = saved; };
         requestAnimationFrame(() => {
           restore();
