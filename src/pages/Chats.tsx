@@ -1943,11 +1943,13 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
           ? cleaned.split(/\s*---\s*/).map(s => s.trim()).filter(Boolean)
           : [cleaned];
         const segments = parts.length > 0 ? parts : [cleaned];
+        const isSplit = isAI && segments.length > 1;
         return (
-          <div className={cn("flex flex-col gap-1", isCustomer ? "items-start" : "items-end")}>
+          <div className={cn("flex flex-col gap-1 w-full", isCustomer ? "items-start" : "items-end")}>
             {segments.map((seg, i) => (
               <div key={i} className={cn(
-                "max-w-[85%] sm:max-w-[80%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-sm",
+                "rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] shadow-sm",
+                isSplit ? "w-[85%] sm:w-[80%]" : "max-w-[85%] sm:max-w-[80%]",
                 isCustomer && "rounded-tl-md",
                 (isAdmin || !isCustomer) && "rounded-tr-md",
                 bg
