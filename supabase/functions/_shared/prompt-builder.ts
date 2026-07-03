@@ -30,6 +30,9 @@ export interface BuildPromptInput {
   policyEnabled?: boolean;
   lifecycle?: Lifecycle;
   replyMode?: ReplyMode;
+  // Phase 2.1 — opt-in explicit current-customer context block. Injected only when
+  // policyEnabled === true AND this string is non-empty. Otherwise no-op.
+  customerContextBlock?: string;
 }
 
 
