@@ -1388,13 +1388,22 @@ ${pastLines}
   let __phase2_lifecycle: Lifecycle | undefined;
   let __phase2_replyMode: ReplyMode | undefined;
   let __phase2_customerContextBlock: string | undefined;
-  if (cfg?.advanced_ai_status_policy_enabled === true) {
-    try {
-      const rawIds = (cfg as any)?.ai_policy_config?.test_customer_ids;
-      const testIds: string[] = Array.isArray(rawIds)
-        ? rawIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
-        : [];
-      if (testIds.length > 0 && freshCustomer?.id && testIds.includes(freshCustomer.id)) {
+  {
+    const gate = resolvePhase2Gate({
+      customerId: freshCustomer?.id ?? null,
+      settings: {
+        advanced_ai_status_policy_enabled: cfg?.advanced_ai_status_policy_enabled ?? null,
+        ai_policy_config: (cfg as any)?.ai_policy_config ?? null,
+      },
+    });
+    if (gate.enabled) {
+      try {
+        console.log("[AiPolicy:phase2:gate]", JSON.stringify({
+          customer_id: freshCustomer?.id ?? null,
+          mode: gate.mode,
+          reason: gate.reason,
+        }));
+
         const [evRes, logRes] = await Promise.all([
           supabase
             .from("customer_events")
