@@ -1230,7 +1230,7 @@ export default function Chats() {
             const isUnread = (c.unread_count || 0) > 0;
             const isFirstPriority = getFirstPriority(c);
             const isAwaitingAdmin = !isFirstPriority && getAwaitingAdmin(c);
-            const needsHandoff = getNeedsHandoff(c);
+            
             return (
             <button key={c.id} onClick={() => {
               // กดเลือกจากลิสต์ → ลงล่างสุดเสมอ + เคลียร์ unread ทันที (กันค้างถ้าคลิกห้องเดิมซ้ำจาก notification)
@@ -1272,10 +1272,7 @@ export default function Chats() {
                     <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#DC2626] text-white hover:bg-[#DC2626] border-0">🔥 First Priority</Badge>
                   )}
                   {isAwaitingAdmin && (
-                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#F59E0B] text-white hover:bg-[#F59E0B] border-0">🤖 รอแอดมิน</Badge>
-                  )}
-                  {needsHandoff && (
-                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#7C3AED] text-white hover:bg-[#7C3AED] border-0">🙋 แอดมินดูแลต่อ</Badge>
+                    <Badge className="text-[10px] py-0 h-4 px-1.5 bg-[#F59E0B] text-white hover:bg-[#F59E0B] border-0">🤖 รอแอดมินตอบ</Badge>
                   )}
                   <Badge variant="outline" className="text-[10px] py-0 h-4">{STATUS_LABEL[c.status] || c.status}</Badge>
                   {!c.ai_active && !(c.line_user_id?.startsWith("C") || c.line_user_id?.startsWith("R")) && <Badge variant="secondary" className="text-[10px] py-0 h-4">Manual</Badge>}
