@@ -132,10 +132,10 @@ export function getAwaitingAdmin(c: any): boolean {
   return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
 export function getFirstPriority(c: any): boolean {
-  // ต้องมีเบอร์เท่านั้น (admin ที่เปลี่ยน pending_quote แต่ยังไม่มีเบอร์ — AI จะ extract เบอร์ให้ภายหลัง)
+  // First Priority = pending_quote + มีเบอร์ เท่านั้น
+  // (เคส AI ตอบ + admin ยังไม่เห็น → ใช้ getAwaitingAdmin แทน)
   if (!c?.phone) return false;
-  if (c?.status === "pending_quote") return true;
-  return c?.last_sender === "ai" && c?.admin_unseen === true;
+  return c?.status === "pending_quote";
 }
 
 function applyFilter(q: any, filter: FilterKind) {
@@ -143,7 +143,7 @@ function applyFilter(q: any, filter: FilterKind) {
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
   if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
-  if (filter === "first_priority") return q.not("phone", "is", null).neq("phone", "").or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)");
+  if (filter === "first_priority") return q.not("phone", "is", null).neq("phone", "").eq("status", "pending_quote");
 
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
   return q;
