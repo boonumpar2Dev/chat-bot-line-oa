@@ -1,0 +1,1 @@
+UPDATE public.customers SET status='confirmed', ai_active=true, manual_chat_until=NULL, admin_bot_override=true, intent_data = jsonb_set(COALESCE(intent_data, '{}'::jsonb), '{_pilot_marker}', '"PILOT_TEST_PHASE2_ROUND2_CONFIRMED"') WHERE id='df0ea919-3ef7-4334-b361-67e1a7d0602d';
