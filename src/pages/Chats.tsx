@@ -216,6 +216,9 @@ const appendReadyFilesToDraft = (userId: string | undefined, customerId: string 
 // เก็บตำแหน่ง scroll ของแต่ละห้องไว้ระหว่างที่ผู้ใช้ออกไปหน้าอื่นแล้วกลับมา
 // (module-level → คงอยู่ตลอด session ของ SPA, หายเมื่อ full reload)
 const chatScrollPositions = new Map<string, number>();
+// ห้องที่ผู้ใช้ดูอยู่ล่าสุดก่อน Chats จะ unmount → ใช้แยก "กลับมาห้องเดิม" (restore)
+// ออกจาก "เปิดห้องอื่นครั้งแรกใน session" (ควรลงล่างสุด แม้จะมี saved position เก่าค้าง)
+let lastActiveRoomBeforeUnmount: string | null = null;
 
 export default function Chats() {
   const { user } = useAuth();
@@ -690,6 +693,10 @@ export default function Chats() {
   useEffect(() => {
     return () => { justMountedRef.current = true; };
   }, []);
+  // ติดตามห้องล่าสุดที่ผู้ใช้ดูอยู่ → ใช้แยก "กลับมาห้องเดิม" vs "เปิดห้องอื่น" ตอน mount รอบถัดไป
+  useEffect(() => {
+    if (selectedId) lastActiveRoomBeforeUnmount = selectedId;
+  }, [selectedId]);
   useEffect(() => {
     const root = scrollRef.current;
     const viewport = root?.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]") ?? root;
@@ -713,7 +720,10 @@ export default function Chats() {
       const cameFromOtherPage = justMountedRef.current;
       justMountedRef.current = false;
       const saved = selectedId ? chatScrollPositions.get(selectedId) : undefined;
-      if (cameFromOtherPage && saved !== undefined && saved >= 0) {
+      // restore เฉพาะ "กลับมาห้องเดิมที่เพิ่งดูอยู่ก่อน unmount" เท่านั้น
+      // ถ้าเปิดห้องอื่นครั้งแรกใน session → ลงล่างสุด (ไม่สนใจ saved เก่าที่ค้างใน Map)
+      const isSameRoomAsBeforeUnmount = !!selectedId && selectedId === lastActiveRoomBeforeUnmount;
+      if (cameFromOtherPage && isSameRoomAsBeforeUnmount && saved !== undefined && saved >= 0) {
         const restore = () => { viewport.scrollTop = saved; };
         requestAnimationFrame(() => {
           restore();
