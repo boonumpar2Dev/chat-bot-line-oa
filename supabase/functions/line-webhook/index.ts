@@ -4,7 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
-import { resolveAiReplyPolicy, resolveLifecycle, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
+import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1387,6 +1387,7 @@ ${pastLines}
   let __phase2_policyEnabled: boolean | undefined;
   let __phase2_lifecycle: Lifecycle | undefined;
   let __phase2_replyMode: ReplyMode | undefined;
+  let __phase2_customerContextBlock: string | undefined;
   if (cfg?.advanced_ai_status_policy_enabled === true) {
     try {
       const rawIds = (cfg as any)?.ai_policy_config?.test_customer_ids;
@@ -1426,12 +1427,31 @@ ${pastLines}
         __phase2_policyEnabled = true;
         __phase2_lifecycle = result.lifecycle;
         __phase2_replyMode = result.replyMode;
+
+        // Phase 2.1 — build [CURRENT_CUSTOMER_CONTEXT] block (test-customer-only)
+        const ctxRes = buildCurrentCustomerContextBlock(
+          {
+            name: (freshCustomer as any).name ?? null,
+            nickname: (freshCustomer as any).nickname ?? null,
+            phone: (freshCustomer as any).phone ?? null,
+            event_type: (freshCustomer as any).event_type ?? null,
+            event_date: (freshCustomer as any).event_date ?? null,
+            guest_count: (freshCustomer as any).guest_count ?? null,
+            venue: (freshCustomer as any).venue ?? null,
+            province: (freshCustomer as any).province ?? null,
+            tax_id: (freshCustomer as any).tax_id ?? null,
+          },
+          customerIntentData,
+        );
+        __phase2_customerContextBlock = ctxRes.block || undefined;
+
         console.log("[AiPolicy:phase2]", JSON.stringify({
           customer_id: freshCustomer.id,
           lifecycle: result.lifecycle,
           replyMode: result.replyMode,
           daysSinceCompletion: result.daysSinceCompletion,
           reason: result.reason,
+          contextFields: ctxRes.fieldNames, // keys only — no values (safe to log)
         }));
       }
     } catch (e) {
@@ -1439,6 +1459,7 @@ ${pastLines}
       __phase2_policyEnabled = undefined;
       __phase2_lifecycle = undefined;
       __phase2_replyMode = undefined;
+      __phase2_customerContextBlock = undefined;
     }
   }
 
@@ -1461,6 +1482,7 @@ ${pastLines}
     policyEnabled: __phase2_policyEnabled,
     lifecycle: __phase2_lifecycle,
     replyMode: __phase2_replyMode,
+    customerContextBlock: __phase2_customerContextBlock,
   });
 
 

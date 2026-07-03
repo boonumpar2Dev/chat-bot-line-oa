@@ -30,6 +30,9 @@ export interface BuildPromptInput {
   policyEnabled?: boolean;
   lifecycle?: Lifecycle;
   replyMode?: ReplyMode;
+  // Phase 2.1 — opt-in explicit current-customer context block. Injected only when
+  // policyEnabled === true AND this string is non-empty. Otherwise no-op.
+  customerContextBlock?: string;
 }
 
 
@@ -110,11 +113,21 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     return `\n\n${lc}\n\n${gr}`;
   })();
 
+  // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
+  //    policyEnabled !== true OR customerContextBlock is empty/missing.
+  const customerContextInject = (() => {
+    if (i.policyEnabled !== true) return "";
+    const b = (i.customerContextBlock || "").trim();
+    if (!b) return "";
+    return `\n\n${b}`;
+  })();
+
+
   const turnLine = typeof i.customerTurns === "number" ? ` (ลูกค้าพูดมาแล้ว ${i.customerTurns} รอบ)` : "";
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}${policyBlock}
+  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}${policyBlock}${customerContextInject}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด — ขึ้นเหนือทุกกฎ):
 - ตอบจาก KB / แคตตาล็อกแพ็กเกจ / โปรโมชัน / ข้อมูลลูกค้าที่เก็บไว้แล้ว / โน้ตเฉพาะลูกค้า **เท่านั้น** — ห้ามเดา ห้ามแต่ง ห้ามคิดเอง ห้ามอนุมานจากความรู้ทั่วไป

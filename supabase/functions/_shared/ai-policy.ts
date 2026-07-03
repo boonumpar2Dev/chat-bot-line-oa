@@ -266,3 +266,103 @@ export function buildGuardrailBlock(): string {
 - ยกเลิกงาน / คืนมัดจำ / คืนเงิน / เคลม / ร้องเรียน / ปัญหาคุณภาพ
 - อนุมัติเงื่อนไขพิเศษ / ข้อตกลงนอกแพ็กเกจ`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2.1 — CURRENT_CUSTOMER_CONTEXT block (pure)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CustomerContextColumns {
+  name?: string | null;
+  nickname?: string | null;
+  phone?: string | null;
+  event_type?: string | null;
+  event_date?: string | null;
+  guest_count?: number | string | null;
+  venue?: string | null;
+  province?: string | null;
+  tax_id?: string | null;
+}
+
+const COLUMN_ORDER: Array<[keyof CustomerContextColumns, string]> = [
+  ["name", "ชื่อ"],
+  ["nickname", "ชื่อเล่น"],
+  ["phone", "เบอร์โทร"],
+  ["event_type", "ประเภทงาน"],
+  ["event_date", "วันจัดงาน"],
+  ["guest_count", "จำนวนคน"],
+  ["venue", "สถานที่"],
+  ["province", "จังหวัด"],
+  ["tax_id", "เลขผู้เสียภาษี"],
+];
+
+const RESERVED_INTENT_KEYS = new Set<string>([
+  ...COLUMN_ORDER.map(([k]) => k as string),
+  "venue_location", // rendered separately in webhook
+  "_pilot_marker",
+]);
+
+function isPresent(v: unknown): boolean {
+  if (v === null || v === undefined) return false;
+  const s = String(v).trim();
+  return s.length > 0;
+}
+
+export interface CurrentCustomerContextResult {
+  block: string;
+  /** Field KEYS only (no values) — safe to log. */
+  fieldNames: string[];
+}
+
+/**
+ * Pure block builder — merges customer columns + intent_data (columns take priority).
+ * - Empty/blank values are skipped.
+ * - Never mutates inputs.
+ * - Returns `{ block: "", fieldNames: [] }` when no data → caller can skip injection.
+ * - Complex object values in intent_data (e.g. venue_location) are skipped (rendered elsewhere).
+ */
+export function buildCurrentCustomerContextBlock(
+  columns: CustomerContextColumns | null | undefined,
+  intentData: Record<string, unknown> | null | undefined,
+): CurrentCustomerContextResult {
+  const cols = columns ?? {};
+  const intent = (intentData && typeof intentData === "object") ? intentData : {};
+
+  const lines: string[] = [];
+  const fieldNames: string[] = [];
+
+  // 1. Columns first (primary source)
+  for (const [key, label] of COLUMN_ORDER) {
+    const v = (cols as Record<string, unknown>)[key];
+    if (isPresent(v)) {
+      lines.push(`- ${label}: ${String(v).trim()}`);
+      fieldNames.push(key);
+    }
+  }
+
+  // 2. intent_data fills gaps (only keys columns didn't provide)
+  const filledKeys = new Set(fieldNames);
+  for (const [key, val] of Object.entries(intent)) {
+    if (filledKeys.has(key)) continue;
+    if (RESERVED_INTENT_KEYS.has(key)) continue;
+    if (!isPresent(val)) continue;
+    if (typeof val === "object") continue;
+    lines.push(`- ${key}: ${String(val).trim()}`);
+    fieldNames.push(key);
+  }
+
+  if (lines.length === 0) {
+    return { block: "", fieldNames: [] };
+  }
+
+  const block = `[CURRENT_CUSTOMER_CONTEXT] ข้อมูลลูกค้ารายนี้ (คอลัมน์หลัก + intent_data — คอลัมน์เป็นหลัก):
+${lines.join("\n")}
+
+กฎการใช้ context นี้ (สำคัญมาก):
+- ห้ามถามซ้ำในข้อมูลที่ปรากฏด้านบนเด็ดขาด (ถือว่ารู้แล้ว)
+- ถ้าลูกค้าถามหลายประเด็นในข้อความเดียว ให้ตอบทีละประเด็น — ห้ามยัดทุกประเด็นในบับเบิลเดียว
+- ถ้าประเด็นใดเป็น high-risk (ตาม [GUARDRAIL]) ให้ส่งต่อทีมงานเฉพาะประเด็นนั้น ประเด็นอื่นตอบตามปกติ
+- ห้ามวนถามเรื่องเดิมซ้ำ — ถ้าถามแล้วลูกค้ายังไม่ตอบ ให้ข้ามไปเรื่องอื่นก่อน
+- ถ้า context ขัดกับสิ่งที่ลูกค้าเพิ่งพูด ให้ยึดสิ่งที่ลูกค้าเพิ่งพูด แล้วแจ้งประสานทีมงานปรับข้อมูลให้`;
+
+  return { block, fieldNames };
+}
