@@ -1,0 +1,1 @@
+UPDATE app_settings SET ai_policy_config = jsonb_set(ai_policy_config, '{live_rollout_enabled}', 'false'::jsonb, true);
