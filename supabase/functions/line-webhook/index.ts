@@ -1482,6 +1482,7 @@ ${pastLines}
     policyEnabled: __phase2_policyEnabled,
     lifecycle: __phase2_lifecycle,
     replyMode: __phase2_replyMode,
+    customerContextBlock: __phase2_customerContextBlock,
   });
 
 
