@@ -412,3 +412,59 @@ ${lines.join("\n")}
 
   return { block, fieldNames };
 }
+
+// ─────────────────────────────────────────────────────────────
+// Phase 2 gating helper — decide whether Phase 2/2.1/2.1.1 should run for a
+// given customer. Pure function; no I/O. Supports two gating modes:
+//   1. whitelist  → customer_id ∈ ai_policy_config.test_customer_ids
+//   2. live_rollout → ai_policy_config.live_rollout_enabled=true AND
+//                     now < live_rollout_until (parsed as ISO date)
+// Master flag `advanced_ai_status_policy_enabled` must be true for either to
+// take effect. Any parse error / invalid until → live rollout treated OFF.
+export type Phase2Mode = "off" | "test_customer_ids" | "live_rollout";
+
+export interface Phase2GateResult {
+  enabled: boolean;
+  mode: Phase2Mode;
+  reason: string;
+}
+
+export function resolvePhase2Gate(args: {
+  customerId?: string | null;
+  settings: AppSettingsLike;
+  now?: Date;
+}): Phase2GateResult {
+  const now = args.now ?? new Date();
+  const settings = args.settings ?? {};
+  if (settings.advanced_ai_status_policy_enabled !== true) {
+    return { enabled: false, mode: "off", reason: "flag_off" };
+  }
+  const cfg = (settings.ai_policy_config ?? {}) as Record<string, unknown>;
+
+  // 1) test_customer_ids whitelist (kept for backward compatibility)
+  const rawIds = (cfg as any).test_customer_ids;
+  const testIds: string[] = Array.isArray(rawIds)
+    ? rawIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
+    : [];
+  if (args.customerId && testIds.includes(args.customerId)) {
+    return { enabled: true, mode: "test_customer_ids", reason: "customer_in_whitelist" };
+  }
+
+  // 2) temporary live rollout — requires enabled=true AND valid future until
+  const liveEnabled = (cfg as any).live_rollout_enabled === true;
+  if (!liveEnabled) {
+    return { enabled: false, mode: "off", reason: "no_whitelist_no_live" };
+  }
+  const untilRaw = (cfg as any).live_rollout_until;
+  if (typeof untilRaw !== "string" || untilRaw.length === 0) {
+    return { enabled: false, mode: "off", reason: "live_rollout_until_missing" };
+  }
+  const untilMs = Date.parse(untilRaw);
+  if (!Number.isFinite(untilMs)) {
+    return { enabled: false, mode: "off", reason: "live_rollout_until_invalid" };
+  }
+  if (now.getTime() >= untilMs) {
+    return { enabled: false, mode: "off", reason: "live_rollout_expired" };
+  }
+  return { enabled: true, mode: "live_rollout", reason: "live_rollout_active" };
+}

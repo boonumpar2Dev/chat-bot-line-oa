@@ -4,7 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
-import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
+import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1388,13 +1388,22 @@ ${pastLines}
   let __phase2_lifecycle: Lifecycle | undefined;
   let __phase2_replyMode: ReplyMode | undefined;
   let __phase2_customerContextBlock: string | undefined;
-  if (cfg?.advanced_ai_status_policy_enabled === true) {
-    try {
-      const rawIds = (cfg as any)?.ai_policy_config?.test_customer_ids;
-      const testIds: string[] = Array.isArray(rawIds)
-        ? rawIds.filter((x: unknown): x is string => typeof x === "string" && x.length > 0)
-        : [];
-      if (testIds.length > 0 && freshCustomer?.id && testIds.includes(freshCustomer.id)) {
+  {
+    const gate = resolvePhase2Gate({
+      customerId: freshCustomer?.id ?? null,
+      settings: {
+        advanced_ai_status_policy_enabled: cfg?.advanced_ai_status_policy_enabled ?? null,
+        ai_policy_config: (cfg as any)?.ai_policy_config ?? null,
+      },
+    });
+    if (gate.enabled) {
+      try {
+        console.log("[AiPolicy:phase2:gate]", JSON.stringify({
+          customer_id: freshCustomer?.id ?? null,
+          mode: gate.mode,
+          reason: gate.reason,
+        }));
+
         const [evRes, logRes] = await Promise.all([
           supabase
             .from("customer_events")
@@ -1454,15 +1463,16 @@ ${pastLines}
           reason: result.reason,
           contextFields: ctxRes.fieldNames, // keys only — no values (safe to log)
         }));
+      } catch (e) {
+        console.error("[AiPolicy:phase2] error (ignored, using legacy prompt):", (e as Error)?.message);
+        __phase2_policyEnabled = undefined;
+        __phase2_lifecycle = undefined;
+        __phase2_replyMode = undefined;
+        __phase2_customerContextBlock = undefined;
       }
-    } catch (e) {
-      console.error("[AiPolicy:phase2] error (ignored, using legacy prompt):", (e as Error)?.message);
-      __phase2_policyEnabled = undefined;
-      __phase2_lifecycle = undefined;
-      __phase2_replyMode = undefined;
-      __phase2_customerContextBlock = undefined;
     }
   }
+
 
   const { systemPrompt, userPrompt } = buildPrompt({
     cfg,
