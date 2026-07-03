@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getLineConfig } from "../_shared/line-config.ts";
+import { resolveAdminPauseMs } from "../_shared/admin-pause.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
