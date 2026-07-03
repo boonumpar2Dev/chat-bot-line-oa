@@ -137,6 +137,21 @@ export function getFirstPriority(c: any): boolean {
   if (c?.status === "pending_quote") return true;
   return c?.last_sender === "ai" && c?.admin_unseen === true;
 }
+// Handoff needed — AI ขอส่งต่อทีมงาน หรือ lifecycle ที่ต้อง admin ดูแลใกล้ชิด
+export function getNeedsHandoff(c: any): boolean {
+  const snippet = String(c?.last_message_snippet || "");
+  if (c?.last_sender === "ai" && /ประสานงานทีมงาน/.test(snippet)) return true;
+  const status = String(c?.status || "");
+  if (status === "confirmed" || status === "confirmed_returning" || status === "postponed") return true;
+  if (status === "completed") {
+    const d = c?.event_date ? new Date(c.event_date) : (c?.updated_at ? new Date(c.updated_at) : null);
+    if (d && !isNaN(d.getTime())) {
+      const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+      if (days >= 0 && days <= 30) return true;
+    }
+  }
+  return false;
+}
 
 function applyFilter(q: any, filter: FilterKind) {
   if (filter === "unread") return q.gt("unread_count", 0);
