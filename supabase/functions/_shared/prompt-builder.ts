@@ -127,7 +127,7 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
   const jsonHint = i.jsonSchemaHint
     || "ตอบ JSON: answer, confidence (0-100), image_titles (สูงสุด 4 — ตรงตามกฎเลือกสื่อ), confirm_existing_phone, intent";
 
-  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}${policyBlock}
+  const systemPrompt = `${persona}${strictBlock}${advImgBlock}${tagBlock}${notesBlock}${originBlock}${dateBlock}${policyBlock}${customerContextInject}
 
 🚫 ANTI-HALLUCINATION (สำคัญสุด — ขึ้นเหนือทุกกฎ):
 - ตอบจาก KB / แคตตาล็อกแพ็กเกจ / โปรโมชัน / ข้อมูลลูกค้าที่เก็บไว้แล้ว / โน้ตเฉพาะลูกค้า **เท่านั้น** — ห้ามเดา ห้ามแต่ง ห้ามคิดเอง ห้ามอนุมานจากความรู้ทั่วไป
