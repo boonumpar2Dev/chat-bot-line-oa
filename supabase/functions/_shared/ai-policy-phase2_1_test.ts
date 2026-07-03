@@ -154,3 +154,80 @@ Deno.test("phase2.1 baseline: no phase2 fields → prompt is byte-identical to p
   assertEquals(a.systemPrompt, b.systemPrompt);
   assertEquals(a.userPrompt, b.userPrompt);
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2.1.1 — Past-event context labeling for completed_* lifecycles
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PAST_COLS = {
+  event_type: "ทำบุญบ้าน",
+  event_date: "2026-05-01",
+  guest_count: 50,
+  venue: "บ้านลาดพร้าว 71",
+};
+
+Deno.test("phase2.1.1: completed_recent → [PAST_EVENT_CONTEXT] header", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, { service_type: "บุฟเฟ่ต์" }, "completed_recent");
+  assert(r.block.includes("[PAST_EVENT_CONTEXT]"));
+  assert(!r.block.includes("[CURRENT_CUSTOMER_CONTEXT]"));
+});
+
+Deno.test("phase2.1.1: completed_warm → [PAST_EVENT_CONTEXT] header", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "completed_warm");
+  assert(r.block.includes("[PAST_EVENT_CONTEXT]"));
+});
+
+Deno.test("phase2.1.1: completed_old → [PAST_EVENT_CONTEXT] header", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "completed_old");
+  assert(r.block.includes("[PAST_EVENT_CONTEXT]"));
+});
+
+Deno.test("phase2.1.1: past block contains 'งานนี้จบแล้ว / ห้ามถือว่าเป็นงานปัจจุบัน'", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "completed_warm");
+  assert(r.block.includes("งานนี้จบแล้ว"));
+  assert(r.block.includes("ห้ามถือว่าเป็นงานปัจจุบัน"));
+});
+
+Deno.test("phase2.1.1: past block uses 'ครั้งก่อน' labels", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, { service_type: "บุฟเฟ่ต์" }, "completed_warm");
+  assert(r.block.includes("ประเภทงานครั้งก่อน: ทำบุญบ้าน"));
+  assert(r.block.includes("วันจัดงานครั้งก่อน: 2026-05-01"));
+  assert(r.block.includes("จำนวนคนครั้งก่อน: 50"));
+  assert(r.block.includes("สถานที่ครั้งก่อน: บ้านลาดพร้าว 71"));
+  assert(r.block.includes("รูปแบบอาหาร/บริการครั้งก่อน: บุฟเฟ่ต์"));
+  // must NOT contain the current-mode labels
+  assert(!r.block.includes("ประเภทงาน: ทำบุญบ้าน"));
+  assert(!r.block.includes("วันจัดงาน: 2026-05-01"));
+});
+
+Deno.test("phase2.1.1: past block has 'new event' rule allowing new details", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "completed_warm");
+  assert(r.block.includes("ถ้าลูกค้าพูดถึงงานใหม่"));
+  assert(r.block.includes("ถามรายละเอียดใหม่ได้"));
+  assert(r.block.includes("เหมือนเดิม"));
+});
+
+Deno.test("phase2.1.1: pending_confirm still uses [CURRENT_CUSTOMER_CONTEXT]", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "pending_confirm");
+  assert(r.block.includes("[CURRENT_CUSTOMER_CONTEXT]"));
+  assert(!r.block.includes("[PAST_EVENT_CONTEXT]"));
+  assert(r.block.includes("ประเภทงาน: ทำบุญบ้าน"));
+});
+
+Deno.test("phase2.1.1: confirmed still uses [CURRENT_CUSTOMER_CONTEXT]", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "confirmed");
+  assert(r.block.includes("[CURRENT_CUSTOMER_CONTEXT]"));
+  assert(!r.block.includes("[PAST_EVENT_CONTEXT]"));
+});
+
+Deno.test("phase2.1.1: postponed still uses [CURRENT_CUSTOMER_CONTEXT] (not past)", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null, "postponed");
+  assert(r.block.includes("[CURRENT_CUSTOMER_CONTEXT]"));
+  assert(!r.block.includes("[PAST_EVENT_CONTEXT]"));
+});
+
+Deno.test("phase2.1.1: no lifecycle arg → default current mode (backward compat)", () => {
+  const r = buildCurrentCustomerContextBlock(PAST_COLS, null);
+  assert(r.block.includes("[CURRENT_CUSTOMER_CONTEXT]"));
+});
+
