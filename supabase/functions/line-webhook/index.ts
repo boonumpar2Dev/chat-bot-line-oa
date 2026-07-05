@@ -1678,9 +1678,10 @@ ${pastLines}
         }
 
         // 🪞 Mirror standard keys from intent_data → customers columns (only fill blanks, never overwrite admin edits)
+        // 🪞 Mirror standard keys from intent_data → customers columns (only fill blanks, never overwrite admin edits)
+        // NOTE: ห้าม mirror service_type → event_type เด็ดขาด (service_type = รูปแบบอาหาร, event_type = ประเภทงาน)
         const mirrorMap: Record<string, string> = {
           event_type: "event_type",
-          service_type: "event_type",
           venue: "venue",
           location: "venue",
           guest_count: "guest_count",
