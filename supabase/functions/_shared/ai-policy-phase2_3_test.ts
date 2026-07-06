@@ -9,6 +9,8 @@ import {
   buildContextGroundedBlock,
   buildLatestMessageFactsBlock,
   buildDeliveryRulesBlock,
+  buildFollowUpDisciplineBlock,
+  buildThaiPolitenessBlock,
 } from "./ai-policy.ts";
 import { buildPrompt, type BuildPromptInput } from "./prompt-builder.ts";
 
@@ -195,3 +197,85 @@ Deno.test("PhaseB: policyEnabled=true but no delivery_rules → no [DELIVERY_RUL
   assert(!systemPrompt.includes("[DELIVERY_RULES]"));
 });
 
+
+// ── Phase B.1: Delivery hardening + FollowUp Discipline + Thai Politeness ──
+
+Deno.test("PhaseB.1: zones=[] → block forces unknown_area_reply + zones ว่าง rule", () => {
+  const b = buildDeliveryRulesBlock(deliveryCfg);
+  assertStringIncludes(b, "zones ว่าง");
+  assertStringIncludes(b, "ทุกพื้นที่เป็น unknown");
+  assertStringIncludes(b, "unknown_area_reply");
+  assertStringIncludes(b, "ลาดพร้าว");
+});
+
+Deno.test("PhaseB.1: no free zone → forbidden list includes all synonyms", () => {
+  const b = buildDeliveryRulesBlock(deliveryCfg);
+  for (const w of [
+    "ส่งฟรี",
+    "ฟรีค่าส่ง",
+    "ฟรีค่าจัดส่ง",
+    "ไม่มีค่าขนส่ง",
+    "ไม่มีค่าส่ง",
+    "ไม่คิดค่าส่ง",
+    "ไม่เสียค่าส่ง",
+  ]) {
+    assertStringIncludes(b, w);
+  }
+});
+
+Deno.test("PhaseB.1: context continuity — food-only + delivery follow-up", () => {
+  const b = buildDeliveryRulesBlock(deliveryCfg);
+  assertStringIncludes(b, "Context continuity");
+  assertStringIncludes(b, "งานอาหารอย่างเดียว");
+  assertStringIncludes(b, "ห้ามถามซ้ำว่างานอะไร");
+  assertStringIncludes(b, "ห้ามบอกว่าฟรี");
+});
+
+Deno.test("PhaseB.1: FOLLOWUP_DISCIPLINE forbids menu/theme/drink follow-ups", () => {
+  const b = buildFollowUpDisciplineBlock();
+  assertStringIncludes(b, "[FOLLOWUP_DISCIPLINE]");
+  assertStringIncludes(b, "ห้ามปั้นคำถาม follow-up เอง");
+  assertStringIncludes(b, "เมนู");
+  assertStringIncludes(b, "ธีม");
+  assertStringIncludes(b, "เครื่องดื่ม");
+  assertStringIncludes(b, "จำนวนโต๊ะ");
+  assertStringIncludes(b, "สนใจบุฟเฟต์เมนูไหน");
+});
+
+Deno.test("PhaseB.1: FOLLOWUP_DISCIPLINE allowed = วันจัดงาน / handover", () => {
+  const b = buildFollowUpDisciplineBlock();
+  assertStringIncludes(b, "วันจัดงาน");
+  assertStringIncludes(b, "handover");
+});
+
+Deno.test("PhaseB.1: THAI_POLITENESS covers คะ/ค่ะ/นะคะ + bans นะค่ะ + ค่ะนะคะ", () => {
+  const b = buildThaiPolitenessBlock();
+  assertStringIncludes(b, "[THAI_POLITENESS]");
+  assertStringIncludes(b, `**"ค่ะ"**`);
+  assertStringIncludes(b, `**"คะ"**`);
+  assertStringIncludes(b, `**"นะคะ"**`);
+  assertStringIncludes(b, `ห้ามใช้ "นะค่ะ"`);
+  assertStringIncludes(b, "ค่ะนะคะ");
+  assertStringIncludes(b, "จัดวันไหนคะ");
+  assertStringIncludes(b, "รับทราบค่ะ");
+});
+
+Deno.test("PhaseB.1: buildPrompt injects [FOLLOWUP_DISCIPLINE] + [THAI_POLITENESS] when policyEnabled=true", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    policyEnabled: true,
+    lifecycle: "new",
+  });
+  assertStringIncludes(systemPrompt, "[FOLLOWUP_DISCIPLINE]");
+  assertStringIncludes(systemPrompt, "[THAI_POLITENESS]");
+});
+
+Deno.test("PhaseB.1: baseline preserved — policyEnabled=false → no new blocks", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    policyEnabled: false,
+    lifecycle: "new",
+  });
+  assert(!systemPrompt.includes("[FOLLOWUP_DISCIPLINE]"));
+  assert(!systemPrompt.includes("[THAI_POLITENESS]"));
+});
