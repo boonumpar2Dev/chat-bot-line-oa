@@ -121,7 +121,8 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const deliverySuffix = delivery ? `\n\n${delivery}` : "";
     const followUp = buildFollowUpDisciplineBlock();
     const politeness = buildThaiPolitenessBlock();
-    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}`;
+    const imgInvite = buildImageInvitationDisciplineBlock();
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}\n\n${imgInvite}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
