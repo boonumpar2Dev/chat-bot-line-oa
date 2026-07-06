@@ -6,7 +6,7 @@
 // Other legacy fields (image_selection_rules, tier_special_rules, forbidden_terms,
 // intent_collection_order, allowed_service_types) were merged into strict_rules.
 
-import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, buildLatestMessageFactsBlock, buildDeliveryRulesBlock, buildFollowUpDisciplineBlock, buildThaiPolitenessBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
+import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, buildLatestMessageFactsBlock, buildDeliveryRulesBlock, buildFollowUpDisciplineBlock, buildThaiPolitenessBlock, buildImageInvitationDisciplineBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
 
 export interface BuildPromptInput {
   cfg: any;
@@ -121,7 +121,8 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const deliverySuffix = delivery ? `\n\n${delivery}` : "";
     const followUp = buildFollowUpDisciplineBlock();
     const politeness = buildThaiPolitenessBlock();
-    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}`;
+    const imgInvite = buildImageInvitationDisciplineBlock();
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}\n\n${imgInvite}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
