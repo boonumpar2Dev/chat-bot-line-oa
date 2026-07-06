@@ -202,7 +202,7 @@ Deno.test("PhaseB: policyEnabled=true but no delivery_rules → no [DELIVERY_RUL
 
 Deno.test("PhaseB.1: zones=[] → block forces unknown_area_reply + zones ว่าง rule", () => {
   const b = buildDeliveryRulesBlock(deliveryCfg);
-  assertStringIncludes(b, "zones** ว่าง");
+  assertStringIncludes(b, "zones ว่าง");
   assertStringIncludes(b, "ทุกพื้นที่เป็น unknown");
   assertStringIncludes(b, "unknown_area_reply");
   assertStringIncludes(b, "ลาดพร้าว");
