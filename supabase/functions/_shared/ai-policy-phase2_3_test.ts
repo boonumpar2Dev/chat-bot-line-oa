@@ -11,6 +11,7 @@ import {
   buildDeliveryRulesBlock,
   buildFollowUpDisciplineBlock,
   buildThaiPolitenessBlock,
+  buildImageInvitationDisciplineBlock,
 } from "./ai-policy.ts";
 import { buildPrompt, type BuildPromptInput } from "./prompt-builder.ts";
 
