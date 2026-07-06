@@ -114,7 +114,9 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const defer = buildDeferDetectionBlock();
     const grounded = buildContextGroundedBlock();
     const facts = buildLatestMessageFactsBlock();
-    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}`;
+    const delivery = buildDeliveryRulesBlock(cfg?.delivery_rules);
+    const deliverySuffix = delivery ? `\n\n${delivery}` : "";
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
