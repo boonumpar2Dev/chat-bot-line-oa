@@ -1,6 +1,6 @@
 // Phase 2.3 — Guardrail expansion, SERVICE_SCOPE (6 real scopes), DEFER,
 // CONTEXT_GROUNDED, LATEST_MESSAGE_FACTS, pending_confirm/confirmed rules.
-import { assert, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertStringIncludes, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildGuardrailBlock,
   buildLifecycleBlock,
@@ -8,6 +8,7 @@ import {
   buildDeferDetectionBlock,
   buildContextGroundedBlock,
   buildLatestMessageFactsBlock,
+  buildDeliveryRulesBlock,
 } from "./ai-policy.ts";
 import { buildPrompt, type BuildPromptInput } from "./prompt-builder.ts";
 
