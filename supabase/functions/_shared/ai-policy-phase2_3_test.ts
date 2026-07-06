@@ -280,3 +280,25 @@ Deno.test("PhaseB.1: baseline preserved — policyEnabled=false → no new block
   assert(!systemPrompt.includes("[FOLLOWUP_DISCIPLINE]"));
   assert(!systemPrompt.includes("[THAI_POLITENESS]"));
 });
+
+// ── Phase B.2: Image invitation discipline ──
+
+Deno.test("PhaseB.2: IMAGE_INVITATION_DISCIPLINE block lists invitation phrases + must-attach rule", () => {
+  const b = buildImageInvitationDisciplineBlock();
+  assertStringIncludes(b, "[IMAGE_INVITATION_DISCIPLINE]");
+  for (const kw of ["ลองดูรูป", "ลองดูเมนู", "ดูภาพ", "ดูตัวอย่าง", "แนบรูปให้", "ส่งรูปให้", "ตามนี้เลยนะคะ"]) {
+    assertStringIncludes(b, kw);
+  }
+  assertStringIncludes(b, "ต้องใส่ image_titles");
+  assertStringIncludes(b, "ห้ามพูดคำเชิญชวนดูรูป");
+});
+
+Deno.test("PhaseB.2: buildPrompt injects [IMAGE_INVITATION_DISCIPLINE] when policyEnabled=true", () => {
+  const { systemPrompt } = buildPrompt({ ...base, policyEnabled: true, lifecycle: "new" });
+  assertStringIncludes(systemPrompt, "[IMAGE_INVITATION_DISCIPLINE]");
+});
+
+Deno.test("PhaseB.2: baseline preserved — policyEnabled=false → no [IMAGE_INVITATION_DISCIPLINE]", () => {
+  const { systemPrompt } = buildPrompt({ ...base, policyEnabled: false, lifecycle: "new" });
+  assert(!systemPrompt.includes("[IMAGE_INVITATION_DISCIPLINE]"));
+});
