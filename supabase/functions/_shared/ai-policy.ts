@@ -404,6 +404,19 @@ export function buildFollowUpDisciplineBlock(): string {
 }
 
 /**
+ * Image invitation discipline — enforce "if you invite the customer to look at
+ * an image, you MUST attach one via image_titles". Prevents empty invitations
+ * like "ลองดูเมนูที่ชอบก่อนได้ค่ะ" without any attached picture.
+ */
+export function buildImageInvitationDisciplineBlock(): string {
+  return `[IMAGE_INVITATION_DISCIPLINE] วินัยการเชิญชวนดูรูป/สื่อ (สำคัญมาก — กัน AI พูดลอย ๆ):
+- ถ้าจะพูดคำเชิญชวนใด ๆ ที่สื่อว่า "มีรูป/มีสื่อให้ดู" เช่น **"ลองดูรูป" / "ลองดูเมนู" / "ดูภาพ" / "ดูหน้าตา" / "ดูตัวอย่าง" / "แนบรูปให้" / "ส่งรูปให้" / "ตามนี้เลยนะคะ" / "เลือกได้ตามนี้"** → **ต้องใส่ image_titles ที่ตรงกับสิ่งที่ชวนดูทุกครั้ง**
+- ถ้าไม่มีรูป/สื่อที่จะแนบได้จริง (image_titles ว่าง หรือไม่แน่ใจว่าจะแนบอะไร) → **ห้ามพูดคำเชิญชวนดูรูปเด็ดขาด** ให้ตอบเป็นข้อความปกติแทน หรือส่งต่อทีมงาน
+- ห้าม improvise ประโยคเชิญชวนโดยไม่มีรูปจริง — ถือเป็นการหลอกลูกค้า
+- Rule of thumb: ถ้ายังไม่แน่ใจว่ามีรูปให้ส่งหรือไม่ → เลือกตอบแบบไม่ชวนดูรูป ปลอดภัยกว่า`;
+}
+
+/**
  * Thai politeness / คะ-ค่ะ wording rules.
  */
 export function buildThaiPolitenessBlock(): string {
