@@ -110,7 +110,13 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const lc = buildLifecycleBlock(i.lifecycle);
     if (!lc) return "";
     const gr = buildGuardrailBlock();
-    const scope = buildServiceScopeBlock();
+    const scopeCfgRoot = (cfg as any)?.ai_policy_config ?? cfg;
+    const scopeCfg = scopeCfgRoot ? {
+      service_scopes: (scopeCfgRoot as any)?.service_scopes ?? null,
+      service_scopes_reject_rules: (scopeCfgRoot as any)?.service_scopes_reject_rules ?? null,
+      service_scope_ambiguous_reply: (scopeCfgRoot as any)?.service_scope_ambiguous_reply ?? null,
+    } : null;
+    const scope = buildServiceScopeBlock(scopeCfg);
     const defer = buildDeferDetectionBlock();
     const grounded = buildContextGroundedBlock();
     const facts = buildLatestMessageFactsBlock();
