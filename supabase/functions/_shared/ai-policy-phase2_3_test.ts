@@ -302,3 +302,121 @@ Deno.test("PhaseB.2: baseline preserved — policyEnabled=false → no [IMAGE_IN
   const { systemPrompt } = buildPrompt({ ...base, policyEnabled: false, lifecycle: "new" });
   assert(!systemPrompt.includes("[IMAGE_INVITATION_DISCIPLINE]"));
 });
+
+// ── Phase C: Service Scopes config-driven ──
+
+const default7Scopes = [
+  { id: "merit_chinese_table", name: "บุญ+โต๊ะจีน", sort_order: 10, aliases: ["โต๊ะจีน", "ทำบุญโต๊ะจีน"], accepted: true },
+  { id: "merit_buffet", name: "บุญ+บุฟเฟต์", sort_order: 20, aliases: ["บุญบุฟเฟต์"], accepted: true },
+  { id: "merit_food_stall", name: "บุญ+ซุ้มอาหาร", sort_order: 30, aliases: ["ซุ้มอาหาร"], accepted: true },
+  { id: "rental_ceremony_no_food", name: "เช่าอุปกรณ์+พิธีสงฆ์ยกเว้นอาหาร", sort_order: 40, aliases: ["เช่าอุปกรณ์+พิธีสงฆ์", "เช่าอุปกรณ์พิธีสงฆ์ ไม่เอาอาหาร"], accepted: true },
+  { id: "buangsuang", name: "บวงสรวง", sort_order: 50, aliases: ["พิธีบวงสรวง"], accepted: true },
+  { id: "food_only_buffet", name: "งานอาหารเท่านั้นรูปแบบบุฟเฟต์", sort_order: 60, aliases: ["อาหารอย่างเดียว", "จัดเลี้ยงอย่างเดียว"], accepted: true },
+  { id: "unclear", name: "ยังไม่ชัดเจน", sort_order: 70, aliases: [], accepted: true },
+];
+
+Deno.test("PhaseC: buildServiceScopeBlock(null) → fallback hardcode preserved", () => {
+  const b = buildServiceScopeBlock(null);
+  assertStringIncludes(b, "บุญ+โต๊ะจีน");
+  assertStringIncludes(b, "ห้ามลากไปตอบแพ็กเกจงานบุญครบชุด/พิธีสงฆ์");
+  assertStringIncludes(b, "service_type=บุฟเฟต์");
+});
+
+Deno.test("PhaseC: {} / {service_scopes: []} → fallback hardcode preserved", () => {
+  assertStringIncludes(buildServiceScopeBlock({}), "บุญ+โต๊ะจีน");
+  assertStringIncludes(buildServiceScopeBlock({ service_scopes: [] }), "บุญ+โต๊ะจีน");
+  assertStringIncludes(buildServiceScopeBlock({ service_scopes: null as any }), "บุญ+โต๊ะจีน");
+});
+
+Deno.test("PhaseC: config-driven renders all 7 default scopes + aliases", () => {
+  const b = buildServiceScopeBlock({ service_scopes: default7Scopes });
+  for (const s of default7Scopes) assertStringIncludes(b, s.name);
+  assertStringIncludes(b, "aliases: อาหารอย่างเดียว");
+  assertStringIncludes(b, "aliases: โต๊ะจีน");
+});
+
+Deno.test("PhaseC: accepted=false + standard_reply → renders reject inline", () => {
+  const b = buildServiceScopeBlock({
+    service_scopes: [
+      ...default7Scopes,
+      { id: "rental_only", name: "เช่าโต๊ะเก้าอี้อย่างเดียว", sort_order: 80, accepted: false, standard_reply: "ยังไม่มีบริการนี้ค่ะ" },
+    ],
+  });
+  assertStringIncludes(b, "เช่าโต๊ะเก้าอี้อย่างเดียว");
+  assertStringIncludes(b, "**ไม่รับ scope นี้**");
+  assertStringIncludes(b, "ยังไม่มีบริการนี้ค่ะ");
+});
+
+Deno.test("PhaseC: custom service_scope_ambiguous_reply used verbatim", () => {
+  const b = buildServiceScopeBlock({
+    service_scopes: default7Scopes,
+    service_scope_ambiguous_reply: "ขอสอบถามแบบไหนดีคะ A/B/C?",
+  });
+  assertStringIncludes(b, "ขอสอบถามแบบไหนดีคะ A/B/C?");
+});
+
+Deno.test("PhaseC: requires_handover=true → renders 'ต้องส่งต่อทีมงาน'", () => {
+  const b = buildServiceScopeBlock({
+    service_scopes: [{ id: "vip", name: "งาน VIP", sort_order: 5, accepted: true, requires_handover: true }],
+  });
+  assertStringIncludes(b, "งาน VIP");
+  assertStringIncludes(b, "ต้องส่งต่อทีมงาน");
+});
+
+Deno.test("PhaseC: sort_order controls render order", () => {
+  const b = buildServiceScopeBlock({
+    service_scopes: [
+      { id: "b", name: "SecondScope", sort_order: 20 },
+      { id: "a", name: "FirstScope", sort_order: 10 },
+    ],
+  });
+  const iA = b.indexOf("FirstScope");
+  const iB = b.indexOf("SecondScope");
+  assert(iA > 0 && iB > 0 && iA < iB);
+  assertStringIncludes(b, "1. **FirstScope**");
+  assertStringIncludes(b, "2. **SecondScope**");
+});
+
+Deno.test("PhaseC: reject rules block renders trigger + reply", () => {
+  const b = buildServiceScopeBlock({
+    service_scopes: default7Scopes,
+    service_scopes_reject_rules: [
+      { trigger_aliases: ["เช่าโต๊ะเก้าอี้อย่างเดียว", "เช่าโต๊ะอย่างเดียว"], standard_reply: "ตอนนี้ยังไม่มีบริการนี้ค่ะ" },
+    ],
+  });
+  assertStringIncludes(b, "เช่าโต๊ะเก้าอี้อย่างเดียว");
+  assertStringIncludes(b, "ตอนนี้ยังไม่มีบริการนี้ค่ะ");
+});
+
+Deno.test("PhaseC: buildPrompt policyEnabled=true + no config → still has SERVICE_SCOPE (fallback)", () => {
+  const { systemPrompt } = buildPrompt({ ...base, policyEnabled: true, lifecycle: "new" });
+  assertStringIncludes(systemPrompt, "[SERVICE_SCOPE]");
+  assertStringIncludes(systemPrompt, "บุญ+โต๊ะจีน");
+});
+
+Deno.test("PhaseC: buildPrompt reads cfg.ai_policy_config.service_scopes for rendering", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    cfg: {
+      ...base.cfg,
+      ai_policy_config: {
+        service_scopes: [{ id: "x", name: "ScopeAlpha", sort_order: 1 }],
+        service_scope_ambiguous_reply: "AmbigCustomZ",
+      },
+    },
+    policyEnabled: true,
+    lifecycle: "new",
+  });
+  assertStringIncludes(systemPrompt, "ScopeAlpha");
+  assertStringIncludes(systemPrompt, "AmbigCustomZ");
+});
+
+Deno.test("PhaseC: baseline preserved — policyEnabled=false → no [SERVICE_SCOPE] regardless of config", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    cfg: { ...base.cfg, ai_policy_config: { service_scopes: default7Scopes } },
+    policyEnabled: false,
+    lifecycle: "new",
+  });
+  assert(!systemPrompt.includes("[SERVICE_SCOPE]"));
+});

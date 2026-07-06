@@ -284,7 +284,29 @@ export function buildGuardrailBlock(): string {
  *   - event_type     = ลูกค้าจัดงานอะไร เช่น ทำบุญบ้าน/ขึ้นบ้านใหม่/งานบวช (เก็บ customers.event_type)
  *   ห้าม mirror service_type ไป event_type เด็ดขาด.
  */
-export function buildServiceScopeBlock(): string {
+export interface ServiceScopeItem {
+  id?: string;
+  name?: string;
+  sort_order?: number | null;
+  aliases?: string[] | null;
+  accepted?: boolean | null;
+  requires_handover?: boolean | null;
+  standard_reply?: string | null;
+  kb_category_id?: string | null;
+  package_ids?: string[] | null;
+  notes_for_ai?: string | null;
+}
+export interface ServiceScopeRejectRule {
+  trigger_aliases?: string[] | null;
+  standard_reply?: string | null;
+}
+export interface ServiceScopesConfig {
+  service_scopes?: ServiceScopeItem[] | null;
+  service_scopes_reject_rules?: ServiceScopeRejectRule[] | null;
+  service_scope_ambiguous_reply?: string | null;
+}
+
+function buildServiceScopeBlockFallback(): string {
   return `[SERVICE_SCOPE] แยกรูปแบบบริการก่อนตอบ — จับจากข้อความล่าสุดของลูกค้า + บริบท. รูปแบบบริการจริงของบุญนำพามี 6 แบบ:
 1. **บุญ+โต๊ะจีน** — งานบุญ/พิธี + อาหารโต๊ะจีน
 2. **บุญ+บุฟเฟต์** — งานบุญ/พิธี + อาหารบุฟเฟต์
@@ -301,6 +323,59 @@ export function buildServiceScopeBlock(): string {
 - ถ้าลูกค้าพูดว่า "เช่าโต๊ะเก้าอี้อย่างเดียว" / "เช่าโต๊ะอย่างเดียว" / เช่าอุปกรณ์ standalone ล้วน → **ตอนนี้บุญนำพายังไม่มีบริการให้เช่าโต๊ะเก้าอี้อย่างเดียว** ให้ตอบว่า "ตอนนี้บุญนำพายังไม่มีบริการให้เช่าโต๊ะเก้าอี้อย่างเดียวค่ะ แต่ถ้าลูกค้าจัดงานหรือใช้งานอาหารกับเรา ทีมงานสามารถช่วยดูอุปกรณ์ที่เกี่ยวข้องให้ได้ค่ะ" **ห้ามลากไปตอบเมนูอาหาร/แพ็กเกจงานบุญครบชุด**
 - ถ้าลูกค้าพูดว่า "เช่าอุปกรณ์พิธีสงฆ์ ไม่เอาอาหาร" / "เช่าอุปกรณ์+พิธีสงฆ์" → รับได้ = scope #4 **เช่าอุปกรณ์+พิธีสงฆ์ยกเว้นอาหาร**
 - ถ้า scope ยังไม่ชัด ถามแบบ neutral เช่น "ลูกค้าสนใจแบบบุญ+อาหารครบชุด หรือเฉพาะอาหาร/เฉพาะพิธีสงฆ์คะ?"`;
+}
+
+/**
+ * Config-driven service scope renderer. If cfg?.service_scopes is a valid non-empty array,
+ * renders block from config; otherwise returns hardcoded fallback (100% baseline preserved).
+ * Prices / images / package details are NOT stored here — they stay in catering_packages / KB.
+ */
+export function buildServiceScopeBlock(cfg?: ServiceScopesConfig | null): string {
+  const scopesRaw = Array.isArray(cfg?.service_scopes) ? (cfg!.service_scopes as ServiceScopeItem[]) : [];
+  const scopes = scopesRaw.filter((s) => s && typeof s.name === "string" && s.name.trim());
+  if (scopes.length === 0) return buildServiceScopeBlockFallback();
+
+  const sorted = [...scopes].sort((a, b) => {
+    const av = typeof a.sort_order === "number" ? a.sort_order : 9999;
+    const bv = typeof b.sort_order === "number" ? b.sort_order : 9999;
+    return av - bv;
+  });
+
+  const scopeLines = sorted.map((s, idx) => {
+    const parts: string[] = [`${idx + 1}. **${s.name!.trim()}**`];
+    const aliases = Array.isArray(s.aliases) ? s.aliases.filter((a) => typeof a === "string" && a.trim()) : [];
+    if (aliases.length) parts.push(`(aliases: ${aliases.join(", ")})`);
+    if (s.accepted === false) {
+      const reply = (s.standard_reply || "").trim();
+      parts.push(`— **ไม่รับ scope นี้**${reply ? ` ให้ตอบ: "${reply}"` : ""}`);
+    }
+    if (s.requires_handover === true) {
+      parts.push("— **ต้องส่งต่อทีมงาน** ห้ามตอบเอง");
+    }
+    const notes = (s.notes_for_ai || "").trim();
+    if (notes) parts.push(`— ${notes}`);
+    return parts.join(" ");
+  }).join("\n");
+
+  const rejectRules = Array.isArray(cfg?.service_scopes_reject_rules) ? (cfg!.service_scopes_reject_rules as ServiceScopeRejectRule[]) : [];
+  const rejectLines = rejectRules.map((r) => {
+    const trig = Array.isArray(r?.trigger_aliases) ? r!.trigger_aliases!.filter((a) => typeof a === "string" && a.trim()) : [];
+    const reply = (r?.standard_reply || "").trim();
+    if (!trig.length || !reply) return "";
+    return `- ถ้าลูกค้าพูดว่า ${trig.map((t) => `"${t}"`).join(" / ")} → ตอบ: "${reply}" **ห้ามลากไปตอบเมนูอาหาร/แพ็กเกจงานบุญครบชุด**`;
+  }).filter(Boolean).join("\n");
+
+  const ambiguous = (cfg?.service_scope_ambiguous_reply || "").trim() || "ลูกค้าสนใจแบบบุญ+อาหารครบชุด หรือเฉพาะอาหาร/เฉพาะพิธีสงฆ์คะ?";
+
+  return `[SERVICE_SCOPE] แยกรูปแบบบริการก่อนตอบ — จับจากข้อความล่าสุดของลูกค้า + บริบท. รูปแบบบริการที่รองรับ:
+${scopeLines}
+
+กฎ scope (สำคัญมาก):
+- ตอบภายใน scope ที่ลูกค้าระบุเท่านั้น — **ห้ามลากข้าม scope**
+- ถ้าลูกค้าพูดว่า "อาหารอย่างเดียว" → **service_scope = งานอาหารเท่านั้นรูปแบบบุฟเฟต์** ไม่ใช่งานบุญครบชุด **ห้ามลากไปตอบแพ็กเกจงานบุญครบชุด/พิธีสงฆ์**
+- ถ้าลูกค้าพูดว่า "บุฟเฟต์" คำเดี่ยว → เป็น **service_type=บุฟเฟต์** (รูปแบบอาหาร) **ไม่ใช่ event_type และไม่ใช่ scope**
+- ห้าม mirror service_scope / service_type ไป event_type เด็ดขาด
+${rejectLines ? rejectLines + "\n" : ""}- ถ้า scope ยังไม่ชัด ถามแบบ neutral: "${ambiguous}"`;
 }
 
 /**
