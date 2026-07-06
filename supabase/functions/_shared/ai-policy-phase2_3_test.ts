@@ -9,6 +9,8 @@ import {
   buildContextGroundedBlock,
   buildLatestMessageFactsBlock,
   buildDeliveryRulesBlock,
+  buildFollowUpDisciplineBlock,
+  buildThaiPolitenessBlock,
 } from "./ai-policy.ts";
 import { buildPrompt, type BuildPromptInput } from "./prompt-builder.ts";
 
