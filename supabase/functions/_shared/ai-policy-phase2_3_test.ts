@@ -1,6 +1,6 @@
 // Phase 2.3 — Guardrail expansion, SERVICE_SCOPE (6 real scopes), DEFER,
 // CONTEXT_GROUNDED, LATEST_MESSAGE_FACTS, pending_confirm/confirmed rules.
-import { assert, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertStringIncludes, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
   buildGuardrailBlock,
   buildLifecycleBlock,
@@ -8,6 +8,7 @@ import {
   buildDeferDetectionBlock,
   buildContextGroundedBlock,
   buildLatestMessageFactsBlock,
+  buildDeliveryRulesBlock,
 } from "./ai-policy.ts";
 import { buildPrompt, type BuildPromptInput } from "./prompt-builder.ts";
 
@@ -121,3 +122,76 @@ Deno.test("context-grounded: forbid overconfident phrases", () => {
   assertStringIncludes(c, "จัดการให้ครบแน่นอน");
   assertStringIncludes(c, "ห้ามใช้คำมั่นใจเกินจริง");
 });
+
+// ── Phase B: Delivery Rules ──
+const deliveryCfg = {
+  default_message: "งานอาหารอย่างเดียวมีค่าขนส่งตามพื้นที่ค่ะ",
+  no_free_delivery_unless_specified: true,
+  unknown_area_reply: "มีค่าขนส่งตามพื้นที่ค่ะ ขอประสานงานทีมงานเช็กให้เพิ่มเติมนะคะ",
+  zones: [] as any[],
+};
+
+Deno.test("PhaseB: buildDeliveryRulesBlock returns '' when config missing/empty", () => {
+  assertEquals(buildDeliveryRulesBlock(null), "");
+  assertEquals(buildDeliveryRulesBlock(undefined), "");
+  assertEquals(buildDeliveryRulesBlock({}), "");
+});
+
+Deno.test("PhaseB: delivery block uses 'ค่าขนส่ง' and forbids 'ค่าพื้นที่ขนส่ง'", () => {
+  const b = buildDeliveryRulesBlock(deliveryCfg);
+  assertStringIncludes(b, "ค่าขนส่ง");
+  assertStringIncludes(b, `**ห้ามใช้** "ค่าพื้นที่ขนส่ง"`);
+});
+
+Deno.test("PhaseB: no_free_delivery_unless_specified + no free zone → hard-forbids 'ส่งฟรี'", () => {
+  const b = buildDeliveryRulesBlock(deliveryCfg);
+  assertStringIncludes(b, `**ห้ามพูด "ส่งฟรี"`);
+  assertStringIncludes(b, "ไม่มี zone ใดกำหนด free=true");
+});
+
+Deno.test("PhaseB: empty zones renders unknown_area_reply + default_message", () => {
+  const b = buildDeliveryRulesBlock(deliveryCfg);
+  assertStringIncludes(b, "งานอาหารอย่างเดียวมีค่าขนส่งตามพื้นที่ค่ะ");
+  assertStringIncludes(b, "มีค่าขนส่งตามพื้นที่ค่ะ ขอประสานงานทีมงานเช็กให้เพิ่มเติมนะคะ");
+  assertStringIncludes(b, "ยังไม่ระบุ zones");
+});
+
+Deno.test("PhaseB: zone with free=true relaxes ban to 'unless zone free=true'", () => {
+  const b = buildDeliveryRulesBlock({
+    ...deliveryCfg,
+    zones: [{ name: "ในเขตกรุงเทพชั้นใน", free: true, condition: "ยอด ≥ 20,000" }],
+  });
+  assertStringIncludes(b, "เว้นแต่ตรงกับ zone ที่ระบุ free=true");
+  assertStringIncludes(b, "ในเขตกรุงเทพชั้นใน");
+});
+
+Deno.test("PhaseB: buildPrompt injects [DELIVERY_RULES] when policyEnabled + cfg.delivery_rules set", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    cfg: { ...base.cfg, delivery_rules: deliveryCfg },
+    policyEnabled: true,
+    lifecycle: "new",
+  });
+  assertStringIncludes(systemPrompt, "[DELIVERY_RULES]");
+  assertStringIncludes(systemPrompt, `**ห้ามพูด "ส่งฟรี"`);
+});
+
+Deno.test("PhaseB: baseline preserved — policyEnabled=false → no [DELIVERY_RULES]", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    cfg: { ...base.cfg, delivery_rules: deliveryCfg },
+    policyEnabled: false,
+    lifecycle: "new",
+  });
+  assert(!systemPrompt.includes("[DELIVERY_RULES]"));
+});
+
+Deno.test("PhaseB: policyEnabled=true but no delivery_rules → no [DELIVERY_RULES]", () => {
+  const { systemPrompt } = buildPrompt({
+    ...base,
+    policyEnabled: true,
+    lifecycle: "new",
+  });
+  assert(!systemPrompt.includes("[DELIVERY_RULES]"));
+});
+

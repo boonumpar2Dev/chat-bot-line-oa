@@ -6,7 +6,7 @@
 // Other legacy fields (image_selection_rules, tier_special_rules, forbidden_terms,
 // intent_collection_order, allowed_service_types) were merged into strict_rules.
 
-import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, buildLatestMessageFactsBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
+import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, buildLatestMessageFactsBlock, buildDeliveryRulesBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
 
 export interface BuildPromptInput {
   cfg: any;
@@ -114,7 +114,12 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const defer = buildDeferDetectionBlock();
     const grounded = buildContextGroundedBlock();
     const facts = buildLatestMessageFactsBlock();
-    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}`;
+    // Phase B: delivery_rules lives inside ai_policy_config jsonb (no schema change).
+    // Fallback to top-level cfg.delivery_rules for future column, if added.
+    const deliveryCfg = (cfg as any)?.delivery_rules ?? (cfg as any)?.ai_policy_config?.delivery_rules ?? null;
+    const delivery = buildDeliveryRulesBlock(deliveryCfg);
+    const deliverySuffix = delivery ? `\n\n${delivery}` : "";
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
