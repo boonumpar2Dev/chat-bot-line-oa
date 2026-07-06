@@ -322,6 +322,63 @@ export function buildLatestMessageFactsBlock(): string {
 }
 
 /**
+ * Delivery rules block — business data injected from app_settings.ai_config.delivery_rules.
+ * Returns "" if config is missing/empty so caller can safely no-op.
+ * Rules:
+ *  - use word "ค่าขนส่ง" (never "ค่าพื้นที่ขนส่ง"/"ค่าจัดส่ง"/"ค่าเดินทาง")
+ *  - no "ส่งฟรี" unless a zone has free=true
+ *  - inject only when policyEnabled=true AND config provided (decided by caller)
+ */
+export interface DeliveryRulesConfig {
+  default_message?: string | null;
+  no_free_delivery_unless_specified?: boolean | null;
+  unknown_area_reply?: string | null;
+  zones?: Array<Record<string, unknown>> | null;
+}
+
+export function buildDeliveryRulesBlock(cfg: DeliveryRulesConfig | null | undefined): string {
+  if (!cfg || typeof cfg !== "object") return "";
+  const defaultMsg = typeof cfg.default_message === "string" ? cfg.default_message.trim() : "";
+  const unknownReply = typeof cfg.unknown_area_reply === "string" ? cfg.unknown_area_reply.trim() : "";
+  const noFreeUnless = cfg.no_free_delivery_unless_specified === true;
+  const zones = Array.isArray(cfg.zones) ? cfg.zones : [];
+
+  if (!defaultMsg && !unknownReply && !noFreeUnless && zones.length === 0) return "";
+
+  const hasFreeZone = zones.some((z) => z && (z as any).free === true);
+
+  const zonesLine = zones.length
+    ? zones.map((z, i) => {
+        const name = (z as any)?.name ?? (z as any)?.area ?? `zone_${i + 1}`;
+        const fee = (z as any)?.fee;
+        const free = (z as any)?.free === true;
+        const cond = (z as any)?.condition;
+        const parts: string[] = [`- ${name}`];
+        if (free) parts.push("ส่งฟรี" + (cond ? ` (${cond})` : ""));
+        else if (fee !== undefined && fee !== null) parts.push(`ค่าขนส่ง ${fee}` + (cond ? ` (${cond})` : ""));
+        return parts.join(": ");
+      }).join("\n")
+    : "(ยังไม่ระบุ zones — ถ้าลูกค้าถามพื้นที่เฉพาะให้ใช้ unknown_area_reply)";
+
+  const freeRule = noFreeUnless && !hasFreeZone
+    ? `- **ห้ามพูด "ส่งฟรี" / "ไม่มีค่าส่ง" / "ฟรีค่าจัดส่ง" เด็ดขาด** — ไม่มี zone ใดกำหนด free=true`
+    : noFreeUnless
+      ? `- ห้ามพูด "ส่งฟรี" เว้นแต่ตรงกับ zone ที่ระบุ free=true ด้านล่างเท่านั้น`
+      : "";
+
+  return `[DELIVERY_RULES] ข้อมูลค่าขนส่ง (business data — ห้ามเดา ห้ามมโน):
+- ใช้คำว่า "ค่าขนส่ง" เท่านั้น — **ห้ามใช้** "ค่าพื้นที่ขนส่ง" / "ค่าจัดส่ง" / "ค่าเดินทาง"
+- เรื่องค่าขนส่งสำคัญโดยเฉพาะ scope "งานอาหารเท่านั้นรูปแบบบุฟเฟต์" — ก่อนตอบเรื่องราคาต้องอ้างกฎนี้
+- ถ้าลูกค้า**ไม่ได้ถาม**เรื่องค่าขนส่ง → **ห้ามยัดเรื่องค่าขนส่งเข้าไปเอง**
+${freeRule}
+- ถ้าลูกค้าถามค่าขนส่งกว้าง ๆ (ไม่ระบุพื้นที่) → ตอบ: "${defaultMsg || "งานอาหารอย่างเดียวมีค่าขนส่งตามพื้นที่ค่ะ"}"
+- ถ้าลูกค้าระบุพื้นที่ที่ไม่พบใน zones ด้านล่าง → ตอบ: "${unknownReply || "มีค่าขนส่งตามพื้นที่ค่ะ ขอประสานงานทีมงานเช็กให้เพิ่มเติมนะคะ"}"
+
+Zones ที่ระบุ:
+${zonesLine}`;
+}
+
+/**
  * Defer detection — customer signals they'll follow up later. AI must acknowledge and stop.
  */
 export function buildDeferDetectionBlock(): string {
