@@ -114,7 +114,10 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const defer = buildDeferDetectionBlock();
     const grounded = buildContextGroundedBlock();
     const facts = buildLatestMessageFactsBlock();
-    const delivery = buildDeliveryRulesBlock(cfg?.delivery_rules);
+    // Phase B: delivery_rules lives inside ai_policy_config jsonb (no schema change).
+    // Fallback to top-level cfg.delivery_rules for future column, if added.
+    const deliveryCfg = (cfg as any)?.delivery_rules ?? (cfg as any)?.ai_policy_config?.delivery_rules ?? null;
+    const delivery = buildDeliveryRulesBlock(deliveryCfg);
     const deliverySuffix = delivery ? `\n\n${delivery}` : "";
     return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}`;
   })();
