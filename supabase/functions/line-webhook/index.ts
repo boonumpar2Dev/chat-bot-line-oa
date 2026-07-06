@@ -1580,7 +1580,7 @@ ${pastLines}
   }
 
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
-  const finalAnswer = answerText;
+  let finalAnswer = answerText;
 
 
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
