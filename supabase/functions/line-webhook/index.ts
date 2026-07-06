@@ -1619,6 +1619,24 @@ ${pastLines}
     imageTitles = withVideos.slice(0, 8);
   }
 
+  // 🖼️ Image invitation guard — strict_rules ห้าม AI เชิญชวนดูรูปโดยไม่มี image_titles
+  // ถ้า AI ยังละเมิด (imageTitles ว่าง แต่ finalAnswer มีคำเชิญชวน) → strip ประโยคนั้นออก
+  // กัน case ที่ลูกค้าเห็นข้อความ "ลองดูเมนูตามนี้เลยนะคะ" แต่ไม่มีรูปแนบมาจริง
+  if (imageTitles.length === 0) {
+    const INVITE_RE = /(ลองดูรูป|ลองดูเมนู|ลองดูภาพ|ดูภาพ|ดูหน้าตา|ดูตัวอย่าง|แนบรูปให้|ส่งรูปให้|ตามนี้เลยนะคะ|ตามนี้เลยค่ะ|เลือกได้ตามนี้|ดูรูปได้)/;
+    if (INVITE_RE.test(finalAnswer)) {
+      const bubbles = finalAnswer.split(/\n*---+\n*/);
+      const cleanedBubbles = bubbles.map((b) => {
+        const parts = b.split(/(?<=[ค่ะคะ])[\s\n]+/).map((s) => s.trim()).filter(Boolean);
+        return parts.filter((s) => !INVITE_RE.test(s)).join(" ").trim();
+      }).filter(Boolean);
+      const stripped = cleanedBubbles.join("\n---\n").trim();
+      const before = finalAnswer;
+      finalAnswer = stripped || "รับทราบค่ะ เดี๋ยวแอดมินติดต่อกลับนะคะ 🙏";
+      console.warn(`[ImageInviteGuard] stripped invitation phrases (no images to send). before="${before.slice(0, 120)}" after="${finalAnswer.slice(0, 120)}"`);
+    }
+  }
+
   // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
   const intent = aiResp.intent || {};
   const intentUpdate: any = {};
