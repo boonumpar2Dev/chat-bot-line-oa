@@ -119,7 +119,9 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const deliveryCfg = (cfg as any)?.delivery_rules ?? (cfg as any)?.ai_policy_config?.delivery_rules ?? null;
     const delivery = buildDeliveryRulesBlock(deliveryCfg);
     const deliverySuffix = delivery ? `\n\n${delivery}` : "";
-    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}`;
+    const followUp = buildFollowUpDisciplineBlock();
+    const politeness = buildThaiPolitenessBlock();
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
