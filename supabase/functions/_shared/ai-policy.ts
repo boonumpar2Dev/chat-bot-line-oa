@@ -361,7 +361,7 @@ export function buildDeliveryRulesBlock(cfg: DeliveryRulesConfig | null | undefi
     : "(ยังไม่ระบุ zones — ถ้าลูกค้าถามพื้นที่เฉพาะให้ใช้ unknown_area_reply)";
 
   const freeRule = noFreeUnless && !hasFreeZone
-    ? `- **ห้ามพูดคำเหล่านี้เด็ดขาด** (ไม่มี zone ใดกำหนด free=true):
+    ? `- **ห้ามพูด "ส่งฟรี" และคำเหล่านี้เด็ดขาด** — ไม่มี zone ใดกำหนด free=true:
   • "ส่งฟรี" / "ฟรีค่าส่ง" / "ฟรีค่าจัดส่ง"
   • "ไม่มีค่าขนส่ง" / "ไม่มีค่าส่ง" / "ไม่คิดค่าส่ง" / "ไม่เสียค่าส่ง"
   • "[พื้นที่X]ไม่มีค่าขนส่ง" หรือรูปประโยคใด ๆ ที่สื่อว่าไม่มีค่าส่ง / ฟรีค่าส่ง`
