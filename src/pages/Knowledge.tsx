@@ -566,16 +566,20 @@ function KnowledgeBaseTab() {
     if (noCategory && !noCatAckedRef.current) {
       setAlertType('nocat'); setAlertOpen(true); return;
     }
-    const payload: any = { ...edit, category: noCategory ? null : edit.category };
-    delete payload.created_at; delete payload.updated_at; delete payload.tags;
-    const res = edit.id
-      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
-      : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
-    if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว");
-    clearDraft(draftKey); clearDraftState();
-    setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
-    if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const payload: any = { ...edit, category: noCategory ? null : edit.category };
+      delete payload.created_at; delete payload.updated_at; delete payload.tags;
+      const res = edit.id
+        ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
+        : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
+      if (res.error) return toast.error(res.error.message);
+      toast.success("บันทึกแล้ว");
+      clearDraft(draftKey); clearDraftState();
+      setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+      if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
+    } finally { setSaving(false); }
   };
 
   // Cmd/Ctrl+S to save while dialog open
