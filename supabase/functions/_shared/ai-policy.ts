@@ -467,7 +467,7 @@ ${zonesLine}`;
  * Follow-up discipline — prevent AI from inventing questions the customer never asked.
  */
 export function buildFollowUpDisciplineBlock(): string {
-  return `[FOLLOWUP_DISCIPLINE] วินัยการถาม follow-up (สำคัญมาก — กัน AI ปั้นคำถามเอง):
+  return `[FOLLOWUP_DISCIPLINE] วินัยการถาม follow-up + วินัยการยืนยัน (สำคัญมาก — กัน AI ปั้นคำถาม/ยืนยันเอง):
 - **ห้ามปั้นคำถาม follow-up เอง** ในประเด็นที่ลูกค้ายังไม่ได้เริ่มพูดถึง เช่น เมนู / รายการอาหาร / เครื่องดื่ม / ธีมงาน / สี / จำนวนโต๊ะ / ของหวาน / ขนม
 - ตัวอย่างคำถาม**ห้ามถามเอง**: "สนใจบุฟเฟต์เมนูไหนเป็นพิเศษไหมคะ" / "อยากได้ธีมแบบไหน" / "จะรับเครื่องดื่มด้วยไหม" / "จะจัดกี่โต๊ะ" — ถ้าลูกค้ายังไม่ได้ถามเรื่องนั้น
 - ถ้าลูกค้าถามเรื่องบริการ/scope และให้ข้อมูล venue/พื้นที่/จำนวนคนแล้ว → ตอบตรงประเด็น + acknowledge known facts + **ห้ามยิงคำถามเมนู/ธีมเพิ่ม**
@@ -475,7 +475,36 @@ export function buildFollowUpDisciplineBlock(): string {
   • **วันจัดงาน** (ถ้ายังไม่ทราบ) — ถามได้ทีละเรื่อง
   • หรือส่งต่อทีมงาน/แอดมินให้ดูแลต่อ (เลือกทางนี้เป็นค่าเริ่มต้นเมื่อสถานการณ์คลุมเครือ)
 - Allowed follow-up สำหรับ scope งานอาหารอย่างเดียว: **วันจัดงาน** / **handover** ให้ทีมงาน
-- Forbidden follow-up: เมนูเฉพาะเจาะจง / ธีม / เครื่องดื่ม / จำนวนโต๊ะ / ของหวาน (เว้นแต่ลูกค้าถามก่อน)`;
+- Forbidden follow-up: เมนูเฉพาะเจาะจง / ธีม / เครื่องดื่ม / จำนวนโต๊ะ / ของหวาน (เว้นแต่ลูกค้าถามก่อน)
+
+**วินัยการยืนยัน (food-only / inquiry confirmation discipline):**
+- ในเคสที่ยังไม่ได้เช็กวัน/คิว/รายละเอียดจริง (เช่น ลูกค้าเพิ่งสอบถาม scope ครั้งแรก) → **ห้ามใช้คำยืนยันเกินจริง**
+- คำ**ห้ามใช้เด็ดขาด**: "จัดได้เลย" / "ได้เลย" / "รับจัดได้เลย" / "คอนเฟิร์มได้เลย" / "พร้อมจัดให้ได้เลย" / "จัดให้ได้เลย"
+- ใช้ wording ที่ปลอดภัยแทน: **"รับจัด..."** / **"มีบริการ..."** + ถาม **วันจัดงาน** เพิ่ม + แจ้งว่า **ทีมงานจะช่วยเช็กคิว/รายละเอียดให้**
+- ตัวอย่างถูก (food-only, ลาดพร้าว 50 ท่าน): "รับจัดงานอาหารอย่างเดียวค่ะ สำหรับพื้นที่ลาดพร้าว 50 ท่าน รบกวนขอทราบวันจัดงานเพิ่มเติมนะคะ ทีมงานจะช่วยเช็กคิวและรายละเอียดให้ค่ะ 🙏"
+- ตัวอย่างผิด: "งานอาหารอย่างเดียวแขก 50 ท่าน จัดได้เลยนะคะ" (ยืนยันเกินจริง ไม่ได้เช็กคิว)`;
+}
+
+/**
+ * Normalize Thai politeness suffixes that AI often paraphrases incorrectly.
+ * Pure function — safe to call multiple times (idempotent).
+ * Only rewrites known bad compounds; leaves normal คะ/ค่ะ/นะคะ alone.
+ */
+export function normalizeThaiPoliteness(text: string): string {
+  if (!text || typeof text !== "string") return text;
+  let out = text;
+  // Iterate until stable to guarantee idempotence even for overlapping patterns.
+  for (let i = 0; i < 3; i++) {
+    const prev = out;
+    out = out
+      .replace(/ค่ะนะคะ/g, "ค่ะ")
+      .replace(/นะคะค่ะ/g, "นะคะ")
+      .replace(/นะค่ะ/g, "นะคะ")
+      .replace(/คะค่ะ/g, "ค่ะ")
+      .replace(/ค่ะคะ/g, "ค่ะ");
+    if (out === prev) break;
+  }
+  return out;
 }
 
 /**
