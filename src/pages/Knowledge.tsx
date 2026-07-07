@@ -493,6 +493,7 @@ function PromotionsTab() {
 function KnowledgeBaseTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<KB>(blankKB);
   const [filterCat, setFilterCat] = useState<string>("__all");
   const [newCatOpen, setNewCatOpen] = useState(false);
