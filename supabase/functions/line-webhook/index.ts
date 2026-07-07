@@ -973,7 +973,16 @@ async function processEvent(event: any, supabase: any) {
   // เบอร์ไทย valid:
   //   มือถือ 10 หลัก ขึ้นต้น 06/08/09  |  เบอร์บ้าน 9 หลัก ขึ้นต้น 02-07
   const isValidThaiPhone = (p: string) => /^0[689]\d{8}$/.test(p) || /^0[2-7]\d{7}$/.test(p);
-  const validPhones = Array.from(new Set(normalized.filter(isValidThaiPhone)));
+  // 🚫 กันเบอร์บริษัท: filter ด้วย app_settings.company_phones (blacklist ทั่วบริษัท)
+  const companyPhonesRaw = Array.isArray((cfg as any)?.company_phones) ? (cfg as any).company_phones : [];
+  const companyPhonesSet = new Set<string>(
+    companyPhonesRaw.map((x: any) => String(x || "").replace(/\D/g, "")).filter((x: string) => x.length >= 9)
+  );
+  const validPhones = Array.from(new Set(normalized.filter(isValidThaiPhone))).filter(p => !companyPhonesSet.has(p));
+  const droppedCompanyPhones = Array.from(new Set(normalized.filter(isValidThaiPhone))).filter(p => companyPhonesSet.has(p));
+  if (droppedCompanyPhones.length > 0) {
+    console.log(`[company-phones] dropped from customer save: ${droppedCompanyPhones.join(",")}`);
+  }
 
   // Invalid phone-like: ถามใหม่ ก็ต่อเมื่อ AI เพิ่งถามเบอร์ + ข้อความสั้นและดูเหมือนตั้งใจให้เบอร์
   const nonDigit = messageText.replace(/[0-9\s\-().+]/g, "").trim();
