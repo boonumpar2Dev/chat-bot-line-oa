@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, MapPin, ExternalLink } from "lucide-react";
+import { Loader2, Save, Bot, MessageCircle, Image as ImageIcon, AlignLeft, MessageSquare, Database, Plus, Trash2, ArrowUp, ArrowDown, ClipboardList, MapPin, ExternalLink, Building2, Phone, X } from "lucide-react";
 import { toast } from "sonner";
 import LocationPreview, { parseMapsUrl } from "@/components/chats/LocationPreview";
 import { useAutoSaveDraft, readDraft, clearDraft } from "@/hooks/useDraft";
@@ -84,6 +84,7 @@ export default function AiSettings() {
       shop_address: s.shop_address,
       shop_lat: s.shop_lat,
       shop_lng: s.shop_lng,
+      company_phones: s.company_phones,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) { toast.error(error.message); return; }
@@ -115,7 +116,7 @@ export default function AiSettings() {
 
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
@@ -123,6 +124,7 @@ export default function AiSettings() {
           <TabsTrigger value="handover" className="gap-1.5"><ClipboardList className="w-4 h-4" />ฟอร์มส่งต่อ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
           <TabsTrigger value="shop" className="gap-1.5"><MapPin className="w-4 h-4" />ที่ตั้งร้าน</TabsTrigger>
+          <TabsTrigger value="company" className="gap-1.5"><Building2 className="w-4 h-4" />บริษัท</TabsTrigger>
         </TabsList>
 
 
@@ -556,7 +558,97 @@ export default function AiSettings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="company" className="mt-4">
+          <Card className="p-6 shadow-soft border-border/60 space-y-5">
+            <div className="flex items-center gap-2"><Building2 className="text-primary" /><h2 className="font-display text-lg font-semibold">เบอร์บริษัท / เบอร์ร้าน</h2></div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-sm text-amber-900 dark:text-amber-200">
+              <p className="font-medium mb-1">📌 ทำไมต้องเพิ่มที่นี่?</p>
+              <p>เบอร์เหล่านี้เป็น <b>เบอร์ของร้าน/บริษัท</b> เอง — ระบบจะกัน AI ไม่ให้สรุปเบอร์เหล่านี้เป็น "เบอร์ลูกค้า" และไม่บันทึกเข้า <code className="text-xs bg-white/70 dark:bg-black/30 px-1 rounded">customers.phone</code> ถ้าลูกค้า copy-paste มา</p>
+              <p className="mt-1 text-xs opacity-80">คนละส่วนกับ Knowledge Base — ตรงนี้เก็บแค่ "ตัวเลขเบอร์" ไว้ให้ระบบเทียบ ส่วน KB ใช้ตอบคำถามลูกค้าเหมือนเดิม</p>
+            </div>
+
+            <CompanyPhonesEditor
+              value={Array.isArray(s.company_phones) ? s.company_phones : []}
+              onChange={(v) => upd("company_phones", v)}
+            />
+          </Card>
+        </TabsContent>
+
       </Tabs>
+    </div>
+  );
+}
+
+/* ---------- Company phones chip editor ---------- */
+function CompanyPhonesEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [draft, setDraft] = useState("");
+  const list = value.map((p) => String(p || "").replace(/\D/g, "")).filter(Boolean);
+
+  const fmt = (p: string) => {
+    if (/^0[689]\d{8}$/.test(p)) return p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
+    if (p.length === 10) return p.replace(/(\d{2})(\d{4})(\d{4})/, "$1-$2-$3");
+    if (p.length === 9) return p.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
+    return p;
+  };
+
+  const add = () => {
+    const d = draft.replace(/\D/g, "");
+    if (d.length < 9 || d.length > 10) { toast.error("เบอร์ต้อง 9-10 หลัก"); return; }
+    if (list.includes(d)) { toast("เบอร์นี้มีอยู่แล้ว"); return; }
+    onChange([...list, d]);
+    setDraft("");
+  };
+
+  const remove = (p: string) => onChange(list.filter((x) => x !== p));
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label>เพิ่มเบอร์บริษัท</Label>
+        <div className="flex gap-2">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+            placeholder="เช่น 02-101-9296 หรือ 0993828787"
+            inputMode="tel"
+          />
+          <Button type="button" onClick={add} variant="secondary" className="gap-1.5">
+            <Plus className="w-4 h-4" /> เพิ่ม
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">พิมพ์แล้วกด Enter หรือปุ่ม "เพิ่ม" — ระบบจะเก็บเฉพาะตัวเลข ไม่สนใจขีด/วงเล็บ</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>รายการเบอร์บริษัท ({list.length} เบอร์)</Label>
+        {list.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+            <Phone className="w-6 h-6 mx-auto mb-2 opacity-50" />
+            ยังไม่มีเบอร์บริษัท — เพิ่มด้านบนได้เลย
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {list.map((p) => (
+              <div
+                key={p}
+                className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 pl-3 pr-1 py-1 text-sm"
+              >
+                <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="font-mono">{fmt(p)}</span>
+                <button
+                  type="button"
+                  onClick={() => remove(p)}
+                  className="ml-1 rounded-full p-1 hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  aria-label={`ลบ ${fmt(p)}`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
