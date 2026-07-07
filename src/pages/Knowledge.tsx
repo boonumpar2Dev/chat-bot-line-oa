@@ -211,7 +211,7 @@ function PackagesTab() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (edit.name) save();
+        if (edit.name && !saving) save();
       }
     };
     window.addEventListener("keydown", onKey);
