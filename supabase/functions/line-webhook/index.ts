@@ -992,17 +992,22 @@ async function processEvent(event: any, supabase: any) {
     : [];
   
 
+  // helper: strip company phones from an existing customer.phone string (กัน data ที่ปนมาจากก่อนแก้)
+  const stripCompany = (raw: string) => String(raw || "")
+    .split(/[,\s]+/)
+    .map(p => p.replace(/\D/g, ""))
+    .filter(p => p && !companyPhonesSet.has(p));
+
   // 🛡️ ลูกค้าสถานะปกป้อง (confirmed/postponed) ส่งเบอร์ใหม่ → save แบบไม่แตะ status/ai
   if (validPhones.length > 0 && isProtectedStatus(freshCustomer.status)) {
-    const existingNorm = new Set(
-      String(freshCustomer.phone || "").split(/[,\s]+/).map(p => p.replace(/\D/g, "")).filter(Boolean)
-    );
+    const existingClean = stripCompany(freshCustomer.phone || "");
+    const existingNorm = new Set(existingClean);
     const newOnes = validPhones.filter(p => !existingNorm.has(p));
     if (newOnes.length === 0) {
       console.log(`[Protected] same phone(s) — silent skip`);
       return;
     }
-    const mergedPhones = Array.from(new Set([...String(freshCustomer.phone || "").split(/[,\s]+/).filter(Boolean), ...validPhones])).join(", ");
+    const mergedPhones = Array.from(new Set([...existingClean, ...validPhones])).join(", ");
     await supabase.from("customers").update({ phone: mergedPhones }).eq("id", customer.id);
     await supabase.from("conversations").insert({
       customer_id: customer.id, sender: "system",
@@ -1016,7 +1021,7 @@ async function processEvent(event: any, supabase: any) {
       ? p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
       : p.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
     // Save ALL valid phones (comma-separated). Merge with existing if any.
-    const existingPhones = (freshCustomer.phone || "").split(/[,\s]+/).filter(isValidThaiPhone);
+    const existingPhones = (freshCustomer.phone || "").split(/[,\s]+/).filter(isValidThaiPhone).filter(p => !companyPhonesSet.has(p));
     const allPhones = Array.from(new Set([...existingPhones, ...validPhones]));
     const phoneStr = allPhones.join(", ");
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
