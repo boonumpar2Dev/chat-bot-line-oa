@@ -906,7 +906,20 @@ export function parseThaiDateCandidates(text: string, opts?: { todayYear?: numbe
     if (iso) out.push({ isoDate: iso, day: d, month: mon, year: y, raw: m[0], kind: "slash" });
   }
 
-  // 3) 6-digit DDMMYY (filename/nickname pattern), must not be surrounded by other digits
+  // 3a) 8-digit DDMMYYYY filename pattern (BE full year, e.g., 25072569)
+  const reDdmmyyyy = /(?<!\d)(\d{2})(\d{2})(\d{4})(?!\d)/g;
+  while ((m = reDdmmyyyy.exec(text)) !== null) {
+    const d = parseInt(m[1], 10);
+    const mon = parseInt(m[2], 10);
+    const yRaw = parseInt(m[3], 10);
+    if (mon < 1 || mon > 12) continue;
+    if (d < 1 || d > 31) continue;
+    const y = normalizeYear(yRaw, todayYear);
+    const iso = makeIso(d, mon, y);
+    if (iso) out.push({ isoDate: iso, day: d, month: mon, year: y, raw: m[0], kind: "ddmmyy" });
+  }
+
+  // 3b) 6-digit DDMMYY (filename/nickname pattern)
   const reDdmmyy = /(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)/g;
   while ((m = reDdmmyy.exec(text)) !== null) {
     const d = parseInt(m[1], 10);
