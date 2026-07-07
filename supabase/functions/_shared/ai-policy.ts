@@ -508,6 +508,27 @@ export function buildThaiPolitenessBlock(): string {
 }
 
 /**
+ * Company phones block — บอก AI ให้แยกเบอร์บริษัทออกจากเบอร์ลูกค้า
+ * ห้ามสรุป/บันทึกเบอร์บริษัทเป็นเบอร์ลูกค้าเด็ดขาด
+ */
+export function buildCompanyPhonesBlock(phones: string[] | null | undefined): string {
+  const list = Array.isArray(phones) ? phones.map(p => String(p || "").replace(/\D/g, "")).filter(Boolean) : [];
+  if (list.length === 0) return "";
+  const fmt = (p: string) =>
+    /^0[689]\d{8}$/.test(p) ? p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
+    : p.length === 10 ? p.replace(/(\d{2})(\d{4})(\d{4})/, "$1-$2-$3")
+    : p.length === 9 ? p.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3")
+    : p;
+  return `[COMPANY_PHONES] เบอร์เหล่านี้เป็น **เบอร์ของบริษัท/ร้าน** (ไม่ใช่เบอร์ลูกค้า):
+${list.map(p => `- ${fmt(p)}`).join("\n")}
+- ❌ ห้ามสรุป/บันทึก/พูดว่าเป็น "เบอร์ลูกค้า" หรือใส่ในบล็อก "📋 สรุปข้อมูล" เด็ดขาด
+- ❌ ถ้าลูกค้าส่งข้อความที่มีเบอร์เหล่านี้ปนมา (เช่น copy จากใบเสนอราคา/ลายเซ็น) ให้ **มองข้ามเบอร์เหล่านี้** ไม่นับเป็นเบอร์ติดต่อลูกค้า
+- ✅ นับเฉพาะเบอร์ที่ลูกค้า "พิมพ์เอง/ระบุว่าเป็นเบอร์ติดต่อของตน" เท่านั้น`;
+}
+
+
+
+/**
  * Defer detection — customer signals they'll follow up later. AI must acknowledge and stop.
  */
 export function buildDeferDetectionBlock(): string {
