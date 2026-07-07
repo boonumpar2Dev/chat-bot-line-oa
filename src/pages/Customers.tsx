@@ -221,6 +221,7 @@ export default function Customers() {
   }, [page, hasMore, loadingMore, isSearching, customers.length, statusFilter, funnelParam]);
 
   const filtered = useMemo(() => {
+    const q = debounced.trim().toLowerCase();
     return customers.filter(c => {
       if (tierFilter !== "all") {
         if (tierFilter === "__none__") { if (c.tier) return false; }
@@ -230,9 +231,22 @@ export default function Customers() {
         const tags: string[] = Array.isArray(c.tags) ? c.tags : [];
         if (!yearFilter.some(y => tags.includes(y))) return false;
       }
+      // When funneled from Reports, DB query fetched by ID only — apply the
+      // rest of the filters client-side so users can narrow further.
+      if (funnelParam) {
+        if (q) {
+          const hay = [c.display_name, c.nickname, c.phone, c.tax_id, c.line_user_id]
+            .filter(Boolean).join(" ").toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        if (statusFilter !== "all" && c.status !== statusFilter) return false;
+        const tags: string[] = Array.isArray(c.tags) ? c.tags : [];
+        if (tagFilter && !tags.includes(tagFilter)) return false;
+        if (monthFilter.length && !monthFilter.some(m => tags.includes(m))) return false;
+      }
       return true;
     });
-  }, [customers, tierFilter, yearFilter]);
+  }, [customers, tierFilter, yearFilter, funnelParam, debounced, statusFilter, tagFilter, monthFilter]);
 
   const tagColor = (name: string) => masterTags.find(m => m.name === name)?.color || "#94a3b8";
 
