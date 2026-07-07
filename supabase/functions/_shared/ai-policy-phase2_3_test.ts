@@ -500,3 +500,54 @@ Deno.test("PhaseC.1: config-driven reject rule render must not contain 'ค่�
   assert(!b.includes("นะค่ะ"), "reject-rule render must not contain 'นะค่ะ'");
 });
 
+
+// ── Case A — pending_confirm tax_id proactive-ask guard ─────────────────────
+import { buildDateEvidenceBlock } from "./ai-policy.ts";
+
+Deno.test("CaseA.1: pending_confirm bans proactive tax_id / company info asks", () => {
+  const b = buildLifecycleBlock("pending_confirm");
+  assertStringIncludes(b, "ห้ามถามเลขผู้เสียภาษี");
+  assertStringIncludes(b, "Tax ID");
+  assertStringIncludes(b, "ข้อมูลบริษัท");
+});
+
+Deno.test("CaseA.2: pending_confirm allows tax_id only via customer-initiated triggers", () => {
+  const b = buildLifecycleBlock("pending_confirm");
+  assertStringIncludes(b, "ขอใบกำกับภาษี");
+  assertStringIncludes(b, "ขอใบเสร็จ");
+  assertStringIncludes(b, "ออกในนามบริษัท");
+  assertStringIncludes(b, "หัก ณ ที่จ่าย");
+});
+
+Deno.test("CaseA.3: pending_confirm — 'บริษัทปิด' context is NOT a trigger", () => {
+  const b = buildLifecycleBlock("pending_confirm");
+  assertStringIncludes(b, "บริษัทปิด");
+  assertStringIncludes(b, "ไม่ใช่ trigger");
+});
+
+Deno.test("CaseA.4: pending_confirm — setup/คิว questions handoff, not re-collect", () => {
+  const b = buildLifecycleBlock("pending_confirm");
+  assertStringIncludes(b, "setup");
+  assertStringIncludes(b, "ประสานงานทีมงาน");
+});
+
+Deno.test("CaseA.5: confirmed lifecycle wording untouched for tax invoice policy", () => {
+  const c = buildLifecycleBlock("confirmed");
+  assertStringIncludes(c, "ใบกำกับภาษี");
+});
+
+// ── Case B — date evidence block ────────────────────────────────────────────
+Deno.test("CaseB.1: buildDateEvidenceBlock forbids AI-message as month anchor", () => {
+  const b = buildDateEvidenceBlock();
+  assertStringIncludes(b, "ห้าม infer เดือน");
+  assertStringIncludes(b, "ห้ามใช้ข้อความ AI");
+  assertStringIncludes(b, "quote filename");
+  assertStringIncludes(b, "nickname");
+});
+
+Deno.test("CaseB.2: date evidence block explains anchor priority", () => {
+  const b = buildDateEvidenceBlock();
+  assertStringIncludes(b, "ข้อความลูกค้าล่าสุด");
+  assertStringIncludes(b, "admin");
+  assertStringIncludes(b, "stored event_date");
+});
