@@ -1651,6 +1651,17 @@ ${pastLines}
     }
   }
 
+  // Post-check: normalize Thai politeness suffixes (ค่ะนะคะ / นะค่ะ / นะคะค่ะ …)
+  {
+    const before = finalAnswer;
+    finalAnswer = normalizeThaiPoliteness(finalAnswer);
+    if (before !== finalAnswer) {
+      console.log(`[ThaiPolitenessNormalize] fixed suffixes. before="${before.slice(0, 120)}" after="${finalAnswer.slice(0, 120)}"`);
+    }
+  }
+
+
+
   // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
   const intent = aiResp.intent || {};
   const intentUpdate: any = {};
