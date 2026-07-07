@@ -93,6 +93,16 @@ ${text}`,
     const phone = normalizeThaiPhone(parsed?.phone || "");
     if (!phone) return Response.json({ ok: true, extracted: null }, { headers: corsHeaders });
 
+    // 🚫 Blacklist: อย่าบันทึกเบอร์บริษัทเป็นเบอร์ลูกค้า (defense-in-depth)
+    const { data: cfgArr } = await supabase.from("app_settings").select("company_phones").eq("key", "ai_config").limit(1);
+    const companyPhones: string[] = Array.isArray(cfgArr?.[0]?.company_phones)
+      ? (cfgArr![0].company_phones as any[]).map(x => String(x || "").replace(/\D/g, ""))
+      : [];
+    if (companyPhones.includes(phone)) {
+      console.log(`[extract-phone] skip company phone ${phone}`);
+      return Response.json({ ok: true, skipped: "company phone" }, { headers: corsHeaders });
+    }
+
     // Re-check ก่อน update (กันชนกับการกรอกมือ)
     const { data: fresh } = await supabase.from("customers").select("phone").eq("id", customer_id).maybeSingle();
     if (fresh?.phone) return Response.json({ ok: true, skipped: "already has phone (race)" }, { headers: corsHeaders });
