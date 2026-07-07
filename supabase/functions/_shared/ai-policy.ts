@@ -794,3 +794,131 @@ export function resolvePhase2Gate(args: {
   }
   return { enabled: true, mode: "live_rollout", reason: "live_rollout_active" };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Date evidence — prompt guard + deterministic Thai date parser
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Date evidence / day-only guard. Applies to both AI replies and event extraction.
+ * Purpose: ห้าม AI เดาเดือน/ปีเวลาลูกค้าพิมพ์เลขวันเดี่ยว ๆ
+ */
+export function buildDateEvidenceBlock(): string {
+  return `[DATE_EVIDENCE] วินัยเรื่องวันจัดงาน (สำคัญมาก — ห้าม AI เดาเดือน/ปี):
+- ถ้าลูกค้าพิมพ์ **เลขวันเดี่ยว ๆ** เช่น "วันที่ 25 นะครับ" / "25 ค่ะ" โดยไม่ระบุเดือน → **ห้าม infer เดือน/ปีจากข้อความ AI (assistant/bot) เด็ดขาด**
+- ให้ใช้ anchor ตามลำดับความน่าเชื่อถือ:
+  1. ข้อความลูกค้าล่าสุดที่ระบุวัน+เดือนชัด
+  2. ข้อความ admin ที่ยืนยันวันชัดเจน
+  3. quote filename / nickname ที่มี pattern DDMMYY หรือ DD+เดือนไทย+YY
+  4. current stored event_date (ใช้ได้เฉพาะไม่มี evidence ใหม่ที่ขัด)
+- ถ้าลูกค้า "เปลี่ยนวัน" ต้องแยก old_date กับ new_requested_date — ห้ามเอา day ใหม่ไปผูกกับเดือนเก่าอัตโนมัติ
+- ถ้าไม่ชัด (ambiguous/conflict) → ให้ถามยืนยันหรือส่งต่อทีมงาน — **ห้ามเดา**
+- ห้ามใช้ข้อความ AI/bot เป็น primary anchor สำหรับวันที่ทุกกรณี`;
+}
+
+// Deterministic Thai date parsing ---------------------------------------------
+
+const THAI_MONTHS: Record<string, number> = {
+  "มกราคม": 1, "มกรา": 1, "มค": 1, "ม.ค.": 1, "ม.ค": 1,
+  "กุมภาพันธ์": 2, "กุมภา": 2, "กพ": 2, "ก.พ.": 2, "ก.พ": 2,
+  "มีนาคม": 3, "มีนา": 3, "มีค": 3, "มี.ค.": 3, "มี.ค": 3,
+  "เมษายน": 4, "เมษา": 4, "เมย": 4, "เม.ย.": 4, "เม.ย": 4,
+  "พฤษภาคม": 5, "พฤษภา": 5, "พค": 5, "พ.ค.": 5, "พ.ค": 5,
+  "มิถุนายน": 6, "มิถุนา": 6, "มิย": 6, "มิ.ย.": 6, "มิ.ย": 6,
+  "กรกฎาคม": 7, "กรกฎา": 7, "กค": 7, "ก.ค.": 7, "ก.ค": 7,
+  "สิงหาคม": 8, "สิงหา": 8, "สค": 8, "ส.ค.": 8, "ส.ค": 8,
+  "กันยายน": 9, "กันยา": 9, "กย": 9, "ก.ย.": 9, "ก.ย": 9,
+  "ตุลาคม": 10, "ตุลา": 10, "ตค": 10, "ต.ค.": 10, "ต.ค": 10,
+  "พฤศจิกายน": 11, "พฤศจิกา": 11, "พย": 11, "พ.ย.": 11, "พ.ย": 11,
+  "ธันวาคม": 12, "ธันวา": 12, "ธค": 12, "ธ.ค.": 12, "ธ.ค": 12,
+};
+
+const MONTH_KEYS_SORTED = Object.keys(THAI_MONTHS).sort((a, b) => b.length - a.length);
+const MONTH_ALT = MONTH_KEYS_SORTED.map(k => k.replace(/\./g, "\\.")).join("|");
+
+function pad2(n: number): string { return String(n).padStart(2, "0"); }
+
+function normalizeYear(y: number, todayYear: number): number {
+  // 2-digit → interpret as Buddhist "25YY" (common in TH), fallback direct if plausible AD.
+  if (y < 100) {
+    // Buddhist 2-digit (25YY) → CE = 2500 + y - 543
+    const beCandidate = 2500 + y - 543;
+    // Guardrail: keep within [todayYear - 1, todayYear + 3]
+    if (beCandidate >= todayYear - 1 && beCandidate <= todayYear + 3) return beCandidate;
+    // Otherwise treat as CE 20YY
+    const ceCandidate = 2000 + y;
+    return ceCandidate;
+  }
+  if (y >= 2400 && y < 2600) return y - 543; // Buddhist full
+  return y;
+}
+
+function makeIso(d: number, m: number, y: number): string | null {
+  if (!Number.isFinite(d) || !Number.isFinite(m) || !Number.isFinite(y)) return null;
+  if (m < 1 || m > 12) return null;
+  if (d < 1 || d > 31) return null;
+  const iso = `${y}-${pad2(m)}-${pad2(d)}`;
+  const t = new Date(iso + "T00:00:00Z").getTime();
+  if (!Number.isFinite(t)) return null;
+  return iso;
+}
+
+export interface ThaiDateCandidate {
+  isoDate: string;   // YYYY-MM-DD
+  day: number;
+  month: number;     // 1-12
+  year: number;      // CE
+  raw: string;       // matched substring
+  kind: "thai_month" | "slash" | "ddmmyy";
+}
+
+/**
+ * Deterministic Thai-date extractor from free text.
+ * Extracts explicit day+month(+year) mentions. Does NOT guess month for day-only.
+ */
+export function parseThaiDateCandidates(text: string, opts?: { todayYear?: number }): ThaiDateCandidate[] {
+  if (!text || typeof text !== "string") return [];
+  const todayYear = opts?.todayYear ?? new Date().getUTCFullYear();
+  const out: ThaiDateCandidate[] = [];
+
+  // 1) DD + Thai month + optional YY(YY)
+  const reThai = new RegExp(`(\\d{1,2})\\s*(${MONTH_ALT})\\.?\\s*(\\d{2,4})?`, "g");
+  let m: RegExpExecArray | null;
+  while ((m = reThai.exec(text)) !== null) {
+    const d = parseInt(m[1], 10);
+    const monthKey = m[2].replace(/\.$/, ""); // strip trailing dot if any
+    const mon = THAI_MONTHS[monthKey] ?? THAI_MONTHS[m[2]];
+    if (!mon) continue;
+    const yRaw = m[3] ? parseInt(m[3], 10) : NaN;
+    const y = Number.isFinite(yRaw) ? normalizeYear(yRaw, todayYear) : todayYear;
+    const iso = makeIso(d, mon, y);
+    if (iso) out.push({ isoDate: iso, day: d, month: mon, year: y, raw: m[0], kind: "thai_month" });
+  }
+
+  // 2) DD/MM/YY(YY) with delimiter / - .
+  const reSlash = /(?<!\d)(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})(?!\d)/g;
+  while ((m = reSlash.exec(text)) !== null) {
+    const d = parseInt(m[1], 10);
+    const mon = parseInt(m[2], 10);
+    const yRaw = parseInt(m[3], 10);
+    const y = normalizeYear(yRaw, todayYear);
+    const iso = makeIso(d, mon, y);
+    if (iso) out.push({ isoDate: iso, day: d, month: mon, year: y, raw: m[0], kind: "slash" });
+  }
+
+  // 3) 6-digit DDMMYY (filename/nickname pattern), must not be surrounded by other digits
+  const reDdmmyy = /(?<!\d)(\d{2})(\d{2})(\d{2})(?!\d)/g;
+  while ((m = reDdmmyy.exec(text)) !== null) {
+    const d = parseInt(m[1], 10);
+    const mon = parseInt(m[2], 10);
+    const yRaw = parseInt(m[3], 10);
+    if (mon < 1 || mon > 12) continue;
+    if (d < 1 || d > 31) continue;
+    const y = normalizeYear(yRaw, todayYear);
+    const iso = makeIso(d, mon, y);
+    if (iso) out.push({ isoDate: iso, day: d, month: mon, year: y, raw: m[0], kind: "ddmmyy" });
+  }
+
+  return out;
+}
+
