@@ -84,6 +84,7 @@ export default function AiSettings() {
       shop_address: s.shop_address,
       shop_lat: s.shop_lat,
       shop_lng: s.shop_lng,
+      company_phones: s.company_phones,
     }).eq("key", "ai_config");
     setSaving(false);
     if (error) { toast.error(error.message); return; }
