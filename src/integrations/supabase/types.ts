@@ -251,6 +251,7 @@ export type Database = {
           allowed_service_types: string[]
           auto_tag_settings: Json
           bot_mode: string
+          company_phones: Json
           comparison_instruction: string
           comparison_kb_category: string | null
           comparison_phase_enabled: boolean
@@ -330,6 +331,7 @@ export type Database = {
           allowed_service_types?: string[]
           auto_tag_settings?: Json
           bot_mode?: string
+          company_phones?: Json
           comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
@@ -409,6 +411,7 @@ export type Database = {
           allowed_service_types?: string[]
           auto_tag_settings?: Json
           bot_mode?: string
+          company_phones?: Json
           comparison_instruction?: string
           comparison_kb_category?: string | null
           comparison_phase_enabled?: boolean
