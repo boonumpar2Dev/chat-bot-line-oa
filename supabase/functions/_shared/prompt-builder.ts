@@ -6,7 +6,7 @@
 // Other legacy fields (image_selection_rules, tier_special_rules, forbidden_terms,
 // intent_collection_order, allowed_service_types) were merged into strict_rules.
 
-import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, buildLatestMessageFactsBlock, buildDeliveryRulesBlock, buildFollowUpDisciplineBlock, buildThaiPolitenessBlock, buildImageInvitationDisciplineBlock, buildCompanyPhonesBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
+import { buildLifecycleBlock, buildGuardrailBlock, buildServiceScopeBlock, buildDeferDetectionBlock, buildContextGroundedBlock, buildLatestMessageFactsBlock, buildDeliveryRulesBlock, buildFollowUpDisciplineBlock, buildThaiPolitenessBlock, buildImageInvitationDisciplineBlock, buildCompanyPhonesBlock, buildDateEvidenceBlock, type Lifecycle, type ReplyMode } from "./ai-policy.ts";
 
 export interface BuildPromptInput {
   cfg: any;
