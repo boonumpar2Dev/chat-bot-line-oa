@@ -992,17 +992,22 @@ async function processEvent(event: any, supabase: any) {
     : [];
   
 
+  // helper: strip company phones from an existing customer.phone string (กัน data ที่ปนมาจากก่อนแก้)
+  const stripCompany = (raw: string) => String(raw || "")
+    .split(/[,\s]+/)
+    .map(p => p.replace(/\D/g, ""))
+    .filter(p => p && !companyPhonesSet.has(p));
+
   // 🛡️ ลูกค้าสถานะปกป้อง (confirmed/postponed) ส่งเบอร์ใหม่ → save แบบไม่แตะ status/ai
   if (validPhones.length > 0 && isProtectedStatus(freshCustomer.status)) {
-    const existingNorm = new Set(
-      String(freshCustomer.phone || "").split(/[,\s]+/).map(p => p.replace(/\D/g, "")).filter(Boolean)
-    );
+    const existingClean = stripCompany(freshCustomer.phone || "");
+    const existingNorm = new Set(existingClean);
     const newOnes = validPhones.filter(p => !existingNorm.has(p));
     if (newOnes.length === 0) {
       console.log(`[Protected] same phone(s) — silent skip`);
       return;
     }
-    const mergedPhones = Array.from(new Set([...String(freshCustomer.phone || "").split(/[,\s]+/).filter(Boolean), ...validPhones])).join(", ");
+    const mergedPhones = Array.from(new Set([...existingClean, ...validPhones])).join(", ");
     await supabase.from("customers").update({ phone: mergedPhones }).eq("id", customer.id);
     await supabase.from("conversations").insert({
       customer_id: customer.id, sender: "system",
