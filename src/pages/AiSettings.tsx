@@ -116,7 +116,7 @@ export default function AiSettings() {
 
 
       <Tabs defaultValue="persona" className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 w-full h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full h-auto">
           <TabsTrigger value="persona" className="gap-1.5"><Bot className="w-4 h-4" />Persona</TabsTrigger>
           <TabsTrigger value="pronouns" className="gap-1.5"><MessageCircle className="w-4 h-4" />สรรพนาม</TabsTrigger>
           <TabsTrigger value="style" className="gap-1.5"><AlignLeft className="w-4 h-4" />สไตล์การตอบ</TabsTrigger>
@@ -124,6 +124,7 @@ export default function AiSettings() {
           <TabsTrigger value="handover" className="gap-1.5"><ClipboardList className="w-4 h-4" />ฟอร์มส่งต่อ</TabsTrigger>
           <TabsTrigger value="images" className="gap-1.5"><ImageIcon className="w-4 h-4" />กลยุทธ์รูป</TabsTrigger>
           <TabsTrigger value="shop" className="gap-1.5"><MapPin className="w-4 h-4" />ที่ตั้งร้าน</TabsTrigger>
+          <TabsTrigger value="company" className="gap-1.5"><Building2 className="w-4 h-4" />บริษัท</TabsTrigger>
         </TabsList>
 
 
