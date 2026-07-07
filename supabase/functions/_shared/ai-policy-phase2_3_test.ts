@@ -12,6 +12,7 @@ import {
   buildFollowUpDisciplineBlock,
   buildThaiPolitenessBlock,
   buildImageInvitationDisciplineBlock,
+  normalizeThaiPoliteness,
 } from "./ai-policy.ts";
 import { buildPrompt, type BuildPromptInput } from "./prompt-builder.ts";
 
