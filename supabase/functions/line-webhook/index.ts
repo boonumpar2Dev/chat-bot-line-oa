@@ -1021,7 +1021,7 @@ async function processEvent(event: any, supabase: any) {
       ? p.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3")
       : p.replace(/(\d{2})(\d{3})(\d{4})/, "$1-$2-$3");
     // Save ALL valid phones (comma-separated). Merge with existing if any.
-    const existingPhones = (freshCustomer.phone || "").split(/[,\s]+/).filter(isValidThaiPhone);
+    const existingPhones = (freshCustomer.phone || "").split(/[,\s]+/).filter(isValidThaiPhone).filter(p => !companyPhonesSet.has(p));
     const allPhones = Array.from(new Set([...existingPhones, ...validPhones]));
     const phoneStr = allPhones.join(", ");
     const phoneMuteHours = cfg.phone_mute_hours ?? 1;
