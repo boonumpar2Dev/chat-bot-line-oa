@@ -190,15 +190,19 @@ function PackagesTab() {
   const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
 
   const save = async () => {
-    const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id
-      ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
-      : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
-    if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว");
-    clearDraft(draftKey); clearDraftState();
-    setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
-    if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
+      const res = edit.id
+        ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
+        : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
+      if (res.error) return toast.error(res.error.message);
+      toast.success("บันทึกแล้ว");
+      clearDraft(draftKey); clearDraftState();
+      setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
+      if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
+    } finally { setSaving(false); }
   };
   const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
 
