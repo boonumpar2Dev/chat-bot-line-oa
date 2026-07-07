@@ -773,7 +773,7 @@ function KnowledgeBaseTab() {
           <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
             <DraftSavedIndicator savedAt={savedAt}/>
             <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
-            <Button onClick={save} disabled={!edit.title} title="Ctrl/Cmd + S">บันทึก</Button>
+            <Button onClick={save} disabled={!edit.title || saving} title="Ctrl/Cmd + S">{saving ? "กำลังบันทึก…" : "บันทึก"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
