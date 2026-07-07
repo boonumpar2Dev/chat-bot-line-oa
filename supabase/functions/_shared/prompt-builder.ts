@@ -135,7 +135,8 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
     const followUp = buildFollowUpDisciplineBlock();
     const politeness = buildThaiPolitenessBlock();
     const imgInvite = buildImageInvitationDisciplineBlock();
-    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}\n\n${imgInvite}`;
+    const dateEvidence = buildDateEvidenceBlock();
+    return `\n\n${lc}\n\n${gr}\n\n${scope}\n\n${defer}\n\n${grounded}\n\n${facts}${deliverySuffix}\n\n${followUp}\n\n${politeness}\n\n${imgInvite}\n\n${dateEvidence}`;
   })();
 
   // 🎯 Phase 2.1 — CURRENT_CUSTOMER_CONTEXT (opt-in). Byte-identical to baseline when:
