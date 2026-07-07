@@ -378,6 +378,7 @@ function CategoriesTab() {
 function PromotionsTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<Promo>(blankPromo);
   const { data: promos } = useQuery({ queryKey:["promos"], queryFn: async()=>(await supabase.from("promotions").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey:["pkg-cats"], queryFn: async()=>(await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
