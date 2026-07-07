@@ -4,7 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
-import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
+import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1650,6 +1650,17 @@ ${pastLines}
       console.warn(`[ImageInviteGuard] stripped invitation phrases (no images to send). before="${before.slice(0, 120)}" after="${finalAnswer.slice(0, 120)}"`);
     }
   }
+
+  // Post-check: normalize Thai politeness suffixes (ค่ะนะคะ / นะค่ะ / นะคะค่ะ …)
+  {
+    const before = finalAnswer;
+    finalAnswer = normalizeThaiPoliteness(finalAnswer);
+    if (before !== finalAnswer) {
+      console.log(`[ThaiPolitenessNormalize] fixed suffixes. before="${before.slice(0, 120)}" after="${finalAnswer.slice(0, 120)}"`);
+    }
+  }
+
+
 
   // Merge intent ที่ AI สกัดได้ → customers (เฉพาะที่ยังไม่มี)
   const intent = aiResp.intent || {};
