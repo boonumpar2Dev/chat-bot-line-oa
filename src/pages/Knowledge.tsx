@@ -159,6 +159,7 @@ export default function Knowledge() {
 function PackagesTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<Pkg>(blankPkg);
   const { data: pkgs, isLoading } = useQuery({ queryKey: ["packages"], queryFn: async () => (await supabase.from("catering_packages").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
