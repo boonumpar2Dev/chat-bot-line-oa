@@ -421,3 +421,82 @@ Deno.test("PhaseC: baseline preserved — policyEnabled=false → no [SERVICE_SC
   });
   assert(!systemPrompt.includes("[SERVICE_SCOPE]"));
 });
+
+// ── Phase C.1: FollowUp confirmation discipline + Thai politeness normalize ──
+
+Deno.test("PhaseC.1: FollowUpDiscipline forbids overconfident wording (จัดได้เลย/ได้เลย/คอนเฟิร์มได้เลย)", () => {
+  const b = buildFollowUpDisciplineBlock();
+  for (const w of ["จัดได้เลย", "ได้เลย", "รับจัดได้เลย", "คอนเฟิร์มได้เลย", "พร้อมจัดให้ได้เลย"]) {
+    assertStringIncludes(b, w);
+  }
+  assertStringIncludes(b, "ห้ามใช้คำยืนยันเกินจริง");
+});
+
+Deno.test("PhaseC.1: FollowUpDiscipline recommends safe wording (รับจัด / มีบริการ) + วันจัดงาน + ทีมงาน", () => {
+  const b = buildFollowUpDisciplineBlock();
+  assertStringIncludes(b, "รับจัด");
+  assertStringIncludes(b, "มีบริการ");
+  assertStringIncludes(b, "วันจัดงาน");
+  assertStringIncludes(b, "ทีมงานจะช่วยเช็ก");
+});
+
+Deno.test("PhaseC.1: FollowUpDiscipline food-only example acknowledges venue+guests and asks วันจัดงาน", () => {
+  const b = buildFollowUpDisciplineBlock();
+  assertStringIncludes(b, "ลาดพร้าว");
+  assertStringIncludes(b, "50 ท่าน");
+  assertStringIncludes(b, "รับจัดงานอาหารอย่างเดียว");
+  assertStringIncludes(b, "รบกวนขอทราบวันจัดงาน");
+});
+
+Deno.test("PhaseC.1: normalizeThaiPoliteness rewrites bad compounds", () => {
+  assertEquals(normalizeThaiPoliteness("รับทราบค่ะนะคะ"), "รับทราบค่ะ");
+  assertEquals(normalizeThaiPoliteness("แจ้งแอดมินมาได้เลยนะค่ะ"), "แจ้งแอดมินมาได้เลยนะคะ");
+  assertEquals(normalizeThaiPoliteness("ขอบคุณนะคะค่ะ"), "ขอบคุณนะคะ");
+  assertEquals(normalizeThaiPoliteness("เข้าใจแล้วคะค่ะ"), "เข้าใจแล้วค่ะ");
+  assertEquals(normalizeThaiPoliteness("ตกลงค่ะคะ"), "ตกลงค่ะ");
+});
+
+Deno.test("PhaseC.1: normalizeThaiPoliteness does not mutate normal sentences", () => {
+  for (const s of [
+    "รับทราบค่ะ",
+    "จัดวันไหนคะ",
+    "แจ้งแอดมินมาได้เลยนะคะ",
+    "มีค่าขนส่งตามพื้นที่ค่ะ",
+    "รับจัดงานอาหารอย่างเดียวค่ะ สำหรับพื้นที่ลาดพร้าว 50 ท่าน รบกวนขอทราบวันจัดงานเพิ่มเติมนะคะ ทีมงานจะช่วยเช็กคิวและรายละเอียดให้ค่ะ 🙏",
+  ]) {
+    assertEquals(normalizeThaiPoliteness(s), s);
+  }
+});
+
+Deno.test("PhaseC.1: normalizeThaiPoliteness is idempotent", () => {
+  const inputs = [
+    "รับทราบค่ะนะคะ",
+    "โอเคนะค่ะ",
+    "ขอบคุณนะคะค่ะ",
+    "รับทราบค่ะ",
+    "จัดวันไหนคะ",
+  ];
+  for (const s of inputs) {
+    const once = normalizeThaiPoliteness(s);
+    const twice = normalizeThaiPoliteness(once);
+    assertEquals(twice, once);
+  }
+});
+
+Deno.test("PhaseC.1: normalizeThaiPoliteness handles edge/empty inputs", () => {
+  assertEquals(normalizeThaiPoliteness(""), "");
+  assertEquals(normalizeThaiPoliteness(null as any), null);
+  assertEquals(normalizeThaiPoliteness(undefined as any), undefined);
+});
+
+Deno.test("PhaseC.1: config-driven reject rule render must not contain 'ค่ะนะคะ' / 'นะค่ะ'", () => {
+  const b = buildServiceScopeBlock({
+    service_scopes: default7Scopes,
+    service_scopes_reject_rules: [
+      { trigger_aliases: ["เช่าโต๊ะเก้าอี้อย่างเดียว"], standard_reply: "ตอนนี้ยังไม่มีบริการเช่าโต๊ะเก้าอี้อย่างเดียวค่ะ ขอส่งต่อทีมงานช่วยแนะนำนะคะ" },
+    ],
+  });
+  assert(!b.includes("ค่ะนะคะ"), "reject-rule render must not contain 'ค่ะนะคะ'");
+  assert(!b.includes("นะค่ะ"), "reject-rule render must not contain 'นะค่ะ'");
+});
+
