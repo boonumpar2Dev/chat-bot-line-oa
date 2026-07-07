@@ -588,7 +588,7 @@ function KnowledgeBaseTab() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (edit.title) save();
+        if (edit.title && !saving) save();
       }
     };
     window.addEventListener("keydown", onKey);
