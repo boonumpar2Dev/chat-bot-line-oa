@@ -4,7 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
-import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
+import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
