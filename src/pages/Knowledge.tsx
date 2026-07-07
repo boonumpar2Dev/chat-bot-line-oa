@@ -159,6 +159,7 @@ export default function Knowledge() {
 function PackagesTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<Pkg>(blankPkg);
   const { data: pkgs, isLoading } = useQuery({ queryKey: ["packages"], queryFn: async () => (await supabase.from("catering_packages").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
@@ -189,15 +190,19 @@ function PackagesTab() {
   const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
 
   const save = async () => {
-    const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id
-      ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
-      : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
-    if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว");
-    clearDraft(draftKey); clearDraftState();
-    setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
-    if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const payload: any = { ...edit }; delete payload.created_at; delete payload.updated_at;
+      const res = edit.id
+        ? await supabase.from("catering_packages").update(payload).eq("id", edit.id).select("id").maybeSingle()
+        : await supabase.from("catering_packages").insert(payload).select("id").maybeSingle();
+      if (res.error) return toast.error(res.error.message);
+      toast.success("บันทึกแล้ว");
+      clearDraft(draftKey); clearDraftState();
+      setOpen(false); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache();
+      if (res.data?.id) triggerEmbed("catering_packages", res.data.id);
+    } finally { setSaving(false); }
   };
   const del = async (id: string) => { if (!confirm("ลบแพ็คเกจนี้?")) return; await supabase.from("catering_packages").delete().eq("id", id); toast.success("ลบแล้ว"); qc.invalidateQueries({queryKey:["packages"]}); triggerRebuildAiCache(); };
 
@@ -206,7 +211,7 @@ function PackagesTab() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (edit.name) save();
+        if (edit.name && !saving) save();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -337,7 +342,7 @@ function PackagesTab() {
           <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
             <DraftSavedIndicator savedAt={savedAt}/>
             <Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button>
-            <Button onClick={save} disabled={!edit.name} title="Ctrl/Cmd + S">บันทึก</Button>
+            <Button onClick={save} disabled={!edit.name || saving} title="Ctrl/Cmd + S">{saving ? "กำลังบันทึก…" : "บันทึก"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -373,6 +378,7 @@ function CategoriesTab() {
 function PromotionsTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<Promo>(blankPromo);
   const { data: promos } = useQuery({ queryKey:["promos"], queryFn: async()=>(await supabase.from("promotions").select("*").order("created_at",{ascending:false})).data ?? [] });
   const { data: cats } = useQuery({ queryKey:["pkg-cats"], queryFn: async()=>(await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
@@ -399,15 +405,19 @@ function PromotionsTab() {
   const discardDraft = () => { clearDraft(draftKey); clearDraftState(); setFoundDraft(null); toast("ทิ้งฉบับร่างแล้ว"); };
 
   const save = async () => {
-    const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
-    const res = edit.id
-      ? await supabase.from("promotions").update(payload).eq("id",edit.id).select("id").maybeSingle()
-      : await supabase.from("promotions").insert(payload).select("id").maybeSingle();
-    if(res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว");
-    clearDraft(draftKey); clearDraftState();
-    setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
-    if (res.data?.id) triggerEmbed("promotions", res.data.id);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const payload:any = {...edit}; delete payload.created_at; delete payload.updated_at;
+      const res = edit.id
+        ? await supabase.from("promotions").update(payload).eq("id",edit.id).select("id").maybeSingle()
+        : await supabase.from("promotions").insert(payload).select("id").maybeSingle();
+      if(res.error) return toast.error(res.error.message);
+      toast.success("บันทึกแล้ว");
+      clearDraft(draftKey); clearDraftState();
+      setOpen(false); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache();
+      if (res.data?.id) triggerEmbed("promotions", res.data.id);
+    } finally { setSaving(false); }
   };
   const del = async (id:string) => { if(!confirm("ลบ?")) return; await supabase.from("promotions").delete().eq("id",id); qc.invalidateQueries({queryKey:["promos"]}); triggerRebuildAiCache(); };
 
@@ -416,7 +426,7 @@ function PromotionsTab() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (edit.name) save();
+        if (edit.name && !saving) save();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -472,7 +482,7 @@ function PromotionsTab() {
           <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
             <DraftSavedIndicator savedAt={savedAt}/>
             <Button variant="outline" onClick={()=>setOpen(false)}>ยกเลิก</Button>
-            <Button onClick={save} disabled={!edit.name} title="Ctrl/Cmd + S">บันทึก</Button>
+            <Button onClick={save} disabled={!edit.name || saving} title="Ctrl/Cmd + S">{saving ? "กำลังบันทึก…" : "บันทึก"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -483,6 +493,7 @@ function PromotionsTab() {
 function KnowledgeBaseTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<KB>(blankKB);
   const [filterCat, setFilterCat] = useState<string>("__all");
   const [newCatOpen, setNewCatOpen] = useState(false);
@@ -555,16 +566,20 @@ function KnowledgeBaseTab() {
     if (noCategory && !noCatAckedRef.current) {
       setAlertType('nocat'); setAlertOpen(true); return;
     }
-    const payload: any = { ...edit, category: noCategory ? null : edit.category };
-    delete payload.created_at; delete payload.updated_at; delete payload.tags;
-    const res = edit.id
-      ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
-      : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
-    if (res.error) return toast.error(res.error.message);
-    toast.success("บันทึกแล้ว");
-    clearDraft(draftKey); clearDraftState();
-    setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
-    if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
+    if (saving) return;
+    setSaving(true);
+    try {
+      const payload: any = { ...edit, category: noCategory ? null : edit.category };
+      delete payload.created_at; delete payload.updated_at; delete payload.tags;
+      const res = edit.id
+        ? await supabase.from("knowledge_base").update(payload).eq("id", edit.id).select("id").maybeSingle()
+        : await supabase.from("knowledge_base").insert(payload).select("id").maybeSingle();
+      if (res.error) return toast.error(res.error.message);
+      toast.success("บันทึกแล้ว");
+      clearDraft(draftKey); clearDraftState();
+      setOpen(false); resetAcks(); qc.invalidateQueries({ queryKey: ["kb"] }); triggerRebuildAiCache();
+      if (res.data?.id) triggerEmbed("knowledge_base", res.data.id);
+    } finally { setSaving(false); }
   };
 
   // Cmd/Ctrl+S to save while dialog open
@@ -573,7 +588,7 @@ function KnowledgeBaseTab() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        if (edit.title) save();
+        if (edit.title && !saving) save();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -758,7 +773,7 @@ function KnowledgeBaseTab() {
           <DialogFooter className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-6 py-3 gap-2 sm:gap-2 flex-row items-center">
             <DraftSavedIndicator savedAt={savedAt}/>
             <Button variant="outline" onClick={() => setOpen(false)}>ยกเลิก</Button>
-            <Button onClick={save} disabled={!edit.title} title="Ctrl/Cmd + S">บันทึก</Button>
+            <Button onClick={save} disabled={!edit.title || saving} title="Ctrl/Cmd + S">{saving ? "กำลังบันทึก…" : "บันทึก"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
