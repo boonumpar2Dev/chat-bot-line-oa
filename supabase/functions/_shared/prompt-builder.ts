@@ -102,6 +102,13 @@ export function buildPrompt(i: BuildPromptInput): { systemPrompt: string; userPr
   const _todayHuman = `${_bkk.getUTCDate()} ${_thMonths[_bkk.getUTCMonth()]} ${_bkk.getUTCFullYear()}`;
   const dateBlock = `\n\n📅 วันนี้: ${_todayHuman} (${_todayStr}) — ถ้าลูกค้าบอกแค่ "วัน X เดือน Y" ไม่ระบุปี ให้ใช้ปีปัจจุบัน; ถ้าเดือนนั้นผ่านไปแล้วในปีนี้ ให้ใช้ปีถัดไป ห้ามใช้ปีในอดีตเด็ดขาด`;
 
+  // 📞 Company phones block — always injected when configured; ไม่ต้องรอ policyEnabled
+  const companyPhonesBlockStr = (() => {
+    const raw = (cfg as any)?.company_phones;
+    const block = buildCompanyPhonesBlock(Array.isArray(raw) ? raw : []);
+    return block ? `\n\n${block}` : "";
+  })();
+
   // 🎯 Phase 2 — status-aware policy blocks (opt-in).
   //    Byte-identical to baseline when: policyEnabled !== true OR lifecycle missing/"legacy".
   //    Caller (line-webhook) only sets these fields for customers ∈ ai_policy_config.test_customer_ids.
