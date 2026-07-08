@@ -1090,7 +1090,17 @@ async function processEvent(event: any, supabase: any) {
     const _isPostQuote = isPostQuoteContext(freshCustomer?.status ?? customer.status, recentConvs || []);
     const _isAck = isLowInfoAck(messageText, { messageType: msgType });
     if (_isPostQuote && _isAck) {
-      console.log(`[Guard] post-quote ack — suppress (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType}, textLen=${(messageText || "").length})`);
+      const POST_QUOTE_ACK_REPLY = "หากมีคำถามเพิ่มเติม สอบถามได้ตลอดเลยนะคะ 🙏";
+      // ตอบครั้งเดียวต่อ post-quote period — เช็ค 6 turns ล่าสุดว่า AI เคยส่งประโยคนี้แล้วหรือยัง
+      const alreadySent = (recentConvs || []).some((m: any) =>
+        m.sender === "ai" && typeof m.message === "string" && m.message.includes("หากมีคำถามเพิ่มเติม สอบถามได้ตลอด")
+      );
+      if (alreadySent) {
+        console.log(`[Guard] post-quote ack — suppress (already replied, customer=${customer.id})`);
+        return;
+      }
+      console.log(`[Guard] post-quote ack — canned reply (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType}, textLen=${(messageText || "").length})`);
+      await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: POST_QUOTE_ACK_REPLY }], { customer_id: customer.id, message: POST_QUOTE_ACK_REPLY, sender: "ai" });
       return;
     }
   } catch (e) {
