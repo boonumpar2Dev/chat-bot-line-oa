@@ -160,7 +160,7 @@ export async function markQuotationSent(args: {
   const log = (result: DetectionResult, file?: string) => {
     // eslint-disable-next-line no-console
     console.info("[quotationDetection]", { customer: args.customer.id, file, ...result });
-    return { result, updated: result.action === "status_updated" };
+    return { result, updated: result.action === "status_updated" || result.action === "ai_flags_refreshed" };
   };
 
   let cfg: QuotationConfig;
