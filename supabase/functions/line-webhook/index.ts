@@ -853,11 +853,37 @@ async function processEvent(event: any, supabase: any) {
   if (cfg.ai_enabled === false) return;
 
 
+  // 🎯 Post-quote acknowledgement guard (deterministic) — ต้องรันก่อน trivial-skip + cooldown
+  // เพราะ trivial-skip จะ return ทันทีเมื่อลูกค้าตอบ "ขอบคุณค่ะ" ฯลฯ ทำให้ AI เงียบหลังส่งใบเสนอราคา
+  try {
+    const { data: _guardConvs } = await supabase
+      .from("conversations").select("sender, message, created_at")
+      .eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(8);
+    const _isPostQuote = isPostQuoteContext(freshCustomer?.status ?? customer.status, _guardConvs || []);
+    const _isAck = isLowInfoAck(messageText, { messageType: msgType });
+    if (_isPostQuote && _isAck) {
+      const POST_QUOTE_ACK_REPLY = "หากมีคำถามเพิ่มเติม สอบถามได้ตลอดเลยนะคะ 🙏";
+      const alreadySent = (_guardConvs || []).some((m: any) =>
+        m.sender === "ai" && typeof m.message === "string" && m.message.includes("หากมีคำถามเพิ่มเติม สอบถามได้ตลอด")
+      );
+      if (alreadySent) {
+        console.log(`[Guard] post-quote ack — suppress (already replied, customer=${customer.id})`);
+        return;
+      }
+      console.log(`[Guard] post-quote ack — canned reply (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType})`);
+      await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: POST_QUOTE_ACK_REPLY }], { customer_id: customer.id, message: POST_QUOTE_ACK_REPLY, sender: "ai" });
+      return;
+    }
+  } catch (e) {
+    console.error("[Guard] post-quote ack check failed (non-fatal)", e);
+  }
+
   // Skip pure acknowledgements (อ่านจาก cfg.trivial_replies)
   const trivial: string[] = (cfg.trivial_replies && cfg.trivial_replies.length) ? cfg.trivial_replies : [
     "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
   ];
   if (trivial.map((t: string)=>t.toLowerCase()).includes(trimmed)) return;
+
 
   // เช็ค context: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า → ถ้าใช่ → treat reply ที่เป็นเลขเป็น Tax ID context
   const { data: lastAiArr } = await supabase
