@@ -231,6 +231,20 @@ export async function markQuotationSent(args: {
     }
 
     // ผ่านทุกด่าน → update
+    // เคสพิเศษ: status เป็น pending_confirm อยู่แล้ว → refresh AI flags ไม่ต้องเปลี่ยน status/tags
+    if (status === "pending_confirm") {
+      const { error } = await supabase.from("customers").update({
+        ai_active: true,
+        manual_chat_until: null,
+        admin_bot_override: false,
+      }).eq("id", args.customer.id);
+      if (error) {
+        console.error("[quotationDetection] refresh flags failed", error);
+        return log({ action: "skipped", reason: "invalid_config" }, fileName);
+      }
+      return log({ action: "ai_flags_refreshed", reason: "quote_resent_in_pending_confirm", matchedPattern: matched.name }, fileName);
+    }
+
     const isNewCycle = status === "completed";
     const reason: "new_quote_sent" | "new_cycle_after_completed" = isNewCycle ? "new_cycle_after_completed" : "new_quote_sent";
 
@@ -252,6 +266,7 @@ export async function markQuotationSent(args: {
       return log({ action: "skipped", reason: "invalid_config" }, fileName);
     }
     return log({ action: "status_updated", reason, matchedPattern: matched.name }, fileName);
+
   }
 
   return log({ action: "skipped", reason: "no_pattern_matched" });
