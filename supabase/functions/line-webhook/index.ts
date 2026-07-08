@@ -4,7 +4,7 @@ import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
-import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
+import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, isPostQuoteContext, isLowInfoAck, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1079,6 +1079,24 @@ async function processEvent(event: any, supabase: any) {
   const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
   const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
   if (lastAdmin && Date.now() - new Date(lastAdmin.created_at).getTime() < cooldownMs) return;
+
+  // 🎯 Post-quote acknowledgement guard (deterministic)
+  // หลังแอดมินส่งใบเสนอราคา/ส่งรายละเอียด → ลูกค้าตอบ "ขอบคุณ/รับทราบ/ค่ะ/sticker"
+  // → suppress ไม่ส่งเข้า AI (กันเคส AI ตอบต่อว่า "สนใจจัดงานวันไหน" ทั้งที่ลูกค้าไม่ได้ถาม)
+  // Pure helpers อยู่ใน _shared/ai-policy.ts — เทสได้ deterministic
+  // NOTE: ไม่ได้เพิ่ม pending_confirm ลง AI_OFF_STATUSES โดยเจตนา —
+  //       ต้องปล่อยให้ลูกค้าถามคำถามจริง (เท่าไหร่/รวมอะไร/ขอแก้) ผ่านไปยัง AI ได้
+  try {
+    const _isPostQuote = isPostQuoteContext(freshCustomer?.status ?? customer.status, recentConvs || []);
+    const _isAck = isLowInfoAck(messageText, { messageType: msgType });
+    if (_isPostQuote && _isAck) {
+      console.log(`[Guard] post-quote ack — suppress (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType}, textLen=${(messageText || "").length})`);
+      return;
+    }
+  } catch (e) {
+    console.error("[Guard] post-quote ack check failed (non-fatal)", e);
+  }
+
 
   // Trigger summarization (async, ไม่บล็อก) ถ้าข้อความเกิน 20
   if ((totalMsgCount || 0) >= 20) {
