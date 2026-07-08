@@ -28,6 +28,7 @@ import CustomerOriginBadge from "@/components/customers/CustomerOriginBadge";
 import { STICKER_PACK_ID, STICKER_IDS, stickerPreviewUrl } from "@/lib/line-stickers";
 import ManualTimerBanner from "@/components/chats/ManualTimerBanner";
 import StagedMessageBar from "@/components/chats/StagedMessageBar";
+import { downloadFile } from "@/lib/download";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 import LocationPreview, { extractLocation } from "@/components/chats/LocationPreview";
