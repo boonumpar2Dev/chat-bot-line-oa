@@ -34,6 +34,7 @@ const CAN_AUTO_MOVE = new Set(["new", "inquiry", "returning", "pending_quote", "
 
 export type DetectionResult =
   | { action: "status_updated"; reason: "new_quote_sent" | "new_cycle_after_completed"; matchedPattern: string }
+  | { action: "ai_flags_refreshed"; reason: "quote_resent_in_pending_confirm"; matchedPattern: string }
   | {
       action: "skipped";
       reason:
@@ -49,6 +50,7 @@ export type DetectionResult =
         | "postponed_job"
         | "status_not_allowed";
     };
+
 
 export function validateQuotationConfig(raw: unknown): { ok: true; config: QuotationConfig } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "config ต้องเป็น object" };
@@ -158,7 +160,7 @@ export async function markQuotationSent(args: {
   const log = (result: DetectionResult, file?: string) => {
     // eslint-disable-next-line no-console
     console.info("[quotationDetection]", { customer: args.customer.id, file, ...result });
-    return { result, updated: result.action === "status_updated" };
+    return { result, updated: result.action === "status_updated" || result.action === "ai_flags_refreshed" };
   };
 
   let cfg: QuotationConfig;
@@ -169,7 +171,9 @@ export async function markQuotationSent(args: {
 
   const status = args.customer.status;
   // status ที่ห้าม auto
-  if (status === "pending_confirm") return log({ action: "skipped", reason: "already_pending_confirm" });
+  // NOTE: pending_confirm ไม่ early-return — ถ้าเจอใบเสนอราคาใหม่ที่ valid → refresh AI flags
+  // (กันเคส admin ส่งใบใหม่แต่ manual_chat_until ยังค้างจากรอบก่อน → AI เงียบ 14 วัน)
+
   if (status === "confirmed" || status === "confirmed_returning") return log({ action: "skipped", reason: "active_confirmed_job" });
   if (status === "postponed") return log({ action: "skipped", reason: "postponed_job" });
   if (!CAN_AUTO_MOVE.has(status)) return log({ action: "skipped", reason: "status_not_allowed" });
@@ -227,6 +231,20 @@ export async function markQuotationSent(args: {
     }
 
     // ผ่านทุกด่าน → update
+    // เคสพิเศษ: status เป็น pending_confirm อยู่แล้ว → refresh AI flags ไม่ต้องเปลี่ยน status/tags
+    if (status === "pending_confirm") {
+      const { error } = await supabase.from("customers").update({
+        ai_active: true,
+        manual_chat_until: null,
+        admin_bot_override: false,
+      }).eq("id", args.customer.id);
+      if (error) {
+        console.error("[quotationDetection] refresh flags failed", error);
+        return log({ action: "skipped", reason: "invalid_config" }, fileName);
+      }
+      return log({ action: "ai_flags_refreshed", reason: "quote_resent_in_pending_confirm", matchedPattern: matched.name }, fileName);
+    }
+
     const isNewCycle = status === "completed";
     const reason: "new_quote_sent" | "new_cycle_after_completed" = isNewCycle ? "new_cycle_after_completed" : "new_quote_sent";
 
@@ -248,6 +266,7 @@ export async function markQuotationSent(args: {
       return log({ action: "skipped", reason: "invalid_config" }, fileName);
     }
     return log({ action: "status_updated", reason, matchedPattern: matched.name }, fileName);
+
   }
 
   return log({ action: "skipped", reason: "no_pattern_matched" });

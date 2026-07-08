@@ -1064,6 +1064,13 @@ export default function Chats() {
           } else {
             toast.success("ตรวจพบใบเสนอราคา — เปลี่ยนสถานะเป็น 'รอคอนเฟิร์ม' อัตโนมัติ");
           }
+        } else if (res.updated && res.result.action === "ai_flags_refreshed") {
+          updateLocalCustomer({
+            ai_active: true,
+            manual_chat_until: null,
+            admin_bot_override: false,
+          });
+          toast.success("ตรวจพบใบเสนอราคาใหม่ — เปิด AI ให้อัตโนมัติ");
         }
       } catch (err) {
         console.error("[Chats] quotation auto-detect failed", err);

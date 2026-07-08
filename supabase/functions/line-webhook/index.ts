@@ -1076,14 +1076,9 @@ async function processEvent(event: any, supabase: any) {
     supabase.from("conversations").select("id", { count: "exact", head: true }).eq("customer_id", customer.id),
   ]);
 
-  const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
-  const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
-  if (lastAdmin && Date.now() - new Date(lastAdmin.created_at).getTime() < cooldownMs) return;
-
-  // 🎯 Post-quote acknowledgement guard (deterministic)
-  // หลังแอดมินส่งใบเสนอราคา/ส่งรายละเอียด → ลูกค้าตอบ "ขอบคุณ/รับทราบ/ค่ะ/sticker"
-  // → suppress ไม่ส่งเข้า AI (กันเคส AI ตอบต่อว่า "สนใจจัดงานวันไหน" ทั้งที่ลูกค้าไม่ได้ถาม)
-  // Pure helpers อยู่ใน _shared/ai-policy.ts — เทสได้ deterministic
+  // 🎯 Post-quote acknowledgement guard (deterministic) — ต้องรันก่อน cooldown
+  // เพราะ cooldown จะ block replies ทั้งหมดหลังแอดมินเพิ่งพิมพ์ (เช่นเพิ่งส่งใบเสนอราคา)
+  // แต่ canned reply นี้เป็น deterministic + สั้น + ตอบครั้งเดียวต่อ period → ปลอดภัยที่จะข้าม cooldown
   // NOTE: ไม่ได้เพิ่ม pending_confirm ลง AI_OFF_STATUSES โดยเจตนา —
   //       ต้องปล่อยให้ลูกค้าถามคำถามจริง (เท่าไหร่/รวมอะไร/ขอแก้) ผ่านไปยัง AI ได้
   try {
@@ -1106,6 +1101,11 @@ async function processEvent(event: any, supabase: any) {
   } catch (e) {
     console.error("[Guard] post-quote ack check failed (non-fatal)", e);
   }
+
+  const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
+  const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
+  if (lastAdmin && Date.now() - new Date(lastAdmin.created_at).getTime() < cooldownMs) return;
+
 
 
   // Trigger summarization (async, ไม่บล็อก) ถ้าข้อความเกิน 20
