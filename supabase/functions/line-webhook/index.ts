@@ -853,11 +853,37 @@ async function processEvent(event: any, supabase: any) {
   if (cfg.ai_enabled === false) return;
 
 
+  // 🎯 Post-quote acknowledgement guard (deterministic) — ต้องรันก่อน trivial-skip + cooldown
+  // เพราะ trivial-skip จะ return ทันทีเมื่อลูกค้าตอบ "ขอบคุณค่ะ" ฯลฯ ทำให้ AI เงียบหลังส่งใบเสนอราคา
+  try {
+    const { data: _guardConvs } = await supabase
+      .from("conversations").select("sender, message, created_at")
+      .eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(8);
+    const _isPostQuote = isPostQuoteContext(freshCustomer?.status ?? customer.status, _guardConvs || []);
+    const _isAck = isLowInfoAck(messageText, { messageType: msgType });
+    if (_isPostQuote && _isAck) {
+      const POST_QUOTE_ACK_REPLY = "หากมีคำถามเพิ่มเติม สอบถามได้ตลอดเลยนะคะ 🙏";
+      const alreadySent = (_guardConvs || []).some((m: any) =>
+        m.sender === "ai" && typeof m.message === "string" && m.message.includes("หากมีคำถามเพิ่มเติม สอบถามได้ตลอด")
+      );
+      if (alreadySent) {
+        console.log(`[Guard] post-quote ack — suppress (already replied, customer=${customer.id})`);
+        return;
+      }
+      console.log(`[Guard] post-quote ack — canned reply (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType})`);
+      await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: POST_QUOTE_ACK_REPLY }], { customer_id: customer.id, message: POST_QUOTE_ACK_REPLY, sender: "ai" });
+      return;
+    }
+  } catch (e) {
+    console.error("[Guard] post-quote ack check failed (non-fatal)", e);
+  }
+
   // Skip pure acknowledgements (อ่านจาก cfg.trivial_replies)
   const trivial: string[] = (cfg.trivial_replies && cfg.trivial_replies.length) ? cfg.trivial_replies : [
     "👍","👌","🙏","❤️","ok","oki","okay","ได้เลย","โอเค","ขอบคุณ","ขอบคุณค่ะ","ขอบคุณครับ","ค่ะ","คะ","ครับ","คับ","ดีค่ะ","ดีครับ"
   ];
   if (trivial.map((t: string)=>t.toLowerCase()).includes(trimmed)) return;
+
 
   // เช็ค context: AI เพิ่งถาม Tag/Tax ID มาหรือเปล่า → ถ้าใช่ → treat reply ที่เป็นเลขเป็น Tax ID context
   const { data: lastAiArr } = await supabase
@@ -1076,31 +1102,9 @@ async function processEvent(event: any, supabase: any) {
     supabase.from("conversations").select("id", { count: "exact", head: true }).eq("customer_id", customer.id),
   ]);
 
-  // 🎯 Post-quote acknowledgement guard (deterministic) — ต้องรันก่อน cooldown
-  // เพราะ cooldown จะ block replies ทั้งหมดหลังแอดมินเพิ่งพิมพ์ (เช่นเพิ่งส่งใบเสนอราคา)
-  // แต่ canned reply นี้เป็น deterministic + สั้น + ตอบครั้งเดียวต่อ period → ปลอดภัยที่จะข้าม cooldown
-  // NOTE: ไม่ได้เพิ่ม pending_confirm ลง AI_OFF_STATUSES โดยเจตนา —
-  //       ต้องปล่อยให้ลูกค้าถามคำถามจริง (เท่าไหร่/รวมอะไร/ขอแก้) ผ่านไปยัง AI ได้
-  try {
-    const _isPostQuote = isPostQuoteContext(freshCustomer?.status ?? customer.status, recentConvs || []);
-    const _isAck = isLowInfoAck(messageText, { messageType: msgType });
-    if (_isPostQuote && _isAck) {
-      const POST_QUOTE_ACK_REPLY = "หากมีคำถามเพิ่มเติม สอบถามได้ตลอดเลยนะคะ 🙏";
-      // ตอบครั้งเดียวต่อ post-quote period — เช็ค 6 turns ล่าสุดว่า AI เคยส่งประโยคนี้แล้วหรือยัง
-      const alreadySent = (recentConvs || []).some((m: any) =>
-        m.sender === "ai" && typeof m.message === "string" && m.message.includes("หากมีคำถามเพิ่มเติม สอบถามได้ตลอด")
-      );
-      if (alreadySent) {
-        console.log(`[Guard] post-quote ack — suppress (already replied, customer=${customer.id})`);
-        return;
-      }
-      console.log(`[Guard] post-quote ack — canned reply (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType}, textLen=${(messageText || "").length})`);
-      await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: POST_QUOTE_ACK_REPLY }], { customer_id: customer.id, message: POST_QUOTE_ACK_REPLY, sender: "ai" });
-      return;
-    }
-  } catch (e) {
-    console.error("[Guard] post-quote ack check failed (non-fatal)", e);
-  }
+  // (post-quote ack guard ย้ายขึ้นไปก่อน trivial-skip แล้ว — ดู block ด้านบน)
+
+
 
   const cooldownMs = (cfg.cooldown_minutes || 1) * 60 * 1000;
   const lastAdmin = [...(recentConvs || [])].reverse().find((m: any) => m.sender === "admin");
