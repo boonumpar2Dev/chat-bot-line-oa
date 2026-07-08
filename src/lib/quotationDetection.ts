@@ -171,7 +171,9 @@ export async function markQuotationSent(args: {
 
   const status = args.customer.status;
   // status ที่ห้าม auto
-  if (status === "pending_confirm") return log({ action: "skipped", reason: "already_pending_confirm" });
+  // NOTE: pending_confirm ไม่ early-return — ถ้าเจอใบเสนอราคาใหม่ที่ valid → refresh AI flags
+  // (กันเคส admin ส่งใบใหม่แต่ manual_chat_until ยังค้างจากรอบก่อน → AI เงียบ 14 วัน)
+
   if (status === "confirmed" || status === "confirmed_returning") return log({ action: "skipped", reason: "active_confirmed_job" });
   if (status === "postponed") return log({ action: "skipped", reason: "postponed_job" });
   if (!CAN_AUTO_MOVE.has(status)) return log({ action: "skipped", reason: "status_not_allowed" });
