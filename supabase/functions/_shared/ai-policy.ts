@@ -935,3 +935,99 @@ export function parseThaiDateCandidates(text: string, opts?: { todayYear?: numbe
   return out;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-quote acknowledgement guard (Deterministic — pure helpers)
+//
+// เป้าหมาย: หลังแอดมินส่งใบเสนอราคา/รายละเอียด แล้วลูกค้าตอบสั้นแบบ ack
+// (ขอบคุณ / รับทราบ / เดี๋ยวดู / ค่ะ / sticker) → suppress ไม่ส่งเข้า AI
+//
+// Pure & side-effect free. เรียกจาก line-webhook ก่อนสร้าง prompt/เรียก AI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface RecentConvLike {
+  sender?: string | null;
+  message?: string | null;
+  created_at?: string | null;
+}
+
+// Evidence: admin/ai ในบทสนทนาล่าสุดพูดถึงใบเสนอราคา/ราคา/แนบไฟล์
+const POST_QUOTE_TEXT_RE =
+  /ใบเสนอราคา|เสนอราคา|quote|ราคารวม|รายละเอียดราคา|แนบไฟล์|แก้ใบเสนอ|ยอดรวม|สรุปราคา/i;
+
+// Marker เวลาแอดมินส่งรูป/ไฟล์ (ดู line-send-message: [รูปภาพ]/[วิดีโอ]/[ไฟล์]/📎)
+const ADMIN_FILE_MARKER_RE = /\[(รูปภาพ|วิดีโอ|ไฟล์[^\]]*)\]|📎/;
+
+/**
+ * post-quote context = อยู่ในช่วงลูกค้ากำลังพิจารณาใบเสนอราคา
+ *   1) status === pending_confirm | pending_quote  →  true
+ *   2) recent 6 turns มี admin/ai message เข้า regex ใบเสนอราคา  →  true
+ *   3) recent 3 turns มี admin แนบ file/image  →  true
+ *
+ * recentConvs คาดว่าเรียงจากใหม่ → เก่า (created_at DESC) ตามที่ line-webhook query
+ * แต่ก็ทน order อื่นได้ (แค่ slice N ตัวแรกเป็น recent window)
+ */
+export function isPostQuoteContext(
+  status: string | null | undefined,
+  recentConvs: RecentConvLike[] | null | undefined,
+): boolean {
+  const st = (status || "").toLowerCase();
+  if (st === "pending_confirm" || st === "pending_quote") return true;
+
+  const convs = Array.isArray(recentConvs) ? recentConvs : [];
+  const last6 = convs.slice(0, 6);
+  for (const c of last6) {
+    const s = (c?.sender || "").toLowerCase();
+    if (s !== "admin" && s !== "ai") continue;
+    if (POST_QUOTE_TEXT_RE.test(c?.message || "")) return true;
+  }
+  const last3 = convs.slice(0, 3);
+  for (const c of last3) {
+    if ((c?.sender || "").toLowerCase() !== "admin") continue;
+    if (ADMIN_FILE_MARKER_RE.test(c?.message || "")) return true;
+  }
+  return false;
+}
+
+// Question keywords — ถ้าเจอ = ลูกค้าถามคำถามจริง อย่า suppress
+const QUESTION_KEYWORDS_RE =
+  /\?|ไหม|มั้ย|เท่าไหร่|เท่าไร|กี่|อะไร|ยังไง|หรือเปล่า|หรือไม่|เมื่อไหร่|ที่ไหน|ทำไม/;
+
+// Change-request keywords — ลูกค้าขอแก้/เปลี่ยน/เพิ่ม/ลด อย่า suppress
+const CHANGE_REQUEST_RE =
+  /ขอเปลี่ยน|ขอแก้|ขอปรับ|ขอเพิ่ม|ขอลด|เปลี่ยนเป็น|เพิ่มเมนู|ลดราคา|แก้จำนวน|เพิ่มจำนวน|ลดจำนวน|ขอส่วนลด|ส่งใหม่|แก้ใบเสนอ/;
+
+// Acknowledgement wording (ไทย + สั้น ๆ ภาษาอังกฤษ)
+const ACK_PHRASE_RE =
+  /(ขอบคุณ|รับทราบ|โอเค|โอเก|เดี๋ยว\s*(ดู|อ่าน|พิจารณา|เช็ก|เช็ค)|ขอ\s*(ดู|อ่าน|พิจารณา)รายละเอียด|ได้ค่ะ|ได้ครับ|จ้า|จ้ะ)/i;
+
+// สั้นมาก: เป็นแค่คำสุภาพลงท้าย / อิโมจิ ack
+const SHORT_POLITE_RE =
+  /^(ค่ะ|คะ|ครับ|คับ|จ้า|จ้ะ|โอเค|โอเคค่ะ|โอเคครับ|ok|okay|okie|👍|👌|🙏|❤️|😊|🥰|🙏🏻|🙏🏼)$/i;
+
+/**
+ * Low-information acknowledgement:
+ *  - sticker (msgType === "sticker" หรือ text มี "[สติกเกอร์]")
+ *  - สั้น (≤60 ตัว) + ไม่มีคำถาม + ไม่มีคำขอเปลี่ยนแปลง + เข้า ACK regex
+ *  - หรือเป็นคำลงท้ายสุภาพเดี่ยว ๆ (ค่ะ/ครับ/…)
+ */
+export function isLowInfoAck(
+  text: string | null | undefined,
+  opts?: { messageType?: string | null },
+): boolean {
+  const msgType = (opts?.messageType || "").toLowerCase();
+  if (msgType === "sticker") return true;
+
+  const raw = (text || "").trim();
+  if (!raw) return false;
+  if (/\[สติกเกอร์\]/.test(raw)) return true;
+
+  if (raw.length > 60) return false;
+  if (QUESTION_KEYWORDS_RE.test(raw)) return false;
+  if (CHANGE_REQUEST_RE.test(raw)) return false;
+
+  if (SHORT_POLITE_RE.test(raw)) return true;
+  if (ACK_PHRASE_RE.test(raw)) return true;
+  return false;
+}
+
+
