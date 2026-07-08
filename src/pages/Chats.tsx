@@ -28,6 +28,7 @@ import CustomerOriginBadge from "@/components/customers/CustomerOriginBadge";
 import { STICKER_PACK_ID, STICKER_IDS, stickerPreviewUrl } from "@/lib/line-stickers";
 import ManualTimerBanner from "@/components/chats/ManualTimerBanner";
 import StagedMessageBar from "@/components/chats/StagedMessageBar";
+import { downloadFile } from "@/lib/download";
 import QuickResponsePopup from "@/components/chats/QuickResponsePopup";
 import ImagePreviewModal from "@/components/chats/ImagePreviewModal";
 import LocationPreview, { extractLocation } from "@/components/chats/LocationPreview";
@@ -1933,14 +1934,15 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
           {fileUrls.map((u: string) => {
             const name = fileLabel || decodeURIComponent(u.split("/").pop()?.split("?")[0] || "ไฟล์");
             return (
-              <a key={u} href={u} target="_blank" rel="noreferrer" download
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-card hover:bg-accent transition group">
+              <a key={u} href={u} target="_blank" rel="noreferrer"
+                onClick={(e) => { e.preventDefault(); downloadFile(u, name); }}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-card hover:bg-accent transition group cursor-pointer">
                 <div className="w-9 h-9 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
                   <FileText className="w-4 h-4"/>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate text-foreground">{name}</div>
-                  <div className="text-[10px] text-muted-foreground">คลิกเพื่อเปิด / ดาวน์โหลด</div>
+                  <div className="text-[10px] text-muted-foreground">คลิกเพื่อดาวน์โหลด</div>
                 </div>
                 <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0"/>
               </a>
