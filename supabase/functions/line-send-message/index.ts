@@ -130,14 +130,26 @@ Deno.serve(async (req) => {
         quoted_message_id: quoted_message_id || null,
         line_message_id: firstSentMessageId,
       });
-      await admin.from("customers").update({
-        ai_active: false,
-        manual_chat_until: until,
+
+      // ตรวจสถานะลูกค้า: ถ้ารอ confirm หรือยืนยันงานแล้ว → ไม่ต้อง mute AI
+      // (admin ส่งใบเสนอ/คุยประกอบ AI ควรพร้อมตอบต่อได้ทันที ไม่งั้นเงียบ 14 วัน)
+      const { data: custRow } = await admin.from("customers").select("status").eq("id", customer_id).maybeSingle();
+      const keepAiOn = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning";
+
+      const custPatch: Record<string, unknown> = {
         last_message_at: new Date().toISOString(),
         last_message_snippet: `👤 ${text.slice(0, 120)}`,
         unread_count: 0,
         admin_seen_at: new Date().toISOString(),
-      }).eq("id", customer_id);
+      };
+      if (!keepAiOn) {
+        custPatch.ai_active = false;
+        custPatch.manual_chat_until = until;
+      } else {
+        console.log(`[admin-pause] customer=${customer_id} status=${custRow?.status} → keep AI on (no mute)`);
+      }
+      await admin.from("customers").update(custPatch).eq("id", customer_id);
+
 
       // Fire-and-forget: ถ้าลูกค้ายังไม่มีเบอร์ ให้ AI ลอง extract จากบทสนทนา (ไม่ block admin)
       try {
