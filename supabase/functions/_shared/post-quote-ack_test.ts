@@ -44,12 +44,12 @@ Deno.test("post-quote: admin file marker beyond 3 turns → false", () => {
     { sender: "customer", message: "ok" },
     { sender: "customer", message: "hmm" },
     { sender: "customer", message: "..." },
-    { sender: "admin", message: "[ไฟล์: quote.pdf]\n📎 https://..." },
+    { sender: "admin", message: "[รูปภาพ]\n📎 https://cdn/example.jpg" },
   ];
-  // quote text regex ไม่จับ "[ไฟล์: quote.pdf]" เพราะ 'quote' อยู่ใน bracket — เข้า ADMIN_FILE_MARKER path เท่านั้น
-  // แต่ admin เกิน 3 turns ล่าสุด → false
+  // admin แนบรูปเกิน 3 turns ล่าสุด และ text ไม่มีคำเกี่ยวกับใบเสนอราคา → false
   assertEquals(isPostQuoteContext("active", convs), false);
 });
+
 
 // ─── isLowInfoAck ────────────────────────────────────────────────────────────
 
