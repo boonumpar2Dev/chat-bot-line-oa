@@ -34,6 +34,7 @@ const CAN_AUTO_MOVE = new Set(["new", "inquiry", "returning", "pending_quote", "
 
 export type DetectionResult =
   | { action: "status_updated"; reason: "new_quote_sent" | "new_cycle_after_completed"; matchedPattern: string }
+  | { action: "ai_flags_refreshed"; reason: "quote_resent_in_pending_confirm"; matchedPattern: string }
   | {
       action: "skipped";
       reason:
@@ -49,6 +50,7 @@ export type DetectionResult =
         | "postponed_job"
         | "status_not_allowed";
     };
+
 
 export function validateQuotationConfig(raw: unknown): { ok: true; config: QuotationConfig } | { ok: false; error: string } {
   if (!raw || typeof raw !== "object") return { ok: false, error: "config ต้องเป็น object" };
