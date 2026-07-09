@@ -20,12 +20,29 @@ export default function ManualTimerBanner({ customer, onUpdate }: { customer: an
     return () => clearInterval(iv);
   }, [customer?.manual_chat_until]);
 
-  if (!timeLeft || timeLeft <= 0 || customer.ai_active) return null;
+  if (!timeLeft || timeLeft <= 0) return null;
 
   const days = Math.floor(timeLeft / 86400000);
   const hours = Math.floor((timeLeft % 86400000) / 3600000);
   const mins = Math.floor((timeLeft % 3600000) / 60000);
   const fmt = days > 0 ? `${days} วัน ${hours} ชม.` : hours > 0 ? `${hours} ชม. ${mins} นาที` : `${mins} นาที`;
+
+  // Soft banner สำหรับ short pause (ai_active=true + manual_chat_until future)
+  // แสดง "AI พักชั่วคราวถึง HH:mm — จะกลับมาอัตโนมัติ" — Toggle ยัง ON, ห้ามให้ดูปิดถาวร
+  if (customer.ai_active) {
+    const until = new Date(customer.manual_chat_until);
+    const hh = String(until.getHours()).padStart(2, "0");
+    const mm = String(until.getMinutes()).padStart(2, "0");
+    return (
+      <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+        <Timer className="w-3.5 h-3.5 shrink-0 text-amber-600"/>
+        <span className="text-xs text-amber-800">
+          AI พักชั่วคราวถึง <strong>{hh}:{mm}</strong> — จะกลับมาอัตโนมัติ
+        </span>
+        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-medium">พักชั่วคราว</span>
+      </div>
+    );
+  }
 
   const handleResume = async () => {
     setResuming(true);
