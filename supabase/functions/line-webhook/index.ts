@@ -761,7 +761,39 @@ async function processEvent(event: any, supabase: any) {
 
   // 🚫 AI ปิดอยู่ / อยู่ในช่วง manual chat → เงียบสนิท ไม่ตอบอะไรเลย (ไม่ validate เบอร์/tax ด้วย)
   if (!freshCustomer.ai_active) return;
-  if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) return;
+  if (freshCustomer.manual_chat_until && new Date(freshCustomer.manual_chat_until) > new Date()) {
+    // Patch 1.1 Fix 1 — narrow bypass: อนุญาต canned reply เฉพาะ post-quote low-info ack เท่านั้น
+    // เงื่อนไข: isPostQuoteContext && isLowInfoAck && ยังไม่เคยส่ง canned ใน round นี้
+    // ห้าม bypass สำหรับคำถามจริง / new / inquiry / long text
+    try {
+      if (cfg?.ai_enabled === false) {
+        console.log(`[ManualPause] skipped AI reply due to manual_chat_until (ai_enabled=false, customer=${customer.id})`);
+        return;
+      }
+      const { data: _pauseConvs } = await supabase
+        .from("conversations").select("sender, message, created_at")
+        .eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(8);
+      const _pauseIsPostQuote = isPostQuoteContext(freshCustomer?.status ?? customer.status, _pauseConvs || []);
+      const _pauseIsAck = isLowInfoAck(messageText, { messageType: msgType });
+      if (_pauseIsPostQuote && _pauseIsAck) {
+        const POST_QUOTE_ACK_REPLY = "หากมีคำถามเพิ่มเติม สอบถามได้ตลอดเลยนะคะ 🙏";
+        const alreadySent = (_pauseConvs || []).some((m: any) =>
+          m.sender === "ai" && typeof m.message === "string" && m.message.includes("หากมีคำถามเพิ่มเติม สอบถามได้ตลอด")
+        );
+        if (alreadySent) {
+          console.log(`[PostQuoteAckBypass] suppressed — canned already sent in round (customer=${customer.id})`);
+          return;
+        }
+        console.log(`[PostQuoteAckBypass] allowed during manual pause (customer=${customer.id}, status=${freshCustomer?.status ?? customer.status}, msgType=${msgType})`);
+        await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: POST_QUOTE_ACK_REPLY }], { customer_id: customer.id, message: POST_QUOTE_ACK_REPLY, sender: "ai" });
+        return;
+      }
+      console.log(`[ManualPause] skipped AI reply due to manual_chat_until (customer=${customer.id}, isPostQuote=${_pauseIsPostQuote}, isAck=${_pauseIsAck})`);
+    } catch (e) {
+      console.error(`[ManualPause] bypass check failed (non-fatal, customer=${customer.id})`, (e as Error)?.message);
+    }
+    return;
+  }
 
   // 🔎 Phase 1.5 — Observe-only AI policy hook.
   // - Runs ONLY when advanced_ai_status_policy_enabled=true (default false → 100% legacy path).
