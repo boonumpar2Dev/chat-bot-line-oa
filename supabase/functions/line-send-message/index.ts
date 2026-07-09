@@ -131,10 +131,11 @@ Deno.serve(async (req) => {
         line_message_id: firstSentMessageId,
       });
 
-      // ตรวจสถานะลูกค้า: ถ้ารอ confirm หรือยืนยันงานแล้ว → ไม่ต้อง mute AI
-      // (admin ส่งใบเสนอ/คุยประกอบ AI ควรพร้อมตอบต่อได้ทันที ไม่งั้นเงียบ 14 วัน)
+      // ตรวจสถานะลูกค้า: สำหรับ pending_confirm/confirmed/confirmed_returning
+      // → ไม่ปิด ai_active ยาว แต่ยัง set manual_chat_until สั้น ๆ (3 นาที fallback)
+      //   เพื่อกัน AI ตอบทับแอดมินทันทีหลังแอดมินเพิ่งพิมพ์
       const { data: custRow } = await admin.from("customers").select("status").eq("id", customer_id).maybeSingle();
-      const keepAiOn = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning";
+      const isPostQuoteStatus = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning";
 
       const custPatch: Record<string, unknown> = {
         last_message_at: new Date().toISOString(),
@@ -142,11 +143,18 @@ Deno.serve(async (req) => {
         unread_count: 0,
         admin_seen_at: new Date().toISOString(),
       };
-      if (!keepAiOn) {
+      if (isPostQuoteStatus) {
+        // Short pause: ใช้ live_admin_pause_minutes ถ้ามี ไม่งั้น fallback 3 นาที
+        const rawMin = (pauseSettings?.ai_policy_config as any)?.live_admin_pause_minutes;
+        const shortMin = typeof rawMin === "number" && Number.isFinite(rawMin) && rawMin > 0 ? rawMin : 3;
+        const shortUntil = new Date(Date.now() + shortMin * 60_000).toISOString();
+        custPatch.manual_chat_until = shortUntil;
+        // ai_active คงไว้เดิม (ไม่ปิดยาว)
+        console.log(`[AdminPause] customer=${customer_id} status=${custRow?.status} set manual_chat_until ${shortMin}m (source=${typeof rawMin === "number" && rawMin > 0 ? "config" : "fallback"})`);
+      } else {
         custPatch.ai_active = false;
         custPatch.manual_chat_until = until;
-      } else {
-        console.log(`[admin-pause] customer=${customer_id} status=${custRow?.status} → keep AI on (no mute)`);
+        console.log(`[AdminPause] customer=${customer_id} status=${custRow?.status ?? "unknown"} legacy pause mode=${pause.mode} minutes=${pause.minutes}`);
       }
       await admin.from("customers").update(custPatch).eq("id", customer_id);
 

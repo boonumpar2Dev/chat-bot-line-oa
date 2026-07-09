@@ -684,6 +684,7 @@ async function processEvent(event: any, supabase: any) {
     const { data: dbCfgArr } = await supabase.from("app_settings").select("debounce_seconds").eq("key", "ai_config").limit(1);
     const debounceSec = Math.max(0, Number(dbCfgArr?.[0]?.debounce_seconds ?? 15));
     if (debounceSec > 0) {
+      console.log(`[Debounce] waiting ${debounceSec}s customer=${customer.id} lineMsg=${lineMsgId}`);
       await new Promise(r => setTimeout(r, debounceSec * 1000));
       const { data: latestArr } = await supabase
         .from("conversations")
@@ -1669,7 +1670,7 @@ ${pastLines}
   // ถ้า AI ยังละเมิด (imageTitles ว่าง แต่ finalAnswer มีคำเชิญชวน) → strip ประโยคนั้นออก
   // กัน case ที่ลูกค้าเห็นข้อความ "ลองดูเมนูตามนี้เลยนะคะ" แต่ไม่มีรูปแนบมาจริง
   if (imageTitles.length === 0) {
-    const INVITE_RE = /(ลองดูรูป|ลองดูเมนู|ลองดูภาพ|ดูภาพ|ดูหน้าตา|ดูตัวอย่าง|แนบรูปให้|ส่งรูปให้|ตามนี้เลยนะคะ|ตามนี้เลยค่ะ|เลือกได้ตามนี้|ดูรูปได้)/;
+    const INVITE_RE = /(ลองดูรูป|ลองดูเมนู|ลองดูภาพ|ดูภาพ|ดูหน้าตา|ดูตัวอย่าง|แนบรูปให้|แนบรูป|แนบเมนู|แนบให้ด้านล่าง|ส่งรูปให้|ส่งรูป[^ก-๙a-zA-Z]{0,3}ให้|ตามนี้เลยนะคะ|ตามนี้เลยค่ะ|ตามภาพ|เลือกได้ตามนี้|ดูรูปได้|จัดเตรียม.{0,10}เมนู|ให้เลือกชม|อยู่ด้านล่าง|ดูด้านล่าง|ด้านล่างนี้|portfolio|ภาพบรรยากาศ|รูปตัวอย่าง|เมนู.{0,10}ด้านนี้|ให้ชมด้านนี้|ดูรูป.{0,10}ด้านล่าง)/i;
     if (INVITE_RE.test(finalAnswer)) {
       const bubbles = finalAnswer.split(/\n*---+\n*/);
       const cleanedBubbles = bubbles.map((b) => {
@@ -1678,8 +1679,13 @@ ${pastLines}
       }).filter(Boolean);
       const stripped = cleanedBubbles.join("\n---\n").trim();
       const before = finalAnswer;
-      finalAnswer = stripped || "รับทราบค่ะ เดี๋ยวแอดมินติดต่อกลับนะคะ 🙏";
-      console.warn(`[ImageInviteGuard] stripped invitation phrases (no images to send). before="${before.slice(0, 120)}" after="${finalAnswer.slice(0, 120)}"`);
+      if (!stripped) {
+        finalAnswer = "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+        console.warn(`[ImageInviteGuard] fallback used — before="${before.slice(0, 120)}"`);
+      } else {
+        finalAnswer = stripped;
+        console.warn(`[ImageInviteGuard] stripped invite without media. before="${before.slice(0, 120)}" after="${finalAnswer.slice(0, 120)}"`);
+      }
     }
   }
 
@@ -1895,11 +1901,53 @@ ${pastLines}
   const videos = dedupMedia.filter(m => m.type === "video").slice(0, maxVideos);
   const images = dedupMedia.filter(m => m.type === "image").slice(0, maxImages);
   // ส่งวิดีโอก่อนรูป เพื่อให้ลูกค้าเห็นวิดีโอเด่นในแชท
-  const allMedia = [...videos, ...images];
+  let allMedia = [...videos, ...images];
 
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
-  const mediaToSend = sameTitles ? [] : allMedia;
+  let mediaToSend = sameTitles ? [] : allMedia;
+
+  // 🧹 MediaDedup — strip media URLs ที่เคยส่งให้ลูกค้าคนนี้ใน 10 นาทีล่าสุด
+  if (mediaToSend.length > 0) {
+    try {
+      const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+      const { data: recentAi } = await supabase
+        .from("conversations")
+        .select("message")
+        .eq("customer_id", customer.id)
+        .eq("sender", "ai")
+        .gte("created_at", tenMinAgo);
+      const recentUrls = new Set<string>();
+      for (const row of recentAi || []) {
+        const msg = String((row as any).message || "");
+        const urlMatches = msg.match(/https?:\/\/[^\s]+/g) || [];
+        for (const u of urlMatches) recentUrls.add(u);
+      }
+      if (recentUrls.size > 0) {
+        const before = mediaToSend.length;
+        mediaToSend = mediaToSend.filter(m => !recentUrls.has(m.url));
+        const stripped = before - mediaToSend.length;
+        if (stripped > 0) {
+          console.log(`[MediaDedup] stripped duplicate media count=${stripped}`);
+        }
+        console.log(`[MediaDedup] remaining media count=${mediaToSend.length}`);
+      }
+    } catch (e: any) {
+      console.warn(`[MediaDedup] lookup failed: ${e?.message || e}`);
+    }
+  }
+
+  // ถ้า strip แล้วไม่มี media เหลือ + finalAnswer พูดเหมือนแนบรูป → เข้า ImageInviteGuard fallback อีกรอบ
+  if (mediaToSend.length === 0 && imageTitles.length > 0) {
+    const INVITE_RE_2 = /(ลองดูรูป|ลองดูเมนู|ลองดูภาพ|ดูภาพ|ดูตัวอย่าง|แนบรูป|แนบเมนู|แนบให้ด้านล่าง|ส่งรูป|ตามภาพ|ตามนี้เลย|จัดเตรียม.{0,10}เมนู|ให้เลือกชม|อยู่ด้านล่าง|ดูด้านล่าง|ด้านล่างนี้|ภาพบรรยากาศ|รูปตัวอย่าง|ด้านนี้)/i;
+    if (INVITE_RE_2.test(finalAnswer)) {
+      const before = finalAnswer;
+      const bubbles = finalAnswer.split(/\n*---+\n*/);
+      const cleaned = bubbles.map((b) => b.split(/(?<=[ค่ะคะ])[\s\n]+/).map(s => s.trim()).filter(s => s && !INVITE_RE_2.test(s)).join(" ").trim()).filter(Boolean).join("\n---\n").trim();
+      finalAnswer = cleaned || "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+      console.warn(`[ImageInviteGuard] stripped invite (media dedup emptied) before="${before.slice(0,120)}" after="${finalAnswer.slice(0,120)}"`);
+    }
+  }
 
   const bubbles = finalAnswer.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
   const textBubbles = bubbles.length > 0 ? bubbles : [finalAnswer];
@@ -1926,6 +1974,51 @@ ${pastLines}
   const savedMsg = mediaToSend.length > 0
     ? `${finalAnswer}\n${mediaToSend.map(m => `${m.type === "video" ? "🎬" : "📎"} ${m.url}`).join("\n")}`
     : finalAnswer;
+
+  // 🔒 AI-reply-per-turn duplicate lock (60s window)
+  // ป้องกัน webhook duplicate / parallel instance ตอบซ้ำใน customer turn เดียวกัน
+  // - หา timestamp ของ customer message ล่าสุด (ถ้ามี lineMsgId ใช้ตรงตัว)
+  // - ถ้ามี AI reply หลัง timestamp นั้น และภายใน 60 วิ → skip
+  try {
+    let customerMsgTs: string | null = null;
+    if (lineMsgId) {
+      const { data: cMsg } = await supabase
+        .from("conversations")
+        .select("created_at")
+        .eq("customer_id", customer.id)
+        .eq("line_message_id", lineMsgId)
+        .eq("sender", "customer")
+        .maybeSingle();
+      customerMsgTs = (cMsg as any)?.created_at ?? null;
+    }
+    if (!customerMsgTs) {
+      const { data: latestC } = await supabase
+        .from("conversations")
+        .select("created_at")
+        .eq("customer_id", customer.id)
+        .eq("sender", "customer")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      customerMsgTs = (latestC?.[0] as any)?.created_at ?? null;
+    }
+    if (customerMsgTs) {
+      const sixtySecAgo = new Date(Date.now() - 60_000).toISOString();
+      const cutoff = customerMsgTs > sixtySecAgo ? customerMsgTs : sixtySecAgo;
+      const { data: aiAfter } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("customer_id", customer.id)
+        .eq("sender", "ai")
+        .gte("created_at", cutoff)
+        .limit(1);
+      if (aiAfter && aiAfter.length > 0) {
+        console.log(`[AIReplyLock] duplicate skipped customer=${customer.id} lineMsg=${lineMsgId ?? "n/a"}`);
+        return;
+      }
+    }
+  } catch (e: any) {
+    console.warn(`[AIReplyLock] lookup failed: ${e?.message || e}`);
+  }
 
   // 1) Insert AI conversation row FIRST (so admin sees what bot will send, even if LINE push fails mid-way)
   const { data: insertedConv, error: convErr } = await supabase
@@ -1959,6 +2052,7 @@ ${pastLines}
   // Save line_message_id of first text bubble so customer quote-replies link back
   const firstSentId = firstRes.sentMessages?.[0]?.id;
   if (firstSentId) await supabase.from("conversations").update({ line_message_id: firstSentId }).eq("id", insertedConv.id);
+  console.log(`[AIReplyLock] marked turn replied customer=${customer.id} conv=${insertedConv.id}`);
 
   // 3) Push remaining media chunks — if any fails, keep the DB row (text already delivered)
   let partialFail = false;
