@@ -1151,8 +1151,17 @@ async function processEvent(event: any, supabase: any) {
     triggerSummarize(customer.id);
   }
 
+  // ─── Patch 2.2 — early service_scope resolve for retrieval filtering ──────
+  // resolveServiceScope() เป็น pure/deterministic → เรียกซ้ำได้ (persist ตอนหลัง)
+  const _earlyIntent: any = (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object") ? freshCustomer.intent_data : {};
+  const _earlyCurrentScope: ServiceScope | null = (_earlyIntent.service_scope === "food_only_buffet" || _earlyIntent.service_scope === "full_merit_package")
+    ? _earlyIntent.service_scope
+    : null;
+  const _earlyScopeForRetrieval: ServiceScope = resolveServiceScope(_earlyCurrentScope, messageText).scope;
+
   // === Hybrid filter: ถ้ารู้ event_type → กรอง pkg/promo ที่ตรง category, ไม่งั้นส่งทั้งหมด ===
   const evType = (freshCustomer.event_type || "").trim().toLowerCase();
+
   // token-overlap match: split ทั้งสองฝั่งด้วย + / space / , แล้วเช็กว่ามี token ไหน substring overlap กัน
   const tokenize = (s: string) => s.toLowerCase().split(/[\s+,/]+/).map(t => t.trim()).filter(t => t.length >= 2);
   const filterMatch = (cat: string | null | undefined) => {
