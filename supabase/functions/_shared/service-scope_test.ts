@@ -109,3 +109,84 @@ Deno.test("lock prompt: food_only_buffet contains ห้ามพระ 9 defaul
 Deno.test("lock prompt: null → empty string (no injection)", () => {
   assertEquals(buildServiceScopeLockPrompt(null), "");
 });
+
+Deno.test("lock prompt (food-only) contains 'ใช้ตอบทันที' anti-handoff clause", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("ใช้ตอบทันที"), true);
+});
+
+// ─── Patch 2.2 — filterPackagesByScope ───────────────────────────────────────
+
+const PKG_FOOD_A = { name: "แพ็กจัดเลี้ยงบุฟเฟต์ 30 ท่าน", category: "งานอาหาร", description: "อาหารอย่างเดียว" };
+const PKG_FOOD_B = { name: "แพ็กเกจอาหาร Premium", category: "จัดเลี้ยงนอกสถานที่", description: "" };
+const PKG_MERIT = { name: "งานบุญครบวงจร", category: "งานบุญ", description: "รวมพิธีสงฆ์ + อาหาร" };
+const PKG_MONK = { name: "Standard พิธีสงฆ์", category: "พิธี", description: "" };
+const PKG_CHINESE = { name: "โต๊ะจีน 10 ที่", category: "โต๊ะจีน", description: "" };
+const PKG_UNCLASSIFIED = { name: "แพ็ก X", category: "อื่นๆ", description: "" };
+
+Deno.test("filterPackagesByScope: food_only keeps food/buffet packages", () => {
+  const out = filterPackagesByScope([PKG_FOOD_A, PKG_FOOD_B, PKG_MERIT, PKG_MONK, PKG_CHINESE], "food_only_buffet");
+  assertEquals(out.length, 2);
+  assertEquals(out[0].name, "แพ็กจัดเลี้ยงบุฟเฟต์ 30 ท่าน");
+  assertEquals(out[1].name, "แพ็กเกจอาหาร Premium");
+});
+
+Deno.test("filterPackagesByScope: food_only denies merit/monk/chinese", () => {
+  const out = filterPackagesByScope([PKG_MERIT, PKG_MONK, PKG_CHINESE], "food_only_buffet");
+  assertEquals(out.length, 0);
+});
+
+Deno.test("filterPackagesByScope: food_only drops unclassified (no allow match)", () => {
+  const out = filterPackagesByScope([PKG_UNCLASSIFIED], "food_only_buffet");
+  assertEquals(out.length, 0);
+});
+
+Deno.test("filterPackagesByScope: null scope → passthrough (regression)", () => {
+  const out = filterPackagesByScope([PKG_FOOD_A, PKG_MERIT, PKG_MONK], null);
+  assertEquals(out.length, 3);
+});
+
+Deno.test("filterPackagesByScope: full_merit_package scope → passthrough (regression)", () => {
+  const out = filterPackagesByScope([PKG_FOOD_A, PKG_MERIT, PKG_MONK], "full_merit_package");
+  assertEquals(out.length, 3);
+});
+
+Deno.test("filterPackagesByScope: empty filter returns [] (no fallback)", () => {
+  const out = filterPackagesByScope([PKG_MERIT, PKG_MONK, PKG_CHINESE], "food_only_buffet");
+  assertEquals(out.length, 0);
+});
+
+// ─── Patch 2.2 — filterKbByScope ──────────────────────────────────────────────
+
+const KB_MENU = { category: "เมนูอาหาร", title: "เมนู A" };
+const KB_DELIVERY = { category: "ค่าเดินทาง", title: "ค่าขนส่ง" };
+const KB_COMPANY = { category: "ข้อมูลบริษัท", title: "เกี่ยวกับเรา" };
+const KB_STYLE = { category: "สไตล์การตอบ", title: "โทน" };
+const KB_MONK_DETAIL = { category: "รายละเอียดพิธีสงฆ์", title: "ขั้นตอนสงฆ์" };
+const KB_MERIT_EQUIP = { category: "อุปกรณ์เสริมงานบุญ", title: "อาสนะ" };
+const KB_MERIT_PKG = { category: "แพ็กเกจงานบุญครบวงจร", title: "ครบวงจร" };
+const KB_TIMELINE = { category: "กำหนดการพิธี", title: "timeline" };
+const KB_NULL_CAT = { category: null, title: "อื่นๆ" };
+
+Deno.test("filterKbByScope: food_only keeps menu/delivery/company/style/null-category", () => {
+  const out = filterKbByScope([KB_MENU, KB_DELIVERY, KB_COMPANY, KB_STYLE, KB_NULL_CAT], "food_only_buffet");
+  assertEquals(out.length, 5);
+});
+
+Deno.test("filterKbByScope: food_only denies ceremony/full-service categories", () => {
+  const out = filterKbByScope([KB_MONK_DETAIL, KB_MERIT_EQUIP, KB_MERIT_PKG, KB_TIMELINE], "food_only_buffet");
+  assertEquals(out.length, 0);
+});
+
+Deno.test("filterKbByScope: null scope → passthrough (regression)", () => {
+  const items = [KB_MENU, KB_MONK_DETAIL, KB_MERIT_PKG];
+  const out = filterKbByScope(items, null);
+  assertEquals(out.length, 3);
+});
+
+Deno.test("filterKbByScope: full_merit_package → passthrough (regression)", () => {
+  const items = [KB_MENU, KB_MONK_DETAIL, KB_MERIT_PKG];
+  const out = filterKbByScope(items, "full_merit_package");
+  assertEquals(out.length, 3);
+});
+
