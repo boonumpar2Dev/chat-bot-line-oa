@@ -1307,6 +1307,27 @@ async function processEvent(event: any, supabase: any) {
   // 🧩 Configurable intent fields (จาก app_settings.intent_fields) — admin ตั้งเองได้
   const intentFields: any[] = Array.isArray(cfg.intent_fields) ? cfg.intent_fields.filter((f: any) => f?.key && f?.label) : [];
   const customerIntentData: Record<string, any> = (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object") ? freshCustomer.intent_data : {};
+
+  // ─── Patch 2.1 — service_scope drift guard ──────────────────────────────
+  // Resolve service_scope deterministically จาก latest message + current stored value
+  // Sticky rule: เมื่อ food_only_buffet แล้ว → คงไว้ ยกเว้นลูกค้าประกาศ switch ชัดเจน
+  // Persist ก่อน AI call เพื่อให้ turn เดียวกัน inject ลง prompt ได้ทันที
+  const currentScope: ServiceScope | null = (customerIntentData.service_scope === "food_only_buffet"
+    || customerIntentData.service_scope === "full_merit_package")
+    ? customerIntentData.service_scope
+    : null;
+  const scopeResult = resolveServiceScope(currentScope, messageText);
+  if (scopeResult.changed && scopeResult.scope) {
+    const mergedScope = { ...customerIntentData, service_scope: scopeResult.scope };
+    await supabase.from("customers").update({ intent_data: mergedScope }).eq("id", freshCustomer.id);
+    customerIntentData.service_scope = scopeResult.scope;
+    (freshCustomer as any).intent_data = mergedScope;
+    console.log(`[ServiceScope] persisted scope=${scopeResult.scope} reason="${scopeResult.reason}" customer=${freshCustomer.id}`);
+  } else if (scopeResult.scope) {
+    console.log(`[ServiceScope] sticky scope=${scopeResult.scope} reason="${scopeResult.reason}"`);
+  }
+  const activeScope: ServiceScope = scopeResult.scope;
+
   const intentFieldInstructions: string[] = [];
   const missingRequiredLabels: string[] = [];
   for (const f of intentFields) {
@@ -1320,6 +1341,10 @@ async function processEvent(event: any, supabase: any) {
   }
 
   let knownIntentStr = knownIntent.length ? `\n\n📋 ข้อมูลลูกค้าที่เก็บไว้แล้ว:\n${knownIntent.join("\n")}` : "";
+
+  // Patch 2.1 — inject SERVICE_SCOPE_LOCK ทุก turn เมื่อ scope ถูก set แล้ว
+  const scopeLockPrompt = buildServiceScopeLockPrompt(activeScope);
+  if (scopeLockPrompt) knownIntentStr += scopeLockPrompt;
 
   // 📍 Venue location (จาก LINE location หรือ Google Maps URL) + ระยะทางจากร้าน (ถ้ามี)
   const vloc = customerIntentData.venue_location;
