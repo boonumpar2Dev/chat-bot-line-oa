@@ -2002,7 +2002,7 @@ ${pastLines}
   if (sameTitles && customerAskedForDetails) {
     console.log(`[MediaDedup] sameTitles bypassed — customer asked for details (count=${allMedia.length})`);
   }
-  const customerAskedForDetails = DETAIL_REQUEST_RE.test(String(messageText || ""));
+  // (customerAskedForDetails already computed above)
   if (mediaToSend.length > 0 && !customerAskedForDetails) {
     try {
       const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
