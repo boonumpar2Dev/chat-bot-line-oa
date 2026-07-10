@@ -1261,15 +1261,8 @@ async function processEvent(event: any, supabase: any) {
   let pkgContext = ((evType && filteredPkgs.length > 0) || _bypassPkgCache)
     ? buildPackageBlock(usePkgs)
     : (cacheMap.get("packages_summary") || buildPackageBlock(usePkgs));
-
-
-  // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
-  const pkgsWithImages = usePkgs.filter((p: any) => p.image_urls?.length > 0);
-  const pkgsWithVideos = usePkgs.filter((p: any) => getItemVideos(p).length > 0);
-  let pkgContext = (evType && filteredPkgs.length > 0)
-    ? buildPackageBlock(usePkgs)
-    : (cacheMap.get("packages_summary") || buildPackageBlock(usePkgs));
   pkgContext = truncateToTokens(pkgContext, BUDGET_PACKAGES);
+
 
   const promosWithImages = usePromos.filter((pr: any) => pr.image_urls?.length > 0);
   const promosWithVideos = usePromos.filter((pr: any) => getItemVideos(pr).length > 0);
