@@ -6,6 +6,7 @@ import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
 import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, isPostQuoteContext, isLowInfoAck, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope, filterKbByScope, type ServiceScope } from "../_shared/service-scope.ts";
+import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1412,6 +1413,31 @@ async function processEvent(event: any, supabase: any) {
   const isSmallGroup = maxGuest > 0 && maxGuest < 40;
   if (isSmallGroup) {
     knownIntentStr += `\n\n🚨🚨 ALERT: ลูกค้าจำนวน ${maxGuest} ท่าน (<40) — ห้ามเสนอ/พูดถึง "โต๊ะจีน" "ซุ้มอาหาร" "ภาพรวม" เด็ดขาด | เสนอเฉพาะบุฟเฟ่ต์ | image_titles ห้ามมีคำว่า ภาพรวม/โต๊ะจีน/ซุ้ม/เปรียบเทียบ`;
+  }
+
+  // ─── Patch 2.8 — New-customer full-service package proposal guard ─────────
+  // ปิด gap ที่ AI ถาม "ชอบแบบไหน" ก่อนเสนอแพ็ก + ไม่ใส่ image_titles ทั้งที่มีรูปใน context
+  // Runtime data only — ไม่ hardcode ชื่อแพ็ก/ราคา/tier/รูป
+  try {
+    const _proposalGuard = buildNewCustomerProposalGuardBlock({
+      activeScope,
+      customerStatus: freshCustomer?.status ?? null,
+      eventType: freshCustomer?.event_type ?? null,
+      guestCount: (freshCustomer as any)?.guest_count ?? null,
+      packageNames: (usePkgs || []).map((p: any) => (p?.name || "").toString().trim()).filter(Boolean),
+      availableImageTitles: allImageSources,
+      prevSentImageCount: Array.isArray((customer as any)?.last_sent_image_titles)
+        ? (customer as any).last_sent_image_titles.length
+        : 0,
+    });
+    if (_proposalGuard.triggered) {
+      knownIntentStr += _proposalGuard.block;
+      console.log(`[ProposalGuard:2.8] triggered — ${_proposalGuard.reason}`);
+    } else {
+      console.log(`[ProposalGuard:2.8] skipped — ${_proposalGuard.reason}`);
+    }
+  } catch (e: any) {
+    console.warn("[ProposalGuard:2.8] error (ignored):", e?.message);
   }
 
   // 🗺️ Service area guard — บังคับ inject KB whitelist จังหวัด ถ้าลูกค้าพูดถึงสถานที่/จังหวัด
