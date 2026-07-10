@@ -5,6 +5,8 @@ import {
   detectFullServiceSwitchPhrase,
   resolveServiceScope,
   buildServiceScopeLockPrompt,
+  filterPackagesByScope,
+  filterKbByScope,
 } from "./service-scope.ts";
 
 // ─── detectors ───────────────────────────────────────────────────────────────
