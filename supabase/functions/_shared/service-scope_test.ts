@@ -239,3 +239,49 @@ Deno.test("filterKbByScope: full_merit_package → passthrough (regression)", ()
   assertEquals(out.length, 3);
 });
 
+// ─── Patch 2.7 Fix 1 — No event-type re-ask ─────────────────────────────────
+
+Deno.test("Patch 2.7 Fix 1: food_only lock prompt contains NO_EVENT_TYPE_REASK marker", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("NO_EVENT_TYPE_REASK"), true);
+});
+
+Deno.test("Patch 2.7 Fix 1: food_only lock prompt bans re-asking event type/ceremony", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("จัดงานประเภทไหน"), true);
+  assertEquals(p.includes("ต้องการจัดพิธีสงฆ์ไหม"), true);
+  assertEquals(p.includes("ให้เราจัดพิธีไหม"), true);
+});
+
+Deno.test("Patch 2.7 Fix 1: 'จัดงานทำบุญเอง เอาแค่อาหารอย่างเดียวค่ะ' → food_only_buffet", () => {
+  const r = resolveServiceScope(null, "จัดงานทำบุญเอง เอาแค่อาหารอย่างเดียวค่ะ");
+  assertEquals(r.scope, "food_only_buffet");
+  assertEquals(r.changed, true);
+});
+
+// ─── Patch 2.7 Fix 2 — Final media safety regex ─────────────────────────────
+const FINAL_MEDIA_RE = /(ดูรูป|ดูภาพ|ตามรูป|ตามภาพ|ในภาพ|จากรูป|จากภาพ|แนบรูป|แนบภาพ|แนบเมนู|ส่งรูป|ส่งภาพ|ด้านล่างนี้|ด้านล่างค่ะ|ด้านล่างนะคะ|ดูด้านล่าง|อยู่ด้านล่าง|ตามด้านล่าง|ตามนี้เลย|รูปด้านล่าง|ภาพด้านล่าง|รูปตัวอย่าง|ภาพตัวอย่าง|ตามที่แนบ|ที่แนบมา)/i;
+
+Deno.test("Patch 2.7 Fix 2: 'ดูรูปด้านล่างได้เลยค่ะ' matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("ดูรูปด้านล่างได้เลยค่ะ"), true);
+});
+Deno.test("Patch 2.7 Fix 2: 'ตามรูปที่แนบมาค่ะ' matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("ตามรูปที่แนบมาค่ะ"), true);
+});
+Deno.test("Patch 2.7 Fix 2: 'ในภาพจะเห็นได้ว่า' matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("ในภาพจะเห็นได้ว่า"), true);
+});
+Deno.test("Patch 2.7 Fix 2: 'จากรูปที่ส่งไป' matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("จากรูปที่ส่งไป"), true);
+});
+Deno.test("Patch 2.7 Fix 2: 'ส่งรูปให้ดูค่ะ' matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("ส่งรูปให้ดูค่ะ"), true);
+});
+Deno.test("Patch 2.7 Fix 2: 'แนบรูปมาให้ด้านล่างนะคะ' matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("แนบรูปมาให้ด้านล่างนะคะ"), true);
+});
+Deno.test("Patch 2.7 Fix 2 (negative): 'ราคาแพ็ก 30 ท่าน 15000 บาทค่ะ' NOT matched", () => {
+  assertEquals(FINAL_MEDIA_RE.test("ราคาแพ็ก 30 ท่าน 15000 บาทค่ะ"), false);
+});
+
+
