@@ -92,3 +92,18 @@ Deno.test("no hardcoded prices/tiers in implementation output", () => {
   assert(!/\b(28|38|48|58)[,.]?\d{3}\b/.test(r.block), "no hardcoded price numbers");
   assert(!/\b(Silver|Gold|Platinum|Basic|Premium)\b/.test(r.block), "no fictional tier names");
 });
+
+// Patch 2.8.1 — proposal-only image whitelist: guard block ต้องไม่มี KB/โปรโมชั่น/VDO titles
+Deno.test("Patch 2.8.1 — block excludes promotion/KB/video titles when caller passes package/tier only", () => {
+  const r = buildNewCustomerProposalGuardBlock({
+    ...base,
+    availableImageTitles: [
+      '"แพ็กเกจ: A" (รูปรวม/เปรียบเทียบ)',
+      '"แพ็กเกจ: A — Gold ระดับพรีเมียม" (รูปเฉพาะ tier)',
+    ],
+  });
+  assertEquals(r.triggered, true);
+  assert(!r.block.includes("โปรโมชั่น:"), "must not include promotion titles");
+  assert(!r.block.includes("VDO"), "must not include video titles");
+  assertStringIncludes(r.block, "แพ็กเกจ: A");
+});
