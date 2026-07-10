@@ -1430,7 +1430,7 @@ async function processEvent(event: any, supabase: any) {
       eventType: freshCustomer?.event_type ?? null,
       guestCount: (freshCustomer as any)?.guest_count ?? null,
       packageNames: (usePkgs || []).map((p: any) => (p?.name || "").toString().trim()).filter(Boolean),
-      availableImageTitles: allImageSources,
+      availableImageTitles: proposalPackageImageSources,
       prevSentImageCount: Array.isArray((customer as any)?.last_sent_image_titles)
         ? (customer as any).last_sent_image_titles.length
         : 0,
