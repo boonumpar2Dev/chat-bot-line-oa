@@ -121,7 +121,8 @@ export function buildServiceScopeLockPrompt(scope: ServiceScope): string {
       "- ห้าม default พระ 9 รูป หรือระบุจำนวนพระใดๆ ที่ลูกค้าไม่ได้บอก",
       "- ถ้าลูกค้าพูดว่า \"มีพระ N รูป\" / \"รวมพระ\" → หมายถึง**จำนวนแขก(พระ)ที่ลูกค้านิมนต์เอง**ให้บวกเข้า guest_count เฉยๆ — ไม่ใช่ order พิธีสงฆ์จากเรา",
       "- ห้ามใช้ package/ราคา/รูปที่เป็น \"งานบุญครบชุด\"",
-      "- ถ้าไม่มั่นใจว่าเมนู/ราคา/แพ็กไหนตรง scope → **handoff แอดมิน** อย่าเดา",
+      "- ✅ ถ้าใน context ด้านล่าง (KB/แคตตาล็อกแพ็กเกจ) มีข้อมูล food-only ที่ตอบคำถามลูกค้าได้ → **ใช้ตอบทันที** ห้าม handoff ถ้ามีข้อมูลอยู่",
+      "- ถ้าไม่มั่นใจว่าเมนู/ราคา/แพ็กไหนตรง scope หรือ context ไม่มีข้อมูลตรง scope → **handoff แอดมิน** อย่าเดา อย่าใช้ข้อมูลของแพ็กครบชุดมาตอบ",
       "- ห้าม flip scope กลับเอง — เฉพาะลูกค้าประกาศชัดว่าอยากให้เราจัดพิธีสงฆ์ด้วย ถึงจะเปลี่ยนได้",
       "- Allowed follow-up: วันจัดงาน / จำนวนแขก / สถานที่ / handover ทีมงาน",
       "",
@@ -137,3 +138,95 @@ export function buildServiceScopeLockPrompt(scope: ServiceScope): string {
   }
   return "";
 }
+
+// ─── Patch 2.2 — scope-filtered retrieval ─────────────────────────────────────
+// ทำงานเฉพาะเมื่อ scope = food_only_buffet เพื่อไม่ให้ AI เห็นแพ็ก/KB งานบุญครบชุด
+// - ไม่ fallback กลับไป full list เมื่อกรองแล้วเหลือ 0 (จงใจ ให้ AI handoff แทนที่จะเดา)
+// - ห้ามใช้คำว่า "บุฟเฟ่ต์" เป็น deny (food-only ก็บุฟเฟ่ต์ได้)
+// - KB filter deny ตาม category ก่อน เพราะ content อาจมีคำว่า "งานบุญ" แม้ตัวบทความจะเป็น food-only
+
+const FOOD_ONLY_PKG_ALLOW: string[] = [
+  "อาหารเท่านั้น",
+  "อาหารอย่างเดียว",
+  "เฉพาะอาหาร",
+  "งานอาหาร",
+  "บุฟเฟ่ต์อาหาร",
+  "บุฟเฟต์อาหาร",
+  "จัดเลี้ยงนอกสถานที่",
+  "จัดเลี้ยง",
+  "อาหารบุฟเฟ่ต์",
+  "อาหารบุฟเฟต์",
+  "แพ็กเกจอาหาร",
+];
+
+const FOOD_ONLY_PKG_DENY: string[] = [
+  "บุญ",
+  "พิธี",
+  "ครบวงจร",
+  "ครบชุด",
+  "พิธีสงฆ์",
+  "โต๊ะจีน",
+  "บวงสรวง",
+  "อาสนะ",
+  "โต๊ะหมู่",
+  "พระพุทธ",
+  "ธูปเทียน",
+];
+
+const FOOD_ONLY_KB_DENY_CATEGORIES: string[] = [
+  "รายละเอียดพิธีสงฆ์",
+  "อุปกรณ์เสริมงานบุญ",
+  "ข้อมูลเกี่ยวกับงานบุญอื่นๆ",
+  "กำหนดการพิธี",
+  "แพ็กเกจงานบุญครบวงจร",
+];
+
+function anyMatch(haystack: string, needles: string[]): boolean {
+  if (!haystack) return false;
+  const h = haystack.toLowerCase();
+  return needles.some((n) => h.includes(n.toLowerCase()));
+}
+
+/**
+ * Filter packages by service_scope.
+ *   - scope != food_only_buffet → passthrough (return original list)
+ *   - scope == food_only_buffet →
+ *       keep pkg iff its (name + category + description) matches an ALLOW keyword
+ *       AND does not match a DENY keyword.
+ *       Package that neither allow-matches nor deny-matches → drop (avoid ceremony bleed).
+ *   - Empty result → return [] (NO fallback). Caller should log.
+ */
+export function filterPackagesByScope<T extends { name?: string | null; category?: string | null; description?: string | null }>(
+  pkgs: T[] | null | undefined,
+  scope: ServiceScope,
+): T[] {
+  const list = Array.isArray(pkgs) ? pkgs : [];
+  if (scope !== "food_only_buffet") return list;
+  return list.filter((p) => {
+    const blob = `${p?.name || ""} ${p?.category || ""} ${p?.description || ""}`;
+    const isAllow = anyMatch(blob, FOOD_ONLY_PKG_ALLOW);
+    const isDeny = anyMatch(blob, FOOD_ONLY_PKG_DENY);
+    if (isAllow && !isDeny) return true;
+    return false;
+  });
+}
+
+/**
+ * Filter KB items by service_scope.
+ *   - scope != food_only_buffet → passthrough
+ *   - scope == food_only_buffet → deny by explicit ceremony categories only.
+ *     Items without category (null/empty) → keep (company info, style guide, etc.)
+ */
+export function filterKbByScope<T extends { category?: string | null }>(
+  kbItems: T[] | null | undefined,
+  scope: ServiceScope,
+): T[] {
+  const list = Array.isArray(kbItems) ? kbItems : [];
+  if (scope !== "food_only_buffet") return list;
+  return list.filter((k) => {
+    const cat = (k?.category || "").trim();
+    if (!cat) return true;
+    return !FOOD_ONLY_KB_DENY_CATEGORIES.some((deny) => cat === deny || cat.includes(deny));
+  });
+}
+

@@ -5,7 +5,7 @@ import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
 import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, isPostQuoteContext, isLowInfoAck, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
-import { resolveServiceScope, buildServiceScopeLockPrompt, type ServiceScope } from "../_shared/service-scope.ts";
+import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope, filterKbByScope, type ServiceScope } from "../_shared/service-scope.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1151,8 +1151,17 @@ async function processEvent(event: any, supabase: any) {
     triggerSummarize(customer.id);
   }
 
+  // ─── Patch 2.2 — early service_scope resolve for retrieval filtering ──────
+  // resolveServiceScope() เป็น pure/deterministic → เรียกซ้ำได้ (persist ตอนหลัง)
+  const _earlyIntent: any = (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object") ? freshCustomer.intent_data : {};
+  const _earlyCurrentScope: ServiceScope | null = (_earlyIntent.service_scope === "food_only_buffet" || _earlyIntent.service_scope === "full_merit_package")
+    ? _earlyIntent.service_scope
+    : null;
+  const _earlyScopeForRetrieval: ServiceScope = resolveServiceScope(_earlyCurrentScope, messageText).scope;
+
   // === Hybrid filter: ถ้ารู้ event_type → กรอง pkg/promo ที่ตรง category, ไม่งั้นส่งทั้งหมด ===
   const evType = (freshCustomer.event_type || "").trim().toLowerCase();
+
   // token-overlap match: split ทั้งสองฝั่งด้วย + / space / , แล้วเช็กว่ามี token ไหน substring overlap กัน
   const tokenize = (s: string) => s.toLowerCase().split(/[\s+,/]+/).map(t => t.trim()).filter(t => t.length >= 2);
   const filterMatch = (cat: string | null | undefined) => {
@@ -1168,7 +1177,18 @@ async function processEvent(event: any, supabase: any) {
     ? (pkgs || []).filter((p: any) => filterMatch(p.category))
     : (pkgs || []);
   // ถ้ากรองแล้วเหลือ 0 → fallback ส่งทั้งหมด (กันพลาด)
-  const usePkgs = filteredPkgs.length > 0 ? filteredPkgs : (pkgs || []);
+  let usePkgs = filteredPkgs.length > 0 ? filteredPkgs : (pkgs || []);
+  // Patch 2.2 — scope-filter packages (only acts when food_only_buffet). No fallback to full list.
+  if (_earlyScopeForRetrieval === "food_only_buffet") {
+    const before = usePkgs.length;
+    usePkgs = filterPackagesByScope(usePkgs, _earlyScopeForRetrieval);
+    if (usePkgs.length === 0) {
+      console.log(`[ServiceScope] package filter empty for scope=food_only_buffet — no fallback to full packages (before=${before})`);
+    } else {
+      console.log(`[ServiceScope] package filter scope=food_only_buffet before=${before} after=${usePkgs.length}`);
+    }
+  }
+
   const filteredPromos = evType
     ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
     : (promos || []);
@@ -1224,16 +1244,25 @@ async function processEvent(event: any, supabase: any) {
   if (filteredKb.length === 0) {
     filteredKb = filterRelevantKB(kbItems, messageText, recentMsgsForFilter, 8, mustIncludeIds);
   }
+  // Patch 2.2 — scope-filter KB (deny ceremony categories when food_only_buffet)
+  if (_earlyScopeForRetrieval === "food_only_buffet") {
+    const beforeKb = filteredKb.length;
+    filteredKb = filterKbByScope(filteredKb, _earlyScopeForRetrieval);
+    console.log(`[ServiceScope] KB filter scope=food_only_buffet before=${beforeKb} after=${filteredKb.length}`);
+  }
   let kbContext = buildKbBlock(filteredKb);
   kbContext = truncateToTokens(kbContext, BUDGET_KB);
 
   // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
+  // Patch 2.2: bypass cache เมื่อ scope=food_only_buffet (cache เป็น full list)
   const pkgsWithImages = usePkgs.filter((p: any) => p.image_urls?.length > 0);
   const pkgsWithVideos = usePkgs.filter((p: any) => getItemVideos(p).length > 0);
-  let pkgContext = (evType && filteredPkgs.length > 0)
+  const _bypassPkgCache = _earlyScopeForRetrieval === "food_only_buffet";
+  let pkgContext = ((evType && filteredPkgs.length > 0) || _bypassPkgCache)
     ? buildPackageBlock(usePkgs)
     : (cacheMap.get("packages_summary") || buildPackageBlock(usePkgs));
   pkgContext = truncateToTokens(pkgContext, BUDGET_PACKAGES);
+
 
   const promosWithImages = usePromos.filter((pr: any) => pr.image_urls?.length > 0);
   const promosWithVideos = usePromos.filter((pr: any) => getItemVideos(pr).length > 0);
