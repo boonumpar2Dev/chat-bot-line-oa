@@ -1244,8 +1244,24 @@ async function processEvent(event: any, supabase: any) {
   if (filteredKb.length === 0) {
     filteredKb = filterRelevantKB(kbItems, messageText, recentMsgsForFilter, 8, mustIncludeIds);
   }
+  // Patch 2.2 — scope-filter KB (deny ceremony categories when food_only_buffet)
+  if (_earlyScopeForRetrieval === "food_only_buffet") {
+    const beforeKb = filteredKb.length;
+    filteredKb = filterKbByScope(filteredKb, _earlyScopeForRetrieval);
+    console.log(`[ServiceScope] KB filter scope=food_only_buffet before=${beforeKb} after=${filteredKb.length}`);
+  }
   let kbContext = buildKbBlock(filteredKb);
   kbContext = truncateToTokens(kbContext, BUDGET_KB);
+
+  // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
+  // Patch 2.2: bypass cache เมื่อ scope=food_only_buffet (cache เป็น full list)
+  const pkgsWithImages = usePkgs.filter((p: any) => p.image_urls?.length > 0);
+  const pkgsWithVideos = usePkgs.filter((p: any) => getItemVideos(p).length > 0);
+  const _bypassPkgCache = _earlyScopeForRetrieval === "food_only_buffet";
+  let pkgContext = ((evType && filteredPkgs.length > 0) || _bypassPkgCache)
+    ? buildPackageBlock(usePkgs)
+    : (cacheMap.get("packages_summary") || buildPackageBlock(usePkgs));
+
 
   // Package: ถ้ามี filter → build ใหม่จาก usePkgs, ไม่งั้นใช้ cache
   const pkgsWithImages = usePkgs.filter((p: any) => p.image_urls?.length > 0);
