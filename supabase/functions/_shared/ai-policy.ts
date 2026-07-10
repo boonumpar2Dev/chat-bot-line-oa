@@ -740,6 +740,38 @@ ${lines.join("\n")}
 }
 
 // ─────────────────────────────────────────────────────────────
+// Patch 2.9 — Confirmed + Missing Structured Context fallback guard
+// Pure function. Returns a prompt block ONLY when:
+//   - lifecycle === "confirmed"
+//   - AND (event_date is missing OR venue is missing)
+// Callers append this to customerContextBlock. No I/O, no mutation.
+// Purpose: when ยืนยันแล้วแต่ระบบยังไม่มี event_date/venue เป็น structured data,
+// ห้าม AI เดา และห้ามถามซ้ำเหมือนลูกค้าใหม่ — ให้แจ้งว่าทีมงานจะตรวจสอบจาก
+// ใบเสนอราคาที่ยืนยันไว้และยืนยันกลับ.
+export function buildConfirmedMissingContextBlock(
+  lifecycle: Lifecycle | undefined | null,
+  cols: { event_date?: unknown; venue?: unknown } | null | undefined,
+): string {
+  if (lifecycle !== "confirmed") return "";
+  const c = cols ?? {};
+  const hasDate = isPresent((c as any).event_date);
+  const hasVenue = isPresent((c as any).venue);
+  if (hasDate && hasVenue) return "";
+  const missing: string[] = [];
+  if (!hasDate) missing.push("วันจัดงาน");
+  if (!hasVenue) missing.push("สถานที่จัดงาน");
+  return `[CONFIRMED_MISSING_CONTEXT] งานของลูกค้ารายนี้ยืนยันแล้ว แต่ในระบบยัง**ไม่มี structured data** สำหรับ: ${missing.join(", ")}
+กฎ (สำคัญมาก ขึ้นเหนือทุกกฎการถามข้อมูล):
+- ถือว่าเป็นงานที่คอนเฟิร์มแล้วเสมอ — ห้ามเข้าโหมดลูกค้าใหม่ ห้ามเริ่ม lead collection ใหม่
+- **ห้ามถามใหม่ว่า จัดวันไหน / จัดที่ไหน / กี่ท่าน / เป็นงานอะไร / รูปแบบอาหารอะไร** เพื่อยืนยันตัวงาน — ถือว่ายืนยันแล้วตามใบเสนอราคาที่คอนเฟิร์ม
+- ห้ามเดา ห้ามแต่ง ห้ามอ้างวัน/สถานที่/จำนวนคนขึ้นมาเอง
+- ถ้าลูกค้าถามเกี่ยวกับกำหนดการ / วันเข้าดูพื้นที่ / เลือกเมนู / ทีมงานจะติดต่อเมื่อไหร่ / รายละเอียดงานที่คอนเฟิร์ม → ให้ตอบว่า "รับทราบค่ะ เดี๋ยวแอดมินตรวจสอบรายละเอียดงานที่คอนเฟิร์มไว้และแจ้งกำหนดการกลับให้นะคะ 🙏"
+- ถามได้เฉพาะเมื่อ**ลูกค้าเริ่มพูดเองว่าต้องการเปลี่ยน** (เช่น "ขอเปลี่ยนสถานที่", "ขอเปลี่ยนวัน") → รับเรื่องเฉพาะจุดที่ลูกค้าขอเปลี่ยน แล้วประสานทีมงาน ห้ามถามข้อมูลอื่นเพิ่ม`;
+}
+
+
+
+// ─────────────────────────────────────────────────────────────
 // Phase 2 gating helper — decide whether Phase 2/2.1/2.1.1 should run for a
 // given customer. Pure function; no I/O. Supports two gating modes:
 //   1. whitelist  → customer_id ∈ ai_policy_config.test_customer_ids
