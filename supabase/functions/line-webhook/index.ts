@@ -1301,6 +1301,11 @@ async function processEvent(event: any, supabase: any) {
     ...pkgsWithVideos.map((p: any) => `"VDO แพ็กเกจ: ${p.name}"`),
     ...promosWithVideos.map((pr: any) => `"VDO โปรโมชั่น: ${pr.name}"`),
   ];
+  // Patch 2.8.1 — proposal-only image whitelist (package + tier เท่านั้น, ตัด KB/promotion/video)
+  const proposalPackageImageSources = [
+    ...pkgsWithImages.map((p: any) => `"แพ็กเกจ: ${p.name}" (รูปรวม/เปรียบเทียบ)`),
+    ...tierImageRefs.map((t) => `"${t.title}" (รูปเฉพาะ tier)`),
+  ];
   const imageListStr = allImageSources.length ? `\n\n📸 รายชื่อรูป/วิดีโอที่ส่งได้ (ใส่ใน image_titles ตรงตามนี้สูงสุด 4 รายการ ตรงตามกฎเลือกสื่อใน strict_rules):\n${allImageSources.join("\n")}` : "";
 
 
