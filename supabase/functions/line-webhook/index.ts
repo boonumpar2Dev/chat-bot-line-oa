@@ -1177,7 +1177,18 @@ async function processEvent(event: any, supabase: any) {
     ? (pkgs || []).filter((p: any) => filterMatch(p.category))
     : (pkgs || []);
   // ถ้ากรองแล้วเหลือ 0 → fallback ส่งทั้งหมด (กันพลาด)
-  const usePkgs = filteredPkgs.length > 0 ? filteredPkgs : (pkgs || []);
+  let usePkgs = filteredPkgs.length > 0 ? filteredPkgs : (pkgs || []);
+  // Patch 2.2 — scope-filter packages (only acts when food_only_buffet). No fallback to full list.
+  if (_earlyScopeForRetrieval === "food_only_buffet") {
+    const before = usePkgs.length;
+    usePkgs = filterPackagesByScope(usePkgs, _earlyScopeForRetrieval);
+    if (usePkgs.length === 0) {
+      console.log(`[ServiceScope] package filter empty for scope=food_only_buffet — no fallback to full packages (before=${before})`);
+    } else {
+      console.log(`[ServiceScope] package filter scope=food_only_buffet before=${before} after=${usePkgs.length}`);
+    }
+  }
+
   const filteredPromos = evType
     ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
     : (promos || []);
