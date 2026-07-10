@@ -1448,6 +1448,13 @@ export default function Chats() {
                         </span>
                       </div>
                     )}
+                    {m.sender === "system" ? (
+                      <div className="flex justify-center my-2">
+                        <span className="text-[11px] text-muted-foreground bg-muted/50 border border-dashed border-border/60 rounded-md px-3 py-1 max-w-[85%] whitespace-pre-wrap text-center">
+                          <span className="opacity-70 mr-1">🔒 ระบบภายใน:</span>{m.message}
+                        </span>
+                      </div>
+                    ) : (
                     <MessageBubble m={m} onImageClick={setPreviewImg} highlight={msgSearch} onTrainAI={(t)=>selectedId && setTrainCtx({ text: t, customerId: selectedId })} adminNames={adminNames}
                       customerPicture={selected?.picture_url} customerName={selected?.display_name}
                       quotedMessage={m.quoted_message_id ? byId[m.quoted_message_id] : null}
@@ -1461,6 +1468,7 @@ export default function Chats() {
                         if (!msg.quote_token) { toast.error("ตอบกลับข้อความนี้ไม่ได้ (รองรับเฉพาะข้อความ/สติกเกอร์)"); return; }
                         setReplyingTo({ id: msg.id, quoteToken: msg.quote_token, sender: msg.sender, snippet: formatSnippet(msg.message) });
                       }}/>
+                    )}
                     </React.Fragment>
                     );
                   });
