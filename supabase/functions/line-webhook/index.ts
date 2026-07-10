@@ -1621,6 +1621,31 @@ ${pastLines}
         );
         __phase2_customerContextBlock = ctxRes.block || undefined;
 
+        // Patch 2.9 — Confirmed + missing structured context fallback guard.
+        // เมื่อ status=confirmed แต่ event_date หรือ venue ยังไม่มีใน structured data,
+        // ห้าม AI ถามซ้ำเหมือนลูกค้าใหม่. append เข้า customerContextBlock (ไม่แก้ prompt-builder API).
+        try {
+          const missingBlock = buildConfirmedMissingContextBlock(result.lifecycle, {
+            event_date: (freshCustomer as any).event_date ?? null,
+            venue: (freshCustomer as any).venue ?? null,
+          });
+          if (missingBlock) {
+            __phase2_customerContextBlock = __phase2_customerContextBlock
+              ? `${__phase2_customerContextBlock}\n\n${missingBlock}`
+              : missingBlock;
+            console.log("[AiPolicy:phase2.9] confirmed_missing_context injected", {
+              customer_id: freshCustomer.id,
+              missing: {
+                event_date: !(freshCustomer as any).event_date,
+                venue: !(freshCustomer as any).venue,
+              },
+            });
+          }
+        } catch (e) {
+          console.warn("[AiPolicy:phase2.9] buildConfirmedMissingContextBlock error (ignored):", (e as Error)?.message);
+        }
+
+
         console.log("[AiPolicy:phase2]", JSON.stringify({
           customer_id: freshCustomer.id,
           lifecycle: result.lifecycle,
