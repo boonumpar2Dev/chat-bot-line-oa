@@ -102,7 +102,7 @@ Deno.test("lock prompt: food_only_buffet contains ห้ามพระ 9 defaul
   const p = buildServiceScopeLockPrompt("food_only_buffet");
   assertEquals(p.includes("SERVICE_SCOPE_LOCK = food_only_buffet"), true);
   assertEquals(p.includes("ห้าม default พระ 9"), true);
-  assertEquals(p.includes("ห้ามเสนอ/พูดถึงแพ็กเกจ"), true);
+  assertEquals(p.includes("ห้ามเสนอ/พูดถึงแพ็ก"), true);
   assertEquals(p.includes("จำนวนแขก(พระ)"), true);
 });
 
@@ -110,10 +110,30 @@ Deno.test("lock prompt: null → empty string (no injection)", () => {
   assertEquals(buildServiceScopeLockPrompt(null), "");
 });
 
-Deno.test("lock prompt (food-only) contains 'ใช้ตอบทันที' anti-handoff clause", () => {
+// ─── Patch 2.3 — proactive package-first behavior ────────────────────────────
+Deno.test("lock prompt (food-only) instructs proactive package offer, not handoff-first", () => {
   const p = buildServiceScopeLockPrompt("food_only_buffet");
-  assertEquals(p.includes("ใช้ตอบทันที"), true);
+  // proactive keywords
+  assertEquals(p.includes("เสนอแพ็ก food-only"), true);
+  assertEquals(p.includes("ทันที"), true);
+  // image title guidance
+  assertEquals(p.includes("imageTitles"), true);
+  assertEquals(p.includes("แพ็กเกจ: งานอาหารเท่านั้น"), true);
+  // don't ask "ชอบแบบไหน" for single package
+  assertEquals(p.includes("ชอบแบบไหน"), true);
+  // price honesty
+  assertEquals(p.includes("ห้ามแต่งราคาเอง"), true);
+  // narrow handoff scope
+  assertEquals(p.includes("ไม่มีใน context"), true);
 });
+
+Deno.test("lock prompt (food-only) keeps merit-package deny guard", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("ครบวงจร"), true);
+  assertEquals(p.includes("พิธีสงฆ์"), true);
+  assertEquals(p.includes("flip scope"), true);
+});
+
 
 // ─── Patch 2.2 — filterPackagesByScope ───────────────────────────────────────
 
