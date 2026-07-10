@@ -2046,6 +2046,32 @@ ${pastLines}
     }
   }
 
+  // 🛡️ Patch 2.7 Fix 2 — Final media safety: ถ้า mediaToSend สุดท้าย = 0
+  // ห้าม finalAnswer อ้างถึงรูป/ภาพ/ด้านล่าง/แนบรูป/ตามรูป/ในภาพ/จากรูป/ส่งรูป
+  // ครอบทุกกรณี (imageTitles ว่างตั้งแต่ต้น, AntiSpam drop, MediaDedup strip, sameTitles)
+  if (mediaToSend.length === 0) {
+    const FINAL_MEDIA_RE = /(ดูรูป|ดูภาพ|ตามรูป|ตามภาพ|ในภาพ|จากรูป|จากภาพ|แนบรูป|แนบภาพ|แนบเมนู|ส่งรูป|ส่งภาพ|ด้านล่างนี้|ด้านล่างค่ะ|ด้านล่างนะคะ|ดูด้านล่าง|อยู่ด้านล่าง|ตามด้านล่าง|ตามนี้เลย|รูปด้านล่าง|ภาพด้านล่าง|รูปตัวอย่าง|ภาพตัวอย่าง|ตามที่แนบ|ที่แนบมา)/i;
+    if (FINAL_MEDIA_RE.test(finalAnswer)) {
+      const before = finalAnswer;
+      const bubblesRaw = finalAnswer.split(/\n*---+\n*/);
+      const cleaned = bubblesRaw
+        .map((b) =>
+          b
+            .split(/(?<=[ค่ะคะ])[\s\n]+/)
+            .map((s) => s.trim())
+            .filter((s) => s && !FINAL_MEDIA_RE.test(s))
+            .join(" ")
+            .trim(),
+        )
+        .filter(Boolean)
+        .join("\n---\n")
+        .trim();
+      finalAnswer = cleaned || "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+      console.warn(`[FinalMediaSafety] no media to send — stripped image refs. before="${before.slice(0, 140)}" after="${finalAnswer.slice(0, 140)}"`);
+    }
+  }
+
+
   const bubbles = finalAnswer.split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
   const textBubbles = bubbles.length > 0 ? bubbles : [finalAnswer];
   const toLineMsg = (m: { type: string; url: string; thumb?: string }) => {
