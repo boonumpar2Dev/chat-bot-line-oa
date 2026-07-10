@@ -6,6 +6,7 @@ import { getLineConfig } from "../_shared/line-config.ts";
 import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts";
 import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, isPostQuoteContext, isLowInfoAck, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope, filterKbByScope, type ServiceScope } from "../_shared/service-scope.ts";
+import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
