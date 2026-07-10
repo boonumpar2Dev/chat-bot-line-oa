@@ -134,6 +134,35 @@ Deno.test("lock prompt (food-only) keeps merit-package deny guard", () => {
   assertEquals(p.includes("flip scope"), true);
 });
 
+// ─── Patch 2.6 — pre-quote menu-selection guard ──────────────────────────────
+Deno.test("lock prompt (food-only) marks pre-quote stage", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("pre-quote"), true);
+});
+
+Deno.test("lock prompt (food-only) bans menu-selection wording", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("ลองเลือกเมนู"), true);
+  assertEquals(p.includes("เลือกเมนู"), true);
+  assertEquals(p.includes("เลือกจากรูป"), true);
+  assertEquals(p.includes("สนใจเมนูไหน"), true);
+  assertEquals(p.includes("ชอบเมนูไหน"), true);
+  assertEquals(p.includes("เลือกมาได้เลย"), true);
+  assertEquals(p.includes("แจ้งเมนูที่ต้องการได้เลย"), true);
+});
+
+Deno.test("lock prompt (food-only) restricts imageTitles to package-only when asking pkg/price", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("แพ็กเกจ: <ชื่อแพ็ก>"), true);
+  assertEquals(p.includes("ห้ามยัด imageTitles ของรูป KB เมนู"), true);
+});
+
+Deno.test("lock prompt (food-only) allows menu when customer asks menu directly, but no rush-to-confirm", () => {
+  const p = buildServiceScopeLockPrompt("food_only_buffet");
+  assertEquals(p.includes("ถามเมนูโดยตรง"), true);
+  assertEquals(p.includes("ทีมงานช่วยแนะนำเมนู"), true);
+});
+
 
 // ─── Patch 2.2 — filterPackagesByScope ───────────────────────────────────────
 
