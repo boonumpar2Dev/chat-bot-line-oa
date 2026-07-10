@@ -1993,11 +1993,15 @@ ${pastLines}
 
   const lastSent = Array.isArray(customer.last_sent_image_titles) ? customer.last_sent_image_titles : [];
   const sameTitles = [...imageTitles].sort().join("|") === [...lastSent].sort().join("|") && imageTitles.length > 0;
-  let mediaToSend = sameTitles ? [] : allMedia;
 
   // 🧹 MediaDedup — strip media URLs ที่เคยส่งให้ลูกค้าคนนี้ใน 10 นาทีล่าสุด
   // Patch 2.5: bypass เมื่อลูกค้า "ขอดูรายละเอียด/เมนู/แพ็ก/ราคา/รูป" อีกครั้ง — เจตนาชัดว่าต้องการเห็นซ้ำ
   const DETAIL_REQUEST_RE = /(ขอดู|ขอ\s*ดู|ขอ\s*(รายละเอียด|เมนู|รูป|ภาพ|ตัวอย่าง)|รายละเอียด|ดูเมนู|ดูรูป|ดูภาพ|ดูแพ็ก|ดูราคา|ส่ง(รูป|เมนู|แพ็ก|ตัวอย่าง|รายละเอียด)|มีแบบไหน|มีแพ็ก|แพ็กไหน|แพ็กอะไร)/i;
+  const customerAskedForDetails = DETAIL_REQUEST_RE.test(String(messageText || ""));
+  let mediaToSend = (sameTitles && !customerAskedForDetails) ? [] : allMedia;
+  if (sameTitles && customerAskedForDetails) {
+    console.log(`[MediaDedup] sameTitles bypassed — customer asked for details (count=${allMedia.length})`);
+  }
   const customerAskedForDetails = DETAIL_REQUEST_RE.test(String(messageText || ""));
   if (mediaToSend.length > 0 && !customerAskedForDetails) {
     try {
