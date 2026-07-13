@@ -55,7 +55,11 @@ export function resolveDateAnchor(input: DateAnchorInput): DateAnchorResult {
   let latestAdminRaw = "";
   for (const m of msgs) {
     const sender = (m.sender || "").toLowerCase();
-    const text = String(m.message || "");
+    const rawText = String(m.message || "");
+    // 🚫 OCR (image content) is untrusted for date anchoring. Strip the OCR block so
+    // dates/times/etc. inside images are NEVER promoted to event_date. Customer-typed
+    // text before the marker is preserved and still parsed normally.
+    const text = stripImageOcrBlocks(rawText);
     if (sender === "customer") {
       if (dayOnlyRe.test(text)) hasDayOnly = true;
       const found = parseThaiDateCandidates(text, { todayYear });
