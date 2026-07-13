@@ -60,7 +60,7 @@ const NEW_STATUSES = new Set(["", "new", "inquiry"]);
 const ALREADY_TOLD_PATTERNS: { re: RegExp; tag: string }[] = [
   { re: /เคย\s*(?:บอก|แจ้ง|ส่ง|ให้)(?:ข้อมูล|รายละเอียด)?(?:ไป)?(?:แล้ว|ก่อนหน้า)/, tag: "already-told.explicit" },
   { re: /(?:บอก|แจ้ง|ส่ง)(?:ข้อมูล|รายละเอียด)?\s*(?:ไป)?(?:ก่อนหน้า(?:นี้)?|เมื่อกี้)\s*แล้ว/, tag: "already-told.earlier" },
-  { re: /(?:แจ้ง|บอก|ส่ง)\s*(?:ข้อมูล|รายละเอียด|ไว้|ให้)\s*(?:แล้ว)/, tag: "already-told.given" },
+  { re: /(?:แจ้ง|บอก|ส่ง)\s*(?:ข้อมูล|รายละเอียด|ไว้|ให้)[^\n]{0,20}?แล้ว/, tag: "already-told.given" },
   { re: /คุย(?:กัน)?\s*(?:ไว้|กันไว้)\s*แล้ว/, tag: "already-told.discussed" },
   { re: /ตามที่(?:เคย)?\s*(?:คุย|แจ้ง|บอก|ส่ง)(?:กัน)?(?:ไว้)?/, tag: "already-told.per-prior" },
   { re: /ข้อมูล(?:เดิม|เก่า)(?:ค่ะ|ครับ|นะ|น่ะ)?/, tag: "already-told.same-data" },
