@@ -11,6 +11,13 @@ import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-guard.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
+import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
+import {
+  classifyDateIntent,
+  shouldRerunExtractOnCustomerMessage,
+  shouldAllowEventDateOverwrite,
+  mergeExtractedFields,
+} from "../_shared/date-intent.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
