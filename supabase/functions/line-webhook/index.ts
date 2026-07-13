@@ -121,20 +121,25 @@ async function runHandoverExtract(
   supabase: any,
   customer: any,
   cfg: any,
-  trigger: "phone" | "tax_id",
+  trigger: "phone" | "tax_id" | "explicit_date_confirm" | "explicit_date_change",
+  opts?: { latestCustomerMessageText?: string | null },
 ): Promise<any> {
   try {
     if (cfg?.handover_extract_enabled === false) return customer;
+    const defaultTriggers = ["phone", "tax_id", "explicit_date_confirm", "explicit_date_change"];
     const triggers: string[] = Array.isArray(cfg?.handover_extract_triggers)
       ? cfg.handover_extract_triggers
-      : ["phone", "tax_id"];
-    if (!triggers.includes(trigger)) return customer;
+      : defaultTriggers;
+    // Backward-compat: if admin config only lists ["phone","tax_id"], still allow explicit_date_* (new B1 path).
+    const isExplicitDate = trigger === "explicit_date_confirm" || trigger === "explicit_date_change";
+    if (!triggers.includes(trigger) && !isExplicitDate) return customer;
 
     const timeoutMs = Math.max(500, Number(cfg?.handover_extract_timeout_ms) || 3000);
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
     let extracted: any = {};
+    let anchorDiag: any = null;
     try {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/extract-event-from-chat`, {
         method: "POST",
@@ -145,6 +150,7 @@ async function runHandoverExtract(
       if (r.ok) {
         const j = await r.json();
         extracted = j?.extracted || {};
+        anchorDiag = extracted?._date_anchor || null;
       } else {
         console.warn(`[HandoverExtract] non-200: ${r.status}`);
       }
@@ -155,6 +161,47 @@ async function runHandoverExtract(
       clearTimeout(t);
     }
 
+    // ── B1 path: explicit customer date confirm/change — fill_only + gated overwrite for event_date ──
+    if (isExplicitDate) {
+      const gate = shouldAllowEventDateOverwrite({
+        anchorConfidence: anchorDiag?.confidence ?? "low",
+        anchorSource: anchorDiag?.source ?? "none",
+        anchorProposedIso: anchorDiag?.proposed ?? extracted.event_date ?? null,
+        latestCustomerMessageText: opts?.latestCustomerMessageText ?? null,
+        storedEventDate: customer?.event_date ?? null,
+      });
+      const { update, merged, changedKeys } = mergeExtractedFields({
+        current: {
+          event_type: customer?.event_type ?? null,
+          guest_count: customer?.guest_count ?? null,
+          event_date: customer?.event_date ?? null,
+          venue: customer?.venue ?? null,
+          clv_amount: customer?.clv_amount ?? null,
+        },
+        extracted: {
+          event_type: extracted.event_type ?? null,
+          guest_count: extracted.guest_count ?? null,
+          event_date: extracted.event_date ?? null,
+          venue: extracted.venue ?? null,
+          total_amount: extracted.total_amount ?? null,
+        },
+        eventDateOverwriteAllowed: gate.allow,
+      });
+      if (changedKeys.length > 0) {
+        await supabase.from("customers").update(update).eq("id", customer.id);
+        console.log(
+          `[HandoverExtract:${trigger}] gate=${gate.allow ? "allow" : "deny"} reason=${gate.reason} anchor=${anchorDiag?.source}/${anchorDiag?.confidence} updated:`,
+          changedKeys.join(","),
+        );
+      } else {
+        console.log(
+          `[HandoverExtract:${trigger}] gate=${gate.allow ? "allow" : "deny"} reason=${gate.reason} anchor=${anchorDiag?.source}/${anchorDiag?.confidence} no-op`,
+        );
+      }
+      return { ...customer, ...merged };
+    }
+
+    // ── Legacy path (phone/tax_id): unchanged behavior ──
     const mode = String(cfg?.handover_extract_overwrite_mode || "fill_only");
     const fields = ["event_type", "guest_count", "event_date", "venue"] as const;
     const update: Record<string, any> = {};
@@ -169,7 +216,6 @@ async function runHandoverExtract(
         merged[f] = newVal;
       }
     }
-    // clv_amount: ทับเฉพาะเมื่อ extract ได้ค่า > 0 และ (mode=overwrite หรือ ปัจจุบัน=0)
     if (Number(extracted.total_amount) > 0) {
       const cur = Number(customer?.clv_amount) || 0;
       if (mode === "overwrite" || cur === 0) {
