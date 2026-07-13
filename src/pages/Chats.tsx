@@ -154,7 +154,7 @@ function applyFilter(q: any, filter: FilterKind) {
   if (filter === "unread") return q.gt("unread_count", 0);
   if (filter === "read") return q.eq("unread_count", 0);
   if (filter === "manual") return q.eq("ai_active", false);
-  if (filter === "awaiting_admin") return q.eq("last_sender", "ai").eq("admin_unseen", true);
+  if (filter === "awaiting_admin") return q.or("and(last_sender.eq.ai,admin_unseen.eq.true),and(last_sender.eq.ai,ai_active.eq.false,last_message_snippet.like.🤝*),and(last_sender.eq.ai,ai_active.eq.false,last_message_snippet.like.🧾*)");
   if (filter === "first_priority") return q.not("phone", "is", null).neq("phone", "").eq("status", "pending_quote");
 
   if (filter.startsWith("status:")) return q.eq("status", filter.slice(7));
@@ -390,7 +390,7 @@ export default function Chats() {
       base().gt("unread_count", 0),
       base().eq("ai_active", false),
       base().not("phone", "is", null).neq("phone", "").or("status.eq.pending_quote,and(last_sender.eq.ai,admin_unseen.eq.true)"),
-      base().eq("last_sender", "ai").eq("admin_unseen", true),
+      base().or("and(last_sender.eq.ai,admin_unseen.eq.true),and(last_sender.eq.ai,ai_active.eq.false,last_message_snippet.like.🤝*),and(last_sender.eq.ai,ai_active.eq.false,last_message_snippet.like.🧾*)"),
     ]);
     setFilterCounts({ unread: u.count || 0, manual: m.count || 0, first_priority: fp.count || 0, awaiting_admin: aa.count || 0 });
   };
