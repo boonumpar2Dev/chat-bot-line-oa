@@ -8,6 +8,7 @@ import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBloc
 import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope, filterKbByScope, type ServiceScope } from "../_shared/service-scope.ts";
 import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts";
 import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
+import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -797,6 +798,55 @@ async function processEvent(event: any, supabase: any) {
     }
     return;
   }
+
+  // ─── Patch 2.9.1 — AdminHandoffGuard ─────────────────────────────────
+  // Deterministic handoff for confirmed/confirmed_returning/pending_confirm
+  // when the customer sends a change-request / staff-action / verify-needed
+  // intent. Runs BEFORE schedule gate + AI generate. When matched:
+  //   • Reply deterministically (no AI, no echo, no follow-up question)
+  //   • Force ai_active=false via shared helper (reason=admin_handoff_guard)
+  //     — this IGNORES admin_bot_override by design (see admin-handoff.ts)
+  //   • return immediately (no downstream context build / AI call)
+  // Errors are swallowed so the webhook continues to legacy flow on failure.
+  try {
+    const _handoffCfg = (cfg as any)?.admin_handoff_guard ?? null;
+    const _guard = evaluateAdminHandoffGuard({
+      lifecycle: freshCustomer?.status ?? null,
+      messageText,
+      config: _handoffCfg,
+    });
+    if (_guard.matched) {
+      const muteH = cfg?.fallback_mute_hours ?? 1;
+      const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+      const _decision = resolveAdminHandoffDecision({
+        adminBotOverride: freshCustomer?.admin_bot_override,
+        reason: "admin_handoff_guard",
+      });
+      await saveAndPushAi(
+        supabase,
+        lineUserId,
+        [{ type: "text", text: _guard.replyText }],
+        { customer_id: customer.id, message: _guard.replyText, sender: "ai", is_fallback: true },
+      );
+      const patch: Record<string, unknown> = {
+        manual_chat_until: muteUntil,
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: `🤝 ${_guard.replyText.slice(0, 60)}`,
+      };
+      if (_decision.disableAi) patch.ai_active = false;
+      await supabase.from("customers").update(patch).eq("id", customer.id);
+      console.log(
+        `[AdminHandoffGuard] matched customer=${customer.id} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi}`,
+      );
+      return;
+    }
+    // Not matched — log briefly for observability, then continue legacy flow.
+    console.log(`[AdminHandoffGuard] skip status=${freshCustomer?.status ?? "?"} reason=${_guard.reason}`);
+  } catch (e: any) {
+    console.error("[AdminHandoffGuard] error (non-fatal, continuing legacy flow):", e?.message);
+  }
+
+
 
   // 🔎 Phase 1.5 — Observe-only AI policy hook.
   // - Runs ONLY when advanced_ai_status_policy_enabled=true (default false → 100% legacy path).
