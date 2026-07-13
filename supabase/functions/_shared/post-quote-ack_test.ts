@@ -135,8 +135,8 @@ Deno.test("guard #3: pending_confirm + sticker → suppress", () => {
   assertEquals(shouldSuppress("pending_confirm", [], "", "sticker"), true);
 });
 
-Deno.test("guard #4: pending_confirm + เดี๋ยวขอดูรายละเอียดก่อน → suppress", () => {
-  assertEquals(shouldSuppress("pending_confirm", [], "เดี๋ยวขอดูรายละเอียดก่อน"), true);
+Deno.test("guard #4: pending_confirm + เดี๋ยวขอดูรายละเอียดก่อน → NOT suppress (review request, not ack)", () => {
+  assertEquals(shouldSuppress("pending_confirm", [], "เดี๋ยวขอดูรายละเอียดก่อน"), false);
 });
 
 Deno.test("guard #5: pending_confirm + ยอดนี้รวมอะไรบ้างคะ → NOT suppress", () => {
