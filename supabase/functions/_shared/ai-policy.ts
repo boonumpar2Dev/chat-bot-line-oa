@@ -1039,6 +1039,32 @@ export function isPostQuoteContext(
   return false;
 }
 
+/**
+ * Post-quote CONVERSATION evidence — เข้มกว่า isPostQuoteContext:
+ * ต้องมีหลักฐานจริงในบทสนทนา (admin/ai พูดถึงใบเสนอราคา หรือ admin แนบไฟล์)
+ * ไม่นับ status-only. ใช้สำหรับ Post-Quote No-Reask Guard ที่ต้อง safer-default rollout —
+ * ห้าม trigger จาก pending_confirm เปล่า ๆ ที่ไม่มีหลักฐานว่ามีใบเสนอราคาไปแล้วจริง.
+ */
+export function hasPostQuoteConversationEvidence(
+  recentConvs: RecentConvLike[] | null | undefined,
+): boolean {
+  const convs = Array.isArray(recentConvs) ? recentConvs : [];
+  const last6 = convs.slice(0, 6);
+  for (const c of last6) {
+    const s = (c?.sender || "").toLowerCase();
+    if (s !== "admin" && s !== "ai") continue;
+    if (POST_QUOTE_TEXT_RE.test(c?.message || "")) return true;
+  }
+  const last3 = convs.slice(0, 3);
+  for (const c of last3) {
+    if ((c?.sender || "").toLowerCase() !== "admin") continue;
+    if (ADMIN_FILE_MARKER_RE.test(c?.message || "")) return true;
+  }
+  return false;
+}
+
+
+
 // Question keywords — ถ้าเจอ = ลูกค้าถามคำถามจริง อย่า suppress
 const QUESTION_KEYWORDS_RE =
   /\?|ไหม|มั้ย|เท่าไหร่|เท่าไร|กี่|อะไร|ยังไง|หรือเปล่า|หรือไม่|เมื่อไหร่|ที่ไหน|ทำไม/;
