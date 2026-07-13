@@ -804,7 +804,60 @@ async function processEvent(event: any, supabase: any) {
     return;
   }
 
-  // ─── Patch 2.9.1 — AdminHandoffGuard (containment-gated) ─────────────
+  // ─── Patch 2.9.1 (Payment ext) — PaymentSlipGuard (containment-gated) ─
+  // Runs ONLY when we successfully OCR'd an image on this turn. Same cohort
+  // gate as AdminHandoffGuard. On match: deterministic reply, ai_active=false,
+  // status untouched, admin_bot_override untouched, no AI call. Category comes
+  // from lifecycle (pending_confirm=deposit, confirmed/*=balance).
+  try {
+    if (imageOcrText) {
+      const _slipGate = resolvePhase2Gate({
+        customerId: freshCustomer?.id ?? null,
+        settings: {
+          advanced_ai_status_policy_enabled: cfg?.advanced_ai_status_policy_enabled ?? null,
+          ai_policy_config: (cfg as any)?.ai_policy_config ?? null,
+        },
+      });
+      if (!_slipGate.enabled) {
+        console.log(`[PaymentSlipGuard] cohort-skip customer=${freshCustomer?.id ?? "?"} reason=${_slipGate.reason ?? "not-in-cohort"}`);
+      } else {
+        const _slipCfg = (cfg as any)?.ai_policy_config?.payment_slip_guard
+          ?? (cfg as any)?.payment_slip_guard
+          ?? null;
+        const _slip = evaluatePaymentSlipGuard({
+          lifecycle: freshCustomer?.status ?? null,
+          ocrText: imageOcrText,
+          config: _slipCfg,
+        });
+        if (_slip.matched) {
+          await saveAndPushAi(
+            supabase,
+            lineUserId,
+            [{ type: "text", text: _slip.replyText }],
+            { customer_id: customer.id, message: _slip.replyText, sender: "ai", is_fallback: true },
+          );
+          // Payment handoff patch: ai_active=false, DO NOT touch status,
+          // DO NOT touch admin_bot_override, DO NOT set manual_chat_until
+          // (admin will re-enter short pause via line-send-message when they reply).
+          await supabase.from("customers").update({
+            ai_active: false,
+            manual_chat_until: null,
+            last_message_at: new Date().toISOString(),
+            last_message_snippet: `🧾 ${_slip.replyText.slice(0, 60)}`,
+          }).eq("id", customer.id);
+          console.log(
+            `[PaymentSlipGuard] matched customer=${customer.id} cohort=${_slipGate.mode} status=${freshCustomer?.status ?? "?"} category=${_slip.category} amount=${_slip.amount} signals=${_slip.signals.join(",")}`,
+          );
+          return;
+        }
+        console.log(`[PaymentSlipGuard] in-cohort skip status=${freshCustomer?.status ?? "?"} reason=${_slip.reason} signals=${_slip.signals.join(",")}`);
+      }
+    }
+  } catch (e: any) {
+    console.error("[PaymentSlipGuard] error (non-fatal, continuing legacy flow):", e?.message);
+  }
+
+
   // Deterministic handoff for confirmed/confirmed_returning/pending_confirm
   // when the customer sends a change-request / staff-action / verify-needed
   // intent. Runs BEFORE schedule gate + AI generate. When matched:
