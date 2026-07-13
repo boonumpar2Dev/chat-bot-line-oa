@@ -135,7 +135,9 @@ Deno.serve(async (req) => {
       // → ไม่ปิด ai_active ยาว แต่ยัง set manual_chat_until สั้น ๆ (3 นาที fallback)
       //   เพื่อกัน AI ตอบทับแอดมินทันทีหลังแอดมินเพิ่งพิมพ์
       const { data: custRow } = await admin.from("customers").select("status").eq("id", customer_id).maybeSingle();
-      const isPostQuoteStatus = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning";
+      // Payment 2.9.1 (ext): include `completed` so admin replies to a
+      // post-event balance-slip handoff enter the short-pause window too.
+      const isPostQuoteStatus = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning" || custRow?.status === "completed";
 
       const custPatch: Record<string, unknown> = {
         last_message_at: new Date().toISOString(),
