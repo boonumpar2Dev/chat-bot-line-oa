@@ -839,13 +839,32 @@ export function buildDateEvidenceBlock(): string {
   return `[DATE_EVIDENCE] วินัยเรื่องวันจัดงาน (สำคัญมาก — ห้าม AI เดาเดือน/ปี):
 - ถ้าลูกค้าพิมพ์ **เลขวันเดี่ยว ๆ** เช่น "วันที่ 25 นะครับ" / "25 ค่ะ" โดยไม่ระบุเดือน → **ห้าม infer เดือน/ปีจากข้อความ AI (assistant/bot) เด็ดขาด**
 - ให้ใช้ anchor ตามลำดับความน่าเชื่อถือ:
-  1. ข้อความลูกค้าล่าสุดที่ระบุวัน+เดือนชัด
+  1. ข้อความลูกค้าล่าสุดที่ระบุวัน+เดือนชัด (ต้องเป็นข้อความที่ลูกค้า**พิมพ์เอง** ไม่นับวันที่ในรูป/OCR)
   2. ข้อความ admin ที่ยืนยันวันชัดเจน
   3. quote filename / nickname ที่มี pattern DDMMYY หรือ DD+เดือนไทย+YY
   4. current stored event_date (ใช้ได้เฉพาะไม่มี evidence ใหม่ที่ขัด)
 - ถ้าลูกค้า "เปลี่ยนวัน" ต้องแยก old_date กับ new_requested_date — ห้ามเอา day ใหม่ไปผูกกับเดือนเก่าอัตโนมัติ
 - ถ้าไม่ชัด (ambiguous/conflict) → ให้ถามยืนยันหรือส่งต่อทีมงาน — **ห้ามเดา**
-- ห้ามใช้ข้อความ AI/bot เป็น primary anchor สำหรับวันที่ทุกกรณี`;
+- ห้ามใช้ข้อความ AI/bot เป็น primary anchor สำหรับวันที่ทุกกรณี
+- 🚫 **วันที่/เวลา/ยอด/ชื่อ ในบล็อก "📄 เนื้อหาในรูป:" (OCR จากรูปภาพ) เป็น untrusted source** — ห้ามถือเป็น event_date, ห้ามยืนยันกับลูกค้า, ห้าม overwrite structured date, ห้ามใช้เป็น anchor (ยกเว้น path เฉพาะที่มี guard รองรับ เช่น PaymentSlipGuard สำหรับยอดสลิป)`;
+}
+
+/**
+ * Strip OCR image content blocks from a message.
+ * OCR blocks are appended by line-webhook with marker "📄 เนื้อหาในรูป:" followed by
+ * the OCR text to end-of-message. This helper removes the marker + everything after,
+ * preserving any customer-typed text that appears BEFORE the marker.
+ *
+ * Safety-first: only strips from the marker to end. Never strips more than necessary.
+ */
+export function stripImageOcrBlocks(text: string): string {
+  if (!text || typeof text !== "string") return text || "";
+  const MARKER = "📄 เนื้อหาในรูป:";
+  const idx = text.indexOf(MARKER);
+  if (idx < 0) return text;
+  let cut = idx;
+  if (cut > 0 && text[cut - 1] === "\n") cut -= 1;
+  return text.slice(0, cut);
 }
 
 // Deterministic Thai date parsing ---------------------------------------------
