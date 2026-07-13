@@ -10,6 +10,7 @@ import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts
 import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-guard.ts";
+import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
 import {
