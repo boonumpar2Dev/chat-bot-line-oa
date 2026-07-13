@@ -82,7 +82,9 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
       return; // ไม่อัปเดต local เพื่อให้ UI ตรงกับ DB จริง
     }
     onUpdate(updateData); // ส่งเฉพาะ patch ไม่ spread ทั้ง customer (กันทับ field ที่ realtime เพิ่งอัปเดต)
-    if (newStatus === "completed") {
+    if (isPaymentResume) {
+      toast.success("ยืนยันมัดจำแล้ว — บอทกลับมาดูแลต่อ");
+    } else if (newStatus === "completed") {
       toast.success("ปิดงานแล้ว — บอทกลับมาทำงานปกติ");
     } else if (AI_OFF_STATUSES.includes(newStatus)) {
       toast.info(`ปิด AI อัตโนมัติ — ${STATUS_OPTIONS.find(s => s.value === newStatus)?.label}`);
