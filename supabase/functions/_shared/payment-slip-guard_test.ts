@@ -65,7 +65,7 @@ Deno.test("balance slip in confirmed → balance_slip_received with amount 12500
   assertEq(r.category, "balance_slip_received", "category");
   assertEq(r.amount, 12500, "amount");
   assert(r.replyText.includes("12,500 บาท"), "reply has amount");
-  assert(r.replyText.includes("ตรวจสอบและประสานงานต่อ"), "balance copy");
+  assert(r.replyText.includes("ตรวจสอบยอดและประสานรายละเอียด"), "balance copy");
 });
 
 Deno.test("balance slip in completed lifecycle also matches", () => {
