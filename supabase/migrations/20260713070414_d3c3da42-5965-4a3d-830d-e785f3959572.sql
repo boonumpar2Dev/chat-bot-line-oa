@@ -1,0 +1,1 @@
+UPDATE public.customers SET status='pending_confirm', ai_active=true, manual_chat_until=NULL WHERE id='df0ea919-3ef7-4334-b361-67e1a7d0602d';
