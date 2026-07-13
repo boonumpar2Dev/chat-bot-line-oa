@@ -585,6 +585,9 @@ async function processEvent(event: any, supabase: any) {
 
   let messageText: string;
   let isText = false;
+  // Payment 2.9.1 (ext): capture OCR text separately so PaymentSlipGuard
+  // can evaluate the slip content without re-parsing the composed messageText.
+  let imageOcrText: string | null = null;
 
   if (msgType === "text") {
     messageText = event.message.text;
@@ -600,6 +603,7 @@ async function processEvent(event: any, supabase: any) {
     if (msgType === "image" && fileUrl) {
       const ocr = await ocrImage(fileUrl, supabase);
       if (ocr) {
+        imageOcrText = ocr;
         messageText = `[${displayLabel}]\n📎 ${fileUrl}\n📄 เนื้อหาในรูป:\n${ocr}`;
         isText = true;
       }
