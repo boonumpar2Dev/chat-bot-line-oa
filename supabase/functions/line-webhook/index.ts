@@ -858,6 +858,7 @@ async function processEvent(event: any, supabase: any) {
   }
 
 
+  // ─── Patch 2.9.1 — AdminHandoffGuard (containment-gated) ─────────────
   // Deterministic handoff for confirmed/confirmed_returning/pending_confirm
   // when the customer sends a change-request / staff-action / verify-needed
   // intent. Runs BEFORE schedule gate + AI generate. When matched:
