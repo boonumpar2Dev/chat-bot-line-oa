@@ -9,6 +9,7 @@ import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope
 import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts";
 import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
+import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
