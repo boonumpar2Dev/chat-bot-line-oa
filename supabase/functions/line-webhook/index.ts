@@ -10,6 +10,7 @@ import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts
 import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-guard.ts";
+import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
 import {
@@ -1044,6 +1045,61 @@ async function processEvent(event: any, supabase: any) {
     }
   } catch (e: any) {
     console.error("[AdminHandoffGuard] error (non-fatal, continuing legacy flow):", e?.message);
+  }
+
+
+
+  // ─── Phase 2A.1 — ExistingCustomerNoReaskGuard ─────────────────────
+  // เมื่อลูกค้าเป็น existing customer (มี history/status ไม่ใช่ new/มี structured data)
+  // และพูดว่า "เคยบอกแล้ว / แจ้งไปแล้ว / ตามที่คุยกัน / ข้อมูลเดิม" —
+  // ห้ามให้ AI ย้อนถาม lead fields ให้ handoff แอดมิน. Skip เมื่อลูกค้าเปิด new cycle.
+  // Runs AFTER PostQuoteNoReaskGuard + AdminHandoffGuard เพื่อไม่ทับ pattern เฉพาะเจาะจง.
+  try {
+    const { data: _ecConvs } = await supabase
+      .from("conversations").select("sender, message, created_at")
+      .eq("customer_id", customer.id).order("created_at", { ascending: false }).limit(10);
+    const _ecFacts = {
+      phone: (freshCustomer as any)?.phone ?? null,
+      event_date: (freshCustomer as any)?.event_date ?? null,
+      venue: (freshCustomer as any)?.venue ?? null,
+      guest_count: (freshCustomer as any)?.guest_count ?? null,
+      event_type: (freshCustomer as any)?.event_type ?? null,
+      clv_amount: (freshCustomer as any)?.clv_amount ?? null,
+    };
+    const _ecGuard = evaluateExistingCustomerNoReaskGuard({
+      lifecycle: freshCustomer?.status ?? customer.status ?? null,
+      messageText,
+      recentConvs: _ecConvs || [],
+      facts: _ecFacts,
+    });
+    if (_ecGuard.matched) {
+      const muteH = cfg?.fallback_mute_hours ?? 1;
+      const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+      const _decision = resolveAdminHandoffDecision({
+        adminBotOverride: freshCustomer?.admin_bot_override,
+        reason: "admin_handoff_guard",
+      });
+      await saveAndPushAi(
+        supabase,
+        lineUserId,
+        [{ type: "text", text: _ecGuard.replyText }],
+        { customer_id: customer.id, message: _ecGuard.replyText, sender: "ai", is_fallback: true },
+      );
+      const patch: Record<string, unknown> = {
+        manual_chat_until: muteUntil,
+        last_message_at: new Date().toISOString(),
+        last_message_snippet: `🤝 ${_ecGuard.replyText.slice(0, 60)}`,
+      };
+      if (_decision.disableAi) patch.ai_active = false;
+      await supabase.from("customers").update(patch).eq("id", customer.id);
+      console.log(
+        `[ExistingCustomerNoReaskGuard] matched customer=${customer.id} status=${freshCustomer?.status ?? "?"} pattern=${_ecGuard.matchedPattern} isExisting=${_ecGuard.isExistingCustomer} newCycle=${_ecGuard.isNewCycle} disableAi=${_decision.disableAi}`,
+      );
+      return;
+    }
+    console.log(`[ExistingCustomerNoReaskGuard] skip status=${freshCustomer?.status ?? "?"} reason=${_ecGuard.reason} isExisting=${_ecGuard.isExistingCustomer} newCycle=${_ecGuard.isNewCycle}`);
+  } catch (e: any) {
+    console.error("[ExistingCustomerNoReaskGuard] error (non-fatal, continuing legacy flow):", e?.message);
   }
 
 
