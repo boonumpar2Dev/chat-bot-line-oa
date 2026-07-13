@@ -799,7 +799,7 @@ async function processEvent(event: any, supabase: any) {
     return;
   }
 
-  // ─── Patch 2.9.1 — AdminHandoffGuard ─────────────────────────────────
+  // ─── Patch 2.9.1 — AdminHandoffGuard (containment-gated) ─────────────
   // Deterministic handoff for confirmed/confirmed_returning/pending_confirm
   // when the customer sends a change-request / staff-action / verify-needed
   // intent. Runs BEFORE schedule gate + AI generate. When matched:
@@ -807,41 +807,59 @@ async function processEvent(event: any, supabase: any) {
   //   • Force ai_active=false via shared helper (reason=admin_handoff_guard)
   //     — this IGNORES admin_bot_override by design (see admin-handoff.ts)
   //   • return immediately (no downstream context build / AI call)
-  // Errors are swallowed so the webhook continues to legacy flow on failure.
+  //
+  // 🛡️ Containment (post-2.9.1 audit): Guard is restricted to the SAME
+  // rollout cohort as Phase 2 policy (test_customer_ids / live_rollout).
+  // Customers outside the cohort NEVER enter the guard, regardless of
+  // admin_handoff_guard.enabled. This is enforced at the call-site so we
+  // don't mutate the pure evaluator, patterns, or replies.
   try {
-    const _handoffCfg = (cfg as any)?.admin_handoff_guard ?? null;
-    const _guard = evaluateAdminHandoffGuard({
-      lifecycle: freshCustomer?.status ?? null,
-      messageText,
-      config: _handoffCfg,
+    const _cohortGate = resolvePhase2Gate({
+      customerId: freshCustomer?.id ?? null,
+      settings: {
+        advanced_ai_status_policy_enabled: cfg?.advanced_ai_status_policy_enabled ?? null,
+        ai_policy_config: (cfg as any)?.ai_policy_config ?? null,
+      },
     });
-    if (_guard.matched) {
-      const muteH = cfg?.fallback_mute_hours ?? 1;
-      const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-      const _decision = resolveAdminHandoffDecision({
-        adminBotOverride: freshCustomer?.admin_bot_override,
-        reason: "admin_handoff_guard",
+    if (!_cohortGate.enabled) {
+      console.log(`[AdminHandoffGuard] cohort-skip customer=${freshCustomer?.id ?? "?"} reason=${_cohortGate.reason ?? "not-in-cohort"}`);
+      // fall through to legacy flow — do NOT run guard evaluator at all
+    } else {
+      const _handoffCfg = (cfg as any)?.ai_policy_config?.admin_handoff_guard
+        ?? (cfg as any)?.admin_handoff_guard
+        ?? null;
+      const _guard = evaluateAdminHandoffGuard({
+        lifecycle: freshCustomer?.status ?? null,
+        messageText,
+        config: _handoffCfg,
       });
-      await saveAndPushAi(
-        supabase,
-        lineUserId,
-        [{ type: "text", text: _guard.replyText }],
-        { customer_id: customer.id, message: _guard.replyText, sender: "ai", is_fallback: true },
-      );
-      const patch: Record<string, unknown> = {
-        manual_chat_until: muteUntil,
-        last_message_at: new Date().toISOString(),
-        last_message_snippet: `🤝 ${_guard.replyText.slice(0, 60)}`,
-      };
-      if (_decision.disableAi) patch.ai_active = false;
-      await supabase.from("customers").update(patch).eq("id", customer.id);
-      console.log(
-        `[AdminHandoffGuard] matched customer=${customer.id} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi}`,
-      );
-      return;
+      if (_guard.matched) {
+        const muteH = cfg?.fallback_mute_hours ?? 1;
+        const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+        const _decision = resolveAdminHandoffDecision({
+          adminBotOverride: freshCustomer?.admin_bot_override,
+          reason: "admin_handoff_guard",
+        });
+        await saveAndPushAi(
+          supabase,
+          lineUserId,
+          [{ type: "text", text: _guard.replyText }],
+          { customer_id: customer.id, message: _guard.replyText, sender: "ai", is_fallback: true },
+        );
+        const patch: Record<string, unknown> = {
+          manual_chat_until: muteUntil,
+          last_message_at: new Date().toISOString(),
+          last_message_snippet: `🤝 ${_guard.replyText.slice(0, 60)}`,
+        };
+        if (_decision.disableAi) patch.ai_active = false;
+        await supabase.from("customers").update(patch).eq("id", customer.id);
+        console.log(
+          `[AdminHandoffGuard] matched customer=${customer.id} cohort=${_cohortGate.mode} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi}`,
+        );
+        return;
+      }
+      console.log(`[AdminHandoffGuard] in-cohort skip status=${freshCustomer?.status ?? "?"} reason=${_guard.reason}`);
     }
-    // Not matched — log briefly for observability, then continue legacy flow.
-    console.log(`[AdminHandoffGuard] skip status=${freshCustomer?.status ?? "?"} reason=${_guard.reason}`);
   } catch (e: any) {
     console.error("[AdminHandoffGuard] error (non-fatal, continuing legacy flow):", e?.message);
   }
