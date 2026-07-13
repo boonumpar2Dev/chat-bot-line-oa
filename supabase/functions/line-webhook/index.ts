@@ -8,6 +8,7 @@ import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBloc
 import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope, filterKbByScope, type ServiceScope } from "../_shared/service-scope.ts";
 import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts";
 import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
+import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
