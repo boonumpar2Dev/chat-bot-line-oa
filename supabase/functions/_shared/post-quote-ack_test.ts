@@ -61,8 +61,10 @@ Deno.test("ack: 'รับทราบครับ เดี๋ยวผมด�
   assertEquals(isLowInfoAck("รับทราบครับ เดี๋ยวผมดูรายละเอียดครับ"), true);
 });
 
-Deno.test("ack: 'เดี๋ยวขอดูรายละเอียดก่อน' → true", () => {
-  assertEquals(isLowInfoAck("เดี๋ยวขอดูรายละเอียดก่อน"), true);
+// Patch 2.5 clarification: "เดี๋ยวขอดูรายละเอียดก่อน" is a request to review details,
+// not a low-info acknowledgement → production returns false (no suppression).
+Deno.test("ack: 'เดี๋ยวขอดูรายละเอียดก่อน' → false (asks for time to review, not an ack)", () => {
+  assertEquals(isLowInfoAck("เดี๋ยวขอดูรายละเอียดก่อน"), false);
 });
 
 Deno.test("ack: 'ค่ะ' / 'ครับ' / 'โอเค' → true", () => {
@@ -133,8 +135,8 @@ Deno.test("guard #3: pending_confirm + sticker → suppress", () => {
   assertEquals(shouldSuppress("pending_confirm", [], "", "sticker"), true);
 });
 
-Deno.test("guard #4: pending_confirm + เดี๋ยวขอดูรายละเอียดก่อน → suppress", () => {
-  assertEquals(shouldSuppress("pending_confirm", [], "เดี๋ยวขอดูรายละเอียดก่อน"), true);
+Deno.test("guard #4: pending_confirm + เดี๋ยวขอดูรายละเอียดก่อน → NOT suppress (review request, not ack)", () => {
+  assertEquals(shouldSuppress("pending_confirm", [], "เดี๋ยวขอดูรายละเอียดก่อน"), false);
 });
 
 Deno.test("guard #5: pending_confirm + ยอดนี้รวมอะไรบ้างคะ → NOT suppress", () => {
