@@ -771,7 +771,31 @@ async function processEvent(event: any, supabase: any) {
     supabase.from("customers").select("*").eq("line_user_id", lineUserId).limit(1),
   ]);
   const cfg = cfgArr?.[0] || {};
-  const freshCustomer = freshArr?.[0] || customer;
+  let freshCustomer = freshArr?.[0] || customer;
+
+  // ── Phase 2A B1 — Customer explicit date confirm/change trigger ──
+  // Re-run handover extractor ONLY when the customer message itself expresses
+  // a confirm/change intent AND contains a parsable Thai date. Deterministic gate
+  // inside runHandoverExtract decides whether event_date may overwrite.
+  // Other fields (venue/event_type/guest_count/clv_amount) stay fill_only.
+  if (isText && msgType === "text") {
+    try {
+      const dateCandidates = parseThaiDateCandidates(messageText);
+      const decision = shouldRerunExtractOnCustomerMessage(messageText, dateCandidates.length > 0);
+      if (decision.rerun) {
+        console.log(
+          `[HandoverExtract:explicit_date] triggered customer=${freshCustomer.id} intent=${decision.intent} candidates=${dateCandidates.length}`,
+        );
+        const reason = decision.intent === "change" ? "explicit_date_change" : "explicit_date_confirm";
+        freshCustomer = await runHandoverExtract(supabase, freshCustomer, cfg, reason as any, {
+          latestCustomerMessageText: messageText,
+        });
+      }
+    } catch (e: any) {
+      console.warn(`[HandoverExtract:explicit_date] pre-check failed: ${e?.message || e}`);
+    }
+  }
+
 
   // โหลดประวัติงานเก่า (customer_events) — ใช้สร้างบริบทลูกค้าเก่า/VIP
   const { data: pastEventsArr } = await supabase
