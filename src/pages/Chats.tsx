@@ -129,8 +129,19 @@ const FILTER_PILLS: { key: FilterKind; label: string; countKey?: "unread" | "man
 ];
 
 // Badge helpers — derive from customer row
+// "รอแอดมินตอบ" มี 2 กรณี:
+//   A) Legacy unread AI message: AI ตอบล่าสุด + แอดมินยังไม่เห็น
+//   B) Explicit bot handoff: บอทปิดตัวเอง (ai_active=false) แล้วส่งต่องานให้แอดมิน
+//      ใช้ marker ที่ webhook ใส่ไว้ใน last_message_snippet เท่านั้น (🤝 = AdminHandoffGuard, 🧾 = PaymentSlipGuard)
+//      กรณีนี้ badge ต้องขึ้นแม้แอดมินเปิดห้องอยู่ (admin_unseen=false) จนกว่าจะมีการตอบกลับ (last_sender เปลี่ยนเป็น admin)
 export function getAwaitingAdmin(c: any): boolean {
-  return c?.last_sender === "ai" && c?.admin_unseen === true;
+  if (c?.last_sender === "ai" && c?.admin_unseen === true) return true;
+  const snippet = String(c?.last_message_snippet || "");
+  const isExplicitBotHandoff =
+    c?.ai_active === false &&
+    c?.last_sender === "ai" &&
+    (snippet.startsWith("🤝 ") || snippet.startsWith("🧾 "));
+  return isExplicitBotHandoff;
 }
 export function getFirstPriority(c: any): boolean {
   // First Priority = pending_quote + มีเบอร์ เท่านั้น
