@@ -52,3 +52,16 @@ Deno.test("truthy non-boolean is NOT treated as override (strict === true)", () 
   const r = resolveAdminHandoffDecision({ adminBotOverride: 1 as unknown as boolean, reason: "handover_promise" });
   assertEquals(r.disableAi, true);
 });
+
+// ── Patch 2.9.1: admin_handoff_guard reason — force disable regardless of override
+Deno.test("admin_handoff_guard: override=true is IGNORED — force disable", () => {
+  const r = resolveAdminHandoffDecision({ adminBotOverride: true, reason: "admin_handoff_guard" });
+  assertEquals(r.disableAi, true);
+  assertEquals(r.overrideRespected, false);
+});
+
+Deno.test("legacy reasons still expose overrideRespected=true when override active", () => {
+  const r = resolveAdminHandoffDecision({ adminBotOverride: true, reason: "handover_promise" });
+  assertEquals(r.disableAi, false);
+  assertEquals(r.overrideRespected, true);
+});
