@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { requireStaffOrService } from "../_shared/auth-guard.ts";
-import { parseThaiDateCandidates, type ThaiDateCandidate } from "../_shared/ai-policy.ts";
+import { parseThaiDateCandidates, stripImageOcrBlocks, type ThaiDateCandidate } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +55,11 @@ export function resolveDateAnchor(input: DateAnchorInput): DateAnchorResult {
   let latestAdminRaw = "";
   for (const m of msgs) {
     const sender = (m.sender || "").toLowerCase();
-    const text = String(m.message || "");
+    const rawText = String(m.message || "");
+    // 🚫 OCR (image content) is untrusted for date anchoring. Strip the OCR block so
+    // dates/times/etc. inside images are NEVER promoted to event_date. Customer-typed
+    // text before the marker is preserved and still parsed normally.
+    const text = stripImageOcrBlocks(rawText);
     if (sender === "customer") {
       if (dayOnlyRe.test(text)) hasDayOnly = true;
       const found = parseThaiDateCandidates(text, { todayYear });
