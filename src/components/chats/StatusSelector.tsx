@@ -38,9 +38,20 @@ export default function StatusSelector({ customer, onUpdate }: { customer: any; 
   const handleChange = async (newStatus: string) => {
     setOpen(false);
     if (newStatus === customer.status) return;
+    const prevStatus = customer.status;
     // admin_unseen เป็น GENERATED column (auto-คำนวณจาก admin_seen_at vs last_message_at) — เขียนตรงๆ ไม่ได้
     const updateData: any = { status: newStatus, admin_seen_at: new Date().toISOString() };
-    if (AI_OFF_STATUSES.includes(newStatus)) {
+
+    // 🧾 Payment Resume (Case 1): pending_confirm → confirmed = แอดมินตรวจสลิปมัดจำเสร็จแล้ว
+    // ให้ AI กลับมาดูแลต่อทันที + ใช้ admin_bot_override=true กัน legacy confirmed policy ปิด AI ทับ
+    // ข้อยกเว้นเฉพาะ transition นี้เท่านั้น — transition อื่นเข้า confirmed ใช้ legacy policy เดิม
+    const isPaymentResume = prevStatus === "pending_confirm" && newStatus === "confirmed";
+    if (isPaymentResume) {
+      updateData.ai_active = true;
+      updateData.manual_chat_until = null;
+      updateData.ai_resumed_at = new Date().toISOString();
+      updateData.admin_bot_override = true;
+    } else if (AI_OFF_STATUSES.includes(newStatus)) {
       updateData.ai_active = false;
       updateData.admin_bot_override = false; // เข้าโหมดปกป้อง — รอแอดมินตัดสินใจ
     }
