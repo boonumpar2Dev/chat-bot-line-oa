@@ -7,6 +7,7 @@ import { extractVenueLocation, fmtLocationMessage } from "../_shared/location.ts
 import { resolveAiReplyPolicy, resolveLifecycle, buildCurrentCustomerContextBlock, buildConfirmedMissingContextBlock, resolvePhase2Gate, normalizeThaiPoliteness, isPostQuoteContext, isLowInfoAck, type Lifecycle, type ReplyMode } from "../_shared/ai-policy.ts";
 import { resolveServiceScope, buildServiceScopeLockPrompt, filterPackagesByScope, filterKbByScope, type ServiceScope } from "../_shared/service-scope.ts";
 import { buildNewCustomerProposalGuardBlock } from "../_shared/proposal-guard.ts";
+import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1978,7 +1979,11 @@ ${pastLines}
       manual_chat_until: muteUntil,
       last_message_at: new Date().toISOString(), last_message_snippet: `🤖 ${finalAnswer.slice(0, 60)}`,
     };
-    if (!freshCustomer.admin_bot_override) patch.ai_active = false;
+    const confirmDecision = resolveAdminHandoffDecision({
+      adminBotOverride: freshCustomer.admin_bot_override,
+      reason: "confirm_existing_phone",
+    });
+    if (confirmDecision.disableAi) patch.ai_active = false;
     await supabase.from("customers").update(patch).eq("id", customer.id);
     return;
   }
@@ -2275,12 +2280,12 @@ ${pastLines}
     const muteH = cfg.manual_chat_hours ?? 360;
     update.manual_chat_until = new Date(Date.now() + muteH * 3600000).toISOString();
     // 🛡️ admin_bot_override = true → ไม่ปิดบอท (เคารพการตัดสินใจของแอด)
-    if (!freshCustomer.admin_bot_override) {
-      update.ai_active = false;
-      console.log(`[Handover] AI promised staff handover → ai_active=false`);
-    } else {
-      console.log(`[Handover] AI promised staff handover — skip disable (admin_bot_override=true)`);
-    }
+    const handoverDecision = resolveAdminHandoffDecision({
+      adminBotOverride: freshCustomer.admin_bot_override,
+      reason: "handover_promise",
+    });
+    if (handoverDecision.disableAi) update.ai_active = false;
+    console.log(handoverDecision.logMessage);
   }
 
   await supabase.from("customers").update(update).eq("id", customer.id);
