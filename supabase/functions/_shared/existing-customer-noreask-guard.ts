@@ -19,6 +19,8 @@
 // ไม่แตะ: Phase 2A explicit date logic, quotation detection, OCR, PaymentSlipGuard,
 //        AdminHandoffGuard, PostQuoteNoReaskGuard patterns, DB schema.
 
+import { EXISTING_CYCLE_REPLIES } from "./existing-cycle-reply.ts";
+
 export interface ExistingCustomerNoReaskConvLike {
   sender?: string | null;
   message?: string | null;
