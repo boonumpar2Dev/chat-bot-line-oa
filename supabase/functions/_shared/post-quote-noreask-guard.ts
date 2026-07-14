@@ -15,6 +15,7 @@
 // (ไม่ผูกกับ Phase 2 cohort). ไม่ใช่ feature ทดลอง — เป็น correction ของ post-quote discipline.
 
 import { hasPostQuoteConversationEvidence, type RecentConvLike } from "./ai-policy.ts";
+import { EXISTING_CYCLE_REPLIES } from "./existing-cycle-reply.ts";
 
 export interface PostQuoteNoReaskGuardInput {
   lifecycle: string | null | undefined;
@@ -29,8 +30,8 @@ export interface PostQuoteNoReaskGuardResult {
   matchedPattern: string | null;
 }
 
-const REPLY_TEXT =
-  "รับทราบค่ะ เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานงานต่อนะคะ 🙏";
+// Site-visit / schedule questions after quote → schedule handoff wording.
+const REPLY_TEXT = EXISTING_CYCLE_REPLIES.schedule;
 
 // รูปแบบคำถามที่ปกติจะทำให้ AI ย้อนถาม lead fields (venue/date/guest/event_type):
 //   • เข้าดู/สำรวจ/มาดู พื้นที่/สถานที่/หน้างาน

@@ -7,7 +7,7 @@ import {
 } from "./existing-customer-noreask-guard.ts";
 
 const REPLY =
-  "รับทราบค่ะ เดี๋ยวเจ้าหน้าที่ตรวจสอบข้อมูลที่เคยแจ้งไว้และประสานงานต่อนะคะ 🙏";
+  "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดที่คุยไว้และประสานกลับนะคะ 🙏";
 
 const adminHistory = [
   { sender: "customer", message: "สนใจจัดงานค่ะ" },

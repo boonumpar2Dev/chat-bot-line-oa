@@ -19,6 +19,8 @@
 // ไม่แตะ: Phase 2A explicit date logic, quotation detection, OCR, PaymentSlipGuard,
 //        AdminHandoffGuard, PostQuoteNoReaskGuard patterns, DB schema.
 
+import { EXISTING_CYCLE_REPLIES } from "./existing-cycle-reply.ts";
+
 export interface ExistingCustomerNoReaskConvLike {
   sender?: string | null;
   message?: string | null;
@@ -49,8 +51,7 @@ export interface ExistingCustomerNoReaskGuardResult {
   isNewCycle: boolean;
 }
 
-const REPLY_TEXT =
-  "รับทราบค่ะ เดี๋ยวเจ้าหน้าที่ตรวจสอบข้อมูลที่เคยแจ้งไว้และประสานงานต่อนะคะ 🙏";
+const REPLY_TEXT = EXISTING_CYCLE_REPLIES.existing_discussion;
 
 // สถานะที่ถือว่า "ยังใหม่" — ห้าม guard ทำงานถ้า status เป็นค่าเหล่านี้ *และ* ไม่มีสัญญาณอื่น
 const NEW_STATUSES = new Set(["", "new", "inquiry"]);

@@ -11,6 +11,8 @@ import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-guard.ts";
 import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
+import { resolveExistingCycle, buildExistingCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
+import { enforceExistingCyclePolicy } from "../_shared/existing-cycle-post-enforcement.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
 import {
@@ -1867,6 +1869,8 @@ ${pastLines}
   let __phase2_lifecycle: Lifecycle | undefined;
   let __phase2_replyMode: ReplyMode | undefined;
   let __phase2_customerContextBlock: string | undefined;
+  let __existingCycleMode = false;
+  let __explicitNewCycle = false;
   {
     const gate = resolvePhase2Gate({
       customerId: freshCustomer?.id ?? null,
@@ -1958,6 +1962,70 @@ ${pastLines}
           console.warn("[AiPolicy:phase2.9] buildConfirmedMissingContextBlock error (ignored):", (e as Error)?.message);
         }
 
+        // ── Existing-Cycle Resolver (14/07/2569) ─────────────────────────
+        // 4-layer policy: strong current-cycle evidence opens existingCycleMode;
+        // supporting evidence is diagnostics-only; explicit new-cycle wording
+        // always suppresses the mode. Same rollout cohort as Phase 2.
+        try {
+          const [ecConvsRes, currentEventRes] = await Promise.all([
+            supabase
+              .from("conversations")
+              .select("sender, message, created_at")
+              .eq("customer_id", freshCustomer.id)
+              .order("created_at", { ascending: false })
+              .limit(8),
+            supabase
+              .from("customer_events")
+              .select("id, status")
+              .eq("customer_id", freshCustomer.id)
+              .not("status", "eq", "completed")
+              .limit(1)
+              .maybeSingle(),
+          ]);
+          const _ecConvs = (ecConvsRes as any)?.data ?? [];
+          const _hasCurrentEvent = !!(currentEventRes as any)?.data?.id;
+          const _cycle = resolveExistingCycle({
+            currentStatus: freshCustomer.status ?? null,
+            messageText,
+            recentConvs: _ecConvs,
+            hasCurrentEvent: _hasCurrentEvent,
+            supporting: {
+              hasHistoricalCompletedEvent: !!(evRes as any)?.data?.event_date,
+              hasHistoricalStatusLog: !!(logRes as any)?.data?.changed_at,
+              hasAdminConversationHistory: Array.isArray(_ecConvs) &&
+                _ecConvs.some((c: any) => {
+                  const s = String(c?.sender ?? "").toLowerCase();
+                  return s === "admin" || s === "ai" || s === "staff" || s === "assistant";
+                }),
+              hasStructuredFacts:
+                !!(freshCustomer as any).phone ||
+                !!(freshCustomer as any).event_date ||
+                !!(freshCustomer as any).venue ||
+                !!(freshCustomer as any).guest_count ||
+                !!(freshCustomer as any).event_type,
+            },
+          });
+          __existingCycleMode = _cycle.existingCycleMode;
+          __explicitNewCycle = _cycle.explicitNewCycle;
+          if (__existingCycleMode && !__explicitNewCycle) {
+            const policyBlock = buildExistingCyclePolicyBlock();
+            __phase2_customerContextBlock = __phase2_customerContextBlock
+              ? `${__phase2_customerContextBlock}\n\n${policyBlock}`
+              : policyBlock;
+          }
+          console.log("[ExistingCycleResolver]", JSON.stringify({
+            customer_id: freshCustomer.id,
+            existingCycleMode: __existingCycleMode,
+            explicitNewCycle: __explicitNewCycle,
+            strong: _cycle.strongEvidence,
+            supporting: _cycle.supportingEvidence,
+            reason: _cycle.reason,
+          }));
+        } catch (e) {
+          console.warn("[ExistingCycleResolver] error (ignored):", (e as Error)?.message);
+          __existingCycleMode = false;
+          __explicitNewCycle = false;
+        }
 
         console.log("[AiPolicy:phase2]", JSON.stringify({
           customer_id: freshCustomer.id,
@@ -2085,6 +2153,28 @@ ${pastLines}
 
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   let finalAnswer = answerText;
+
+  // ── Existing-Cycle Post-AI Enforcement (14/07/2569) ─────────────────
+  // เมื่ออยู่ใน current cycle (Natcha cohort during controlled test) —
+  // block fake approval / lead reask ก่อนส่งเข้า LINE.
+  if (__existingCycleMode && !__explicitNewCycle) {
+    try {
+      const _enf = enforceExistingCyclePolicy({
+        rawAnswer: finalAnswer,
+        existingCycleMode: true,
+        explicitNewCycle: false,
+        messageText,
+      });
+      if (_enf.action !== "keep") {
+        console.warn(
+          `[ExistingCycleEnforce] customer=${customer.id} action=${_enf.action} intent=${_enf.replyIntent} reasons=${_enf.reasons.join(",")} before="${finalAnswer.slice(0, 140)}" after="${_enf.finalAnswer.slice(0, 140)}"`,
+        );
+        finalAnswer = _enf.finalAnswer;
+      }
+    } catch (e: any) {
+      console.warn("[ExistingCycleEnforce] error (ignored):", e?.message);
+    }
+  }
 
 
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ

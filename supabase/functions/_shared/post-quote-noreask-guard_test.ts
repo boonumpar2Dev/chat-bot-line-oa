@@ -20,7 +20,7 @@ Deno.test("Test 1 — pending_confirm + quote sent + 'เข้าสำรว�
   assertEquals(r.matchedPattern !== null, true);
   assertEquals(
     r.replyText,
-    "รับทราบค่ะ เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานงานต่อนะคะ 🙏",
+    "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดนัดหมายและประสานกลับนะคะ 🙏",
   );
 });
 
