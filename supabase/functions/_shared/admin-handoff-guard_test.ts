@@ -19,8 +19,12 @@ import {
 } from "./admin-handoff-guard.ts";
 import { resolveAdminHandoffDecision } from "./admin-handoff.ts";
 
-const STANDARD = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyStandard;
+const GENERAL = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyGeneral;
+const SCHEDULE = __ADMIN_HANDOFF_GUARD_DEFAULTS.replySchedule;
+const MENU = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyMenu;
 const VERIFY = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyVerify;
+// Legacy alias kept for tests that assert change_request→general fell to STANDARD.
+const STANDARD = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyStandard;
 
 // ── Positive matches ─────────────────────────────────────────────────
 
