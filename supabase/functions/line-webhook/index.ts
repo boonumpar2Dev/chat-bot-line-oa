@@ -2607,7 +2607,7 @@ ${pastLines}
         .filter(Boolean)
         .join("\n---\n")
         .trim();
-      finalAnswer = cleaned || "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+      finalAnswer = cleaned || "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานกลับนะคะ 🙏";
       console.warn(`[FinalMediaSafety] no media to send — stripped image refs. before="${before.slice(0, 140)}" after="${finalAnswer.slice(0, 140)}"`);
     }
   }
