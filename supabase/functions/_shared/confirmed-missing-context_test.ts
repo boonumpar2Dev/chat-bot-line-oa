@@ -33,7 +33,7 @@ Deno.test("returns block when confirmed + both missing (real Natcha case)", () =
   assert(b.includes("วันจัดงาน"));
   assert(b.includes("สถานที่จัดงาน"));
   assert(b.includes("ห้ามถามใหม่"));
-  assert(b.includes("แอดมินตรวจสอบรายละเอียดงานที่คอนเฟิร์ม"));
+  assert(b.includes("เจ้าหน้าที่ตรวจสอบรายละเอียดนัดหมาย"));
 });
 
 Deno.test("does not include hardcoded date/venue/guest/price/package data", () => {

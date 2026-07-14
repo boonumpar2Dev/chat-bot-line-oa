@@ -1294,7 +1294,7 @@ async function processEvent(event: any, supabase: any) {
     }).eq("id", customer.id);
     const enrichedTax = await runHandoverExtract(supabase, { ...freshCustomer, tax_id: taxId }, cfg, "tax_id");
     const summary = buildCustomerSummary(enrichedTax, cfg);
-    const intro = renderTemplate(cfg.handover_intro_tax || `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag {tax_id} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`, { tax_id: taxId });
+    const intro = renderTemplate(cfg.handover_intro_tax || `บันทึกเลขผู้เสียภาษี/Tag {tax_id} แล้วนะคะ เดี๋ยวเจ้าหน้าที่ตรวจสอบข้อมูลสำหรับเอกสารและประสานกลับนะคะ 🙏`, { tax_id: taxId });
     const msg = [intro, "", ...summary].join("\n");
     await sendAndSave(supabase, customer.id, lineUserId, msg);
     return;
@@ -2305,7 +2305,7 @@ ${pastLines}
       const stripped = cleanedBubbles.join("\n---\n").trim();
       const before = finalAnswer;
       if (!stripped) {
-        finalAnswer = "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+        finalAnswer = "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานกลับนะคะ 🙏";
         console.warn(`[ImageInviteGuard] fallback used — before="${before.slice(0, 120)}"`);
       } else {
         finalAnswer = stripped;
@@ -2582,7 +2582,7 @@ ${pastLines}
       const before = finalAnswer;
       const bubbles = finalAnswer.split(/\n*---+\n*/);
       const cleaned = bubbles.map((b) => b.split(/(?<=[ค่ะคะ])[\s\n]+/).map(s => s.trim()).filter(s => s && !INVITE_RE_2.test(s)).join(" ").trim()).filter(Boolean).join("\n---\n").trim();
-      finalAnswer = cleaned || "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+      finalAnswer = cleaned || "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานกลับนะคะ 🙏";
       console.warn(`[ImageInviteGuard] stripped invite (media dedup emptied) before="${before.slice(0,120)}" after="${finalAnswer.slice(0,120)}"`);
     }
   }
@@ -2607,7 +2607,7 @@ ${pastLines}
         .filter(Boolean)
         .join("\n---\n")
         .trim();
-      finalAnswer = cleaned || "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+      finalAnswer = cleaned || "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานกลับนะคะ 🙏";
       console.warn(`[FinalMediaSafety] no media to send — stripped image refs. before="${before.slice(0, 140)}" after="${finalAnswer.slice(0, 140)}"`);
     }
   }

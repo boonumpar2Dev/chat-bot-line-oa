@@ -39,7 +39,10 @@ Deno.test("P1: confirmed lifecycle forbids re-asking event fields + tax fields",
   assertStringIncludes(b, "ห้ามยืนยันเอง");
   // ห้ามถามเลขผู้เสียภาษี/บริษัท/venue/guests/date เพิ่ม
   assertStringIncludes(b, "ห้ามถามเลขผู้เสียภาษี");
-  assertStringIncludes(b, "รับทราบค่ะ เรื่องใบกำกับภาษี");
+  assertStringIncludes(b, "เดี๋ยวเจ้าหน้าที่ตรวจสอบข้อมูลสำหรับเอกสารและประสานกลับนะคะ");
+  // Section 5 wording sweep — confirmed doc-handoff must not start with "รับทราบค่ะ เดี๋ยว…"
+  // (pure "รับทราบค่ะ" as an ack particle example may still appear elsewhere in the block.)
+
 });
 
 // ── P2: pending_confirm — no lead re-collection after quote ──

@@ -19,52 +19,70 @@ import {
 } from "./admin-handoff-guard.ts";
 import { resolveAdminHandoffDecision } from "./admin-handoff.ts";
 
-const STANDARD = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyStandard;
+const GENERAL = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyGeneral;
+const SCHEDULE = __ADMIN_HANDOFF_GUARD_DEFAULTS.replySchedule;
+const MENU = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyMenu;
 const VERIFY = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyVerify;
+// Legacy alias kept for tests that assert change_request→general fell to STANDARD.
+const STANDARD = __ADMIN_HANDOFF_GUARD_DEFAULTS.replyStandard;
 
 // ── Positive matches ─────────────────────────────────────────────────
 
-Deno.test("Test 1 — confirmed: team site-visit question → verify reply", () => {
+Deno.test("Test 1 — confirmed: team site-visit question → schedule reply", () => {
   const r = evaluateAdminHandoffGuard({
     lifecycle: "confirmed",
     messageText: "เลือกรายการอาหารเมื่อไหร่ครับ แล้วทีมจะเข้ามาดูพื้นที่วันไหน",
   });
   assertEquals(r.matched, true);
   assertEquals(r.category, "confirmed_missing_context");
-  assertEquals(r.replyText, VERIFY);
+  assertEquals(r.replyText, SCHEDULE);
+  assert(!r.replyText.includes("รับทราบ"));
 });
 
-Deno.test("Test 2 — confirmed: change venue → standard reply", () => {
+Deno.test("Test 2 — confirmed: change venue → general reply", () => {
   const r = evaluateAdminHandoffGuard({
     lifecycle: "confirmed",
     messageText: "ขอเปลี่ยนสถานที่จัดงานเป็นบางนาค่ะ",
   });
   assertEquals(r.matched, true);
   assertEquals(r.category, "change_request");
-  assertEquals(r.replyText, STANDARD);
-  // must NOT echo the customer's detail ("บางนา")
+  assertEquals(r.replyText, GENERAL);
   assert(!r.replyText.includes("บางนา"));
+  assert(!r.replyText.includes("รับทราบ"));
 });
 
-Deno.test("Test 3 — confirmed: change guest count → standard reply", () => {
+Deno.test("Test 3 — confirmed: change guest count → general reply", () => {
   const r = evaluateAdminHandoffGuard({
     lifecycle: "confirmed",
     messageText: "ขอเพิ่มจำนวนแขกเป็น 60 คนค่ะ",
   });
   assertEquals(r.matched, true);
   assertEquals(r.category, "change_request");
-  assertEquals(r.replyText, STANDARD);
+  assertEquals(r.replyText, GENERAL);
   assert(!r.replyText.includes("60"));
+  assert(!r.replyText.includes("รับทราบ"));
 });
 
-Deno.test("Test 4 — confirmed: doc change → standard reply", () => {
+Deno.test("Test 3b — confirmed: menu change → menu reply", () => {
+  const r = evaluateAdminHandoffGuard({
+    lifecycle: "confirmed",
+    messageText: "ขอเปลี่ยนเมนูอาหารบางรายการค่ะ",
+  });
+  assertEquals(r.matched, true);
+  assertEquals(r.replyText, MENU);
+  assert(!r.replyText.includes("รับทราบ"));
+});
+
+Deno.test("Test 4 — confirmed: doc change → verify reply (no completion claim)", () => {
   const r = evaluateAdminHandoffGuard({
     lifecycle: "confirmed",
     messageText: "รบกวนแก้ชื่อในใบเสนอราคาให้หน่อยค่ะ",
   });
   assertEquals(r.matched, true);
   assertEquals(r.category, "change_request");
-  assertEquals(r.replyText, STANDARD);
+  assertEquals(r.replyText, VERIFY);
+  assert(!r.replyText.includes("เรียบร้อยแล้ว"));
+  assert(!r.replyText.includes("รับทราบ"));
 });
 
 Deno.test("Test 5 — confirmed: payment verification → verify reply", () => {
@@ -75,6 +93,18 @@ Deno.test("Test 5 — confirmed: payment verification → verify reply", () => {
   assertEquals(r.matched, true);
   assertEquals(r.category, "payment_verify");
   assertEquals(r.replyText, VERIFY);
+  assert(!r.replyText.includes("รับทราบ"));
+});
+
+Deno.test("Test 5b — equipment/service handoff → general reply (safe wording)", () => {
+  const r = evaluateAdminHandoffGuard({
+    lifecycle: "confirmed",
+    messageText: "ขอเพิ่มโต๊ะเก้าอี้สำหรับหน้างานค่ะ",
+  });
+  assertEquals(r.matched, true);
+  assertEquals(r.replyText, GENERAL);
+  assert(!r.replyText.includes("รับทราบ"));
+  assert(!r.replyText.includes("เรียบร้อยแล้ว"));
 });
 
 Deno.test("pending_confirm: change request also matched", () => {
@@ -202,7 +232,7 @@ Deno.test("admin_handoff_guard: override=null also disables AI", () => {
 // ── Reply guarantees ─────────────────────────────────────────────────
 
 Deno.test("replies contain no question marks (must not ask questions)", () => {
-  for (const text of [STANDARD, VERIFY]) {
+  for (const text of [GENERAL, SCHEDULE, MENU, VERIFY]) {
     assert(!/[?？]/.test(text), `reply must not contain '?': ${text}`);
     assert(!text.includes("ไหม"), `reply must not ask 'ไหม': ${text}`);
     assert(!text.includes("มั้ย"), `reply must not ask 'มั้ย': ${text}`);
@@ -210,8 +240,14 @@ Deno.test("replies contain no question marks (must not ask questions)", () => {
 });
 
 Deno.test("replies do not claim completion ('เรียบร้อยแล้ว')", () => {
-  for (const text of [STANDARD, VERIFY]) {
+  for (const text of [GENERAL, SCHEDULE, MENU, VERIFY]) {
     assert(!text.includes("เรียบร้อยแล้ว"), `reply must not claim done: ${text}`);
     assert(!text.includes("ดำเนินการเสร็จ"), `reply must not claim done: ${text}`);
+  }
+});
+
+Deno.test("Section 5 wording sweep: no default reply starts with 'รับทราบ'", () => {
+  for (const text of [GENERAL, SCHEDULE, MENU, VERIFY]) {
+    assert(!text.includes("รับทราบ"), `wording sweep violation: ${text}`);
   }
 });
