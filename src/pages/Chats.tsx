@@ -1918,13 +1918,25 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
         </span>
       )}
       {quotedMessage && (
-        <div className={cn(
-          "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground [overflow-wrap:anywhere]"
-        )}>
+        <button
+          type="button"
+          onClick={() => {
+            const el = document.getElementById(`msg-${quotedMessage.id}`);
+            if (!el) { toast.error("ไม่พบข้อความต้นทาง (อาจอยู่นอกช่วงที่โหลด)"); return; }
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+            el.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-2xl", "transition");
+            window.setTimeout(() => {
+              el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "ring-offset-background");
+            }, 1600);
+          }}
+          title="ไปที่ข้อความต้นทาง"
+          className={cn(
+            "max-w-[85%] sm:max-w-[80%] -mb-1 px-3 pt-1.5 pb-3 rounded-t-2xl border-l-2 border-primary bg-muted/50 text-[11px] text-muted-foreground [overflow-wrap:anywhere] text-left hover:bg-muted/80 cursor-pointer transition"
+          )}
+        >
           <div className="font-medium text-primary mb-0.5">↩ {quotedSenderLabel}</div>
           <div className="truncate">{quotedSnippet}</div>
-        </div>
-
+        </button>
       )}
       {stickerUrls.length > 0 && (
         <div className="flex flex-col gap-1.5">
