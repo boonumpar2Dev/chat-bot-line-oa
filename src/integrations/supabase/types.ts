@@ -193,6 +193,44 @@ export type Database = {
           },
         ]
       }
+      ai_rollout_reactivation_log: {
+        Row: {
+          batch_id: string
+          customer_id: string
+          id: string
+          prev_ai_active: boolean
+          prev_manual_chat_until: string | null
+          prev_status: string
+          reactivated_at: string
+        }
+        Insert: {
+          batch_id: string
+          customer_id: string
+          id?: string
+          prev_ai_active: boolean
+          prev_manual_chat_until?: string | null
+          prev_status: string
+          reactivated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          customer_id?: string
+          id?: string
+          prev_ai_active?: boolean
+          prev_manual_chat_until?: string | null
+          prev_status?: string
+          reactivated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_rollout_reactivation_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_token_usage: {
         Row: {
           completion_tokens: number
