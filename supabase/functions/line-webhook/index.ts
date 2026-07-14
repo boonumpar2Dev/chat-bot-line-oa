@@ -2154,6 +2154,28 @@ ${pastLines}
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   let finalAnswer = answerText;
 
+  // ── Existing-Cycle Post-AI Enforcement (14/07/2569) ─────────────────
+  // เมื่ออยู่ใน current cycle (Natcha cohort during controlled test) —
+  // block fake approval / lead reask ก่อนส่งเข้า LINE.
+  if (__existingCycleMode && !__explicitNewCycle) {
+    try {
+      const _enf = enforceExistingCyclePolicy({
+        rawAnswer: finalAnswer,
+        existingCycleMode: true,
+        explicitNewCycle: false,
+        messageText,
+      });
+      if (_enf.action !== "keep") {
+        console.warn(
+          `[ExistingCycleEnforce] customer=${customer.id} action=${_enf.action} intent=${_enf.replyIntent} reasons=${_enf.reasons.join(",")} before="${finalAnswer.slice(0, 140)}" after="${_enf.finalAnswer.slice(0, 140)}"`,
+        );
+        finalAnswer = _enf.finalAnswer;
+      }
+    } catch (e: any) {
+      console.warn("[ExistingCycleEnforce] error (ignored):", e?.message);
+    }
+  }
+
 
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ
   if (imageTitles.length > 0) {
