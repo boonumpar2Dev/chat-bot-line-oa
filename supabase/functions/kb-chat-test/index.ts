@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     }
     if (taxId) {
       return Response.json({
-        answer: `รับทราบค่ะ ได้รับข้อมูลเลขผู้เสียภาษี/Tag ${taxId} เรียบร้อยแล้ว เจ้าหน้าที่จะติดต่อกลับเร็วที่สุดนะคะ 🙏`,
+        answer: `บันทึกเลขผู้เสียภาษี/Tag ${taxId} แล้วนะคะ เดี๋ยวเจ้าหน้าที่ตรวจสอบข้อมูลสำหรับเอกสารและประสานกลับนะคะ 🙏`,
         confidence: 100, image_titles: [],
       }, { headers: corsHeaders });
     }
