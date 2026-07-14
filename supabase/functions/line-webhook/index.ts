@@ -1869,6 +1869,8 @@ ${pastLines}
   let __phase2_lifecycle: Lifecycle | undefined;
   let __phase2_replyMode: ReplyMode | undefined;
   let __phase2_customerContextBlock: string | undefined;
+  let __existingCycleMode = false;
+  let __explicitNewCycle = false;
   {
     const gate = resolvePhase2Gate({
       customerId: freshCustomer?.id ?? null,
