@@ -2305,7 +2305,7 @@ ${pastLines}
       const stripped = cleanedBubbles.join("\n---\n").trim();
       const before = finalAnswer;
       if (!stripped) {
-        finalAnswer = "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+        finalAnswer = "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานกลับนะคะ 🙏";
         console.warn(`[ImageInviteGuard] fallback used — before="${before.slice(0, 120)}"`);
       } else {
         finalAnswer = stripped;
