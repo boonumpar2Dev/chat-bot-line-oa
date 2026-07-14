@@ -2022,9 +2022,9 @@ function MessageBubble({ m, onImageClick, highlight, onTrainAI, onTeachKb, admin
       </div>
     </div>
   );
-  if (!isCustomer) return <div className="flex w-full justify-end">{bubble}</div>;
+  if (!isCustomer) return <div id={`msg-${m.id}`} className="flex w-full justify-end scroll-mt-20">{bubble}</div>;
   return (
-    <div className="flex items-start gap-2">
+    <div id={`msg-${m.id}`} className="flex items-start gap-2 scroll-mt-20">
       <Avatar className="w-8 h-8 shrink-0 mt-0.5">
         {customerPicture && <AvatarImage src={customerPicture}/>}
         <AvatarFallback className="bg-brand-gradient text-primary-foreground text-[10px]">{initial}</AvatarFallback>
