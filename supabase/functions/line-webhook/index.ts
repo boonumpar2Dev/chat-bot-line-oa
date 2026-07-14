@@ -1962,6 +1962,70 @@ ${pastLines}
           console.warn("[AiPolicy:phase2.9] buildConfirmedMissingContextBlock error (ignored):", (e as Error)?.message);
         }
 
+        // ── Existing-Cycle Resolver (14/07/2569) ─────────────────────────
+        // 4-layer policy: strong current-cycle evidence opens existingCycleMode;
+        // supporting evidence is diagnostics-only; explicit new-cycle wording
+        // always suppresses the mode. Same rollout cohort as Phase 2.
+        try {
+          const [ecConvsRes, currentEventRes] = await Promise.all([
+            supabase
+              .from("conversations")
+              .select("sender, message, created_at")
+              .eq("customer_id", freshCustomer.id)
+              .order("created_at", { ascending: false })
+              .limit(8),
+            supabase
+              .from("customer_events")
+              .select("id, status")
+              .eq("customer_id", freshCustomer.id)
+              .not("status", "eq", "completed")
+              .limit(1)
+              .maybeSingle(),
+          ]);
+          const _ecConvs = (ecConvsRes as any)?.data ?? [];
+          const _hasCurrentEvent = !!(currentEventRes as any)?.data?.id;
+          const _cycle = resolveExistingCycle({
+            currentStatus: freshCustomer.status ?? null,
+            messageText,
+            recentConvs: _ecConvs,
+            hasCurrentEvent: _hasCurrentEvent,
+            supporting: {
+              hasHistoricalCompletedEvent: !!(evRes as any)?.data?.event_date,
+              hasHistoricalStatusLog: !!(logRes as any)?.data?.changed_at,
+              hasAdminConversationHistory: Array.isArray(_ecConvs) &&
+                _ecConvs.some((c: any) => {
+                  const s = String(c?.sender ?? "").toLowerCase();
+                  return s === "admin" || s === "ai" || s === "staff" || s === "assistant";
+                }),
+              hasStructuredFacts:
+                !!(freshCustomer as any).phone ||
+                !!(freshCustomer as any).event_date ||
+                !!(freshCustomer as any).venue ||
+                !!(freshCustomer as any).guest_count ||
+                !!(freshCustomer as any).event_type,
+            },
+          });
+          __existingCycleMode = _cycle.existingCycleMode;
+          __explicitNewCycle = _cycle.explicitNewCycle;
+          if (__existingCycleMode && !__explicitNewCycle) {
+            const policyBlock = buildExistingCyclePolicyBlock();
+            __phase2_customerContextBlock = __phase2_customerContextBlock
+              ? `${__phase2_customerContextBlock}\n\n${policyBlock}`
+              : policyBlock;
+          }
+          console.log("[ExistingCycleResolver]", JSON.stringify({
+            customer_id: freshCustomer.id,
+            existingCycleMode: __existingCycleMode,
+            explicitNewCycle: __explicitNewCycle,
+            strong: _cycle.strongEvidence,
+            supporting: _cycle.supportingEvidence,
+            reason: _cycle.reason,
+          }));
+        } catch (e) {
+          console.warn("[ExistingCycleResolver] error (ignored):", (e as Error)?.message);
+          __existingCycleMode = false;
+          __explicitNewCycle = false;
+        }
 
         console.log("[AiPolicy:phase2]", JSON.stringify({
           customer_id: freshCustomer.id,
