@@ -15,6 +15,7 @@
 // (ไม่ผูกกับ Phase 2 cohort). ไม่ใช่ feature ทดลอง — เป็น correction ของ post-quote discipline.
 
 import { hasPostQuoteConversationEvidence, type RecentConvLike } from "./ai-policy.ts";
+import { EXISTING_CYCLE_REPLIES } from "./existing-cycle-reply.ts";
 
 export interface PostQuoteNoReaskGuardInput {
   lifecycle: string | null | undefined;
