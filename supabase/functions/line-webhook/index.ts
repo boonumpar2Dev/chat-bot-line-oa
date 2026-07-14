@@ -2013,11 +2013,24 @@ ${pastLines}
               ? `${__phase2_customerContextBlock}\n\n${policyBlock}`
               : policyBlock;
           }
+          // Returning-new-cycle: past customer + explicit new-cycle wording → different policy
+          const returningNewCycle = detectReturningNewCycle(freshCustomer.status ?? null, messageText);
+          if (returningNewCycle) {
+            const rBlock = buildReturningNewCyclePolicyBlock();
+            __phase2_customerContextBlock = __phase2_customerContextBlock
+              ? `${__phase2_customerContextBlock}\n\n${rBlock}`
+              : rBlock;
+          }
           console.log("[ExistingCycleResolver]", JSON.stringify({
             customer_id: freshCustomer.id,
+            gate_enabled: gate.enabled,
+            gate_mode: gate.mode,
+            gate_reason: gate.reason,
             existingCycleMode: __existingCycleMode,
             explicitNewCycle: __explicitNewCycle,
-            strong: _cycle.strongEvidence,
+            returningNewCycle,
+            evidenceSources: _cycle.strongEvidence,
+            evidenceStrength: _cycle.strongEvidence.length > 0 ? "strong" : "none",
             supporting: _cycle.supportingEvidence,
             reason: _cycle.reason,
           }));
