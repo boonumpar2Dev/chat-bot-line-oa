@@ -232,7 +232,7 @@ Deno.test("admin_handoff_guard: override=null also disables AI", () => {
 // ── Reply guarantees ─────────────────────────────────────────────────
 
 Deno.test("replies contain no question marks (must not ask questions)", () => {
-  for (const text of [STANDARD, VERIFY]) {
+  for (const text of [GENERAL, SCHEDULE, MENU, VERIFY]) {
     assert(!/[?？]/.test(text), `reply must not contain '?': ${text}`);
     assert(!text.includes("ไหม"), `reply must not ask 'ไหม': ${text}`);
     assert(!text.includes("มั้ย"), `reply must not ask 'มั้ย': ${text}`);
@@ -240,8 +240,14 @@ Deno.test("replies contain no question marks (must not ask questions)", () => {
 });
 
 Deno.test("replies do not claim completion ('เรียบร้อยแล้ว')", () => {
-  for (const text of [STANDARD, VERIFY]) {
+  for (const text of [GENERAL, SCHEDULE, MENU, VERIFY]) {
     assert(!text.includes("เรียบร้อยแล้ว"), `reply must not claim done: ${text}`);
     assert(!text.includes("ดำเนินการเสร็จ"), `reply must not claim done: ${text}`);
+  }
+});
+
+Deno.test("Section 5 wording sweep: no default reply starts with 'รับทราบ'", () => {
+  for (const text of [GENERAL, SCHEDULE, MENU, VERIFY]) {
+    assert(!text.includes("รับทราบ"), `wording sweep violation: ${text}`);
   }
 });
