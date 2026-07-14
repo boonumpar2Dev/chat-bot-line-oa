@@ -11,7 +11,7 @@ import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-guard.ts";
 import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
-import { resolveExistingCycle, buildExistingCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
+import { resolveExistingCycle, buildExistingCyclePolicyBlock, detectReturningNewCycle, buildReturningNewCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
 import { enforceExistingCyclePolicy } from "../_shared/existing-cycle-post-enforcement.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
@@ -2013,11 +2013,24 @@ ${pastLines}
               ? `${__phase2_customerContextBlock}\n\n${policyBlock}`
               : policyBlock;
           }
+          // Returning-new-cycle: past customer + explicit new-cycle wording → different policy
+          const returningNewCycle = detectReturningNewCycle(freshCustomer.status ?? null, messageText);
+          if (returningNewCycle) {
+            const rBlock = buildReturningNewCyclePolicyBlock();
+            __phase2_customerContextBlock = __phase2_customerContextBlock
+              ? `${__phase2_customerContextBlock}\n\n${rBlock}`
+              : rBlock;
+          }
           console.log("[ExistingCycleResolver]", JSON.stringify({
             customer_id: freshCustomer.id,
+            gate_enabled: gate.enabled,
+            gate_mode: gate.mode,
+            gate_reason: gate.reason,
             existingCycleMode: __existingCycleMode,
             explicitNewCycle: __explicitNewCycle,
-            strong: _cycle.strongEvidence,
+            returningNewCycle,
+            evidenceSources: _cycle.strongEvidence,
+            evidenceStrength: _cycle.strongEvidence.length > 0 ? "strong" : "none",
             supporting: _cycle.supportingEvidence,
             reason: _cycle.reason,
           }));
@@ -2155,8 +2168,8 @@ ${pastLines}
   let finalAnswer = answerText;
 
   // ── Existing-Cycle Post-AI Enforcement (14/07/2569) ─────────────────
-  // เมื่ออยู่ใน current cycle (Natcha cohort during controlled test) —
-  // block fake approval / lead reask ก่อนส่งเข้า LINE.
+  // Structured atomic handoff: on replace_handoff → persist ai_active=false,
+  // suppress ALL media, push text-only, and return BEFORE media pipeline.
   if (__existingCycleMode && !__explicitNewCycle) {
     try {
       const _enf = enforceExistingCyclePolicy({
@@ -2167,14 +2180,79 @@ ${pastLines}
       });
       if (_enf.action !== "keep") {
         console.warn(
-          `[ExistingCycleEnforce] customer=${customer.id} action=${_enf.action} intent=${_enf.replyIntent} reasons=${_enf.reasons.join(",")} before="${finalAnswer.slice(0, 140)}" after="${_enf.finalAnswer.slice(0, 140)}"`,
+          `[ExistingCycleEnforce] customer=${customer.id} action=${_enf.action} intent=${_enf.replyIntent} disableAi=${_enf.disableAi} suppressMedia=${_enf.suppressMedia} handoffReason=${_enf.handoffReason} reasons=${_enf.reasons.join(",")} before="${finalAnswer.slice(0, 140)}" after="${_enf.finalAnswer.slice(0, 140)}"`,
         );
         finalAnswer = _enf.finalAnswer;
+
+        if (_enf.action === "replace_handoff") {
+          // Suppress all media immediately (guards against downstream pipelines).
+          imageTitles = [];
+          // Persist handoff state FIRST. On DB failure, do NOT claim staff will take over —
+          // fall through to normal path so we never mislead the customer.
+          try {
+            const muteH = cfg.manual_chat_hours ?? 360;
+            const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+            const handoffPatch: any = {
+              ai_active: _enf.disableAi ? false : (freshCustomer as any).ai_active,
+              manual_chat_until: muteUntil,
+              last_message_at: new Date().toISOString(),
+              last_message_snippet: `🤝 ${finalAnswer.slice(0, 60)}`,
+            };
+            const { error: patchErr } = await supabase
+              .from("customers")
+              .update(handoffPatch)
+              .eq("id", customer.id);
+            if (patchErr) {
+              console.error(
+                "[ExistingCycleHandoff] persist failed — abort structured handoff, using safe path:",
+                patchErr.message,
+              );
+              // Do NOT send the handoff text (would be a false promise). Send safe fallback text-only.
+              await saveAndPushAi(
+                supabase,
+                lineUserId,
+                [{ type: "text", text: finalAnswer }],
+                { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence },
+              );
+              return;
+            }
+            await saveAndPushAi(
+              supabase,
+              lineUserId,
+              [{ type: "text", text: finalAnswer }],
+              { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence },
+            );
+            console.log(
+              "[ExistingCycleHandoff] structured handoff sent",
+              JSON.stringify({
+                customer_id: customer.id,
+                handoffReason: _enf.handoffReason,
+                replyIntent: _enf.replyIntent,
+                disableAi: _enf.disableAi,
+                suppressMedia: _enf.suppressMedia,
+              }),
+            );
+            return;
+          } catch (persistErr: any) {
+            console.error(
+              "[ExistingCycleHandoff] error persisting, fallback safe path:",
+              persistErr?.message,
+            );
+            await saveAndPushAi(
+              supabase,
+              lineUserId,
+              [{ type: "text", text: finalAnswer }],
+              { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence },
+            );
+            return;
+          }
+        }
       }
     } catch (e: any) {
       console.warn("[ExistingCycleEnforce] error (ignored):", e?.message);
     }
   }
+
 
 
   // Expand bundle_image_titles — ถ้า AI ใส่ KB ที่มี bundle → แนบรูปเพื่อนไปด้วยอัตโนมัติ

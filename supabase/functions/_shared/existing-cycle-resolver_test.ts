@@ -127,7 +127,7 @@ Deno.test("Test H — raw 'ได้เลยค่ะ เปลี่ยนเ�
     explicitNewCycle: false,
     messageText: "ขอเปลี่ยนเมนูค่ะ",
   });
-  assertEquals(r.action, "replace");
+  assertEquals(r.action, "replace_handoff");
   assertEquals(r.finalAnswer, EXISTING_CYCLE_REPLIES.menu);
   assertEquals(r.replyIntent, "menu");
 });
@@ -140,7 +140,7 @@ Deno.test("Test I — 'เมนูนี้สามารถเปลี่ย
     explicitNewCycle: false,
     messageText: "ขอเปลี่ยนเมนูค่ะ",
   });
-  assertEquals(r.action, "replace");
+  assertEquals(r.action, "replace_handoff");
   assertEquals(r.finalAnswer, EXISTING_CYCLE_REPLIES.menu);
 });
 
@@ -191,4 +191,68 @@ Deno.test("Supporting facts alone (phone) → mode=false", () => {
   });
   assertEquals(r.existingCycleMode, false);
   assert(r.supportingEvidence.length >= 2);
+});
+
+// ── Returning-new-cycle detection ──────────────────────────────────────
+import { detectReturningNewCycle } from "./existing-cycle-resolver.ts";
+
+Deno.test("Returning new cycle — completed + 'สนใจจัดงานบุญ'", () => {
+  assertEquals(detectReturningNewCycle("completed", "สนใจจัดงานบุญ"), true);
+});
+Deno.test("Returning new cycle — completed + 'อยากจัดงานอีกครั้ง'", () => {
+  assertEquals(detectReturningNewCycle("completed", "อยากจัดงานอีกครั้ง"), true);
+});
+Deno.test("Returning new cycle — active status → false", () => {
+  assertEquals(detectReturningNewCycle("pending_confirm", "สนใจจัดงาน"), false);
+});
+Deno.test("Returning new cycle — completed + generic greet → false", () => {
+  assertEquals(detectReturningNewCycle("completed", "สวัสดีค่ะ"), false);
+});
+
+// ── Focused availability: strip callback reask ─────────────────────────
+Deno.test("Availability — strip callback ask", () => {
+  const r = enforceExistingCyclePolicy({
+    rawAnswer: "เดี๋ยวทางทีมงานเช็กคิววันที่ 25 กรกฎาคมให้แล้วแจ้งกลับนะคะ ขอเบอร์โทรลูกค้าค่ะเพื่อให้เจ้าหน้าที่ติดต่อกลับ",
+    existingCycleMode: true,
+    explicitNewCycle: false,
+    messageText: "วันที่ 25 ว่างไหมคะ",
+  });
+  // either stripped or handoff, but must not contain เบอร์
+  assert(!/เบอร์/.test(r.finalAnswer), `phone must be stripped: ${r.finalAnswer}`);
+});
+
+// ── Fake approval gated by customer intent ─────────────────────────────
+Deno.test("Fake approval — customer did NOT ask approval → keep (factual answer)", () => {
+  const r = enforceExistingCyclePolicy({
+    rawAnswer: "ในแพ็กเกจมีโต๊ะเก้าอี้ครบค่ะ พร้อมของหวานด้วยค่ะ",
+    existingCycleMode: true,
+    explicitNewCycle: false,
+    messageText: "ในแพ็กเกจมีโต๊ะเก้าอี้ไหมคะ",
+  });
+  assertEquals(r.action, "keep");
+});
+Deno.test("Fake approval — customer asked change → replace_handoff", () => {
+  const r = enforceExistingCyclePolicy({
+    rawAnswer: "เมนูเดิมยังใช้ได้ค่ะ",
+    existingCycleMode: true,
+    explicitNewCycle: false,
+    messageText: "รายการอาหารเดิมยังใช้ได้ไหมคะ",
+  });
+  assertEquals(r.action, "replace_handoff");
+  assertEquals(r.disableAi, true);
+  assertEquals(r.suppressMedia, true);
+});
+
+// ── Result shape has structured fields ─────────────────────────────────
+Deno.test("Result shape — replace_handoff sets disableAi/suppressMedia/handoffReason", () => {
+  const r = enforceExistingCyclePolicy({
+    rawAnswer: "ยืนยันให้แล้วค่ะ",
+    existingCycleMode: true,
+    explicitNewCycle: false,
+    messageText: "ยืนยันให้หน่อยได้ไหมคะ",
+  });
+  assertEquals(r.action, "replace_handoff");
+  assertEquals(r.disableAi, true);
+  assertEquals(r.suppressMedia, true);
+  assert(r.handoffReason);
 });

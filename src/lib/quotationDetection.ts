@@ -22,7 +22,10 @@ export const DEFAULT_QUOTATION_CONFIG: QuotationConfig = {
   allowedBackdateDays: 7,
   allowCompletedToPendingConfirm: true,
   patterns: [
-    { name: "BNP Quote", enabled: true, regex: "BNP-[NV](\\d{4})(\\d{2})", quoteType: "bnp_quote" },
+    // BNP document code — พบใน filename ได้ทุกตำแหน่ง (ต้น/กลาง/ท้าย).
+    // capture group 1 = year BE (4 digits) เพื่อใช้ใน fallback validation.
+    { name: "BNP Quote", enabled: true, regex: "BNP-[NV](\\d{4})\\d{2}-\\d+", quoteType: "bnp_quote" },
+    // Legacy food quotes (H-N prefix). ปล่อยไว้เพื่อ backward compatibility.
     { name: "Food Quote H-N", enabled: true, regex: "H-N(\\d{4})(\\d{2})-\\d+", quoteType: "food_quote" },
   ],
   datePrefix: { enabled: true, regex: "^(\\d{2})(\\d{2})(\\d{4})", format: "DDMMBBBB" },
