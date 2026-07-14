@@ -1731,11 +1731,17 @@ async function processEvent(event: any, supabase: any) {
   // ปิด gap ที่ AI ถาม "ชอบแบบไหน" ก่อนเสนอแพ็ก + ไม่ใส่ image_titles ทั้งที่มีรูปใน context
   // Runtime data only — ไม่ hardcode ชื่อแพ็ก/ราคา/tier/รูป
   try {
+    // Phase 2A.2 minimal fix — effectiveGuestCount = persisted OR parsed from current message
+    const _persistedGuest = (freshCustomer as any)?.guest_count ?? null;
+    const _effectiveGuestCount =
+      (typeof _persistedGuest === "number" && _persistedGuest > 0)
+        ? _persistedGuest
+        : (guestNumsInText.length > 0 ? Math.max(...guestNumsInText) : null);
     const _proposalGuard = buildNewCustomerProposalGuardBlock({
       activeScope,
       customerStatus: freshCustomer?.status ?? null,
       eventType: freshCustomer?.event_type ?? null,
-      guestCount: (freshCustomer as any)?.guest_count ?? null,
+      guestCount: _effectiveGuestCount,
       packageNames: (usePkgs || []).map((p: any) => (p?.name || "").toString().trim()).filter(Boolean),
       availableImageTitles: proposalPackageImageSources,
       prevSentImageCount: Array.isArray((customer as any)?.last_sent_image_titles)
