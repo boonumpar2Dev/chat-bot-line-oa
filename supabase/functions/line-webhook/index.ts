@@ -11,7 +11,7 @@ import { resolveAdminHandoffDecision } from "../_shared/admin-handoff.ts";
 import { evaluateAdminHandoffGuard } from "../_shared/admin-handoff-guard.ts";
 import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-guard.ts";
 import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
-import { resolveExistingCycle, buildExistingCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
+import { resolveExistingCycle, buildExistingCyclePolicyBlock, detectReturningNewCycle, buildReturningNewCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
 import { enforceExistingCyclePolicy } from "../_shared/existing-cycle-post-enforcement.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
