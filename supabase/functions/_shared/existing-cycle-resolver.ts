@@ -174,3 +174,33 @@ export function buildExistingCyclePolicyBlock(): string {
 - ถ้า context ไม่พอตอบ → **ห้ามเดา ห้ามยืนยัน ห้ามอ้างเมนู/วัน/ยอด/สถานที่ที่ไม่ปรากฏชัดในบทสนทนา**
 - ถ้าประเด็นเป็นการเปลี่ยน/ยืนยัน/อนุมัติ → คืนเป็น handoff intent ให้ทีมงาน ห้ามยืนยันเอง`;
 }
+
+// ── Returning-new-cycle detection ────────────────────────────────────────────
+// เมื่อลูกค้าลูกค้าเก่า (completed/past) ส่งข้อความสื่อถึงงานรอบใหม่ — เช่น
+//   "สนใจจัดงานบุญ" / "อยากจัดงานอีกครั้ง" / "ขอสอบถามงานรอบใหม่" / "มีงานใหม่" …
+// ให้ตอบแบบรู้จักลูกค้า แต่ไม่ใช้ existing-current-cycle suppression.
+const RETURNING_STATUSES = new Set(["completed", "cancelled", "returning", "postponed"]);
+
+const RETURNING_NEW_CYCLE_RE =
+  /(?:สนใจ|อยาก|ต้องการ|จะ|ขอ)?\s*(?:จัด|สอบถาม|ราคา|ใบเสนอราคา)\s*(?:งาน|ออร์เดอร์|ออเดอร์)?(?:บุญ|แต่ง|เลี้ยง|บริษัท|สังสรรค์|เกษียณ)?\s*(?:รอบ|ครั้ง|อีก)?(?:ใหม่|อีก(?:ครั้ง|งาน|รอบ)?)|มี\s*งาน\s*ใหม่|จัดอีกงาน/;
+
+export function detectReturningNewCycle(
+  currentStatus: string | null | undefined,
+  messageText: string | null | undefined,
+): boolean {
+  const s = (currentStatus ?? "").toString().trim().toLowerCase();
+  if (!RETURNING_STATUSES.has(s)) return false;
+  const t = (messageText ?? "").toString();
+  if (!t.trim()) return false;
+  return RETURNING_NEW_CYCLE_RE.test(t) || /สนใจ.*จัด|จัด.*(?:อีก|ใหม่)/.test(t);
+}
+
+export function buildReturningNewCyclePolicyBlock(): string {
+  return `[RETURNING_NEW_CYCLE] ลูกค้ารายนี้เป็นลูกค้าเดิมที่กำลังเริ่มงานรอบใหม่
+
+กฎ:
+- ทักทายแบบรู้จักลูกค้าเดิม ห้ามต้อนรับเหมือนลูกค้าครั้งแรก
+- **ห้ามนำข้อมูลงานเก่า (เมนู/วัน/สถานที่/จำนวนแขก) มายืนยันใช้กับงานใหม่โดยอัตโนมัติ**
+- ถามเฉพาะข้อมูลรอบงานใหม่ที่จำเป็น ห้ามถาม lead fields ทั้งชุดในบับเบิลเดียว
+- ถ้าลูกค้าพูดว่า "เอาข้อมูลตามเดิม" → **ห้ามยืนยันเอง** ให้ handoff ให้ทีมงานตรวจก่อน`;
+}
