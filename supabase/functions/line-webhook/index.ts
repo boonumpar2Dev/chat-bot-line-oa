@@ -2582,7 +2582,7 @@ ${pastLines}
       const before = finalAnswer;
       const bubbles = finalAnswer.split(/\n*---+\n*/);
       const cleaned = bubbles.map((b) => b.split(/(?<=[ค่ะคะ])[\s\n]+/).map(s => s.trim()).filter(s => s && !INVITE_RE_2.test(s)).join(" ").trim()).filter(Boolean).join("\n---\n").trim();
-      finalAnswer = cleaned || "รับทราบค่ะ เดี๋ยวขอให้ทีมงานช่วยตรวจสอบข้อมูลให้เพิ่มเติมนะคะ 🙏";
+      finalAnswer = cleaned || "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดและประสานกลับนะคะ 🙏";
       console.warn(`[ImageInviteGuard] stripped invite (media dedup emptied) before="${before.slice(0,120)}" after="${finalAnswer.slice(0,120)}"`);
     }
   }
