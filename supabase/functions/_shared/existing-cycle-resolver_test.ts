@@ -127,7 +127,7 @@ Deno.test("Test H — raw 'ได้เลยค่ะ เปลี่ยนเ�
     explicitNewCycle: false,
     messageText: "ขอเปลี่ยนเมนูค่ะ",
   });
-  assertEquals(r.action, "replace");
+  assertEquals(r.action, "replace_handoff");
   assertEquals(r.finalAnswer, EXISTING_CYCLE_REPLIES.menu);
   assertEquals(r.replyIntent, "menu");
 });
@@ -140,7 +140,7 @@ Deno.test("Test I — 'เมนูนี้สามารถเปลี่ย
     explicitNewCycle: false,
     messageText: "ขอเปลี่ยนเมนูค่ะ",
   });
-  assertEquals(r.action, "replace");
+  assertEquals(r.action, "replace_handoff");
   assertEquals(r.finalAnswer, EXISTING_CYCLE_REPLIES.menu);
 });
 
