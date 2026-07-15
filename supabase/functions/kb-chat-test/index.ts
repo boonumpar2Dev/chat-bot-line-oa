@@ -4,7 +4,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { filterRelevantKB, buildKbBlock } from "../_shared/ai-context.ts";
-import { resolveBusinessDataHandoff } from "../_shared/business-data-handoff.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -340,34 +339,11 @@ Deno.serve(async (req) => {
     const finalAns: string = aiResp.answer || "ขออภัย ไม่สามารถตอบได้ในขณะนี้";
 
 
-    // Phase 3 — surface Business Data Handoff decision for debugging only.
-    // NEVER updates customer state / handoff / ai_active here.
-    const _retrievedSourceIds: string[] = [
-      ...((filteredKb || []) as any[]).map((r: any) => String(r?.id || "")).filter(Boolean),
-      ...((pkgs || []) as any[]).map((r: any) => String(r?.id || "")).filter(Boolean),
-      ...((promos || []) as any[]).map((r: any) => String(r?.id || "")).filter(Boolean),
-    ];
-    const _bd = resolveBusinessDataHandoff({
-      rawParsed: aiResp,
-      retrievedSourceIds: _retrievedSourceIds,
-      messageText: text,
-    });
-
     return Response.json({
       answer: finalAns,
       confidence: aiResp.confidence ?? 80,
       image_titles: imageTitles,
       image_urls: imageUrls.slice(0, 12),
-      business_data_debug: {
-        action: _bd.action,
-        reason: _bd.reason,
-        decision: _bd.decision,
-        category: _bd.category,
-        modelSourceIds: _bd.modelSourceIds,
-        validatedSourceIds: _bd.validatedSourceIds,
-        retrievedSourceCount: _retrievedSourceIds.length,
-        isBusinessQuestion: _bd.isBusinessQuestion,
-      },
     }, { headers: corsHeaders });
   } catch (err: any) {
     console.error(err);

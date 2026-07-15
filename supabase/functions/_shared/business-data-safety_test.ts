@@ -36,12 +36,6 @@ Deno.test("block enumerates business-data topics + fallback wording", () => {
   }
   assertStringIncludes(b, FALLBACK);
   assertStringIncludes(b, "ห้ามใช้ความรู้ทั่วไปของโมเดล");
-  // Phase 3 — JSON contract MUST be inside the same shared block (Legacy + Phase 2 identical).
-  assertStringIncludes(b, "business_data_decision");
-  assertStringIncludes(b, "business_data_category");
-  assertStringIncludes(b, "business_data_source_ids");
-  assertStringIncludes(b, "answer_from_source");
-  assertStringIncludes(b, "handoff_missing_source");
 });
 
 Deno.test("Legacy flow (policyEnabled=false) — block is injected", () => {
