@@ -203,24 +203,24 @@ export async function markQuotationSent(args: {
     }
     if (!matched) { log({ action: "skipped", reason: "no_pattern_matched" }, fileName); continue; }
 
-    // 3) date prefix → ใบเก่า / ใบวันที่อนาคต?
+    // 3) date prefix = **event date** (วันจัดงาน) — ห้ามใช้เป็น backdate validator
+    //    ของใบเสนอราคา เพราะ event อาจย้อนหลังจริงตาม flow (เช่น ส่งใบใหม่หลัง event
+    //    หรือใบสำหรับงานที่เพิ่งผ่านมา). คงไว้เฉพาะ future-sanity check.
     const datePrefKey = parseDatePrefix(fileName, cfg);
     if (datePrefKey !== null) {
       const sentKey = bkkDateKeyFromInstant(messageSentAt);
-      const diffDays = daysBetweenKeys(sentKey, datePrefKey); // + = backdate, - = future
-      if (diffDays > cfg.allowedBackdateDays) {
-        log({ action: "skipped", reason: "old_reference_quote" }, fileName);
-        continue;
-      }
-      // อนุญาตใบวันที่อนาคต ≤ 2 ปี (ลูกค้าจองงานล่วงหน้าได้ปกติ เช่น งานแต่ง/งานบริษัทปีหน้า)
-      // เกิน 2 ปี → น่าจะพิมพ์ปี พ.ศ. ผิด (เช่น 2670 แทน 2570) → skip
+      const diffDays = daysBetweenKeys(sentKey, datePrefKey); // + = past event, - = future event
       if (diffDays < -730) {
+        // event date อนาคตเกิน 2 ปี → น่าจะพิมพ์ปีผิด
         log({ action: "skipped", reason: "future_quote_date" }, fileName);
         continue;
       }
-      // diffDays ∈ [-730, allowedBackdateDays] → ผ่าน
-    } else {
-      // fallback: ใช้ปี พ.ศ. จาก regex group 1 (default pattern group 1 = YYBE 4 หลัก)
+      // NOTE: `cfg.allowedBackdateDays` intentionally NOT applied to event date.
+    }
+
+    // Quote-year validation (จาก document code regex group 1) — ทำเสมอ ไม่ว่าจะมี date prefix
+    // หรือไม่ เพราะเป็น year ของ "เอกสารใบเสนอราคา" ไม่ใช่ของ event
+    {
       const yearStr = matched.m[1];
       if (yearStr && /^\d{4}$/.test(yearStr)) {
         const quoteBE = parseInt(yearStr, 10);
@@ -230,7 +230,6 @@ export async function markQuotationSent(args: {
           continue;
         }
       }
-      // ไม่มี group → ไม่ block (ถือว่าผ่าน)
     }
 
     // ผ่านทุกด่าน → update
