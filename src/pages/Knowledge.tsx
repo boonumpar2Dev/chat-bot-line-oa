@@ -623,25 +623,53 @@ function KnowledgeBaseTab() {
     qc.invalidateQueries({ queryKey: ["kb-cats"] });
   };
 
-  const filtered = (items || []).filter((i: any) =>
-    filterCat === "__all" ? true : filterCat === "__none" ? !i.category : i.category === filterCat
-  );
+  const q = search.trim().toLowerCase();
+  const filtered = (items || []).filter((i: any) => {
+    const catOk = filterCat === "__all" ? true : filterCat === "__none" ? !i.category : i.category === filterCat;
+    if (!catOk) return false;
+    if (!q) return true;
+    return (
+      (i.title || "").toLowerCase().includes(q) ||
+      (i.content || "").toLowerCase().includes(q) ||
+      (i.category || "").toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2 justify-between">
-        <div className="flex items-center gap-2">
-          <Label className="text-sm">หมวด:</Label>
-          <Select value={filterCat} onValueChange={setFilterCat}>
-            <SelectTrigger className="w-[200px]"><SelectValue/></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all">ทั้งหมด ({items?.length || 0})</SelectItem>
-              <SelectItem value="__none">ไม่ระบุหมวด</SelectItem>
-              {(cats || []).map((c: any) => (
-                <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">หมวด:</Label>
+            <Select value={filterCat} onValueChange={setFilterCat}>
+              <SelectTrigger className="w-[180px]"><SelectValue/></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">ทั้งหมด ({items?.length || 0})</SelectItem>
+                <SelectItem value="__none">ไม่ระบุหมวด</SelectItem>
+                {(cats || []).map((c: any) => (
+                  <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="ค้นหาหัวข้อ / เนื้อหา…"
+              className="pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="ล้างค้นหา"
+              >
+                <X className="w-4 h-4"/>
+              </button>
+            )}
+          </div>
         </div>
         <Button onClick={openNew}><Plus/>เพิ่มข้อมูล</Button>
       </div>
