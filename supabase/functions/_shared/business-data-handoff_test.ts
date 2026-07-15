@@ -383,3 +383,113 @@ Deno.test("Legacy parity — id-only input preserves prior behavior for pricing-
   });
   assertEquals(b.action, "keep");
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 3.2 — Intent-gated handoff. Generic discovery ("ขอดูราคาแพ็คเกจ") must
+// NEVER trigger source-mismatch / topic-mismatch / invalid-schema handoff.
+// Only `specific_fact` intent can force handoff via source validation.
+// ────────────────────────────────────────────────────────────────────────────
+
+import { classifyBusinessQuestionIntent } from "./business-data-handoff.ts";
+
+Deno.test("classifyBusinessQuestionIntent: generic discovery examples", () => {
+  const cases = [
+    "ขอดูราคาแพ็คเกจหน่อยค่ะ",
+    "ขอดูแพ็กเกจค่ะ",
+    "มีแพ็กเกจอะไรบ้างคะ",
+    "ขอราคาหน่อยค่ะ",
+    "ขอรายละเอียดแพ็กเกจ",
+    "ราคาเริ่มต้นเท่าไหร่",
+    "สนใจจัดงานบุญ",
+    "อยากดูราคาแพ็กเกจสำหรับงานใหม่ค่ะ",
+    "จัด 50 คนมีแบบไหนบ้าง",
+    "ขอราคา 50 คน",
+  ];
+  for (const t of cases) {
+    assertEquals(classifyBusinessQuestionIntent(t), "generic_discovery", `expected generic_discovery for: ${t}`);
+  }
+});
+
+Deno.test("classifyBusinessQuestionIntent: specific_fact examples", () => {
+  const cases = [
+    "มัดจำกี่เปอร์เซ็นต์คะ",
+    "เพิ่มคนคิดคนละกี่บาท",
+    "ค่าเดินทาง 30 กิโลเท่าไหร่",
+    "โต๊ะเพิ่มตัวละกี่บาทคะ",
+    "ราคานี้รวม VAT หรือยังคะ",
+    "ยกเลิกงานคืนเงินไหมคะ",
+    "พนักงานเพิ่มคนละเท่าไหร่",
+    "ค่าส่งต่างจังหวัดคิดเท่าไหร่",
+  ];
+  for (const t of cases) {
+    assertEquals(classifyBusinessQuestionIntent(t), "specific_fact", `expected specific_fact for: ${t}`);
+  }
+});
+
+Deno.test("classifyBusinessQuestionIntent: non-business", () => {
+  assertEquals(classifyBusinessQuestionIntent("สวัสดีค่ะ"), "non_business");
+  assertEquals(classifyBusinessQuestionIntent(""), "non_business");
+  assertEquals(classifyBusinessQuestionIntent(null as any), "non_business");
+});
+
+Deno.test("Phase 3.2 — generic discovery + answer_from_source with ghost id → keep (NOT handoff)", () => {
+  const r = resolveBusinessDataHandoff({
+    rawParsed: {
+      business_data_decision: "answer_from_source",
+      business_data_category: "pricing",
+      business_data_source_ids: ["ghost-1"],
+    },
+    retrievedSources: [KB_ADDON_FOOD],
+    messageText: "ขอดูราคาแพ็คเกจหน่อยค่ะ",
+  });
+  assertEquals(r.action, "keep");
+  assertEquals(r.reason, "generic_discovery_keep");
+  assertEquals(r.intent, "generic_discovery");
+});
+
+Deno.test("Phase 3.2 — generic discovery + invalid schema → keep", () => {
+  const r = resolveBusinessDataHandoff({
+    rawParsed: { answer: "..." },
+    retrievedSources: [KB_ADDON_FOOD],
+    messageText: "มีแพ็กเกจอะไรบ้างคะ",
+  });
+  assertEquals(r.action, "keep");
+  assertEquals(r.reason, "generic_discovery_keep");
+});
+
+Deno.test("Phase 3.2 — generic discovery + model says handoff_missing_source → keep (downgraded)", () => {
+  const r = resolveBusinessDataHandoff({
+    rawParsed: { business_data_decision: "handoff_missing_source" },
+    retrievedSources: [KB_ADDON_FOOD],
+    messageText: "ขอราคาแพ็กเกจหน่อยค่ะ",
+  });
+  assertEquals(r.action, "keep");
+  assertEquals(r.reason, "generic_discovery_keep");
+});
+
+Deno.test("Phase 3.2 — specific_fact without trusted source → still handoff", () => {
+  const r = resolveBusinessDataHandoff({
+    rawParsed: {
+      business_data_decision: "answer_from_source",
+      business_data_source_ids: [],
+    },
+    retrievedSources: [KB_ADDON_FOOD],
+    messageText: "โต๊ะเพิ่มตัวละกี่บาทคะ",
+  });
+  assertEquals(r.action, "handoff");
+  assertEquals(r.reason, "handoff_source_mismatch");
+  assertEquals(r.intent, "specific_fact");
+});
+
+Deno.test("Phase 3.2 — specific_fact + wrong-topic source → handoff_source_topic_mismatch", () => {
+  const r = resolveBusinessDataHandoff({
+    rawParsed: {
+      business_data_decision: "answer_from_source",
+      business_data_source_ids: ["kb-addon-food"],
+    },
+    retrievedSources: [KB_ADDON_FOOD],
+    messageText: "ยกเลิกงานคืนเงินไหมคะ",
+  });
+  assertEquals(r.action, "handoff");
+  assertEquals(r.reason, "handoff_source_topic_mismatch");
+});
