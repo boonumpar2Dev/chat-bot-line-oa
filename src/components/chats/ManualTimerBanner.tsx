@@ -1,7 +1,25 @@
 import { useEffect, useState } from "react";
-import { Timer, Zap, Loader2 } from "lucide-react";
+import { Timer, Zap, Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const HANDOFF_REASON_LABEL: Record<string, string> = {
+  handoff_missing_source: "ไม่มีข้อมูลอ้างอิงใน KB",
+  handoff_conflicting_source: "ข้อมูล KB ขัดกัน",
+  handoff_source_mismatch: "ข้อมูลอ้างอิงไม่ตรง KB ที่ค้นได้",
+  handoff_invalid_schema: "AI ตอบไม่ตรงรูปแบบ",
+};
+const HANDOFF_CATEGORY_LABEL: Record<string, string> = {
+  pricing: "ราคา",
+  addon: "ค่าเพิ่มเมนู",
+  service_fee: "ค่าบริการ",
+  discount: "ส่วนลด",
+  promotion: "โปรโมชั่น",
+  min_order: "ขั้นต่ำ",
+  delivery_fee: "ค่าขนส่ง",
+  package_condition: "เงื่อนไขแพ็กเกจ",
+  none: "-",
+};
 
 export default function ManualTimerBanner({ customer, onUpdate }: { customer: any; onUpdate: (c: any) => void }) {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
