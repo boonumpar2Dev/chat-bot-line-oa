@@ -700,6 +700,8 @@ export default function Chats() {
   const restoredRoomRef = useRef<string | null>(null);
   const lastMsgIdRef = useRef<string | null>(null);
   const wasNearBottomRef = useRef<boolean>(true);
+  // true = admin เพิ่งกด "ส่ง" → บังคับเลื่อนลงล่างสุดในรอบ effect ถัดไป (กันเคยส์คีย์บอร์ดมือถือทำให้ wasNearBottomRef=false)
+  const forceScrollBottomRef = useRef<boolean>(false);
   // true เฉพาะ render แรกหลัง mount → ใช้แยก "กลับมาจากหน้าอื่น" ออกจาก "สลับห้องระหว่างอยู่หน้า Chats"
   const justMountedRef = useRef<boolean>(true);
   useEffect(() => {
@@ -767,8 +769,28 @@ export default function Chats() {
         }
       });
     } else if (hasNewMessage) {
-      // มีข้อความใหม่จริง ๆ ในห้องเดิม → เลื่อนลงเฉพาะกรณีที่ผู้ใช้อยู่ใกล้ล่าง "ก่อน" ข้อความนี้เข้ามา
-      if (wasNearBottomRef.current) {
+      // แอดมินเพิ่งกดส่งเอง → บังคับเลื่อนลงล่างสุด + รอ layout stabilize (banner Manual Chat อาจโผล่ตาม)
+      if (forceScrollBottomRef.current) {
+        forceScrollBottomRef.current = false;
+        wasNearBottomRef.current = true;
+        if (selectedId) chatScrollPositions.delete(selectedId);
+        requestAnimationFrame(() => {
+          scrollToBottom("smooth");
+          timers = [50, 150, 350, 700, 1200].map(ms =>
+            setTimeout(() => scrollToBottom("auto"), ms)
+          );
+          const content = viewport.firstElementChild as HTMLElement | null;
+          if (content && typeof ResizeObserver !== "undefined") {
+            observer = new ResizeObserver(() => scrollToBottom("auto"));
+            observer.observe(content);
+            stopTimer = setTimeout(() => {
+              observer?.disconnect();
+              observer = null;
+            }, 3000);
+          }
+        });
+      } else if (wasNearBottomRef.current) {
+        // มีข้อความใหม่จริง ๆ ในห้องเดิม → เลื่อนลงเฉพาะกรณีที่ผู้ใช้อยู่ใกล้ล่าง "ก่อน" ข้อความนี้เข้ามา
         requestAnimationFrame(() => scrollToBottom("smooth"));
       } else {
         // อยู่ข้างบนกำลังอ่าน → คงตำแหน่งเดิม (กัน layout shift จาก message ใหม่ดึง scrollTop)
@@ -1048,6 +1070,8 @@ export default function Chats() {
         },
       });
       if (error) throw error;
+      // แอดมินส่งเอง → บังคับ effect รอบถัดไปให้เลื่อนลงล่างสุด (กันเคย์บอร์ดมือถือทำ wasNearBottomRef=false)
+      forceScrollBottomRef.current = true;
       // แอดมินตอบแล้ว → เคลียร์ unread + admin_unseen + อัปเดต admin_seen_at เพื่อปลด badge ทั้งหมด
       markCustomerSeen(selected.id);
       setReply("");
