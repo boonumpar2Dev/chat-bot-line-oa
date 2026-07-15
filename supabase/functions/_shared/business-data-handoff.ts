@@ -177,7 +177,43 @@ export type HandoffReason =
   | "handoff_conflicting_source"
   | "handoff_source_mismatch"
   | "handoff_source_topic_mismatch"
-  | "handoff_invalid_schema";
+  | "handoff_invalid_schema"
+  | "generic_discovery_keep";
+
+// Phase 3.2 — Business question intent classifier.
+// Used to gate source-validation handoffs so generic discovery questions
+// ("ขอดูราคาแพ็กเกจหน่อยค่ะ") never fall into the strict source-mismatch path.
+export type BusinessQuestionIntent =
+  | "generic_discovery"
+  | "specific_fact"
+  | "non_business";
+
+// Markers that indicate the customer is asking for a specific verifiable fact
+// (price per unit, percentage, policy/VAT/deposit/refund/cancel, distance fee).
+// If ANY marker matches → specific_fact. Otherwise a business-keyword question
+// is treated as generic_discovery.
+const SPECIFIC_FACT_PATTERNS: RegExp[] = [
+  // per-unit price wording
+  /คนละ|ตัวละ|โต๊ะละ|หัวละ|ท่านละ|ที่ละ/,
+  /ต่อ(คน|โต๊ะ|หัว|ท่าน|ที่|กิโล|ก\.ม\.|km)/i,
+  // explicit quantifier ("กี่บาท", "กี่%", "กี่เปอร์เซ็นต์", "กี่คน/โต๊ะ")
+  /กี่\s*(บาท|%|เปอร์เซ็นต์|คน|โต๊ะ|ตัว|ท่าน|หัว|กิโล|ก\.ม\.|km)/i,
+  // add-on / extra with quantifier
+  /เพิ่ม[^\n]{0,20}(กี่|เท่าไหร่|เท่าไร|ราคา)/,
+  // policy / accounting words (always specific)
+  /มัดจำ|คืนเงิน|ยกเลิก(งาน|แล้ว|ได้)?|vat|ภาษี|ส่วนลด/i,
+  // delivery / distance fees
+  /(ค่า(ส่ง|ขนส่ง|เดินทาง|รถ)|ระยะทาง)[^\n]{0,20}(เท่าไหร่|เท่าไร|กี่)/,
+];
+
+export function classifyBusinessQuestionIntent(text: string | null | undefined): BusinessQuestionIntent {
+  if (!text) return "non_business";
+  const t = String(text);
+  for (const re of SPECIFIC_FACT_PATTERNS) {
+    if (re.test(t)) return "specific_fact";
+  }
+  return detectBusinessQuestion(text) ? "generic_discovery" : "non_business";
+}
 
 export interface ResolveOutput {
   action: "keep" | "handoff";
@@ -193,6 +229,8 @@ export interface ResolveOutput {
   isBusinessQuestion: boolean;
   /** Categories inferred from the question (server-side, for trace/debug). */
   questionCategories: CatKey[];
+  /** Phase 3.2 — server-side intent classification (drives handoff gating). */
+  intent: BusinessQuestionIntent;
 }
 
 /**
@@ -265,6 +303,8 @@ export function resolveBusinessDataHandoff(input: ResolveInput): ResolveOutput {
       })
     : validatedSourceIds; // no topic check available → treat all validated as matched
 
+  const intent = classifyBusinessQuestionIntent(input.messageText);
+
   const base = {
     decision: (decision ?? "not_applicable") as BusinessDataDecision,
     category,
@@ -275,35 +315,56 @@ export function resolveBusinessDataHandoff(input: ResolveInput): ResolveOutput {
     question,
     isBusinessQuestion,
     questionCategories,
+    intent,
   };
+
+  // Phase 3.2 — Generic discovery / non-business questions MUST NEVER be
+  // force-handoffed by source validation. They flow through the normal reply
+  // pipeline (ProposalGuard, discovery flow, follow-up asks). Source-mismatch,
+  // topic-mismatch, invalid-schema, and heuristic-business overrides only
+  // apply to `specific_fact` intent.
+  const gateHandoff = intent === "specific_fact";
 
   // Invalid / missing decision.
   if (decision === null) {
-    if (isBusinessQuestion) {
+    if (gateHandoff) {
       return { ...base, action: "handoff", reason: "handoff_invalid_schema" };
     }
-    return { ...base, action: "keep", reason: "not_applicable" };
+    return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "not_applicable" };
   }
 
   if (decision === "answer_from_source") {
     // (a) id-level check
     if (modelSourceIds.length === 0 || validatedSourceIds.length === 0) {
-      return { ...base, action: "handoff", reason: "handoff_source_mismatch" };
+      if (gateHandoff) {
+        return { ...base, action: "handoff", reason: "handoff_source_mismatch" };
+      }
+      return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "answer_from_source" };
     }
     // (b) topic-level check — only when we have rich descriptors + question cats
     if (canTopicCheck && topicMatchedSourceIds.length === 0) {
-      return { ...base, action: "handoff", reason: "handoff_source_topic_mismatch" };
+      if (gateHandoff) {
+        return { ...base, action: "handoff", reason: "handoff_source_topic_mismatch" };
+      }
+      return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "answer_from_source" };
     }
     return { ...base, action: "keep", reason: "answer_from_source" };
   }
 
   if (decision === "handoff_missing_source" || decision === "handoff_conflicting_source") {
-    return { ...base, action: "handoff", reason: decision };
+    // Model explicitly requested handoff — respect it ONLY for specific_fact.
+    // Generic discovery: downgrade to keep so the AI answer / discovery flow
+    // is not silenced by a model that over-eagerly asked for handoff on a
+    // generic "ขอดูแพ็กเกจ" question.
+    if (gateHandoff) {
+      return { ...base, action: "handoff", reason: decision };
+    }
+    return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "not_applicable" };
   }
 
   // not_applicable
-  if (isBusinessQuestion) {
+  if (gateHandoff) {
     return { ...base, action: "handoff", reason: "handoff_missing_source" };
   }
-  return { ...base, action: "keep", reason: "not_applicable" };
+  return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "not_applicable" };
 }
