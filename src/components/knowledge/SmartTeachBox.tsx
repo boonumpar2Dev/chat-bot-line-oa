@@ -170,6 +170,26 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
                 </Button>
               </div>
 
+              {it.action === "update" && (it.target_id || typeof it.target_rule_index === "number") && (
+                <div className="mb-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+                      <RefreshCw className="w-3.5 h-3.5" /> อัปเดตของเดิม (ไม่เพิ่มซ้ำ)
+                    </span>
+                    <Button
+                      size="sm" variant="ghost" className="h-6 text-[11px] px-2"
+                      onClick={() => updateItem(idx, { action: "create", target_id: null, target_rule_index: null })}
+                      title="สร้างใหม่แทน"
+                    >
+                      <PlusCircle className="w-3 h-3" /> เพิ่มใหม่แทน
+                    </Button>
+                  </div>
+                  {it.original_snippet && (
+                    <p className="text-muted-foreground line-clamp-2">ของเดิม: {it.original_snippet}</p>
+                  )}
+                </div>
+              )}
+
               {it.reasoning && (
                 <p className="text-xs text-muted-foreground italic mb-2">💡 {it.reasoning}</p>
               )}
