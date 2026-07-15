@@ -48,8 +48,8 @@ Deno.test("Phase 2 flow (policyEnabled=true) — block is injected", () => {
   const { systemPrompt } = buildPrompt({
     ...baseInput,
     policyEnabled: true,
-    lifecycle: "quoted",
-    replyMode: "assist",
+    lifecycle: "pending_confirm",
+    replyMode: "new_customer",
   });
   assertStringIncludes(systemPrompt, MARKER);
   assertStringIncludes(systemPrompt, FALLBACK);
@@ -60,8 +60,8 @@ Deno.test("Legacy and Phase 2 both include the SAME business-data safety text", 
   const phase2 = buildPrompt({
     ...baseInput,
     policyEnabled: true,
-    lifecycle: "quoted",
-    replyMode: "assist",
+    lifecycle: "pending_confirm",
+    replyMode: "new_customer",
   }).systemPrompt;
   const block = buildBusinessDataSafetyBlock();
   assert(legacy.includes(block), "legacy missing shared block");
