@@ -193,6 +193,169 @@ export type Database = {
           },
         ]
       }
+      ai_reply_batch_messages: {
+        Row: {
+          batch_id: string
+          conversation_id: string
+          created_at: string
+          customer_id: string
+          customer_message_at: string
+          id: string
+          line_message_id: string
+          message_text: string
+          sequence_no: number
+        }
+        Insert: {
+          batch_id: string
+          conversation_id: string
+          created_at?: string
+          customer_id: string
+          customer_message_at: string
+          id?: string
+          line_message_id: string
+          message_text: string
+          sequence_no?: number
+        }
+        Update: {
+          batch_id?: string
+          conversation_id?: string
+          created_at?: string
+          customer_id?: string
+          customer_message_at?: string
+          id?: string
+          line_message_id?: string
+          message_text?: string
+          sequence_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_reply_batch_messages_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ai_reply_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_reply_batch_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_reply_batch_messages_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_reply_batches: {
+        Row: {
+          batch_start_at: string
+          batch_version: number
+          cancelled_reason: string | null
+          claim_expires_at: string | null
+          claim_token: string | null
+          claimed_at: string | null
+          created_at: string
+          customer_id: string
+          failed_at: string | null
+          id: string
+          last_customer_message_at: string
+          last_error: string | null
+          latest_line_message_id: string
+          line_push_idempotency_key: string | null
+          line_request_id: string | null
+          line_response_status: number | null
+          processed_at: string | null
+          processing_started_at: string | null
+          push_started_at: string | null
+          reply_after: string
+          reply_conversation_id: string | null
+          reply_payload: Json | null
+          reply_text: string | null
+          retry_count: number
+          sending_started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          batch_start_at: string
+          batch_version?: number
+          cancelled_reason?: string | null
+          claim_expires_at?: string | null
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          customer_id: string
+          failed_at?: string | null
+          id?: string
+          last_customer_message_at: string
+          last_error?: string | null
+          latest_line_message_id: string
+          line_push_idempotency_key?: string | null
+          line_request_id?: string | null
+          line_response_status?: number | null
+          processed_at?: string | null
+          processing_started_at?: string | null
+          push_started_at?: string | null
+          reply_after: string
+          reply_conversation_id?: string | null
+          reply_payload?: Json | null
+          reply_text?: string | null
+          retry_count?: number
+          sending_started_at?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          batch_start_at?: string
+          batch_version?: number
+          cancelled_reason?: string | null
+          claim_expires_at?: string | null
+          claim_token?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          failed_at?: string | null
+          id?: string
+          last_customer_message_at?: string
+          last_error?: string | null
+          latest_line_message_id?: string
+          line_push_idempotency_key?: string | null
+          line_request_id?: string | null
+          line_response_status?: number | null
+          processed_at?: string | null
+          processing_started_at?: string | null
+          push_started_at?: string | null
+          reply_after?: string
+          reply_conversation_id?: string | null
+          reply_payload?: Json | null
+          reply_text?: string | null
+          retry_count?: number
+          sending_started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_reply_batches_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_reply_batches_reply_conversation_id_fkey"
+            columns: ["reply_conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_rollout_reactivation_log: {
         Row: {
           batch_id: string
@@ -298,6 +461,7 @@ export type Database = {
           created_at: string
           customer_pronouns_allowed: string[]
           debounce_seconds: number
+          durable_ai_batching_config: Json
           end_time: string
           fallback_message: string
           fallback_mute_hours: number
@@ -378,6 +542,7 @@ export type Database = {
           created_at?: string
           customer_pronouns_allowed?: string[]
           debounce_seconds?: number
+          durable_ai_batching_config?: Json
           end_time?: string
           fallback_message?: string
           fallback_mute_hours?: number
@@ -458,6 +623,7 @@ export type Database = {
           created_at?: string
           customer_pronouns_allowed?: string[]
           debounce_seconds?: number
+          durable_ai_batching_config?: Json
           end_time?: string
           fallback_message?: string
           fallback_mute_hours?: number
@@ -1424,6 +1590,35 @@ export type Database = {
         Args: { _names: string[]; _strip_from_customers?: boolean }
         Returns: number
       }
+      cancel_batch: {
+        Args: { p_batch_id: string; p_reason: string }
+        Returns: Json
+      }
+      claim_due_batches: {
+        Args: { p_lease_seconds?: number; p_limit?: number }
+        Returns: {
+          batch_id: string
+          batch_version: number
+          claim_token: string
+          customer_id: string
+          latest_line_message_id: string
+          reply_after: string
+        }[]
+      }
+      cleanup_ai_reply_batches: {
+        Args: { p_dry_run?: boolean; p_limit?: number }
+        Returns: Json
+      }
+      complete_batch: {
+        Args: {
+          p_batch_id: string
+          p_claim_token: string
+          p_line_request_id?: string
+          p_line_response_status?: number
+          p_reply_conversation_id?: string
+        }
+        Returns: Json
+      }
       compute_auto_tags:
         | {
             Args: { _cfg: Json; _nickname: string; _status: string }
@@ -1468,6 +1663,14 @@ export type Database = {
           prev_message_at: string
           status: string
         }[]
+      }
+      enqueue_ai_reply_message: {
+        Args: { p_conversation_id: string; p_quiet_window_seconds?: number }
+        Returns: Json
+      }
+      fail_batch: {
+        Args: { p_batch_id: string; p_claim_token: string; p_error: string }
+        Returns: Json
       }
       has_role: {
         Args: {
@@ -1515,6 +1718,36 @@ export type Database = {
       merge_tags: {
         Args: { _source_names: string[]; _target_name: string }
         Returns: number
+      }
+      prepare_batch_sending: {
+        Args: {
+          p_batch_id: string
+          p_claim_token: string
+          p_expected_batch_version: number
+          p_expected_latest_line_message_id: string
+          p_reply_payload?: Json
+          p_reply_text: string
+        }
+        Returns: Json
+      }
+      reclaim_stale_batches: {
+        Args: { p_limit?: number }
+        Returns: {
+          batch_id: string
+          new_version: number
+          prior_version: number
+        }[]
+      }
+      release_or_reschedule_batch: {
+        Args: {
+          p_backoff_seconds?: number
+          p_batch_id: string
+          p_claim_token: string
+          p_expected_batch_version: number
+          p_reason?: string
+          p_retry_increment?: boolean
+        }
+        Returns: Json
       }
       rescan_auto_tags:
         | { Args: never; Returns: number }
