@@ -700,6 +700,8 @@ export default function Chats() {
   const restoredRoomRef = useRef<string | null>(null);
   const lastMsgIdRef = useRef<string | null>(null);
   const wasNearBottomRef = useRef<boolean>(true);
+  // true = admin เพิ่งกด "ส่ง" → บังคับเลื่อนลงล่างสุดในรอบ effect ถัดไป (กันเคยส์คีย์บอร์ดมือถือทำให้ wasNearBottomRef=false)
+  const forceScrollBottomRef = useRef<boolean>(false);
   // true เฉพาะ render แรกหลัง mount → ใช้แยก "กลับมาจากหน้าอื่น" ออกจาก "สลับห้องระหว่างอยู่หน้า Chats"
   const justMountedRef = useRef<boolean>(true);
   useEffect(() => {
