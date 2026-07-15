@@ -14,7 +14,6 @@ import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-custom
 import { resolveExistingCycle, buildExistingCyclePolicyBlock, detectReturningNewCycle, buildReturningNewCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
 import { enforceExistingCyclePolicy } from "../_shared/existing-cycle-post-enforcement.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
-import { resolveBusinessDataHandoff } from "../_shared/business-data-handoff.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
 import {
   classifyDateIntent,
@@ -444,7 +443,7 @@ function parseThaiEventDate(text: string): string | null {
 }
 
 
-async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null; nickname?: string | null }; extra_intent_json?: string; business_data_decision?: string; business_data_category?: string; business_data_source_ids?: string[]; _usage?: any; _model?: string }> {
+async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null; nickname?: string | null }; extra_intent_json?: string; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -477,27 +476,8 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
                 required: ["event_type", "venue", "guest_count", "event_date", "nickname"],
               },
               extra_intent_json: { type: "string", description: 'JSON string of extra intent fields per app_settings.intent_fields whitelist, e.g. {"service_type":"บุฟเฟ่ต์"}. Use "{}" if nothing to add.' },
-              // Phase 3 — Business Data Safety JSON contract (server-validated).
-              business_data_decision: {
-                type: "string",
-                enum: ["answer_from_source", "handoff_missing_source", "handoff_conflicting_source", "not_applicable"],
-                description: "การตัดสินใจของโมเดลว่าคำถามนี้เกี่ยวกับข้อมูลธุรกิจหรือไม่ และมี source ยืนยันหรือไม่",
-              },
-              business_data_category: {
-                type: "string",
-                enum: ["pricing", "addon", "service_fee", "discount", "promotion", "min_order", "delivery_fee", "package_condition", "none"],
-                description: "หมวดของข้อมูลธุรกิจที่คำถามนี้ครอบคลุม — 'none' ถ้าไม่ใช่คำถามข้อมูลธุรกิจ",
-              },
-              business_data_source_ids: {
-                type: "array",
-                items: { type: "string" },
-                description: "id ของ KB/แพ็กเกจ/โปรโมชัน ที่ใช้ตอบจริง (จะถูก validate กับ context server-side — ห้ามแต่ง)",
-              },
             },
-            required: [
-              "answer", "confidence", "image_titles", "confirm_existing_phone", "intent", "extra_intent_json",
-              "business_data_decision", "business_data_category", "business_data_source_ids",
-            ],
+            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent", "extra_intent_json"],
           },
         },
       },
@@ -2186,64 +2166,6 @@ ${pastLines}
 
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   let finalAnswer = answerText;
-
-  // ── Phase 3 — Structured Business Data Handoff (shared: Legacy + Phase 2) ─
-  // Runs BEFORE existing-cycle enforcement so the strongest safety rule wins.
-  // Server-validated: source ids are intersected with the KB/pkg/promo rows
-  // actually placed in this turn's context. Model source ids are never trusted.
-  try {
-    const _retrievedSourceIds: string[] = [
-      ...((filteredKb || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
-      ...((usePkgs || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
-      ...((usePromos || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
-    ];
-    const _bd = resolveBusinessDataHandoff({
-      rawParsed: aiResp,
-      retrievedSourceIds: _retrievedSourceIds,
-      messageText,
-    });
-    console.log(
-      `[BusinessDataHandoff] customer=${customer.id} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} retrieved=${_retrievedSourceIds.length} isBusinessQ=${_bd.isBusinessQuestion}`,
-    );
-    if (_bd.action === "handoff") {
-      // Persist handoff state FIRST. If DB patch fails, do NOT send the
-      // fallback promise — fall back to sendUnableToReply (safe path).
-      const muteH = cfg.manual_chat_hours ?? 360;
-      const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-      const nowIso = new Date().toISOString();
-      const handoffPatch: Record<string, unknown> = {
-        ai_active: false,
-        manual_chat_until: muteUntil,
-        handoff_reason: _bd.reason,
-        handoff_category: _bd.category,
-        handoff_question: _bd.question,
-        handoff_at: nowIso,
-        last_message_at: nowIso,
-        last_message_snippet: `🤝 ${_bd.fallbackText.slice(0, 60)}`,
-      };
-      const { error: _bdErr } = await supabase.from("customers").update(handoffPatch).eq("id", customer.id);
-      if (_bdErr) {
-        console.error("[BusinessDataHandoff] persist failed — using safe fallback:", _bdErr.message);
-        await sendUnableToReply(`business_data_handoff persist failed: ${_bdErr.message}`);
-        return;
-      }
-      await saveAndPushAi(
-        supabase,
-        lineUserId,
-        [{ type: "text", text: _bd.fallbackText }],
-        { customer_id: customer.id, message: _bd.fallbackText, sender: "ai", is_fallback: true, confidence_score: confidence },
-      );
-      console.log(
-        "[BusinessDataHandoff] sent",
-        JSON.stringify({ customer_id: customer.id, reason: _bd.reason, category: _bd.category, mute_hours: muteH }),
-      );
-      return;
-    }
-  } catch (e: any) {
-    console.warn("[BusinessDataHandoff] error (ignored, keeping AI reply):", e?.message);
-  }
-
-
 
   // ── Existing-Cycle Post-AI Enforcement (14/07/2569) ─────────────────
   // Structured atomic handoff: on replace_handoff → persist ai_active=false,
