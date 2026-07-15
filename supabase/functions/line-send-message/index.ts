@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { getLineConfig } from "../_shared/line-config.ts";
 import { resolveAdminPauseMs } from "../_shared/admin-pause.ts";
+import { resolvePhase2Gate } from "../_shared/ai-policy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -112,7 +113,7 @@ Deno.serve(async (req) => {
         }
         return `[${m.type}]`;
       }).join("\n");
-      const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours, ai_policy_config").eq("key", "ai_config").limit(1);
+      const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours, ai_policy_config, advanced_ai_status_policy_enabled").eq("key", "ai_config").limit(1);
       const pauseSettings = cfgArr?.[0] || null;
       const pause = resolveAdminPauseMs(customer_id, pauseSettings, new Date());
       const until = new Date(Date.now() + pause.ms).toISOString();
@@ -137,7 +138,17 @@ Deno.serve(async (req) => {
       const { data: custRow } = await admin.from("customers").select("status").eq("id", customer_id).maybeSingle();
       // Payment 2.9.1 (ext): include `completed` so admin replies to a
       // post-event balance-slip handoff enter the short-pause window too.
-      const isPostQuoteStatus = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning" || custRow?.status === "completed";
+      const rawPostStatus = custRow?.status === "pending_confirm" || custRow?.status === "confirmed" || custRow?.status === "confirmed_returning" || custRow?.status === "completed";
+      // Patch: gate short-pause behavior by Phase2 cohort/rollout. ลูกค้านอก
+      // cohort ต้องกลับไป legacy long-pause + ai_active=false เพื่อไม่ให้ AI
+      // ตอบแทรกหลังแอดมิน (บั๊กที่พบใน controlled test)
+      const phase2Gate = resolvePhase2Gate({
+        customerId: customer_id,
+        settings: (pauseSettings as any) ?? {},
+        now: new Date(),
+      });
+      const isPostQuoteStatus = rawPostStatus && phase2Gate.enabled;
+      console.log(`[AdminPause.Gate] customer=${customer_id} status=${custRow?.status} rawPost=${rawPostStatus} gate.enabled=${phase2Gate.enabled} mode=${phase2Gate.mode} reason=${phase2Gate.reason}`);
 
       const custPatch: Record<string, unknown> = {
         last_message_at: new Date().toISOString(),
