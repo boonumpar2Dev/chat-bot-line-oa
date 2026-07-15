@@ -758,24 +758,10 @@ async function processEvent(event: any, supabase: any) {
   }).eq("id", customer.id);
   await saveVenueIfAny(supabase, customer, event, messageText);
 
-  // ── MenuHandoffTrace / MessagePipelineTrace (diagnostics) ─────────
-  // Emit one trace at entry so controlled tests can pinpoint no-reply cause.
-  // Fires only for text messages from a user source (the AI-reply path).
-  const _menuLike = isText && /(?:เปลี่ยน|เพิ่ม|ลด).{0,15}(?:เมนู|รายการ|อาหาร|ปลา|ไก่|กุ้ง|หมู|เนื้อ)/.test(messageText);
-  console.log(
-    `[MenuHandoffTrace] customer=${customer.id} source=${sourceType} isText=${isText} lineMsgId=${lineMsgId ?? "none"} ai_active=${customer.ai_active !== false} manual_chat_until=${customer.manual_chat_until ?? "null"} admin_bot_override=${customer.admin_bot_override === true} status=${customer.status ?? "?"} menu_intent_like=${_menuLike} text_len=${messageText.length}`,
-  );
-
   // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
-  if (sourceType !== "user") {
-    if (_menuLike) console.log(`[MenuHandoffTrace] return_branch=group_room_skip customer=${customer.id}`);
-    return;
-  }
+  if (sourceType !== "user") return;
 
-  if (!isText) {
-    if (_menuLike) console.log(`[MenuHandoffTrace] return_branch=non_text_skip customer=${customer.id}`);
-    return;
-  }
+  if (!isText) return;
 
 
   // 🕐 Debounce: รอให้ลูกค้าพิมพ์เสร็จก่อนตอบ (กันพิมพ์หลายบรรทัดติดกัน)
@@ -1052,13 +1038,6 @@ async function processEvent(event: any, supabase: any) {
         messageText,
         config: _handoffCfg,
       });
-      // ── AdminHandoffTrace (diagnostics) ────────────────────────────
-      // Emit ONE structured trace line per customer message so controlled
-      // tests can pinpoint reply_source. Contains no PII beyond what other
-      // logs already emit (customer_id, lifecycle, matched pattern).
-      const _replyPreview = _guard.replyText ? _guard.replyText.slice(0, 40) : "";
-      const _cfgHasStandard = typeof _handoffCfg?.reply_standard === "string" && !!_handoffCfg.reply_standard.trim();
-      const _cfgHasVerify = typeof _handoffCfg?.reply_verify === "string" && !!_handoffCfg.reply_verify.trim();
       if (_guard.matched) {
         const muteH = cfg?.fallback_mute_hours ?? 1;
         const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
@@ -1066,11 +1045,6 @@ async function processEvent(event: any, supabase: any) {
           adminBotOverride: freshCustomer?.admin_bot_override,
           reason: "admin_handoff_guard",
         });
-        const _replySource = _cfgHasStandard || _cfgHasVerify ? "runtime_config" : "shared_helper";
-        console.log(
-          `[AdminHandoffTrace] customer=${customer.id} status=${freshCustomer?.status ?? "?"} gate_enabled=${_cohortGate.enabled} guard_matched=true matched_pattern=${_guard.matchedPattern} intent=${_guard.category} reply_source=${_replySource} cfg_reply_standard=${_cfgHasStandard} cfg_reply_verify=${_cfgHasVerify} reply_preview="${_replyPreview}" disableAi=${_decision.disableAi} ai_active_before=${freshCustomer?.ai_active !== false} return_branch=guard_matched`,
-        );
-        const _aiBefore = freshCustomer?.ai_active !== false;
         await saveAndPushAi(
           supabase,
           lineUserId,
@@ -1085,13 +1059,10 @@ async function processEvent(event: any, supabase: any) {
         if (_decision.disableAi) patch.ai_active = false;
         await supabase.from("customers").update(patch).eq("id", customer.id);
         console.log(
-          `[AdminHandoffGuard] matched customer=${customer.id} cohort=${_cohortGate.mode} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi} ai_active_before=${_aiBefore} ai_active_after=${_decision.disableAi ? false : _aiBefore}`,
+          `[AdminHandoffGuard] matched customer=${customer.id} cohort=${_cohortGate.mode} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi}`,
         );
         return;
       }
-      console.log(
-        `[AdminHandoffTrace] customer=${customer.id} status=${freshCustomer?.status ?? "?"} gate_enabled=true guard_matched=false skip_reason=${_guard.reason} return_branch=continue`,
-      );
       console.log(`[AdminHandoffGuard] in-cohort skip status=${freshCustomer?.status ?? "?"} reason=${_guard.reason}`);
     }
   } catch (e: any) {
@@ -2221,42 +2192,22 @@ ${pastLines}
   // Server-validated: source ids are intersected with the KB/pkg/promo rows
   // actually placed in this turn's context. Model source ids are never trusted.
   try {
-    const _sourceText = (r: any): string => {
-      const parts: string[] = [];
-      if (r?.title) parts.push(String(r.title));
-      if (r?.name) parts.push(String(r.name));
-      if (r?.content) parts.push(String(r.content));
-      if (r?.description) parts.push(String(r.description));
-      if (r?.details) parts.push(String(r.details));
-      if (Array.isArray(r?.tags)) parts.push(r.tags.join(" "));
-      if (r?.category) parts.push(String(r.category));
-      return parts.join(" \n ");
-    };
-    const _retrievedSources = [
-      ...((filteredKb || []) as any[]).map((r) => ({ id: String(r?.id || ""), text: _sourceText(r) })),
-      ...((usePkgs || []) as any[]).map((r) => ({ id: String(r?.id || ""), text: _sourceText(r) })),
-      ...((usePromos || []) as any[]).map((r) => ({ id: String(r?.id || ""), text: _sourceText(r) })),
-    ].filter((s) => s.id);
-    const _retrievedSourceIds: string[] = _retrievedSources.map((s) => s.id);
+    const _retrievedSourceIds: string[] = [
+      ...((filteredKb || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
+      ...((usePkgs || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
+      ...((usePromos || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
+    ];
     const _bd = resolveBusinessDataHandoff({
       rawParsed: aiResp,
-      retrievedSources: _retrievedSources,
+      retrievedSourceIds: _retrievedSourceIds,
       messageText,
     });
     console.log(
-      `[BusinessDataHandoff] customer=${customer.id} intent=${_bd.intent} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} topicMatched=${_bd.topicMatchedSourceIds.length} retrieved=${_retrievedSourceIds.length} qCats=${_bd.questionCategories.join("|")} isBusinessQ=${_bd.isBusinessQuestion}`,
+      `[BusinessDataHandoff] customer=${customer.id} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} retrieved=${_retrievedSourceIds.length} isBusinessQ=${_bd.isBusinessQuestion}`,
     );
     if (_bd.action === "handoff") {
       // Persist handoff state FIRST. If DB patch fails, do NOT send the
       // fallback promise — fall back to sendUnableToReply (safe path).
-      //
-      // Phase 3 Safety Exception (Force Disable):
-      // This patch intentionally sets ai_active=false EVEN IF admin_bot_override=true.
-      // Business-data safety handoff is a temporary safety measure (360h auto-resume
-      // via expire-manual-chat) — not a permanent disable. We do NOT touch
-      // admin_bot_override, so after auto-resume the admin's original stance is
-      // preserved. Permanent Admin Disable semantics (manual_chat_until=NULL,
-      // admin_bot_override=false) are untouched by this path.
       const muteH = cfg.manual_chat_hours ?? 360;
       const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
       const nowIso = new Date().toISOString();

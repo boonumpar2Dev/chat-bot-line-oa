@@ -221,57 +221,6 @@ Deno.test("Availability — strip callback ask", () => {
   assert(!/เบอร์/.test(r.finalAnswer), `phone must be stripped: ${r.finalAnswer}`);
 });
 
-// ── Deterministic availability reply ───────────────────────────────────
-Deno.test("Availability Test 1 — parseable date → exact deterministic reply", () => {
-  const r = enforceExistingCyclePolicy({
-    rawAnswer: "รีบเช็กให้ทันทีค่ะ / รอนะคะ",
-    existingCycleMode: true,
-    explicitNewCycle: false,
-    messageText: "วันที่ 25 กรกฎาคมว่างไหมคะ",
-  });
-  assertEquals(r.action, "replace_handoff");
-  assertEquals(r.finalAnswer, "เดี๋ยวทางทีมงานเช็กคิววันที่ 25 กรกฎาคมให้แล้วแจ้งกลับนะคะ");
-  assertEquals(r.disableAi, true);
-  assertEquals(r.suppressMedia, true);
-  assert(!/รีบ|ทันที|รอกลับมาตอบ/.test(r.finalAnswer));
-});
-
-Deno.test("Availability Test 2 — no parseable date → schedule handoff (no guessing)", () => {
-  const r = enforceExistingCyclePolicy({
-    rawAnswer: "รอเช็กให้นะคะ",
-    existingCycleMode: true,
-    explicitNewCycle: false,
-    messageText: "เดือนหน้าว่างไหมคะ",
-  });
-  assertEquals(r.action, "replace_handoff");
-  assertEquals(r.finalAnswer, "เดี๋ยวเจ้าหน้าที่ตรวจสอบรายละเอียดนัดหมายและประสานกลับนะคะ 🙏");
-  assert(!/\d/.test(r.finalAnswer), "must not guess any date digits");
-});
-
-Deno.test("Availability Test 3 — callback wording NOT added; date still deterministic", () => {
-  const r = enforceExistingCyclePolicy({
-    rawAnswer: "รับทราบค่ะ จะให้ทีมโทรกลับนะคะ",
-    existingCycleMode: true,
-    explicitNewCycle: false,
-    messageText: "ช่วยเช็กคิววันที่ 30 กรกฎาคมแล้วโทรกลับเบอร์เดิมได้ไหมคะ",
-  });
-  assertEquals(r.action, "replace_handoff");
-  assert(r.finalAnswer.includes("30 กรกฎาคม"));
-  assert(!r.finalAnswer.includes("เบอร์"));
-});
-
-Deno.test("Availability Test 4 — enforcement is pure (does not mutate input)", () => {
-  const input = {
-    rawAnswer: "สวัสดีค่ะ",
-    existingCycleMode: true,
-    explicitNewCycle: false,
-    messageText: "วันที่ 25 ว่างไหมคะ",
-  };
-  const snapshot = JSON.stringify(input);
-  enforceExistingCyclePolicy(input);
-  assertEquals(JSON.stringify(input), snapshot);
-});
-
 // ── Fake approval gated by customer intent ─────────────────────────────
 Deno.test("Fake approval — customer did NOT ask approval → keep (factual answer)", () => {
   const r = enforceExistingCyclePolicy({

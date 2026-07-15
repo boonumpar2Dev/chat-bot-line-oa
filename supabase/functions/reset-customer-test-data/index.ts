@@ -75,12 +75,8 @@ Deno.serve(async (req) => {
 
     const results: Record<string, any> = {};
 
-    // DELETE dependent rows — order matters: children before parents where cascade is not guaranteed.
-    // ai_reply_batch_messages FK → ai_reply_batches (ON DELETE CASCADE handles it) but we delete
-    // explicitly first so audit summary reports both counts separately.
+    // DELETE dependent rows
     const deletes = [
-      "ai_reply_batch_messages",
-      "ai_reply_batches",
       "conversations",
       "customer_events",
       "customer_status_log",
