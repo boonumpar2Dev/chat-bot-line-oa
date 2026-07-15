@@ -237,7 +237,7 @@ Deno.test("Case D — promotion question, model cites food KB → handoff", () =
       business_data_source_ids: ["kb-addon-food"],
     },
     retrievedSources: [KB_ADDON_FOOD],
-    messageText: "มีโปรโมชั่นอะไรบ้างคะ",
+    messageText: "โปรโมชั่นลดกี่เปอร์เซ็นต์คะ",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_source_topic_mismatch");
