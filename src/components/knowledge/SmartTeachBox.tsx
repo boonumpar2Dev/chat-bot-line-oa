@@ -243,8 +243,8 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
                   <X className="w-3.5 h-3.5" /> ทิ้ง
                 </Button>
                 <Button size="sm" onClick={() => saveItem(idx)} disabled={savingIdx === idx}>
-                  {savingIdx === idx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  บันทึก
+                  {savingIdx === idx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : it.action === "update" ? <RefreshCw className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                  {it.action === "update" ? "อัปเดตของเดิม" : "บันทึกใหม่"}
                 </Button>
               </div>
             </Card>
