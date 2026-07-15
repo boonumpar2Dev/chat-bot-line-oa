@@ -60,24 +60,27 @@ Deno.serve(async (req) => {
     const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const [{ data: cfg }, { data: kb }, { data: cats }] = await Promise.all([
       sb.from("app_settings").select("strict_rules").eq("key", "ai_config").maybeSingle(),
-      sb.from("knowledge_base").select("title").limit(200),
+      sb.from("knowledge_base").select("id, title, content, category").eq("status", "active").limit(300),
       sb.from("knowledge_categories").select("name").order("sort_order"),
     ]);
+
+    const rulesList = (cfg?.strict_rules || []) as string[];
+    const kbList = (kb || []) as Array<{ id: string; title: string; content: string; category: string | null }>;
 
     const userPrompt = `ข้อความจากผู้ใช้:
 """
 ${text.trim()}
 """
 
-existing_rules (${(cfg?.strict_rules || []).length} ข้อ):
-${(cfg?.strict_rules || []).map((r: string, i: number) => `${i + 1}. ${r}`).join("\n") || "(ไม่มี)"}
+existing_rules (${rulesList.length} ข้อ — เลข index เริ่ม 0):
+${rulesList.map((r, i) => `[${i}] ${r}`).join("\n") || "(ไม่มี)"}
 
-existing_kb_titles:
-${(kb || []).map((k: any) => `- ${k.title}`).join("\n") || "(ไม่มี)"}
+existing_knowledge (${kbList.length} รายการ):
+${kbList.map((k) => `- id=${k.id} | title="${k.title}" | cat=${k.category || "-"} | content: ${(k.content || "").slice(0, 200).replace(/\n/g, " ")}`).join("\n") || "(ไม่มี)"}
 
 existing_categories: ${(cats || []).map((c: any) => c.name).join(", ") || "(ไม่มี)"}
 
-วิเคราะห์และตอบ JSON ตามฟอร์แมต`;
+เช็ก existing ทุกครั้งก่อนตัดสิน action วิเคราะห์และตอบ JSON ตามฟอร์แมต`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
