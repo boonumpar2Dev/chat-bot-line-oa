@@ -1038,6 +1038,13 @@ async function processEvent(event: any, supabase: any) {
         messageText,
         config: _handoffCfg,
       });
+      // ── AdminHandoffTrace (diagnostics) ────────────────────────────
+      // Emit ONE structured trace line per customer message so controlled
+      // tests can pinpoint reply_source. Contains no PII beyond what other
+      // logs already emit (customer_id, lifecycle, matched pattern).
+      const _replyPreview = _guard.replyText ? _guard.replyText.slice(0, 40) : "";
+      const _cfgHasStandard = typeof _handoffCfg?.reply_standard === "string" && !!_handoffCfg.reply_standard.trim();
+      const _cfgHasVerify = typeof _handoffCfg?.reply_verify === "string" && !!_handoffCfg.reply_verify.trim();
       if (_guard.matched) {
         const muteH = cfg?.fallback_mute_hours ?? 1;
         const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
@@ -1045,6 +1052,11 @@ async function processEvent(event: any, supabase: any) {
           adminBotOverride: freshCustomer?.admin_bot_override,
           reason: "admin_handoff_guard",
         });
+        const _replySource = _cfgHasStandard || _cfgHasVerify ? "runtime_config" : "shared_helper";
+        console.log(
+          `[AdminHandoffTrace] customer=${customer.id} status=${freshCustomer?.status ?? "?"} gate_enabled=${_cohortGate.enabled} guard_matched=true matched_pattern=${_guard.matchedPattern} intent=${_guard.category} reply_source=${_replySource} cfg_reply_standard=${_cfgHasStandard} cfg_reply_verify=${_cfgHasVerify} reply_preview="${_replyPreview}" disableAi=${_decision.disableAi} ai_active_before=${freshCustomer?.ai_active !== false} return_branch=guard_matched`,
+        );
+        const _aiBefore = freshCustomer?.ai_active !== false;
         await saveAndPushAi(
           supabase,
           lineUserId,
@@ -1059,10 +1071,13 @@ async function processEvent(event: any, supabase: any) {
         if (_decision.disableAi) patch.ai_active = false;
         await supabase.from("customers").update(patch).eq("id", customer.id);
         console.log(
-          `[AdminHandoffGuard] matched customer=${customer.id} cohort=${_cohortGate.mode} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi}`,
+          `[AdminHandoffGuard] matched customer=${customer.id} cohort=${_cohortGate.mode} status=${freshCustomer?.status ?? "?"} category=${_guard.category} pattern=${_guard.matchedPattern} override=${freshCustomer?.admin_bot_override === true} disableAi=${_decision.disableAi} ai_active_before=${_aiBefore} ai_active_after=${_decision.disableAi ? false : _aiBefore}`,
         );
         return;
       }
+      console.log(
+        `[AdminHandoffTrace] customer=${customer.id} status=${freshCustomer?.status ?? "?"} gate_enabled=true guard_matched=false skip_reason=${_guard.reason} return_branch=continue`,
+      );
       console.log(`[AdminHandoffGuard] in-cohort skip status=${freshCustomer?.status ?? "?"} reason=${_guard.reason}`);
     }
   } catch (e: any) {
