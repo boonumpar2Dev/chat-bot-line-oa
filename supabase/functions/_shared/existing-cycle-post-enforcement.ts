@@ -123,6 +123,43 @@ export function enforceExistingCyclePolicy(
   const replyIntent = pickExistingCycleReplyIntent(msg);
   const handoff = EXISTING_CYCLE_REPLIES[replyIntent];
 
+  // ── Deterministic focused availability reply ───────────────────────
+  // Condition: availability/schedule-check intent + parseable Thai date in
+  // the customer message. There is no server-side "verified availability"
+  // result yet, so the AI must NOT free-form. Emit exactly:
+  //   "เดี๋ยวทางทีมงานเช็กคิววันที่ {DD เดือน} ให้แล้วแจ้งกลับนะคะ"
+  // If a date is NOT parseable → fall back to schedule handoff wording
+  // and DO NOT guess a day.
+  if (AVAILABILITY_INTENT_RE.test(msg)) {
+    const cands = parseThaiDateCandidates(msg);
+    // Only use the FIRST candidate; refuse if none parseable.
+    if (cands.length >= 1 && cands[0].day && cands[0].month) {
+      const dateStr = formatThaiDateShort(cands[0].day, cands[0].month);
+      if (dateStr) {
+        const deterministic = `เดี๋ยวทางทีมงานเช็กคิววันที่ ${dateStr}ให้แล้วแจ้งกลับนะคะ`;
+        return {
+          action: "replace_handoff",
+          finalAnswer: deterministic,
+          replyIntent: "schedule",
+          reasons: ["deterministic_availability_reply"],
+          disableAi: true,
+          suppressMedia: true,
+          handoffReason: "availability_check_pending",
+        };
+      }
+    }
+    // Availability intent without parseable date → deterministic schedule handoff.
+    return {
+      action: "replace_handoff",
+      finalAnswer: EXISTING_CYCLE_REPLIES.schedule,
+      replyIntent: "schedule",
+      reasons: ["availability_no_parseable_date"],
+      disableAi: true,
+      suppressMedia: true,
+      handoffReason: "availability_check_pending",
+    };
+  }
+
   // Approval-intent gate: only treat "ambiguous approval" as fake when customer asked
   // an approval/change/confirmation question. Fake-completion phrases ("เรียบร้อยแล้ว")
   // always trip regardless of customer intent (they claim an action was taken).
