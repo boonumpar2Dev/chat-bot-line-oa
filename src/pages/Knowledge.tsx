@@ -496,6 +496,7 @@ function KnowledgeBaseTab() {
   const [saving, setSaving] = useState(false);
   const [edit, setEdit] = useState<KB>(blankKB);
   const [filterCat, setFilterCat] = useState<string>("__all");
+  const [search, setSearch] = useState<string>("");
   const [newCatOpen, setNewCatOpen] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [alertOpen, setAlertOpen] = useState(false);
