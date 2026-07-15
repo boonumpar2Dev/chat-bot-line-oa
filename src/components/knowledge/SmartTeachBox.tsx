@@ -8,14 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, BookOpen, Shield, ArrowLeftRight, Check, X, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, BookOpen, Shield, ArrowLeftRight, Check, X, AlertTriangle, RefreshCw, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type ClassifiedItem = {
+  action?: "create" | "update";
   type: "rule" | "knowledge";
   content: string;
   title?: string;
   category?: string;
+  target_id?: string | null;
+  target_rule_index?: number | null;
+  original_snippet?: string;
   reasoning?: string;
   similar?: { type: string; snippet: string }[];
 };
