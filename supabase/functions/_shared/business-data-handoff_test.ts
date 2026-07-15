@@ -30,7 +30,7 @@ Deno.test("missing decision field + business question → handoff (invalid_schem
   const r = resolveBusinessDataHandoff({
     rawParsed: { answer: "..." },
     retrievedSourceIds: KB,
-    messageText: "ราคาเท่าไหร่คะ",
+    messageText: "ราคาโต๊ะจีนต่อโต๊ะเท่าไหร่คะ",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_invalid_schema");
@@ -50,7 +50,7 @@ Deno.test("answer_from_source + empty source_ids → handoff (source_mismatch)",
   const r = resolveBusinessDataHandoff({
     rawParsed: { business_data_decision: "answer_from_source", business_data_source_ids: [] },
     retrievedSourceIds: KB,
-    messageText: "ราคาโต๊ะจีนเท่าไหร่",
+    messageText: "ราคาโต๊ะจีนต่อโต๊ะเท่าไหร่",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_source_mismatch");
@@ -60,7 +60,7 @@ Deno.test("answer_from_source + all ids NOT in retrieved → handoff", () => {
   const r = resolveBusinessDataHandoff({
     rawParsed: { business_data_decision: "answer_from_source", business_data_source_ids: ["ghost-1", "ghost-2"] },
     retrievedSourceIds: KB,
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_source_mismatch");
@@ -75,7 +75,7 @@ Deno.test("answer_from_source + ids ⊂ retrieved → keep", () => {
       business_data_source_ids: ["kb-1", "pkg-1"],
     },
     retrievedSourceIds: KB,
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   });
   assertEquals(r.action, "keep");
   assertEquals(r.reason, "answer_from_source");
@@ -97,7 +97,7 @@ Deno.test("handoff_conflicting_source from model → handoff", () => {
   const r = resolveBusinessDataHandoff({
     rawParsed: { business_data_decision: "handoff_conflicting_source" },
     retrievedSourceIds: KB,
-    messageText: "ราคา",
+    messageText: "มัดจำกี่เปอร์เซ็นต์",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_conflicting_source");
@@ -127,7 +127,7 @@ Deno.test("invalid decision value + business question → handoff", () => {
   const r = resolveBusinessDataHandoff({
     rawParsed: { business_data_decision: "totally-bogus" },
     retrievedSourceIds: KB,
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_invalid_schema");
@@ -152,7 +152,7 @@ Deno.test("source_ids array with garbage entries — only clean strings kept", (
       business_data_source_ids: ["kb-1", 42, null, "", "  ", "pkg-1"],
     },
     retrievedSourceIds: KB,
-    messageText: "ราคา",
+    messageText: "มัดจำกี่เปอร์เซ็นต์",
   });
   assertEquals(r.modelSourceIds, ["kb-1", "pkg-1"]);
   assertEquals(r.action, "keep");
@@ -166,7 +166,7 @@ Deno.test("Legacy + Phase 2 parity: same input → identical output (determinist
       business_data_source_ids: ["kb-1"],
     },
     retrievedSourceIds: KB,
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   } as const;
   const a = resolveBusinessDataHandoff(input);
   const b = resolveBusinessDataHandoff(input);
@@ -277,7 +277,7 @@ Deno.test("Case G — real ghost id (not in retrieved) → handoff_source_mismat
       business_data_source_ids: ["kb-ghost"],
     },
     retrievedSources: [KB_ADDON_FOOD],
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   });
   assertEquals(r.action, "handoff");
   assertEquals(r.reason, "handoff_source_mismatch");
@@ -369,7 +369,7 @@ Deno.test("Legacy parity — id-only input preserves prior behavior for pricing-
       business_data_source_ids: ["kb-1"],
     },
     retrievedSourceIds: ["kb-1"],
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   });
   assertEquals(a.action, "keep");
 
@@ -379,7 +379,7 @@ Deno.test("Legacy parity — id-only input preserves prior behavior for pricing-
       business_data_source_ids: ["kb-1"],
     },
     retrievedSources: [{ id: "kb-1", text: "" }],
-    messageText: "ราคาเท่าไหร่",
+    messageText: "ราคาต่อโต๊ะเท่าไหร่",
   });
   assertEquals(b.action, "keep");
 });
