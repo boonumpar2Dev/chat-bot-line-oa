@@ -1070,6 +1070,8 @@ export default function Chats() {
         },
       });
       if (error) throw error;
+      // แอดมินส่งเอง → บังคับ effect รอบถัดไปให้เลื่อนลงล่างสุด (กันเคย์บอร์ดมือถือทำ wasNearBottomRef=false)
+      forceScrollBottomRef.current = true;
       // แอดมินตอบแล้ว → เคลียร์ unread + admin_unseen + อัปเดต admin_seen_at เพื่อปลด badge ทั้งหมด
       markCustomerSeen(selected.id);
       setReply("");
