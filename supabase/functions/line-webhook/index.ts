@@ -758,10 +758,24 @@ async function processEvent(event: any, supabase: any) {
   }).eq("id", customer.id);
   await saveVenueIfAny(supabase, customer, event, messageText);
 
-  // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
-  if (sourceType !== "user") return;
+  // ── MenuHandoffTrace / MessagePipelineTrace (diagnostics) ─────────
+  // Emit one trace at entry so controlled tests can pinpoint no-reply cause.
+  // Fires only for text messages from a user source (the AI-reply path).
+  const _menuLike = isText && /(?:เปลี่ยน|เพิ่ม|ลด).{0,15}(?:เมนู|รายการ|อาหาร|ปลา|ไก่|กุ้ง|หมู|เนื้อ)/.test(messageText);
+  console.log(
+    `[MenuHandoffTrace] customer=${customer.id} source=${sourceType} isText=${isText} lineMsgId=${lineMsgId ?? "none"} ai_active=${customer.ai_active !== false} manual_chat_until=${customer.manual_chat_until ?? "null"} admin_bot_override=${customer.admin_bot_override === true} status=${customer.status ?? "?"} menu_intent_like=${_menuLike} text_len=${messageText.length}`,
+  );
 
-  if (!isText) return;
+  // 🚫 Group/Room: ไม่ให้ AI ตอบเด็ดขาด — เก็บข้อความให้แอดมินอ่าน/ตอบเองในหน้า /chats
+  if (sourceType !== "user") {
+    if (_menuLike) console.log(`[MenuHandoffTrace] return_branch=group_room_skip customer=${customer.id}`);
+    return;
+  }
+
+  if (!isText) {
+    if (_menuLike) console.log(`[MenuHandoffTrace] return_branch=non_text_skip customer=${customer.id}`);
+    return;
+  }
 
 
   // 🕐 Debounce: รอให้ลูกค้าพิมพ์เสร็จก่อนตอบ (กันพิมพ์หลายบรรทัดติดกัน)
