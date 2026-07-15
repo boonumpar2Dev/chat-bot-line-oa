@@ -614,25 +614,42 @@ export function buildBusinessDataSafetyBlock(): string {
 - ข้อมูลตัวเลข/เงื่อนไขใด ๆ ที่ต้องอ้างอิงจาก KB หรือ structured data (catering_packages, promotions, pricing_tiers, quality_levels)
 
 ขั้นตอนก่อนตอบทุกครั้งที่คำถามแตะหัวข้อข้างต้น:
-1) ตรวจว่ามี source ตรงประเด็นใน KB / แคตตาล็อกแพ็กเกจ / โปรโมชัน / โน้ตเฉพาะลูกค้า หรือไม่
-   — "source ตรงประเด็น" = ระบุตัวเลข/เงื่อนไขที่ตอบคำถามได้โดยตรง ไม่ใช่แค่หัวข้อใกล้เคียง
-2) ถ้ามี source → ตอบตาม source ตรงตัวอักษร ห้ามปัดเศษ ห้ามประมาณ ห้ามคำนวณเพิ่มเอง
-3) ถ้าไม่มี source (หรือมีแต่ไม่ตอบคำถามนี้โดยตรง):
+1) ตรวจว่ามี source **ตรงหัวข้อคำถามโดยตรง** ใน KB / แคตตาล็อกแพ็กเกจ / โปรโมชัน / โน้ตเฉพาะลูกค้า หรือไม่
+   — "ตรงหัวข้อ" = source นั้นระบุตัวเลข/เงื่อนไขของ**สิ่งที่ลูกค้าถามถึงจริง ๆ** ไม่ใช่แค่บริการอื่นในบริบทเดียวกัน
+   — การที่ source อยู่ใน context ที่ระบบส่งให้ **ไม่ได้แปลว่า**ใช้ตอบคำถามนี้ได้
+   — ห้ามอ้าง source คนละบริการ / คนละหมวดค่าใช้จ่าย / คนละประเภทค่าสินค้า
+2) ถ้ามี source ตรงหัวข้อ → ตอบตาม source ตรงตัวอักษร ห้ามปัดเศษ ห้ามประมาณ ห้ามคำนวณเพิ่มเอง → ตั้ง business_data_decision="answer_from_source"
+3) ถ้าไม่มี source ตรงหัวข้อ (หรือมี source ใกล้เคียงแต่ไม่ตอบคำถามนี้โดยตรง):
+   - **ห้าม**ตั้ง business_data_decision="answer_from_source" เด็ดขาด
+   - ให้ตั้ง business_data_decision="handoff_missing_source" แทน
    - ห้ามสร้างตัวเลข ห้ามเดา ห้ามอนุมานจากรายการอื่น
    - ห้ามใช้ความรู้ทั่วไปของโมเดล / ราคาตลาด / ค่าเฉลี่ยอุตสาหกรรม
    - ห้ามพูดว่า "ประมาณ" / "น่าจะ" / "ปกติจะ" กับตัวเลขที่ไม่มีใน source
-   - ต้องใช้ fallback wording: "ขออนุญาตเช็กข้อมูลกับแอดมินก่อนนะคะ เดี๋ยวตอบกลับโดยเร็วค่ะ 🙏"
-4) กฎนี้อยู่เหนือทุกกฎอื่น รวมถึง strict_rules ที่อาจสั่งให้ตอบเชิงรุก — เชิงรุกได้เฉพาะเมื่อมี source
+   - ห้ามถามรายละเอียดเพิ่มต่อในคำตอบ (เพราะระบบจะส่งต่อแอดมินแทน)
+   - ใช้ fallback wording: "ขออนุญาตเช็กข้อมูลกับแอดมินก่อนนะคะ เดี๋ยวตอบกลับให้ค่ะ 🙏"
+4) กฎนี้อยู่เหนือทุกกฎอื่น รวมถึง strict_rules ที่อาจสั่งให้ตอบเชิงรุก — เชิงรุกได้เฉพาะเมื่อมี source ตรงหัวข้อ
+
+📌 ตัวอย่างการตัดสิน (สำคัญมาก):
+- ถาม "เพิ่มรายการอาหารคิดเท่าไหร่" + KB "ค่าเพิ่มอาหารคาว 30 บาท/หัว" อยู่ใน context
+  → source ตรงหัวข้อ → answer_from_source, category="addon"
+- ถาม "เพิ่มพนักงานคิดเพิ่มคนละเท่าไหร่" + context มีแค่ KB "ค่าเพิ่มอาหาร"
+  → source **ไม่ตรงหัวข้อ** (คนละหมวด: อาหาร ≠ พนักงาน)
+  → **ห้าม** answer_from_source พร้อมอ้าง KB ราคาอาหาร
+  → ต้องเป็น handoff_missing_source, category="service_fee"
+- ถาม "บริการพิเศษเพิ่มเท่าไหร่" + context มีแค่ KB ราคาอาหาร
+  → handoff_missing_source, category="service_fee"
+- ถาม "ค่าส่งต่างจังหวัด" + context ไม่มี KB ค่าส่ง
+  → handoff_missing_source, category="delivery_fee"
 
 📤 JSON contract (ต้องส่งฟิลด์เหล่านี้เพิ่มทุกครั้ง):
 - business_data_decision: หนึ่งใน "answer_from_source" | "handoff_missing_source" | "handoff_conflicting_source" | "not_applicable"
-  • answer_from_source = มี source ตรงและใช้ตอบจริง
-  • handoff_missing_source = เป็นคำถามข้อมูลธุรกิจแต่ไม่มี source
-  • handoff_conflicting_source = source ขัดกันเอง ไม่ยืนยันได้
+  • answer_from_source = มี source **ตรงหัวข้อ**และใช้ตอบจริง
+  • handoff_missing_source = เป็นคำถามข้อมูลธุรกิจแต่ไม่มี source ตรงหัวข้อ
+  • handoff_conflicting_source = source ตรงหัวข้อแต่ขัดกันเอง ไม่ยืนยันได้
   • not_applicable = คำถามไม่ใช่ข้อมูลธุรกิจ
 - business_data_category: หนึ่งใน "pricing" | "addon" | "service_fee" | "discount" | "promotion" | "min_order" | "delivery_fee" | "package_condition" | "none"
-- business_data_source_ids: array ของ id จาก KB/แคตตาล็อกแพ็กเกจ/โปรโมชัน ที่ถูกใช้ตอบจริงเท่านั้น (id ต้องคัดจาก context ที่ให้มา ห้ามแต่ง)
-หมายเหตุ: ระบบจะตรวจ id กับ context ก่อนส่งคำตอบ ถ้า id ไม่อยู่ใน context จริง คำตอบจะถูกแทนที่ด้วย handoff อัตโนมัติ`;
+- business_data_source_ids: array ของ id จาก KB/แคตตาล็อกแพ็กเกจ/โปรโมชัน ที่ถูกใช้ตอบจริงเท่านั้น (id ต้องคัดจาก context ที่ให้มา ห้ามแต่ง — และ**ต้องตรงหัวข้อคำถามจริง**)
+หมายเหตุ: ระบบจะตรวจสองชั้น (1) id อยู่ใน context จริง (2) source ตรงหัวข้อคำถามจริง ถ้าไม่ผ่านชั้นใดชั้นหนึ่ง คำตอบจะถูกแทนที่ด้วย handoff อัตโนมัติ`;
 }
 
 
