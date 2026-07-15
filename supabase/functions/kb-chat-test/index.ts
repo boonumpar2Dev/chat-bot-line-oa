@@ -342,14 +342,26 @@ Deno.serve(async (req) => {
 
     // Phase 3 — surface Business Data Handoff decision for debugging only.
     // NEVER updates customer state / handoff / ai_active here.
-    const _retrievedSourceIds: string[] = [
-      ...((filteredKb || []) as any[]).map((r: any) => String(r?.id || "")).filter(Boolean),
-      ...((pkgs || []) as any[]).map((r: any) => String(r?.id || "")).filter(Boolean),
-      ...((promos || []) as any[]).map((r: any) => String(r?.id || "")).filter(Boolean),
-    ];
+    const _srcText = (r: any): string => {
+      const p: string[] = [];
+      if (r?.title) p.push(String(r.title));
+      if (r?.name) p.push(String(r.name));
+      if (r?.content) p.push(String(r.content));
+      if (r?.description) p.push(String(r.description));
+      if (r?.details) p.push(String(r.details));
+      if (Array.isArray(r?.tags)) p.push(r.tags.join(" "));
+      if (r?.category) p.push(String(r.category));
+      return p.join(" \n ");
+    };
+    const _retrievedSources = [
+      ...((filteredKb || []) as any[]).map((r: any) => ({ id: String(r?.id || ""), text: _srcText(r) })),
+      ...((pkgs || []) as any[]).map((r: any) => ({ id: String(r?.id || ""), text: _srcText(r) })),
+      ...((promos || []) as any[]).map((r: any) => ({ id: String(r?.id || ""), text: _srcText(r) })),
+    ].filter((s) => s.id);
+    const _retrievedSourceIds: string[] = _retrievedSources.map((s) => s.id);
     const _bd = resolveBusinessDataHandoff({
       rawParsed: aiResp,
-      retrievedSourceIds: _retrievedSourceIds,
+      retrievedSources: _retrievedSources,
       messageText: text,
     });
 
