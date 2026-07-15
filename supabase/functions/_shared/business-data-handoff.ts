@@ -303,6 +303,8 @@ export function resolveBusinessDataHandoff(input: ResolveInput): ResolveOutput {
       })
     : validatedSourceIds; // no topic check available → treat all validated as matched
 
+  const intent = classifyBusinessQuestionIntent(input.messageText);
+
   const base = {
     decision: (decision ?? "not_applicable") as BusinessDataDecision,
     category,
@@ -313,35 +315,56 @@ export function resolveBusinessDataHandoff(input: ResolveInput): ResolveOutput {
     question,
     isBusinessQuestion,
     questionCategories,
+    intent,
   };
+
+  // Phase 3.2 — Generic discovery / non-business questions MUST NEVER be
+  // force-handoffed by source validation. They flow through the normal reply
+  // pipeline (ProposalGuard, discovery flow, follow-up asks). Source-mismatch,
+  // topic-mismatch, invalid-schema, and heuristic-business overrides only
+  // apply to `specific_fact` intent.
+  const gateHandoff = intent === "specific_fact";
 
   // Invalid / missing decision.
   if (decision === null) {
-    if (isBusinessQuestion) {
+    if (gateHandoff) {
       return { ...base, action: "handoff", reason: "handoff_invalid_schema" };
     }
-    return { ...base, action: "keep", reason: "not_applicable" };
+    return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "not_applicable" };
   }
 
   if (decision === "answer_from_source") {
     // (a) id-level check
     if (modelSourceIds.length === 0 || validatedSourceIds.length === 0) {
-      return { ...base, action: "handoff", reason: "handoff_source_mismatch" };
+      if (gateHandoff) {
+        return { ...base, action: "handoff", reason: "handoff_source_mismatch" };
+      }
+      return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "answer_from_source" };
     }
     // (b) topic-level check — only when we have rich descriptors + question cats
     if (canTopicCheck && topicMatchedSourceIds.length === 0) {
-      return { ...base, action: "handoff", reason: "handoff_source_topic_mismatch" };
+      if (gateHandoff) {
+        return { ...base, action: "handoff", reason: "handoff_source_topic_mismatch" };
+      }
+      return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "answer_from_source" };
     }
     return { ...base, action: "keep", reason: "answer_from_source" };
   }
 
   if (decision === "handoff_missing_source" || decision === "handoff_conflicting_source") {
-    return { ...base, action: "handoff", reason: decision };
+    // Model explicitly requested handoff — respect it ONLY for specific_fact.
+    // Generic discovery: downgrade to keep so the AI answer / discovery flow
+    // is not silenced by a model that over-eagerly asked for handoff on a
+    // generic "ขอดูแพ็กเกจ" question.
+    if (gateHandoff) {
+      return { ...base, action: "handoff", reason: decision };
+    }
+    return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "not_applicable" };
   }
 
   // not_applicable
-  if (isBusinessQuestion) {
+  if (gateHandoff) {
     return { ...base, action: "handoff", reason: "handoff_missing_source" };
   }
-  return { ...base, action: "keep", reason: "not_applicable" };
+  return { ...base, action: "keep", reason: intent === "generic_discovery" ? "generic_discovery_keep" : "not_applicable" };
 }
