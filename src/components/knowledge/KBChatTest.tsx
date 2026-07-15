@@ -44,6 +44,7 @@ export default function KBChatTest() {
         content: data.answer || "—",
         confidence: data.confidence,
         image_urls: data.image_urls || [],
+        business_data_debug: data.business_data_debug,
       }]);
     } catch (e: any) {
       toast.error("ทดสอบล้มเหลว: " + e.message);
