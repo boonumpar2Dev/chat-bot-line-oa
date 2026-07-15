@@ -7,7 +7,7 @@ import { Send, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Msg = { role: "user" | "assistant"; content: string; confidence?: number; image_urls?: string[] };
+type Msg = { role: "user" | "assistant"; content: string; confidence?: number; image_urls?: string[]; business_data_debug?: any };
 
 const SUGGESTIONS = [
   "สอบถามแพ็กเกจจัดเลี้ยงค่ะ",
