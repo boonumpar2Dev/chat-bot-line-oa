@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { buildPrompt } from "../_shared/prompt-builder.ts";
 import { logTokenUsage } from "../_shared/log-token-usage.ts";
 import { filterRelevantKB, buildKbBlock } from "../_shared/ai-context.ts";
+import { resolveBusinessDataHandoff } from "../_shared/business-data-handoff.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
