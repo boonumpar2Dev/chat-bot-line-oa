@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
         }
         return `[${m.type}]`;
       }).join("\n");
-      const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours, ai_policy_config").eq("key", "ai_config").limit(1);
+      const { data: cfgArr } = await admin.from("app_settings").select("manual_chat_hours, ai_policy_config, advanced_ai_status_policy_enabled").eq("key", "ai_config").limit(1);
       const pauseSettings = cfgArr?.[0] || null;
       const pause = resolveAdminPauseMs(customer_id, pauseSettings, new Date());
       const until = new Date(Date.now() + pause.ms).toISOString();
