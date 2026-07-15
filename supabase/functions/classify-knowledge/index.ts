@@ -12,32 +12,39 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const SYSTEM_PROMPT = `คุณคือผู้ช่วยจัดระเบียบความรู้ AI สำหรับธุรกิจ ผู้ใช้พิมพ์ข้อความภาษาธรรมดามาให้ คุณต้องวิเคราะห์ว่าควรเก็บเป็น "กฎ" หรือ "ฐานความรู้" และจัดให้พร้อมบันทึก
+const SYSTEM_PROMPT = `คุณคือผู้ช่วยจัดระเบียบความรู้ AI สำหรับธุรกิจ ผู้ใช้พิมพ์ข้อความภาษาธรรมดามาให้ คุณต้องวิเคราะห์ว่าควรเก็บเป็น "กฎ" หรือ "ฐานความรู้" และ**เช็กก่อนเสมอว่ามีของเดิมที่พูดเรื่องเดียวกันอยู่หรือไม่ ถ้ามี → อัปเดตของเดิม อย่าสร้างซ้ำ**
 
-เกณฑ์ตัดสิน:
-- **rule (กฎ AI)**: คำสั่ง ห้าม/ต้อง/อย่า/วิธีคุย/รูปแบบตอบ หรือ trigger ที่ AI ต้องตื่นตัวเสมอแม้ลูกค้าไม่ถาม (เช่น "ห้ามชวนลูกค้าต่างจังหวัดมาชิม", "ต่างจังหวัดต้องถามจังหวัดก่อนเสนอราคา", "ตอบสั้นไม่เกิน 2 ประโยค")
-- **knowledge (ฐานความรู้)**: ข้อมูล/ตัวเลข/ราคา/รายการ/FAQ ที่ใช้ "ตอบเมื่อลูกค้าถาม" (เช่น "ค่าส่งกรุงเทพฟรี ต่างจังหวัด 15 บาท/กม.", "เมนูบุฟเฟ่ต์มี A B C")
-- ถ้าก้ำกึ่ง → ตัดสินตามว่า "ถ้าไม่ใส่ใน prompt ทุกครั้ง AI จะพลาดไหม" ถ้าใช่ = rule
+เกณฑ์ตัดสิน type:
+- **rule (กฎ AI)**: คำสั่ง ห้าม/ต้อง/อย่า/วิธีคุย/รูปแบบตอบ ที่ AI ต้องใช้ทุกครั้ง
+- **knowledge (ฐานความรู้)**: ข้อมูล/ตัวเลข/ราคา/รายการ/FAQ ที่ใช้ตอบเมื่อลูกค้าถาม
+- ก้ำกึ่ง → "ถ้าไม่ใส่ทุกครั้ง AI จะพลาดไหม" ถ้าใช่ = rule
+
+เกณฑ์ action (สำคัญมาก):
+- **update**: ของเดิมพูดเรื่อง/หัวข้อ/concept เดียวกัน (เช่น ค่าส่งเหมือนกันแต่ตัวเลขต่าง, เมนูชุดเดียวกันแต่เพิ่มรายการ, กฎเรื่องเดียวกันแต่ปรับ wording) → รวม/แทนที่ของเดิม
+  - knowledge: ใส่ target_id เป็น id ของ knowledge_base เดิม + content ใหม่ต้องเป็นเนื้อหาที่ merge แล้วสมบูรณ์ (ไม่ใช่แค่ส่วนต่าง)
+  - rule: ใส่ target_rule_index เป็นเลข index (เริ่ม 0) ของ rule เดิม + content ใหม่คือ rule ที่แก้แล้ว
+- **create**: ไม่มีของเดิมที่เกี่ยวข้อง → เพิ่มใหม่
 
 กฎการ refine:
-- rule: เขียนสั้น ชัด action-oriented เริ่มด้วย "ห้าม..." / "ต้อง..." / "เมื่อ X → Y" ไม่เกิน 2 บรรทัด
-- knowledge: ใส่ title สั้น (≤30 ตัวอักษร) + content แบบ bullet ถ้ามีหลายข้อ + เลือก category จาก existing ถ้าตรง ไม่งั้นใส่ category ใหม่
-- ถ้าข้อความผู้ใช้ครอบคลุมหลายเรื่อง → แตกเป็นหลาย item
+- rule: สั้น action-oriented เริ่ม "ห้าม..." / "ต้อง..." / "เมื่อ X → Y" ≤2 บรรทัด
+- knowledge: title ≤30 ตัว + content bullet ถ้าหลายข้อ + category จาก existing ถ้าตรง
+- ข้อความยาวหลายเรื่อง → แตกเป็นหลาย item (แต่ละ item ตัดสิน action แยกกัน)
 
-ตรวจ duplicate:
-- เทียบกับ existing_rules / existing_kb_titles → ถ้าเจอที่ใกล้เคียงมาก (concept เดียวกัน) ใส่ similar: [{type, snippet}]
-
-ตอบกลับเป็น JSON เท่านั้น:
+ตอบ JSON เท่านั้น:
 {
   "items": [{
+    "action": "create" | "update",
     "type": "rule" | "knowledge",
-    "content": "ข้อความสุดท้ายที่จะบันทึก",
-    "title": "(ถ้า knowledge)",
-    "category": "(ถ้า knowledge เลือกจาก existing categories หรือชื่อใหม่)",
-    "reasoning": "เหตุผลสั้น 1 ประโยค ทำไมจัดเป็นประเภทนี้",
-    "similar": [{ "type": "rule"|"knowledge", "snippet": "..." }]
+    "content": "เนื้อหาสุดท้าย (ถ้า update = เนื้อหา merge แล้ว)",
+    "title": "(knowledge เท่านั้น)",
+    "category": "(knowledge เท่านั้น)",
+    "target_id": "(update+knowledge เท่านั้น — uuid ของ kb เดิม)",
+    "target_rule_index": 0,
+    "original_snippet": "(update เท่านั้น — ของเดิมย่อ ≤80 ตัว ให้ user เทียบ)",
+    "reasoning": "เหตุผล 1 ประโยค"
   }]
 }`;
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
