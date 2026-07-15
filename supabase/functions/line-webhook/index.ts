@@ -2192,18 +2192,30 @@ ${pastLines}
   // Server-validated: source ids are intersected with the KB/pkg/promo rows
   // actually placed in this turn's context. Model source ids are never trusted.
   try {
-    const _retrievedSourceIds: string[] = [
-      ...((filteredKb || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
-      ...((usePkgs || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
-      ...((usePromos || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
-    ];
+    const _sourceText = (r: any): string => {
+      const parts: string[] = [];
+      if (r?.title) parts.push(String(r.title));
+      if (r?.name) parts.push(String(r.name));
+      if (r?.content) parts.push(String(r.content));
+      if (r?.description) parts.push(String(r.description));
+      if (r?.details) parts.push(String(r.details));
+      if (Array.isArray(r?.tags)) parts.push(r.tags.join(" "));
+      if (r?.category) parts.push(String(r.category));
+      return parts.join(" \n ");
+    };
+    const _retrievedSources = [
+      ...((filteredKb || []) as any[]).map((r) => ({ id: String(r?.id || ""), text: _sourceText(r) })),
+      ...((usePkgs || []) as any[]).map((r) => ({ id: String(r?.id || ""), text: _sourceText(r) })),
+      ...((usePromos || []) as any[]).map((r) => ({ id: String(r?.id || ""), text: _sourceText(r) })),
+    ].filter((s) => s.id);
+    const _retrievedSourceIds: string[] = _retrievedSources.map((s) => s.id);
     const _bd = resolveBusinessDataHandoff({
       rawParsed: aiResp,
-      retrievedSourceIds: _retrievedSourceIds,
+      retrievedSources: _retrievedSources,
       messageText,
     });
     console.log(
-      `[BusinessDataHandoff] customer=${customer.id} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} retrieved=${_retrievedSourceIds.length} isBusinessQ=${_bd.isBusinessQuestion}`,
+      `[BusinessDataHandoff] customer=${customer.id} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} topicMatched=${_bd.topicMatchedSourceIds.length} retrieved=${_retrievedSourceIds.length} qCats=${_bd.questionCategories.join("|")} isBusinessQ=${_bd.isBusinessQuestion}`,
     );
     if (_bd.action === "handoff") {
       // Persist handoff state FIRST. If DB patch fails, do NOT send the
