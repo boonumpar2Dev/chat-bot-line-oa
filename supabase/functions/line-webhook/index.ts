@@ -2244,7 +2244,7 @@ ${pastLines}
       messageText,
     });
     console.log(
-      `[BusinessDataHandoff] customer=${customer.id} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} topicMatched=${_bd.topicMatchedSourceIds.length} retrieved=${_retrievedSourceIds.length} qCats=${_bd.questionCategories.join("|")} isBusinessQ=${_bd.isBusinessQuestion}`,
+      `[BusinessDataHandoff] customer=${customer.id} intent=${_bd.intent} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} topicMatched=${_bd.topicMatchedSourceIds.length} retrieved=${_retrievedSourceIds.length} qCats=${_bd.questionCategories.join("|")} isBusinessQ=${_bd.isBusinessQuestion}`,
     );
     if (_bd.action === "handoff") {
       // Persist handoff state FIRST. If DB patch fails, do NOT send the
