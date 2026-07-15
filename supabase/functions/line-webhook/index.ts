@@ -443,7 +443,7 @@ function parseThaiEventDate(text: string): string | null {
 }
 
 
-async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null; nickname?: string | null }; extra_intent_json?: string; _usage?: any; _model?: string }> {
+async function callAI(systemPrompt: string, userPrompt: string, model = "google/gemini-3-flash-preview"): Promise<{ answer: string; confidence: number; image_titles?: string[]; confirm_existing_phone?: boolean; intent?: { event_type?: string | null; venue?: string | null; guest_count?: number | null; event_date?: string | null; nickname?: string | null }; extra_intent_json?: string; business_data_decision?: string; business_data_category?: string; business_data_source_ids?: string[]; _usage?: any; _model?: string }> {
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_KEY}` },
@@ -476,8 +476,27 @@ async function callAI(systemPrompt: string, userPrompt: string, model = "google/
                 required: ["event_type", "venue", "guest_count", "event_date", "nickname"],
               },
               extra_intent_json: { type: "string", description: 'JSON string of extra intent fields per app_settings.intent_fields whitelist, e.g. {"service_type":"บุฟเฟ่ต์"}. Use "{}" if nothing to add.' },
+              // Phase 3 — Business Data Safety JSON contract (server-validated).
+              business_data_decision: {
+                type: "string",
+                enum: ["answer_from_source", "handoff_missing_source", "handoff_conflicting_source", "not_applicable"],
+                description: "การตัดสินใจของโมเดลว่าคำถามนี้เกี่ยวกับข้อมูลธุรกิจหรือไม่ และมี source ยืนยันหรือไม่",
+              },
+              business_data_category: {
+                type: "string",
+                enum: ["pricing", "addon", "service_fee", "discount", "promotion", "min_order", "delivery_fee", "package_condition", "none"],
+                description: "หมวดของข้อมูลธุรกิจที่คำถามนี้ครอบคลุม — 'none' ถ้าไม่ใช่คำถามข้อมูลธุรกิจ",
+              },
+              business_data_source_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "id ของ KB/แพ็กเกจ/โปรโมชัน ที่ใช้ตอบจริง (จะถูก validate กับ context server-side — ห้ามแต่ง)",
+              },
             },
-            required: ["answer", "confidence", "image_titles", "confirm_existing_phone", "intent", "extra_intent_json"],
+            required: [
+              "answer", "confidence", "image_titles", "confirm_existing_phone", "intent", "extra_intent_json",
+              "business_data_decision", "business_data_category", "business_data_source_ids",
+            ],
           },
         },
       },
