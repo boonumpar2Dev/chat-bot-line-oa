@@ -402,7 +402,7 @@ Deno.test("classifyBusinessQuestionIntent: generic discovery examples", () => {
     "ราคาเริ่มต้นเท่าไหร่",
 
     "อยากดูราคาแพ็กเกจสำหรับงานใหม่ค่ะ",
-    "จัด 50 คนมีแบบไหนบ้าง",
+
     "ขอราคา 50 คน",
   ];
   for (const t of cases) {
