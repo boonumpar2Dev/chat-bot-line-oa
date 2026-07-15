@@ -244,23 +244,23 @@ export function resolveBusinessDataHandoff(input: ResolveInput): ResolveOutput {
   const modelSourceIds = coerceIdList(parsed["business_data_source_ids"]);
   const validatedSourceIds = modelSourceIds.filter((id) => retrievedSet.has(id));
 
-  // Source-topic validation: only meaningful when we have rich descriptors AND
-  // the question itself has at least one business category. Otherwise degrade
-  // gracefully to id-only validation (legacy behavior).
-  const canTopicCheck = richSources.length > 0 && questionCats.size > 0;
-  const modelCatKey: CatKey | null = category !== "none" ? (category as CatKey) : null;
+  // Source-topic validation (Phase 3.1):
+  // "pricing" is a *modality* ("how much"), not a topic — every priced source
+  // hits it, so it cannot prove topical alignment on its own. Require a
+  // NON-pricing category overlap between the question and the source. If the
+  // question has NO non-pricing category (pure "ราคาเท่าไหร่") the topic check
+  // is skipped and id-level validation stands.
+  const stripPricing = (s: Set<CatKey>): Set<CatKey> => {
+    const out = new Set(s); out.delete("pricing"); return out;
+  };
+  const qTopic = stripPricing(questionCats);
+  const canTopicCheck = richSources.length > 0 && qTopic.size > 0;
   const topicMatchedSourceIds: string[] = canTopicCheck
     ? validatedSourceIds.filter((id) => {
         const src = sourceById.get(id);
         if (!src) return false;
-        const cats = categoriesOf(src.text || "");
-        if (cats.size === 0) return false;
-        // Match if source shares a category with the question OR with the
-        // model's declared category (both must ultimately be consistent).
-        for (const c of cats) {
-          if (questionCats.has(c)) return true;
-          if (modelCatKey && c === modelCatKey) return true;
-        }
+        const sTopic = stripPricing(categoriesOf(src.text || ""));
+        for (const c of sTopic) if (qTopic.has(c)) return true;
         return false;
       })
     : validatedSourceIds; // no topic check available → treat all validated as matched
