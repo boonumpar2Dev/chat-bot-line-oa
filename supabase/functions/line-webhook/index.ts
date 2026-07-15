@@ -2187,6 +2187,64 @@ ${pastLines}
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   let finalAnswer = answerText;
 
+  // ── Phase 3 — Structured Business Data Handoff (shared: Legacy + Phase 2) ─
+  // Runs BEFORE existing-cycle enforcement so the strongest safety rule wins.
+  // Server-validated: source ids are intersected with the KB/pkg/promo rows
+  // actually placed in this turn's context. Model source ids are never trusted.
+  try {
+    const _retrievedSourceIds: string[] = [
+      ...((filteredKb || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
+      ...((usePkgs || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
+      ...((usePromos || []) as any[]).map((r) => String(r?.id || "")).filter(Boolean),
+    ];
+    const _bd = resolveBusinessDataHandoff({
+      rawParsed: aiResp,
+      retrievedSourceIds: _retrievedSourceIds,
+      messageText,
+    });
+    console.log(
+      `[BusinessDataHandoff] customer=${customer.id} action=${_bd.action} reason=${_bd.reason} decision=${_bd.decision} category=${_bd.category} modelIds=${_bd.modelSourceIds.length} validated=${_bd.validatedSourceIds.length} retrieved=${_retrievedSourceIds.length} isBusinessQ=${_bd.isBusinessQuestion}`,
+    );
+    if (_bd.action === "handoff") {
+      // Persist handoff state FIRST. If DB patch fails, do NOT send the
+      // fallback promise — fall back to sendUnableToReply (safe path).
+      const muteH = cfg.manual_chat_hours ?? 360;
+      const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
+      const nowIso = new Date().toISOString();
+      const handoffPatch: Record<string, unknown> = {
+        ai_active: false,
+        manual_chat_until: muteUntil,
+        handoff_reason: _bd.reason,
+        handoff_category: _bd.category,
+        handoff_question: _bd.question,
+        handoff_at: nowIso,
+        last_message_at: nowIso,
+        last_message_snippet: `🤝 ${_bd.fallbackText.slice(0, 60)}`,
+      };
+      const { error: _bdErr } = await supabase.from("customers").update(handoffPatch).eq("id", customer.id);
+      if (_bdErr) {
+        console.error("[BusinessDataHandoff] persist failed — using safe fallback:", _bdErr.message);
+        await sendUnableToReply(`business_data_handoff persist failed: ${_bdErr.message}`);
+        return;
+      }
+      await saveAndPushAi(
+        supabase,
+        lineUserId,
+        [{ type: "text", text: _bd.fallbackText }],
+        { customer_id: customer.id, message: _bd.fallbackText, sender: "ai", is_fallback: true, confidence_score: confidence },
+      );
+      console.log(
+        "[BusinessDataHandoff] sent",
+        JSON.stringify({ customer_id: customer.id, reason: _bd.reason, category: _bd.category, mute_hours: muteH }),
+      );
+      return;
+    }
+  } catch (e: any) {
+    console.warn("[BusinessDataHandoff] error (ignored, keeping AI reply):", e?.message);
+  }
+
+
+
   // ── Existing-Cycle Post-AI Enforcement (14/07/2569) ─────────────────
   // Structured atomic handoff: on replace_handoff → persist ai_active=false,
   // suppress ALL media, push text-only, and return BEFORE media pipeline.
