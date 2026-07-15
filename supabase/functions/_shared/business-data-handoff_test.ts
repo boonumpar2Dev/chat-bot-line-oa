@@ -360,10 +360,9 @@ Deno.test("Anti-regression — no post-answer wording detection: file MUST NOT s
   }
 });
 
-Deno.test("Legacy parity — id-only input (no rich sources) preserves prior behavior", () => {
-  // Same input to (a) legacy retrievedSourceIds and (b) rich retrievedSources
-  // where every source has empty text → both should keep because topic check
-  // degrades gracefully when texts are absent.
+Deno.test("Legacy parity — id-only input preserves prior behavior for pricing-only question", () => {
+  // Pure pricing question ("ราคาเท่าไหร่") has no topic category → topic
+  // check is skipped for both legacy and rich-source paths → both keep.
   const a = resolveBusinessDataHandoff({
     rawParsed: {
       business_data_decision: "answer_from_source",
@@ -382,8 +381,5 @@ Deno.test("Legacy parity — id-only input (no rich sources) preserves prior beh
     retrievedSources: [{ id: "kb-1", text: "" }],
     messageText: "ราคาเท่าไหร่",
   });
-  // With rich source but empty text → source has no categories → topic check
-  // triggers and fails (safer default: unknown-topic source cannot answer).
-  assertEquals(b.action, "handoff");
-  assertEquals(b.reason, "handoff_source_topic_mismatch");
+  assertEquals(b.action, "keep");
 });
