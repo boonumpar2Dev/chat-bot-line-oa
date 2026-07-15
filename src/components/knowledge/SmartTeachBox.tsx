@@ -70,35 +70,52 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
     if (!it.content?.trim()) { toast.error("เนื้อหาว่าง"); return; }
     setSavingIdx(idx);
     try {
+      const isUpdate = it.action === "update";
       if (it.type === "rule") {
         const { data: cfg } = await supabase.from("app_settings").select("strict_rules").eq("key", "ai_config").maybeSingle();
         const existing: string[] = cfg?.strict_rules || [];
+        let next: string[];
+        if (isUpdate && typeof it.target_rule_index === "number" && it.target_rule_index >= 0 && it.target_rule_index < existing.length) {
+          next = existing.map((r, i) => i === it.target_rule_index ? it.content.trim() : r);
+        } else {
+          next = [...existing, it.content.trim()];
+        }
         const { error } = await supabase.from("app_settings")
-          .update({ strict_rules: [...existing, it.content.trim()] })
+          .update({ strict_rules: next })
           .eq("key", "ai_config");
         if (error) throw error;
-        toast.success("✅ บันทึกเป็นกฎ AI แล้ว");
+        toast.success(isUpdate ? "♻️ อัปเดตกฎเดิมแล้ว" : "✅ บันทึกเป็นกฎ AI แล้ว");
       } else {
         if (!it.title?.trim()) { toast.error("ใส่หัวข้อก่อน"); setSavingIdx(null); return; }
-        // ensure category exists
         const cat = it.category?.trim() || null;
         if (cat && !categories.includes(cat)) {
           await supabase.from("knowledge_categories").insert({ name: cat });
           qc.invalidateQueries({ queryKey: ["kb-cats"] });
         }
-        const { data: ins, error } = await supabase.from("knowledge_base").insert({
-          title: it.title.trim(),
-          content: it.content.trim(),
-          category: cat,
-          status: "active",
-        }).select("id").maybeSingle();
-        if (error) throw error;
-        toast.success("✅ บันทึกเข้าฐานความรู้แล้ว");
+        let savedId: string | undefined;
+        if (isUpdate && it.target_id) {
+          const { data: upd, error } = await supabase.from("knowledge_base")
+            .update({ title: it.title.trim(), content: it.content.trim(), category: cat })
+            .eq("id", it.target_id).select("id").maybeSingle();
+          if (error) throw error;
+          savedId = upd?.id;
+          toast.success("♻️ อัปเดตข้อมูลเดิมแล้ว");
+        } else {
+          const { data: ins, error } = await supabase.from("knowledge_base").insert({
+            title: it.title.trim(),
+            content: it.content.trim(),
+            category: cat,
+            status: "active",
+          }).select("id").maybeSingle();
+          if (error) throw error;
+          savedId = ins?.id;
+          toast.success("✅ บันทึกเข้าฐานความรู้แล้ว");
+        }
         qc.invalidateQueries({ queryKey: ["kb"] });
         supabase.functions.invoke("rebuild-ai-cache").catch(() => {});
-        if (ins?.id) {
+        if (savedId) {
           const { triggerEmbed } = await import("@/lib/embed");
-          triggerEmbed("knowledge_base", ins.id);
+          triggerEmbed("knowledge_base", savedId);
         }
       }
       removeItem(idx);
