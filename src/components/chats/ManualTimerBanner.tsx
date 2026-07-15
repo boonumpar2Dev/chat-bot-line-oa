@@ -85,16 +85,52 @@ export default function ManualTimerBanner({ customer, onUpdate }: { customer: an
     }
   };
 
+  const handoffReason: string | null = customer?.handoff_reason || null;
+  const handoffCategory: string | null = customer?.handoff_category || null;
+  const handoffQuestion: string | null = customer?.handoff_question || null;
+  const handoffAt: string | null = customer?.handoff_at || null;
+  const showHandoff = !!handoffReason;
+  const handoffTime = handoffAt ? new Date(handoffAt) : null;
+
   return (
-    <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-200 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2 text-xs text-purple-700 min-w-0">
-        <Timer className="w-3.5 h-3.5 shrink-0"/>
-        <span>Manual Chat — บอทพัก <strong>{fmt}</strong></span>
+    <div className="border-b border-purple-200 bg-purple-50">
+      <div className="px-4 py-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs text-purple-700 min-w-0">
+          <Timer className="w-3.5 h-3.5 shrink-0"/>
+          <span>Manual Chat — บอทพัก <strong>{fmt}</strong></span>
+        </div>
+        <button onClick={handleResume} disabled={resuming}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 disabled:opacity-50 shrink-0">
+          {resuming ? <Loader2 className="w-3 h-3 animate-spin"/> : <Zap className="w-3 h-3"/>} ปลุกบอท
+        </button>
       </div>
-      <button onClick={handleResume} disabled={resuming}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 disabled:opacity-50 shrink-0">
-        {resuming ? <Loader2 className="w-3 h-3 animate-spin"/> : <Zap className="w-3 h-3"/>} ปลุกบอท
-      </button>
+      {showHandoff && (
+        <div className="px-4 pb-2.5 -mt-1 flex items-start gap-2 text-[11px] text-purple-800/90">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600"/>
+          <div className="min-w-0 space-y-0.5">
+            <div>
+              <span className="font-medium">เหตุผลส่งต่อ:</span>{" "}
+              <span>{HANDOFF_REASON_LABEL[handoffReason!] || handoffReason}</span>
+              {handoffCategory && handoffCategory !== "none" && (
+                <span className="ml-2 px-1.5 py-0.5 rounded bg-purple-200 text-purple-900 font-medium">
+                  {HANDOFF_CATEGORY_LABEL[handoffCategory] || handoffCategory}
+                </span>
+              )}
+              {handoffTime && (
+                <span className="ml-2 text-purple-600/80">
+                  {handoffTime.toLocaleString("th-TH", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })}
+                </span>
+              )}
+            </div>
+            {handoffQuestion && (
+              <div className="truncate">
+                <span className="font-medium">คำถามล่าสุด:</span>{" "}
+                <span className="italic">"{handoffQuestion}"</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
