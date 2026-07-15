@@ -2220,6 +2220,14 @@ ${pastLines}
     if (_bd.action === "handoff") {
       // Persist handoff state FIRST. If DB patch fails, do NOT send the
       // fallback promise — fall back to sendUnableToReply (safe path).
+      //
+      // Phase 3 Safety Exception (Force Disable):
+      // This patch intentionally sets ai_active=false EVEN IF admin_bot_override=true.
+      // Business-data safety handoff is a temporary safety measure (360h auto-resume
+      // via expire-manual-chat) — not a permanent disable. We do NOT touch
+      // admin_bot_override, so after auto-resume the admin's original stance is
+      // preserved. Permanent Admin Disable semantics (manual_chat_until=NULL,
+      // admin_bot_override=false) are untouched by this path.
       const muteH = cfg.manual_chat_hours ?? 360;
       const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
       const nowIso = new Date().toISOString();
