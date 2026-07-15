@@ -42,16 +42,43 @@ function formatThaiDateShort(day: number, month: number): string {
   return `${day} ${THAI_MONTH_NAMES[month]}`;
 }
 
-// Expanded fake-approval regex — cover ทุกรูปแบบ per user trace 14/07/2569.
-const FAKE_APPROVAL_RE =
-  /(?:ได้(?:เลย|แน่นอน)(?:ค่ะ|ครับ)|(?:ใช้|ยืนยัน)ได้(?:เลย)?(?:ค่ะ|ครับ)|เมนู(?:เดิม|นี้)?(?:ยัง)?ใช้ได้(?:เลย)?(?:ค่ะ|ครับ)?|รายการเดิม(?:ยัง)?ใช้ได้|ยืนยัน(?:ให้)?(?:เรียบร้อย)?แล้ว|เปลี่ยน(?:ให้)?(?:เรียบร้อย)?แล้ว|จัดให้ได้(?:เลย)?(?:ค่ะ|ครับ)|เปลี่ยนให้ได้(?:เลย)?(?:ค่ะ|ครับ)|(?:รายการ|เมนู|วัน|สถานที่|คิว|จำนวน|ยอด)[^\n]{0,20}?เรียบร้อยแล้ว|จอง(?:ให้)?(?:แล้ว|เรียบร้อย)|คิวได้(?:แน่นอน|เลย)|ดำเนินการ(?:ให้)?แล้ว|อนุมัติ(?:ให้)?แล้ว|สามารถ(?:เปลี่ยน|จอง|ยืนยัน|เพิ่ม|ลด|ใช้)ได้(?:เลย)?(?:ค่ะ|ครับ))/;
+// Fake-approval regex — split into STRONG (unconditional in existing-cycle mode)
+// and SOFT openers (only block when combined with customer approval intent AND
+// absence of discovery markers). Rewritten per Phase 3.1 surgical fix:
+// prevent generic factual/discovery replies from being false-positive'd as
+// "server-side action taken" just because they open with "ได้เลยค่ะ".
+//
+// STRONG action markers — AI claims a real action on the current job/quotation.
+// These always trigger handoff regardless of customer intent or surrounding
+// discovery content, because no server-side evidence can back them.
+const STRONG_ACTION_RE =
+  /(?:เพิ่ม(?:ให้|ลงใบเสนอราคา)(?:ให้)?(?:แล้ว|เรียบร้อย)|เพิ่มลงใบ(?:เสนอราคา|ราคา)|แก้(?:ให้|ยอด)(?:แล้ว|ให้แล้ว)|จัดให้ได้(?:เลย)?(?:ค่ะ|ครับ)|ใช้ของเดิมได้(?:แน่นอน|เลย)|เมนู(?:เดิม|นี้)?(?:ยัง)?ใช้ได้(?:แน่นอน|เลย)(?:ค่ะ|ครับ)?|รายการเดิม(?:ยัง)?ใช้ได้|เปลี่ยนให้ได้(?:เลย)?(?:ค่ะ|ครับ)|คิวได้(?:แน่นอน|เลย)|สามารถ(?:เปลี่ยน|จอง|ยืนยัน|เพิ่ม|ลด|ใช้)ได้(?:เลย)?(?:ค่ะ|ครับ))/;
+
+// SOFT approval openers — ambiguous. Legit for factual discovery replies
+// ("ได้เลยค่ะ มีให้เลือก 3 รูปแบบ..."), so must be gated by discovery check.
+const SOFT_APPROVAL_OPENER_RE =
+  /(?:ได้(?:เลย|แน่นอน)(?:ค่ะ|ครับ)|(?:ใช้|ยืนยัน)ได้(?:เลย)?(?:ค่ะ|ครับ)|แน่นอน(?:ค่ะ|ครับ))/;
 
 // Approval/change/confirmation intent from customer (opens fake-approval detection gate).
 const APPROVAL_INTENT_RE =
   /(?:ได้ไหม|ได้มั้ย|ใช้ได้(?:ไหม|มั้ย)|เปลี่ยน(?:ได้)?(?:ไหม|มั้ย)|ยังใช้ได้|ตามเดิม(?:ได้)?(?:ไหม|มั้ย)|เอาเดิม|เอาตามเดิม|โอเค(?:ไหม|มั้ย)|แบบนี้(?:ได้|โอเค)|ยืนยัน|อนุมัติ|จอง(?:ให้|ได้)?|เพิ่ม|ลด|สลับ|แทน)/;
 
+// Discovery intent — customer asking for factual details/comparison/pricing info.
+// Overrides soft approval branch (customer wants information, not action).
+const DISCOVERY_INTENT_RE =
+  /(?:อยาก(?:ทราบ|รู้|ดู)|ขอ(?:ทราบ|รายละเอียด|ข้อมูล|ดู|ราคา)|(?:มี|ต่างกัน|แตกต่าง)(?:อะไร|ยังไง|อย่างไร)บ้าง|แต่ละ(?:แบบ|รูปแบบ|แพ็กเกจ|เมนู)|ประกอบด้วย|รวม(?:อะไร|โต๊ะ|เก้าอี้)|ราคา(?:เริ่มต้น|เท่าไหร่|เท่าไร|พื้นฐาน)|ในแพ็กเกจ(?:มี|รวม)|(?:แต่ละ|ทั้ง\s*\d+\s*)(?:แบบ|รูปแบบ|แพ็กเกจ))/;
+
+// Discovery content — AI reply provides factual explanation (menu list, price
+// range, comparison). When present alongside a soft opener, it means the AI
+// is answering discovery, not claiming an action.
+const DISCOVERY_CONTENT_RE =
+  /(?:มี(?:ให้เลือก|ทั้งหมด|\s*\d+\s*(?:รูปแบบ|แบบ|แพ็กเกจ))|ประกอบด้วย|แต่ละ(?:แบบ|รูปแบบ|แพ็กเกจ)|รายละเอียด(?:ดังนี้|มีดังนี้|ตามนี้)|ราคาเริ่มต้น|ในแพ็กเกจ(?:รวม|ประกอบ|มี)|ตัวเลือก(?:คือ|มี)|แตกต่างกัน(?:ตรง|ที่)|ได้แก่|เช่น\s|เลือกชม)/;
+
 // Fake-completion phrases that indicate false server action regardless of customer intent.
-const FAKE_COMPLETION_RE = /เรียบร้อยแล้ว|ยืนยันให้แล้ว|เปลี่ยนให้แล้ว|จอง(?:ให้)?แล้ว|อนุมัติให้แล้ว|ดำเนินการให้แล้ว/;
+const FAKE_COMPLETION_RE = /เรียบร้อยแล้ว|ยืนยันให้แล้ว|เปลี่ยนให้แล้ว|เพิ่มให้แล้ว|แก้ให้แล้ว|จอง(?:ให้)?แล้ว|อนุมัติให้แล้ว|ดำเนินการให้แล้ว/;
+
+// Kept for backward compatibility in downstream checks (LEAD_REASK strip guard).
+const FAKE_APPROVAL_RE = SOFT_APPROVAL_OPENER_RE;
 
 // Lead-field reask — bot ถาม lead fields
 const LEAD_REASK_RE =
@@ -180,12 +207,25 @@ export function enforceExistingCyclePolicy(
       reasons.push("fake_completion");
       continue;
     }
-    // Fake-approval requires customer approval intent
-    if (FAKE_APPROVAL_RE.test(bubble) && customerAskedApproval) {
+    // Strong action markers — unconditional (AI claiming server-side action)
+    if (STRONG_ACTION_RE.test(bubble)) {
       outBubbles.push(handoff);
       anyReplace = true;
-      reasons.push("fake_approval_gated");
+      reasons.push("fake_approval_strong_action");
       continue;
+    }
+    // Soft approval opener — only block when customer intent is approval/action
+    // AND neither customer msg nor AI bubble carries discovery markers.
+    if (SOFT_APPROVAL_OPENER_RE.test(bubble) && customerAskedApproval) {
+      const customerDiscovery = DISCOVERY_INTENT_RE.test(msg);
+      const bubbleDiscovery = DISCOVERY_CONTENT_RE.test(bubble);
+      if (!customerDiscovery && !bubbleDiscovery) {
+        outBubbles.push(handoff);
+        anyReplace = true;
+        reasons.push("fake_approval_gated");
+        continue;
+      }
+      // else: soft opener followed by discovery content → keep (factual answer)
     }
 
     // Focused availability: strip callback/lead reask ต่อท้าย ถ้าลูกค้าถามคิวว่าง
