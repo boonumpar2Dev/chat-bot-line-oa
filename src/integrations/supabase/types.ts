@@ -921,6 +921,10 @@ export type Database = {
           event_month: string | null
           event_type: string | null
           guest_count: number | null
+          handoff_at: string | null
+          handoff_category: string | null
+          handoff_question: string | null
+          handoff_reason: string | null
           id: string
           intent_data: Json
           last_message_at: string | null
@@ -962,6 +966,10 @@ export type Database = {
           event_month?: string | null
           event_type?: string | null
           guest_count?: number | null
+          handoff_at?: string | null
+          handoff_category?: string | null
+          handoff_question?: string | null
+          handoff_reason?: string | null
           id?: string
           intent_data?: Json
           last_message_at?: string | null
@@ -1003,6 +1011,10 @@ export type Database = {
           event_month?: string | null
           event_type?: string | null
           guest_count?: number | null
+          handoff_at?: string | null
+          handoff_category?: string | null
+          handoff_question?: string | null
+          handoff_reason?: string | null
           id?: string
           intent_data?: Json
           last_message_at?: string | null
