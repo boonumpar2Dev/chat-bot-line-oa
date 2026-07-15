@@ -7,7 +7,7 @@ import { Send, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Msg = { role: "user" | "assistant"; content: string; confidence?: number; image_urls?: string[] };
+type Msg = { role: "user" | "assistant"; content: string; confidence?: number; image_urls?: string[]; business_data_debug?: any };
 
 const SUGGESTIONS = [
   "สอบถามแพ็กเกจจัดเลี้ยงค่ะ",
@@ -44,6 +44,7 @@ export default function KBChatTest() {
         content: data.answer || "—",
         confidence: data.confidence,
         image_urls: data.image_urls || [],
+        business_data_debug: data.business_data_debug,
       }]);
     } catch (e: any) {
       toast.error("ทดสอบล้มเหลว: " + e.message);
@@ -90,6 +91,18 @@ export default function KBChatTest() {
                 {m.image_urls && m.image_urls.length > 0 && (
                   <div className="flex flex-wrap gap-1 max-w-[85%]">
                     {m.image_urls.map(u => <img key={u} src={u} alt="" className="w-20 h-20 rounded-lg object-cover border"/>)}
+                  </div>
+                )}
+                {m.business_data_debug && (
+                  <div className="text-[10px] text-muted-foreground px-2 max-w-[85%]">
+                    <span className={cn("px-1.5 py-0.5 rounded font-medium",
+                      m.business_data_debug.action === "handoff" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                    )}>
+                      BD: {m.business_data_debug.action} · {m.business_data_debug.reason}
+                    </span>
+                    <span className="ml-1">
+                      cat={m.business_data_debug.category} · ids={m.business_data_debug.validatedSourceIds?.length ?? 0}/{m.business_data_debug.modelSourceIds?.length ?? 0} · retrieved={m.business_data_debug.retrievedSourceCount ?? 0}
+                    </span>
                   </div>
                 )}
               </div>

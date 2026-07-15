@@ -622,7 +622,17 @@ export function buildBusinessDataSafetyBlock(): string {
    - ห้ามใช้ความรู้ทั่วไปของโมเดล / ราคาตลาด / ค่าเฉลี่ยอุตสาหกรรม
    - ห้ามพูดว่า "ประมาณ" / "น่าจะ" / "ปกติจะ" กับตัวเลขที่ไม่มีใน source
    - ต้องใช้ fallback wording: "ขออนุญาตเช็กข้อมูลกับแอดมินก่อนนะคะ เดี๋ยวตอบกลับโดยเร็วค่ะ 🙏"
-4) กฎนี้อยู่เหนือทุกกฎอื่น รวมถึง strict_rules ที่อาจสั่งให้ตอบเชิงรุก — เชิงรุกได้เฉพาะเมื่อมี source`;
+4) กฎนี้อยู่เหนือทุกกฎอื่น รวมถึง strict_rules ที่อาจสั่งให้ตอบเชิงรุก — เชิงรุกได้เฉพาะเมื่อมี source
+
+📤 JSON contract (ต้องส่งฟิลด์เหล่านี้เพิ่มทุกครั้ง):
+- business_data_decision: หนึ่งใน "answer_from_source" | "handoff_missing_source" | "handoff_conflicting_source" | "not_applicable"
+  • answer_from_source = มี source ตรงและใช้ตอบจริง
+  • handoff_missing_source = เป็นคำถามข้อมูลธุรกิจแต่ไม่มี source
+  • handoff_conflicting_source = source ขัดกันเอง ไม่ยืนยันได้
+  • not_applicable = คำถามไม่ใช่ข้อมูลธุรกิจ
+- business_data_category: หนึ่งใน "pricing" | "addon" | "service_fee" | "discount" | "promotion" | "min_order" | "delivery_fee" | "package_condition" | "none"
+- business_data_source_ids: array ของ id จาก KB/แคตตาล็อกแพ็กเกจ/โปรโมชัน ที่ถูกใช้ตอบจริงเท่านั้น (id ต้องคัดจาก context ที่ให้มา ห้ามแต่ง)
+หมายเหตุ: ระบบจะตรวจ id กับ context ก่อนส่งคำตอบ ถ้า id ไม่อยู่ใน context จริง คำตอบจะถูกแทนที่ด้วย handoff อัตโนมัติ`;
 }
 
 
