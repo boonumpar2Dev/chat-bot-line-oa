@@ -8,14 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Loader2, BookOpen, Shield, ArrowLeftRight, Check, X, AlertTriangle } from "lucide-react";
+import { Sparkles, Loader2, BookOpen, Shield, ArrowLeftRight, Check, X, AlertTriangle, RefreshCw, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 
 type ClassifiedItem = {
+  action?: "create" | "update";
   type: "rule" | "knowledge";
   content: string;
   title?: string;
   category?: string;
+  target_id?: string | null;
+  target_rule_index?: number | null;
+  original_snippet?: string;
   reasoning?: string;
   similar?: { type: string; snippet: string }[];
 };
@@ -66,35 +70,52 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
     if (!it.content?.trim()) { toast.error("เนื้อหาว่าง"); return; }
     setSavingIdx(idx);
     try {
+      const isUpdate = it.action === "update";
       if (it.type === "rule") {
         const { data: cfg } = await supabase.from("app_settings").select("strict_rules").eq("key", "ai_config").maybeSingle();
         const existing: string[] = cfg?.strict_rules || [];
+        let next: string[];
+        if (isUpdate && typeof it.target_rule_index === "number" && it.target_rule_index >= 0 && it.target_rule_index < existing.length) {
+          next = existing.map((r, i) => i === it.target_rule_index ? it.content.trim() : r);
+        } else {
+          next = [...existing, it.content.trim()];
+        }
         const { error } = await supabase.from("app_settings")
-          .update({ strict_rules: [...existing, it.content.trim()] })
+          .update({ strict_rules: next })
           .eq("key", "ai_config");
         if (error) throw error;
-        toast.success("✅ บันทึกเป็นกฎ AI แล้ว");
+        toast.success(isUpdate ? "♻️ อัปเดตกฎเดิมแล้ว" : "✅ บันทึกเป็นกฎ AI แล้ว");
       } else {
         if (!it.title?.trim()) { toast.error("ใส่หัวข้อก่อน"); setSavingIdx(null); return; }
-        // ensure category exists
         const cat = it.category?.trim() || null;
         if (cat && !categories.includes(cat)) {
           await supabase.from("knowledge_categories").insert({ name: cat });
           qc.invalidateQueries({ queryKey: ["kb-cats"] });
         }
-        const { data: ins, error } = await supabase.from("knowledge_base").insert({
-          title: it.title.trim(),
-          content: it.content.trim(),
-          category: cat,
-          status: "active",
-        }).select("id").maybeSingle();
-        if (error) throw error;
-        toast.success("✅ บันทึกเข้าฐานความรู้แล้ว");
+        let savedId: string | undefined;
+        if (isUpdate && it.target_id) {
+          const { data: upd, error } = await supabase.from("knowledge_base")
+            .update({ title: it.title.trim(), content: it.content.trim(), category: cat })
+            .eq("id", it.target_id).select("id").maybeSingle();
+          if (error) throw error;
+          savedId = upd?.id;
+          toast.success("♻️ อัปเดตข้อมูลเดิมแล้ว");
+        } else {
+          const { data: ins, error } = await supabase.from("knowledge_base").insert({
+            title: it.title.trim(),
+            content: it.content.trim(),
+            category: cat,
+            status: "active",
+          }).select("id").maybeSingle();
+          if (error) throw error;
+          savedId = ins?.id;
+          toast.success("✅ บันทึกเข้าฐานความรู้แล้ว");
+        }
         qc.invalidateQueries({ queryKey: ["kb"] });
         supabase.functions.invoke("rebuild-ai-cache").catch(() => {});
-        if (ins?.id) {
+        if (savedId) {
           const { triggerEmbed } = await import("@/lib/embed");
-          triggerEmbed("knowledge_base", ins.id);
+          triggerEmbed("knowledge_base", savedId);
         }
       }
       removeItem(idx);
@@ -149,6 +170,26 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
                 </Button>
               </div>
 
+              {it.action === "update" && (it.target_id || typeof it.target_rule_index === "number") && (
+                <div className="mb-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="flex items-center gap-1.5 font-medium text-emerald-700">
+                      <RefreshCw className="w-3.5 h-3.5" /> อัปเดตของเดิม (ไม่เพิ่มซ้ำ)
+                    </span>
+                    <Button
+                      size="sm" variant="ghost" className="h-6 text-[11px] px-2"
+                      onClick={() => updateItem(idx, { action: "create", target_id: null, target_rule_index: null })}
+                      title="สร้างใหม่แทน"
+                    >
+                      <PlusCircle className="w-3 h-3" /> เพิ่มใหม่แทน
+                    </Button>
+                  </div>
+                  {it.original_snippet && (
+                    <p className="text-muted-foreground line-clamp-2">ของเดิม: {it.original_snippet}</p>
+                  )}
+                </div>
+              )}
+
               {it.reasoning && (
                 <p className="text-xs text-muted-foreground italic mb-2">💡 {it.reasoning}</p>
               )}
@@ -202,8 +243,8 @@ export default function SmartTeachBox({ categories }: { categories: string[] }) 
                   <X className="w-3.5 h-3.5" /> ทิ้ง
                 </Button>
                 <Button size="sm" onClick={() => saveItem(idx)} disabled={savingIdx === idx}>
-                  {savingIdx === idx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  บันทึก
+                  {savingIdx === idx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : it.action === "update" ? <RefreshCw className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
+                  {it.action === "update" ? "อัปเดตของเดิม" : "บันทึกใหม่"}
                 </Button>
               </div>
             </Card>
