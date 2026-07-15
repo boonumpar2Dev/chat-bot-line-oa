@@ -207,12 +207,25 @@ export function enforceExistingCyclePolicy(
       reasons.push("fake_completion");
       continue;
     }
-    // Fake-approval requires customer approval intent
-    if (FAKE_APPROVAL_RE.test(bubble) && customerAskedApproval) {
+    // Strong action markers — unconditional (AI claiming server-side action)
+    if (STRONG_ACTION_RE.test(bubble)) {
       outBubbles.push(handoff);
       anyReplace = true;
-      reasons.push("fake_approval_gated");
+      reasons.push("fake_approval_strong_action");
       continue;
+    }
+    // Soft approval opener — only block when customer intent is approval/action
+    // AND neither customer msg nor AI bubble carries discovery markers.
+    if (SOFT_APPROVAL_OPENER_RE.test(bubble) && customerAskedApproval) {
+      const customerDiscovery = DISCOVERY_INTENT_RE.test(msg);
+      const bubbleDiscovery = DISCOVERY_CONTENT_RE.test(bubble);
+      if (!customerDiscovery && !bubbleDiscovery) {
+        outBubbles.push(handoff);
+        anyReplace = true;
+        reasons.push("fake_approval_gated");
+        continue;
+      }
+      // else: soft opener followed by discovery content → keep (factual answer)
     }
 
     // Focused availability: strip callback/lead reask ต่อท้าย ถ้าลูกค้าถามคิวว่าง
