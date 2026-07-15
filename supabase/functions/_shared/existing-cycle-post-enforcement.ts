@@ -25,6 +25,22 @@ import {
   pickExistingCycleReplyIntent,
   type ExistingCycleReplyIntent,
 } from "./existing-cycle-reply.ts";
+import { parseThaiDateCandidates } from "./ai-policy.ts";
+
+// Deterministic Thai month names for availability reply formatting.
+const THAI_MONTH_NAMES = [
+  "", "มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
+  "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม",
+];
+
+/**
+ * Format a Thai-date candidate into wording used in the deterministic
+ * availability reply: "25 กรกฎาคม" (no year — customer wording rarely includes one).
+ */
+function formatThaiDateShort(day: number, month: number): string {
+  if (!day || !month || month < 1 || month > 12) return "";
+  return `${day} ${THAI_MONTH_NAMES[month]}`;
+}
 
 // Expanded fake-approval regex — cover ทุกรูปแบบ per user trace 14/07/2569.
 const FAKE_APPROVAL_RE =
