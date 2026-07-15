@@ -93,6 +93,18 @@ export default function KBChatTest() {
                     {m.image_urls.map(u => <img key={u} src={u} alt="" className="w-20 h-20 rounded-lg object-cover border"/>)}
                   </div>
                 )}
+                {m.business_data_debug && (
+                  <div className="text-[10px] text-muted-foreground px-2 max-w-[85%]">
+                    <span className={cn("px-1.5 py-0.5 rounded font-medium",
+                      m.business_data_debug.action === "handoff" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                    )}>
+                      BD: {m.business_data_debug.action} · {m.business_data_debug.reason}
+                    </span>
+                    <span className="ml-1">
+                      cat={m.business_data_debug.category} · ids={m.business_data_debug.validatedSourceIds?.length ?? 0}/{m.business_data_debug.modelSourceIds?.length ?? 0} · retrieved={m.business_data_debug.retrievedSourceCount ?? 0}
+                    </span>
+                  </div>
+                )}
               </div>
             ))}
             {loading && <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="w-3 h-3 animate-spin"/> AI กำลังคิด…</div>}
