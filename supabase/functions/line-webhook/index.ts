@@ -13,6 +13,7 @@ import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-gua
 import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
 import { resolveExistingCycle, buildExistingCyclePolicyBlock, detectReturningNewCycle, buildReturningNewCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
 import { enforceExistingCyclePolicy } from "../_shared/existing-cycle-post-enforcement.ts";
+import { detectPackageIntent, resolveSelectedPackage, categoryMatchesPackageType, type PackageType } from "../_shared/package-intent.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
 import {
@@ -1500,6 +1501,8 @@ async function processEvent(event: any, supabase: any) {
     }
   }
 
+
+
   const filteredPromos = evType
     ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
     : (promos || []);
@@ -1518,6 +1521,32 @@ async function processEvent(event: any, supabase: any) {
   if (_lastAdminIdxF !== undefined) historyForFilter = historyForFilter.slice(_lastAdminIdxF);
   else historyForFilter = historyForFilter.slice(-6);
   const recentMsgsForFilter = historyForFilter.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
+
+  // ─── Defect 2 fix — Selected-package narrowing (uses existing data only) ────────
+  // resolve priority: explicit-in-msg → intent_data.service_type → event_type → history
+  const _pkgIntentEarly = detectPackageIntent(messageText);
+  let _resolvedPkgType: PackageType | "ambiguous" | null = null;
+  let _pkgClarifyDirective = "";
+  const _pkgNarrowedFrom = usePkgs.length;
+  if (_pkgIntentEarly.scope === "selected" || _pkgIntentEarly.scope === "specific") {
+    _resolvedPkgType = resolveSelectedPackage({
+      message: messageText,
+      serviceType: (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object")
+        ? (freshCustomer.intent_data as any).service_type ?? null
+        : null,
+      eventType: freshCustomer.event_type ?? null,
+      recentHistoryText: recentMsgsForFilter,
+    });
+    if (_resolvedPkgType && _resolvedPkgType !== "ambiguous") {
+      const narrowed = (usePkgs || []).filter((p: any) => categoryMatchesPackageType(p.category, _resolvedPkgType as PackageType));
+      if (narrowed.length > 0) usePkgs = narrowed;
+    } else {
+      _pkgClarifyDirective =
+        `\n\n❓ [PackageClarify] ลูกค้าถามรายละเอียดแพ็กเกจแต่ระบบยังไม่แน่ใจว่าหมายถึงแพ็กใด — ให้ตอบเฉพาะประโยคเดียวว่า "หมายถึงแพ็กเกจบุฟเฟ่ต์ โต๊ะจีน หรือซุ้มอาหารคะ" ห้ามส่งรูป/วิดีโอ ห้ามถามข้อมูลอื่น ห้ามเดา`;
+    }
+  }
+  console.log(`[PackageIntentTrace] customer=${freshCustomer.id} scope=${_pkgIntentEarly.scope} specific=${_pkgIntentEarly.specificType} factual=${_pkgIntentEarly.factualInfo} action=${_pkgIntentEarly.currentJobAction} resolved=${_resolvedPkgType ?? "n/a"} pkgs_before=${_pkgNarrowedFrom} pkgs_after=${usePkgs.length}`);
+
 
   // KB retrieval: ลอง semantic search ก่อน (เข้าใจความหมายภาษาไทย), fallback เป็น keyword ถ้าพลาด
   const mustIncludeIds = kbItems.filter((i: any) => i?.is_always_include).map((i: any) => i.id);
@@ -1625,7 +1654,7 @@ async function processEvent(event: any, supabase: any) {
   const prevSentStr = prevSentTitles.length ? `\n\n🚫 รูปที่เคยส่งให้ลูกค้าคนนี้ไปแล้วในรอบก่อนหน้า (ห้ามส่งซ้ำ เว้นแต่ลูกค้าขอใหม่ชัดเจน):\n${prevSentTitles.map((t: string) => `- ${t}`).join("\n")}` : "";
   const phase2Block = phase2Instruction ? `\nPhase 2 (ลูกค้าเลือกระดับ/บอกงบ/เลือกประเภทแพ็กแล้ว): ${phase2Instruction}` : `\nPhase 2: ส่งเฉพาะรูป tier ที่แนะนำเท่านั้น ห้ามแนบ KB เมนู/รูปอื่น เว้นแต่ลูกค้าจะขอดูเมนูชัดเจน`;
   const comparisonSection = (cfg.comparison_phase_enabled && cfg.comparison_kb_category)
-    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน\n  • ถ้าไม่มี KB หมวดนี้ที่ตรง หรือคุณกำลังเสนอ tier เฉพาะเจาะจง (เช่น "แพ็ก 30 ท่าน ราคา X") → ใส่ image_titles เป็น "แพ็กเกจ: ชื่อ — tier" ของ tier ที่เสนอ 1 อันได้\n  • ❌ ห้ามแนบ KB เมนู/ตัวอย่าง/ซุ้ม เด็ดขาดใน Phase 1 เว้นแต่ลูกค้าจะ "ขอดูเมนู/ขอดูตัวอย่าง" ชัดเจนในข้อความล่าสุด${phase2Block}\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูป${comparisonInstruction ? `\n\n📣 น้ำเสียงตอนส่งรูปเปรียบเทียบ (จาก Settings):\n${comparisonInstruction}` : ""}${prevSentStr}`
+    ? `\n\n🎯 กลยุทธ์ส่งรูปเปรียบเทียบ 2 จังหวะ:\nPhase 1 (ลูกค้ายังไม่ระบุระดับ/งบ): เมื่อลูกค้าถามราคา/แพ็กเกจ/มีอะไรบ้าง โดยยังไม่บอกงบหรือเลือกระดับ → ใส่ image_titles เป็นรายการ KB หมวด "${cfg.comparison_kb_category}" ที่ตรงจำนวนคน\n  • ถ้าไม่มี KB หมวดนี้ที่ตรง หรือคุณกำลังเสนอ tier เฉพาะเจาะจง (เช่น "แพ็ก 30 ท่าน ราคา X") → ใส่ image_titles เป็น "แพ็กเกจ: ชื่อ — tier" ของ tier ที่เสนอ 1 อันได้\n  • ❌ ห้ามแนบ KB เมนู/ตัวอย่าง/ซุ้ม เด็ดขาดใน Phase 1 เว้นแต่ลูกค้าจะ "ขอดูเมนู / ขอดูตัวอย่าง / ขอดูทุกแพ็กเกจ / ขอดูทุกรูปแบบ / ทั้ง 3 แบบ" ชัดเจนในข้อความล่าสุด${phase2Block}\nถ้าลูกค้ายังไม่บอกจำนวนคน → ถามจำนวนคนก่อน ยังไม่ต้องส่งรูป${comparisonInstruction ? `\n\n📣 น้ำเสียงตอนส่งรูปเปรียบเทียบ (จาก Settings):\n${comparisonInstruction}` : ""}${prevSentStr}`
     : (phase2Instruction ? `\n\n🎯 กฎเลือกรูปเมื่อลูกค้าเลือกแพ็ก/ระดับแล้ว:\n${phase2Instruction}${prevSentStr}` : prevSentStr);
 
   let history = [...(recentConvs || [])].reverse();
@@ -1719,6 +1748,9 @@ async function processEvent(event: any, supabase: any) {
   if (missingRequiredLabels.length > 0) {
     knownIntentStr += `\n\n❓ ยังไม่ทราบข้อมูลสำคัญ: ${missingRequiredLabels.join(", ")} — ถามทีละข้อในจังหวะที่เหมาะสม`;
   }
+  if (_pkgClarifyDirective) knownIntentStr += _pkgClarifyDirective;
+
+
 
   // 🔢 ตรวจจำนวนแขกจากข้อความ + ที่เก็บไว้ — ถ้า max <40 → เพิ่ม alert กฎห้ามเสนอโต๊ะจีน/ซุ้ม/ภาพรวม
   const guestNumsInText = Array.from(String(messageText).matchAll(/(\d{1,4})\s*(?:ท่าน|คน|พระ|แขก)/g)).map(m => parseInt(m[1], 10)).filter(n => n > 0 && n < 1000);
@@ -2153,7 +2185,8 @@ ${pastLines}
   // คีย์เวิร์ดอ่านจาก app_settings เพื่อให้แอดมินแก้ได้
   const menuReqKeywords: string[] = Array.isArray(cfg.menu_request_keywords) ? cfg.menu_request_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
   const kbMenuKeywords: string[] = Array.isArray(cfg.kb_menu_title_keywords) ? cfg.kb_menu_title_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
-  const askedForMenu = menuReqKeywords.some(kw => String(messageText).includes(kw));
+  // Defect 1 fix: all-package request intent also grants menu allowance (ซุ้ม/menu titles allowed to pass).
+  const askedForMenu = menuReqKeywords.some(kw => String(messageText).includes(kw)) || _pkgIntentEarly.scope === "all";
   if (!askedForMenu && imageTitles.length > 0 && kbMenuKeywords.length > 0) {
     const before = imageTitles.length;
     imageTitles = imageTitles.filter(t => {
@@ -2162,6 +2195,12 @@ ${pastLines}
       return !kbMenuKeywords.some(kw => s.includes(kw));
     });
     if (imageTitles.length !== before) console.log(`[AntiSpam] dropped ${before - imageTitles.length} unsolicited menu/example images`);
+  }
+
+  // Defect 2 defensive: when clarification is required, block all media regardless of AI output.
+  if (_pkgClarifyDirective && imageTitles.length > 0) {
+    console.log(`[PackageClarify] suppressing ${imageTitles.length} image_titles until customer clarifies package type`);
+    imageTitles = [];
   }
 
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode

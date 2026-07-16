@@ -25,14 +25,21 @@ import {
   pickExistingCycleReplyIntent,
   type ExistingCycleReplyIntent,
 } from "./existing-cycle-reply.ts";
+import { FACTUAL_INFO_RE, CURRENT_JOB_ACTION_RE } from "./package-intent.ts";
 
-// Expanded fake-approval regex — cover ทุกรูปแบบ per user trace 14/07/2569.
+// Fake-approval / completion-claim regex.
+// Standalone soft-affirmations ("ได้เลยค่ะ", "ได้ค่ะ", "แน่นอนค่ะ") were REMOVED
+// as standalone triggers (Defect 3 fix) — they now only count when combined with
+// a completion claim OR when the customer expressed a current-job action intent.
 const FAKE_APPROVAL_RE =
-  /(?:ได้(?:เลย|แน่นอน)(?:ค่ะ|ครับ)|(?:ใช้|ยืนยัน)ได้(?:เลย)?(?:ค่ะ|ครับ)|เมนู(?:เดิม|นี้)?(?:ยัง)?ใช้ได้(?:เลย)?(?:ค่ะ|ครับ)?|รายการเดิม(?:ยัง)?ใช้ได้|ยืนยัน(?:ให้)?(?:เรียบร้อย)?แล้ว|เปลี่ยน(?:ให้)?(?:เรียบร้อย)?แล้ว|จัดให้ได้(?:เลย)?(?:ค่ะ|ครับ)|เปลี่ยนให้ได้(?:เลย)?(?:ค่ะ|ครับ)|(?:รายการ|เมนู|วัน|สถานที่|คิว|จำนวน|ยอด)[^\n]{0,20}?เรียบร้อยแล้ว|จอง(?:ให้)?(?:แล้ว|เรียบร้อย)|คิวได้(?:แน่นอน|เลย)|ดำเนินการ(?:ให้)?แล้ว|อนุมัติ(?:ให้)?แล้ว|สามารถ(?:เปลี่ยน|จอง|ยืนยัน|เพิ่ม|ลด|ใช้)ได้(?:เลย)?(?:ค่ะ|ครับ))/;
+  /(?:เมนู(?:เดิม|นี้)?(?:ยัง)?ใช้ได้(?:เลย)?(?:ค่ะ|ครับ)?|รายการเดิม(?:ยัง)?ใช้ได้|ยืนยัน(?:ให้)?(?:เรียบร้อย)?แล้ว|เปลี่ยน(?:ให้)?(?:เรียบร้อย)?แล้ว|จัดให้(?:เรียบร้อย)?แล้ว|เปลี่ยนให้ได้(?:เลย)?(?:ค่ะ|ครับ)|(?:รายการ|เมนู|วัน|สถานที่|คิว|จำนวน|ยอด)[^\n]{0,20}?เรียบร้อยแล้ว|จอง(?:ให้)?(?:แล้ว|เรียบร้อย)|คิวได้(?:แน่นอน|เลย)|ดำเนินการ(?:ให้)?แล้ว|อนุมัติ(?:ให้)?แล้ว|สามารถ(?:เปลี่ยน|จอง|ยืนยัน|เพิ่ม|ลด|ใช้)ได้(?:เลย)?(?:ค่ะ|ครับ)|เพิ่มลงใบเสนอราคาแล้ว|ใช้ของเดิมได้แน่นอน)/;
 
-// Approval/change/confirmation intent from customer (opens fake-approval detection gate).
+// Approval/change/confirmation intent from customer.
+// Bare "ได้ไหม / ได้มั้ย" is NO LONGER a standalone trigger (Defect 3 fix).
+// Requires a current-job action verb (เปลี่ยน|เพิ่ม|ลด|สลับ|ใช้แทน|ใช้ตามเดิม|ยืนยัน|จอง|อนุมัติ|แก้|ปรับ|เอา(?:ตาม)?เดิม)
+// optionally followed within a short window by ได้ไหม/ได้มั้ย/ให้หน่อย/เลยค่ะ/ได้หรือเปล่า.
 const APPROVAL_INTENT_RE =
-  /(?:ได้ไหม|ได้มั้ย|ใช้ได้(?:ไหม|มั้ย)|เปลี่ยน(?:ได้)?(?:ไหม|มั้ย)|ยังใช้ได้|ตามเดิม(?:ได้)?(?:ไหม|มั้ย)|เอาเดิม|เอาตามเดิม|โอเค(?:ไหม|มั้ย)|แบบนี้(?:ได้|โอเค)|ยืนยัน|อนุมัติ|จอง(?:ให้|ได้)?|เพิ่ม|ลด|สลับ|แทน)/;
+  /(?:(?:เปลี่ยน|เพิ่ม|ลด|สลับ|ใช้(?:แทน|ตามเดิม)|ยืนยัน|จอง|อนุมัติ|แก้|ปรับ|เอา(?:ตาม)?เดิม)[^\n]{0,20}?(?:ได้(?:ไหม|มั้ย|หรือเปล่า)|ให้หน่อย|เลย(?:ค่ะ|ครับ)?)|(?:เปลี่ยน|เพิ่ม|ลด|สลับ|ยืนยัน|จอง|อนุมัติ|แก้|ปรับ)(?:เมนู|รายการ|แพ็ก|วัน|สถานที่|คิว|จำนวน)|เอา(?:ตาม)?เดิม|ยังใช้ได้(?:ไหม|มั้ย))/;
 
 // Fake-completion phrases that indicate false server action regardless of customer intent.
 const FAKE_COMPLETION_RE = /เรียบร้อยแล้ว|ยืนยันให้แล้ว|เปลี่ยนให้แล้ว|จอง(?:ให้)?แล้ว|อนุมัติให้แล้ว|ดำเนินการให้แล้ว/;
@@ -107,10 +114,14 @@ export function enforceExistingCyclePolicy(
   const replyIntent = pickExistingCycleReplyIntent(msg);
   const handoff = EXISTING_CYCLE_REPLIES[replyIntent];
 
-  // Approval-intent gate: only treat "ambiguous approval" as fake when customer asked
-  // an approval/change/confirmation question. Fake-completion phrases ("เรียบร้อยแล้ว")
-  // always trip regardless of customer intent (they claim an action was taken).
-  const customerAskedApproval = APPROVAL_INTENT_RE.test(msg);
+  // Approval-intent gate — Defect 3 fix:
+  //   Approval intent requires a current-job action verb (regex above).
+  //   If customer clearly asked for factual info AND did NOT use any current-job action verb,
+  //   the factual intent WINS and approval-gate is forced off.
+  const rawApprovalIntent = APPROVAL_INTENT_RE.test(msg);
+  const factualInfoIntent = FACTUAL_INFO_RE.test(msg);
+  const currentJobAction = CURRENT_JOB_ACTION_RE.test(msg);
+  const customerAskedApproval = rawApprovalIntent && !(factualInfoIntent && !currentJobAction);
 
   const bubbles = raw.split(/\n*---+\n*/).map((b) => b.trim()).filter(Boolean);
   const outBubbles: string[] = [];
