@@ -2185,7 +2185,8 @@ ${pastLines}
   // คีย์เวิร์ดอ่านจาก app_settings เพื่อให้แอดมินแก้ได้
   const menuReqKeywords: string[] = Array.isArray(cfg.menu_request_keywords) ? cfg.menu_request_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
   const kbMenuKeywords: string[] = Array.isArray(cfg.kb_menu_title_keywords) ? cfg.kb_menu_title_keywords.filter((s: any) => typeof s === "string" && s.trim()) : [];
-  const askedForMenu = menuReqKeywords.some(kw => String(messageText).includes(kw));
+  // Defect 1 fix: all-package request intent also grants menu allowance (ซุ้ม/menu titles allowed to pass).
+  const askedForMenu = menuReqKeywords.some(kw => String(messageText).includes(kw)) || _pkgIntentEarly.scope === "all";
   if (!askedForMenu && imageTitles.length > 0 && kbMenuKeywords.length > 0) {
     const before = imageTitles.length;
     imageTitles = imageTitles.filter(t => {
