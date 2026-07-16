@@ -1498,8 +1498,37 @@ async function processEvent(event: any, supabase: any) {
       console.log(`[ServiceScope] package filter (bypass evType) empty for scope=food_only_buffet — no fallback (source=${before})`);
     } else {
       console.log(`[ServiceScope] package filter (bypass evType) scope=food_only_buffet source=${before} after=${usePkgs.length}`);
+  }
+
+  // ─── Defect 2 fix — Selected-package narrowing (uses existing data only) ────────
+  // ห้ามเพิ่ม schema/intent_field ใหม่ — resolve จาก:
+  //   1) explicit type ในข้อความปัจจุบัน
+  //   2) intent_data.service_type
+  //   3) freshCustomer.event_type
+  //   4) explicit type ใน recent history
+  // narrow เฉพาะเมื่อ scope = selected / specific เท่านั้น (ไม่แตะ scope=all/none)
+  const _pkgIntentEarly = detectPackageIntent(messageText);
+  let _resolvedPkgType: PackageType | "ambiguous" | null = null;
+  let _pkgClarifyDirective = "";
+  let _pkgNarrowedFrom = usePkgs.length;
+  if (_pkgIntentEarly.scope === "selected" || _pkgIntentEarly.scope === "specific") {
+    _resolvedPkgType = resolveSelectedPackage({
+      message: messageText,
+      serviceType: (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object")
+        ? (freshCustomer.intent_data as any).service_type ?? null
+        : null,
+      eventType: freshCustomer.event_type ?? null,
+      recentHistoryText: recentMsgsForFilter,
+    });
+    if (_resolvedPkgType && _resolvedPkgType !== "ambiguous") {
+      const narrowed = (usePkgs || []).filter((p: any) => categoryMatchesPackageType(p.category, _resolvedPkgType as PackageType));
+      if (narrowed.length > 0) usePkgs = narrowed;
+    } else if (_resolvedPkgType === "ambiguous" || _resolvedPkgType === null) {
+      _pkgClarifyDirective =
+        `\n\n❓ [PackageClarify] ลูกค้าถามรายละเอียดแพ็กเกจแต่ระบบยังไม่แน่ใจว่าหมายถึงแพ็กใด — ให้ตอบเฉพาะประโยคเดียวว่า "หมายถึงแพ็กเกจบุฟเฟ่ต์ โต๊ะจีน หรือซุ้มอาหารคะ" ห้ามส่งรูป/วิดีโอ ห้ามถามข้อมูลอื่น ห้ามเดา`;
     }
   }
+  console.log(`[PackageIntentTrace] customer=${freshCustomer.id} scope=${_pkgIntentEarly.scope} specific=${_pkgIntentEarly.specificType} factual=${_pkgIntentEarly.factualInfo} action=${_pkgIntentEarly.currentJobAction} resolved=${_resolvedPkgType ?? "n/a"} pkgs_before=${_pkgNarrowedFrom} pkgs_after=${usePkgs.length}`);
 
   const filteredPromos = evType
     ? (promos || []).filter((pr: any) => !pr.applicable_categories?.length || pr.applicable_categories.some((c: string) => filterMatch(c)))
