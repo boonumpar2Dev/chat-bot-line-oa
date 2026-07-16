@@ -13,6 +13,7 @@ import { evaluatePostQuoteNoReaskGuard } from "../_shared/post-quote-noreask-gua
 import { evaluateExistingCustomerNoReaskGuard } from "../_shared/existing-customer-noreask-guard.ts";
 import { resolveExistingCycle, buildExistingCyclePolicyBlock, detectReturningNewCycle, buildReturningNewCyclePolicyBlock } from "../_shared/existing-cycle-resolver.ts";
 import { enforceExistingCyclePolicy } from "../_shared/existing-cycle-post-enforcement.ts";
+import { detectPackageIntent, resolveSelectedPackage, categoryMatchesPackageType, type PackageType } from "../_shared/package-intent.ts";
 import { evaluatePaymentSlipGuard } from "../_shared/payment-slip-guard.ts";
 import { parseThaiDateCandidates } from "../_shared/ai-policy.ts";
 import {
