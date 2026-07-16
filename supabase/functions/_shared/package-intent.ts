@@ -40,7 +40,7 @@ export const FACTUAL_INFO_RE =
 // Current-job action verbs (customer wants to change/confirm current job).
 // Anchored with a following ได้ไหม / ให้หน่อย / เลยค่ะ / ได้หรือเปล่า or standalone imperative form.
 export const CURRENT_JOB_ACTION_RE =
-  /(?:เปลี่ยน|เพิ่ม|ลด|สลับ|ใช้(?:แทน|ตามเดิม)?|ยืนยัน|จอง|อนุมัติ|แก้|ปรับ|เอา(?:ตาม)?เดิม)/;
+  /(?:เปลี่ยน|เพิ่ม|ลด|สลับ|ใช้(?:แทน|ตามเดิม)?|ยืนยัน|จอง|อนุมัติ|แก้|ปรับ|เอา(?:ตาม)?เดิม|เอา[^\n]{0,15}?เดิม)/;
 
 // ── API ────────────────────────────────────────────────────────────────────
 
