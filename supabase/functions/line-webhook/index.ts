@@ -2197,6 +2197,12 @@ ${pastLines}
     if (imageTitles.length !== before) console.log(`[AntiSpam] dropped ${before - imageTitles.length} unsolicited menu/example images`);
   }
 
+  // Defect 2 defensive: when clarification is required, block all media regardless of AI output.
+  if (_pkgClarifyDirective && imageTitles.length > 0) {
+    console.log(`[PackageClarify] suppressing ${imageTitles.length} image_titles until customer clarifies package type`);
+    imageTitles = [];
+  }
+
   // กฎทั้งหมด (รวมกฎชิม/นิมนต์) อยู่ใน strict_rules แล้ว — ไม่ต้องมี post-check hardcode
   let finalAnswer = answerText;
 
