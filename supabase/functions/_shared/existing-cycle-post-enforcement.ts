@@ -114,10 +114,14 @@ export function enforceExistingCyclePolicy(
   const replyIntent = pickExistingCycleReplyIntent(msg);
   const handoff = EXISTING_CYCLE_REPLIES[replyIntent];
 
-  // Approval-intent gate: only treat "ambiguous approval" as fake when customer asked
-  // an approval/change/confirmation question. Fake-completion phrases ("เรียบร้อยแล้ว")
-  // always trip regardless of customer intent (they claim an action was taken).
-  const customerAskedApproval = APPROVAL_INTENT_RE.test(msg);
+  // Approval-intent gate — Defect 3 fix:
+  //   Approval intent requires a current-job action verb (regex above).
+  //   If customer clearly asked for factual info AND did NOT use any current-job action verb,
+  //   the factual intent WINS and approval-gate is forced off.
+  const rawApprovalIntent = APPROVAL_INTENT_RE.test(msg);
+  const factualInfoIntent = FACTUAL_INFO_RE.test(msg);
+  const currentJobAction = CURRENT_JOB_ACTION_RE.test(msg);
+  const customerAskedApproval = rawApprovalIntent && !(factualInfoIntent && !currentJobAction);
 
   const bubbles = raw.split(/\n*---+\n*/).map((b) => b.trim()).filter(Boolean);
   const outBubbles: string[] = [];
