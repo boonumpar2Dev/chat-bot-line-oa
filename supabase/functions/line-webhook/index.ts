@@ -1748,6 +1748,9 @@ async function processEvent(event: any, supabase: any) {
   if (missingRequiredLabels.length > 0) {
     knownIntentStr += `\n\n❓ ยังไม่ทราบข้อมูลสำคัญ: ${missingRequiredLabels.join(", ")} — ถามทีละข้อในจังหวะที่เหมาะสม`;
   }
+  if (_pkgClarifyDirective) knownIntentStr += _pkgClarifyDirective;
+
+
 
   // 🔢 ตรวจจำนวนแขกจากข้อความ + ที่เก็บไว้ — ถ้า max <40 → เพิ่ม alert กฎห้ามเสนอโต๊ะจีน/ซุ้ม/ภาพรวม
   const guestNumsInText = Array.from(String(messageText).matchAll(/(\d{1,4})\s*(?:ท่าน|คน|พระ|แขก)/g)).map(m => parseInt(m[1], 10)).filter(n => n > 0 && n < 1000);
