@@ -1522,6 +1522,32 @@ async function processEvent(event: any, supabase: any) {
   else historyForFilter = historyForFilter.slice(-6);
   const recentMsgsForFilter = historyForFilter.map((m: any) => `${m.sender === "customer" ? "ลูกค้า" : m.sender === "admin" ? "แอดมิน" : "AI"}: ${m.message}`).join("\n");
 
+  // ─── Defect 2 fix — Selected-package narrowing (uses existing data only) ────────
+  // resolve priority: explicit-in-msg → intent_data.service_type → event_type → history
+  const _pkgIntentEarly = detectPackageIntent(messageText);
+  let _resolvedPkgType: PackageType | "ambiguous" | null = null;
+  let _pkgClarifyDirective = "";
+  const _pkgNarrowedFrom = usePkgs.length;
+  if (_pkgIntentEarly.scope === "selected" || _pkgIntentEarly.scope === "specific") {
+    _resolvedPkgType = resolveSelectedPackage({
+      message: messageText,
+      serviceType: (freshCustomer.intent_data && typeof freshCustomer.intent_data === "object")
+        ? (freshCustomer.intent_data as any).service_type ?? null
+        : null,
+      eventType: freshCustomer.event_type ?? null,
+      recentHistoryText: recentMsgsForFilter,
+    });
+    if (_resolvedPkgType && _resolvedPkgType !== "ambiguous") {
+      const narrowed = (usePkgs || []).filter((p: any) => categoryMatchesPackageType(p.category, _resolvedPkgType as PackageType));
+      if (narrowed.length > 0) usePkgs = narrowed;
+    } else {
+      _pkgClarifyDirective =
+        `\n\n❓ [PackageClarify] ลูกค้าถามรายละเอียดแพ็กเกจแต่ระบบยังไม่แน่ใจว่าหมายถึงแพ็กใด — ให้ตอบเฉพาะประโยคเดียวว่า "หมายถึงแพ็กเกจบุฟเฟ่ต์ โต๊ะจีน หรือซุ้มอาหารคะ" ห้ามส่งรูป/วิดีโอ ห้ามถามข้อมูลอื่น ห้ามเดา`;
+    }
+  }
+  console.log(`[PackageIntentTrace] customer=${freshCustomer.id} scope=${_pkgIntentEarly.scope} specific=${_pkgIntentEarly.specificType} factual=${_pkgIntentEarly.factualInfo} action=${_pkgIntentEarly.currentJobAction} resolved=${_resolvedPkgType ?? "n/a"} pkgs_before=${_pkgNarrowedFrom} pkgs_after=${usePkgs.length}`);
+
+
   // KB retrieval: ลอง semantic search ก่อน (เข้าใจความหมายภาษาไทย), fallback เป็น keyword ถ้าพลาด
   const mustIncludeIds = kbItems.filter((i: any) => i?.is_always_include).map((i: any) => i.id);
   let filteredKb: any[] = [];
