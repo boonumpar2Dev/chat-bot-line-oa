@@ -246,6 +246,15 @@ async function verifySignature(body: string, signature: string, secret: string) 
   return btoa(String.fromCharCode(...new Uint8Array(sig))) === signature;
 }
 
+// Split AI reply on "---" separators into multiple LINE text bubbles (max 3)
+function toTextBubbles(text: string): { type: "text"; text: string }[] {
+  const parts = String(text || "").split(/\n*---+\n*/).map(s => s.trim()).filter(Boolean).slice(0, 3);
+  const list = parts.length > 0 ? parts : [String(text || "")];
+  return list.map(t => ({ type: "text", text: t }));
+}
+
+
+
 async function pushLine(to: string, messages: any[]): Promise<{ ok: boolean; status: number; sentMessages: any[] }> {
   const r = await fetch("https://api.line.me/v2/bot/message/push", {
     method: "POST",
