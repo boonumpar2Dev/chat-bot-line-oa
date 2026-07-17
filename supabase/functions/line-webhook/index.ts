@@ -2501,7 +2501,7 @@ ${pastLines}
   if (aiResp.confirm_existing_phone && hasPhone) {
     const muteH = cfg.phone_mute_hours ?? 1;
     const muteUntil = new Date(Date.now() + muteH * 3600000).toISOString();
-    await saveAndPushAi(supabase, lineUserId, [{ type: "text", text: finalAnswer }], { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
+    await saveAndPushAi(supabase, lineUserId, toTextBubbles(finalAnswer), { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence });
     // 🛡️ admin_bot_override = true → ไม่แตะ ai_active (เคารพการตัดสินใจของแอด)
     const patch: any = {
       manual_chat_until: muteUntil,
