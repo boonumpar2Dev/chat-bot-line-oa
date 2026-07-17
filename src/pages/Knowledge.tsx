@@ -350,57 +350,84 @@ function PackagesTab() {
   );
 }
 
-function CategoriesTab() {
+function CategoryManager({
+  title,
+  description,
+  table,
+  queryKey,
+  cascadeTables,
+}: {
+  title: string;
+  description: string;
+  table: "package_categories" | "knowledge_categories";
+  queryKey: string;
+  cascadeTables: Array<"catering_packages" | "knowledge_base">;
+}) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
-  const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
-  const add = async () => { const v = name.trim(); if(!v) { toast.error("กรอกชื่อประเภทก่อน"); return; } const { error } = await supabase.from("package_categories").insert({ name: v, sort_order: (cats?.length||0)+1 }); if(error) toast.error(error.message); else { toast.success("เพิ่มแล้ว"); setName(""); qc.invalidateQueries({queryKey:["pkg-cats"]}); } };
-  const del = async (id:string) => { await supabase.from("package_categories").delete().eq("id",id); qc.invalidateQueries({queryKey:["pkg-cats"]}); };
-  const startEdit = (c:any) => { setEditingId(c.id); setEditingName(c.name); };
+  const { data: cats } = useQuery({
+    queryKey: [queryKey],
+    queryFn: async () => (await supabase.from(table).select("*").order("sort_order")).data ?? [],
+  });
+  const add = async () => {
+    const v = name.trim();
+    if (!v) { toast.error("กรอกชื่อประเภทก่อน"); return; }
+    if ((cats || []).some((x: any) => x.name === v)) { toast.error("มีชื่อนี้อยู่แล้ว"); return; }
+    const { error } = await supabase.from(table).insert({ name: v, sort_order: (cats?.length || 0) + 1 });
+    if (error) toast.error(error.message);
+    else { toast.success("เพิ่มแล้ว"); setName(""); qc.invalidateQueries({ queryKey: [queryKey] }); }
+  };
+  const del = async (id: string) => {
+    await supabase.from(table).delete().eq("id", id);
+    qc.invalidateQueries({ queryKey: [queryKey] });
+  };
+  const startEdit = (c: any) => { setEditingId(c.id); setEditingName(c.name); };
   const cancelEdit = () => { setEditingId(null); setEditingName(""); };
-  const saveEdit = async (c:any) => {
+  const saveEdit = async (c: any) => {
     const v = editingName.trim();
     if (!v) { toast.error("กรอกชื่อประเภทก่อน"); return; }
     if (v === c.name) { cancelEdit(); return; }
-    if ((cats||[]).some((x:any)=>x.id!==c.id && x.name===v)) { toast.error("มีชื่อนี้อยู่แล้ว"); return; }
+    if ((cats || []).some((x: any) => x.id !== c.id && x.name === v)) { toast.error("มีชื่อนี้อยู่แล้ว"); return; }
     const oldName = c.name;
-    const { error } = await supabase.from("package_categories").update({ name: v }).eq("id", c.id);
+    const { error } = await supabase.from(table).update({ name: v }).eq("id", c.id);
     if (error) { toast.error(error.message); return; }
-    // Cascade rename to referencing tables (stored by name)
-    const [pkgRes, kbRes] = await Promise.all([
-      supabase.from("catering_packages").update({ category: v }).eq("category", oldName),
-      supabase.from("knowledge_base").update({ category: v }).eq("category", oldName),
-    ]);
-    if (pkgRes.error) toast.error("อัปเดตแพ็กเกจไม่ครบ: "+pkgRes.error.message);
-    if (kbRes.error) toast.error("อัปเดต KB ไม่ครบ: "+kbRes.error.message);
+    for (const t of cascadeTables) {
+      const r = await supabase.from(t).update({ category: v }).eq("category", oldName);
+      if (r.error) toast.error(`อัปเดต ${t} ไม่ครบ: ${r.error.message}`);
+    }
     toast.success("แก้ชื่อแล้ว");
     cancelEdit();
-    qc.invalidateQueries({ queryKey: ["pkg-cats"] });
+    qc.invalidateQueries({ queryKey: [queryKey] });
     qc.invalidateQueries({ queryKey: ["pkgs"] });
+    qc.invalidateQueries({ queryKey: ["packages"] });
     qc.invalidateQueries({ queryKey: ["kb"] });
   };
   return (
-    <Card className="p-6 shadow-soft border-border/60 max-w-xl">
+    <Card className="p-6 shadow-soft border-border/60">
+      <div className="mb-4">
+        <h3 className="font-display font-semibold">{title}</h3>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
       <div className="flex gap-2 mb-4">
-        <Input placeholder="เช่น งานบุญ, โต๊ะจีน, ค็อกเทล" value={name} onChange={e=>setName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()}/>
-        <Button onClick={add}><Plus/></Button>
+        <Input placeholder="ชื่อหมวด" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} />
+        <Button onClick={add}><Plus /></Button>
       </div>
       <div className="space-y-2">
-        {cats?.map((c:any)=>(
+        {cats?.map((c: any) => (
           <div key={c.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-card">
             {editingId === c.id ? (
               <>
                 <Input
                   autoFocus
                   value={editingName}
-                  onChange={e=>setEditingName(e.target.value)}
-                  onKeyDown={e=>{ if(e.key==="Enter") saveEdit(c); if(e.key==="Escape") cancelEdit(); }}
+                  onChange={e => setEditingName(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") saveEdit(c); if (e.key === "Escape") cancelEdit(); }}
                   className="h-9"
                 />
                 <div className="flex gap-1 shrink-0">
-                  <Button size="sm" onClick={()=>saveEdit(c)}>บันทึก</Button>
+                  <Button size="sm" onClick={() => saveEdit(c)}>บันทึก</Button>
                   <Button size="sm" variant="ghost" onClick={cancelEdit}>ยกเลิก</Button>
                 </div>
               </>
@@ -408,8 +435,8 @@ function CategoriesTab() {
               <>
                 <span className="flex-1">{c.name}</span>
                 <div className="flex gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" onClick={()=>startEdit(c)} title="แก้ไข"><Pencil className="w-4 h-4"/></Button>
-                  <Button size="icon" variant="ghost" onClick={()=>del(c.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                  <Button size="icon" variant="ghost" onClick={() => startEdit(c)} title="แก้ไข"><Pencil className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => del(c.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive" /></Button>
                 </div>
               </>
             )}
@@ -418,6 +445,27 @@ function CategoriesTab() {
         {!cats?.length && <p className="text-sm text-muted-foreground text-center py-6">ยังไม่มีประเภท</p>}
       </div>
     </Card>
+  );
+}
+
+function CategoriesTab() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2 max-w-4xl">
+      <CategoryManager
+        title="หมวดของ ข้อมูลทั่วไป (KB)"
+        description="ใช้ใน dialog เพิ่มข้อมูล/แก้ไขข้อมูลทั่วไป"
+        table="knowledge_categories"
+        queryKey="kb-cats"
+        cascadeTables={["knowledge_base"]}
+      />
+      <CategoryManager
+        title="ประเภทของ แพ็คเกจ"
+        description="ใช้ใน dialog เพิ่ม/แก้ไขแพ็คเกจ"
+        table="package_categories"
+        queryKey="pkg-cats"
+        cascadeTables={["catering_packages"]}
+      />
+    </div>
   );
 }
 
