@@ -25,7 +25,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText, Shield, GraduationCap } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, Package, Sparkles, Loader2, Image as ImageIcon, BookOpen, MessageSquare, X, Film, Copy, FileText, Shield, GraduationCap, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import ImageUrlsField from "@/components/knowledge/ImageUrlsField";
@@ -353,9 +353,34 @@ function PackagesTab() {
 function CategoriesTab() {
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const { data: cats } = useQuery({ queryKey: ["pkg-cats"], queryFn: async () => (await supabase.from("package_categories").select("*").order("sort_order")).data ?? [] });
   const add = async () => { const v = name.trim(); if(!v) { toast.error("กรอกชื่อประเภทก่อน"); return; } const { error } = await supabase.from("package_categories").insert({ name: v, sort_order: (cats?.length||0)+1 }); if(error) toast.error(error.message); else { toast.success("เพิ่มแล้ว"); setName(""); qc.invalidateQueries({queryKey:["pkg-cats"]}); } };
   const del = async (id:string) => { await supabase.from("package_categories").delete().eq("id",id); qc.invalidateQueries({queryKey:["pkg-cats"]}); };
+  const startEdit = (c:any) => { setEditingId(c.id); setEditingName(c.name); };
+  const cancelEdit = () => { setEditingId(null); setEditingName(""); };
+  const saveEdit = async (c:any) => {
+    const v = editingName.trim();
+    if (!v) { toast.error("กรอกชื่อประเภทก่อน"); return; }
+    if (v === c.name) { cancelEdit(); return; }
+    if ((cats||[]).some((x:any)=>x.id!==c.id && x.name===v)) { toast.error("มีชื่อนี้อยู่แล้ว"); return; }
+    const oldName = c.name;
+    const { error } = await supabase.from("package_categories").update({ name: v }).eq("id", c.id);
+    if (error) { toast.error(error.message); return; }
+    // Cascade rename to referencing tables (stored by name)
+    const [pkgRes, kbRes] = await Promise.all([
+      supabase.from("catering_packages").update({ category: v }).eq("category", oldName),
+      supabase.from("knowledge_base").update({ category: v }).eq("category", oldName),
+    ]);
+    if (pkgRes.error) toast.error("อัปเดตแพ็กเกจไม่ครบ: "+pkgRes.error.message);
+    if (kbRes.error) toast.error("อัปเดต KB ไม่ครบ: "+kbRes.error.message);
+    toast.success("แก้ชื่อแล้ว");
+    cancelEdit();
+    qc.invalidateQueries({ queryKey: ["pkg-cats"] });
+    qc.invalidateQueries({ queryKey: ["pkgs"] });
+    qc.invalidateQueries({ queryKey: ["kb"] });
+  };
   return (
     <Card className="p-6 shadow-soft border-border/60 max-w-xl">
       <div className="flex gap-2 mb-4">
@@ -364,9 +389,30 @@ function CategoriesTab() {
       </div>
       <div className="space-y-2">
         {cats?.map((c:any)=>(
-          <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-            <span>{c.name}</span>
-            <Button size="icon" variant="ghost" onClick={()=>del(c.id)}><Trash2 className="w-4 h-4 text-destructive"/></Button>
+          <div key={c.id} className="flex items-center justify-between gap-2 p-3 rounded-lg border bg-card">
+            {editingId === c.id ? (
+              <>
+                <Input
+                  autoFocus
+                  value={editingName}
+                  onChange={e=>setEditingName(e.target.value)}
+                  onKeyDown={e=>{ if(e.key==="Enter") saveEdit(c); if(e.key==="Escape") cancelEdit(); }}
+                  className="h-9"
+                />
+                <div className="flex gap-1 shrink-0">
+                  <Button size="sm" onClick={()=>saveEdit(c)}>บันทึก</Button>
+                  <Button size="sm" variant="ghost" onClick={cancelEdit}>ยกเลิก</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="flex-1">{c.name}</span>
+                <div className="flex gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" onClick={()=>startEdit(c)} title="แก้ไข"><Pencil className="w-4 h-4"/></Button>
+                  <Button size="icon" variant="ghost" onClick={()=>del(c.id)} title="ลบ"><Trash2 className="w-4 h-4 text-destructive"/></Button>
+                </div>
+              </>
+            )}
           </div>
         ))}
         {!cats?.length && <p className="text-sm text-muted-foreground text-center py-6">ยังไม่มีประเภท</p>}
