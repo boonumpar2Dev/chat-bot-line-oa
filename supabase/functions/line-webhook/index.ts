@@ -1488,6 +1488,8 @@ async function processEvent(event: any, supabase: any) {
     if (!evType) return true;
     if (!cat) return false;
     const c = String(cat).toLowerCase();
+    // Whitelist: "สินค้าอื่นๆ" / "อื่นๆ" ขายแยกได้ทุก event_type — ไม่ต้องกรอง
+    if (c.includes("อื่น")) return true;
     if (c.includes(evType) || evType.includes(c)) return true;
     const evTokens = tokenize(evType);
     const catTokens = tokenize(c);
