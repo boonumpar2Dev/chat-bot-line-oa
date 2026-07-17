@@ -411,7 +411,7 @@ function CategoryManager({
         <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
       <div className="flex gap-2 mb-4">
-        <Input placeholder="ชื่อหมวด" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} />
+        <Input placeholder="ชื่อประเภท" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} />
         <Button onClick={add}><Plus /></Button>
       </div>
       <div className="space-y-2">
@@ -452,7 +452,7 @@ function CategoriesTab() {
   return (
     <div className="grid gap-4 md:grid-cols-2 max-w-4xl">
       <CategoryManager
-        title="หมวดของ ข้อมูลทั่วไป (KB)"
+        title="ประเภทของ ข้อมูลทั่วไป (KB)"
         description="ใช้ใน dialog เพิ่มข้อมูล/แก้ไขข้อมูลทั่วไป"
         table="knowledge_categories"
         queryKey="kb-cats"
@@ -708,10 +708,10 @@ function KnowledgeBaseTab() {
     const name = newCatName.trim();
     if (!name) return;
     const exists = (cats || []).some((c: any) => c.name.toLowerCase() === name.toLowerCase());
-    if (exists) { toast.error("มีหมวดนี้อยู่แล้ว"); return; }
+    if (exists) { toast.error("มีประเภทนี้อยู่แล้ว"); return; }
     const { error } = await supabase.from("knowledge_categories").insert({ name });
     if (error) return toast.error(error.message);
-    toast.success("เพิ่มหมวดแล้ว");
+    toast.success("เพิ่มประเภทแล้ว");
     setEdit({ ...edit, category: name });
     setNewCatName(""); setNewCatOpen(false);
     qc.invalidateQueries({ queryKey: ["kb-cats"] });
@@ -734,12 +734,12 @@ function KnowledgeBaseTab() {
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <Label className="text-sm">หมวด:</Label>
+            <Label className="text-sm">ประเภท:</Label>
             <Select value={filterCat} onValueChange={setFilterCat}>
               <SelectTrigger className="w-[180px]"><SelectValue/></SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all">ทั้งหมด ({items?.length || 0})</SelectItem>
-                <SelectItem value="__none">ไม่ระบุหมวด</SelectItem>
+                <SelectItem value="__none">ไม่ระบุประเภท</SelectItem>
                 {(cats || []).map((c: any) => (
                   <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                 ))}
@@ -800,7 +800,7 @@ function KnowledgeBaseTab() {
           <Card className="p-10 text-center md:col-span-2">
             <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-2"/>
             <p className="text-sm text-muted-foreground">
-              {items?.length ? "ไม่มีข้อมูลในหมวดนี้" : "ยังไม่มีข้อมูล — เพิ่ม FAQ หรือข้อมูลทั่วไปสำหรับ AI"}
+              {items?.length ? "ไม่มีข้อมูลในประเภทนี้" : "ยังไม่มีข้อมูล — เพิ่ม FAQ หรือข้อมูลทั่วไปสำหรับ AI"}
             </p>
           </Card>
         )}
@@ -816,12 +816,12 @@ function KnowledgeBaseTab() {
             <div className="space-y-1.5"><Label>หัวข้อ *</Label>
               <Input value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })}/>
             </div>
-            <div className="space-y-1.5"><Label>หมวดหมู่</Label>
+            <div className="space-y-1.5"><Label>ประเภท</Label>
               {newCatOpen ? (
                 <div className="flex gap-2">
                   <Input autoFocus value={newCatName} onChange={e => setNewCatName(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCategory(); } }}
-                    placeholder="ชื่อหมวดใหม่"/>
+                    placeholder="ชื่อประเภทใหม่"/>
                   <Button type="button" size="sm" onClick={addCategory}>เพิ่ม</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => { setNewCatOpen(false); setNewCatName(""); }}>
                     <X className="w-4 h-4"/>
@@ -830,7 +830,7 @@ function KnowledgeBaseTab() {
               ) : (
                 <div className="flex gap-2">
                   <Select value={edit.category || "__none"} onValueChange={v => setEdit({ ...edit, category: v === "__none" ? null : v })}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกหมวด"/></SelectTrigger>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="เลือกประเภท"/></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none">— ไม่ระบุ —</SelectItem>
                       {(cats || []).map((c: any) => (
@@ -839,7 +839,7 @@ function KnowledgeBaseTab() {
                     </SelectContent>
                   </Select>
                   <Button type="button" variant="outline" onClick={() => setNewCatOpen(true)}>
-                    <Plus className="w-4 h-4"/>เพิ่มหมวด
+                    <Plus className="w-4 h-4"/>เพิ่มประเภท
                   </Button>
                 </div>
               )}
@@ -906,7 +906,7 @@ function KnowledgeBaseTab() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {alertType === 'rule' && "ดูเหมือนกำลังใส่ 'กฎการตอบ'"}
-              {alertType === 'nocat' && "ยังไม่ได้เลือกหมวด"}
+              {alertType === 'nocat' && "ยังไม่ได้เลือกประเภท"}
               {alertType === 'delete' && "ยืนยันการลบ"}
             </AlertDialogTitle>
             <AlertDialogDescription className="whitespace-pre-line">
@@ -916,7 +916,7 @@ function KnowledgeBaseTab() {
                 "ฐานความรู้ออกแบบเพื่อ 'ข้อมูลที่ลูกค้าถาม' (เมนู ราคา รีวิว FAQ)\n\n" +
                 "ต้องการบันทึกใส่ KB ต่อหรือไม่?"}
               {alertType === 'nocat' &&
-                "ยังไม่ได้เลือกหมวด จะบันทึกเป็น 'ไม่มีหมวด' ใช่ไหม?\n\nกด บันทึก = บันทึกต่อ / กด ยกเลิก = กลับไปเลือกหมวด"}
+                "ยังไม่ได้เลือกประเภท จะบันทึกเป็น 'ไม่มีประเภท' ใช่ไหม?\n\nกด บันทึก = บันทึกต่อ / กด ยกเลิก = กลับไปเลือกประเภท"}
               {alertType === 'delete' && "ลบรายการนี้? การลบไม่สามารถเรียกคืนได้"}
             </AlertDialogDescription>
           </AlertDialogHeader>
