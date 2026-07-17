@@ -2259,7 +2259,7 @@ ${pastLines}
               await saveAndPushAi(
                 supabase,
                 lineUserId,
-                [{ type: "text", text: finalAnswer }],
+                toTextBubbles(finalAnswer),
                 { customer_id: customer.id, message: finalAnswer, sender: "ai", confidence_score: confidence },
               );
               return;
