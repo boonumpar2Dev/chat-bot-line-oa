@@ -1,0 +1,43 @@
+{
+  "name": "KnowledgeBase",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "file",
+        "price"
+      ],
+      "default": "file"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "processing"
+      ],
+      "default": "processing"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Legacy single image URL"
+    },
+    "image_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "\u0e23\u0e39\u0e1b\u0e20\u0e32\u0e1e\u0e1b\u0e23\u0e30\u0e01\u0e2d\u0e1a\u0e2b\u0e25\u0e32\u0e22\u0e23\u0e39\u0e1b"
+    }
+  },
+  "required": [
+    "title",
+    "type"
+  ]
+}
